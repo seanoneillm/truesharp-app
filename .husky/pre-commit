@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run lint-staged to check and fix files before commit
+npx lint-staged
+
+# Run type checking
+npm run type-check
+
+# Optionally run tests (comment out if tests take too long)
+# npm run test -- --passWithNoTests --bail

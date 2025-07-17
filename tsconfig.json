@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    // Language and module settings
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES6", "ES2022"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,15 +14,64 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+
+    // Path mapping for cleaner imports
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/app/*": ["./src/app/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/styles/*": ["./src/styles/*"],
+      "@/types/*": ["./src/lib/types/*"],
+      "@/utils/*": ["./src/lib/utils/*"],
+      "@/hooks/*": ["./src/lib/hooks/*"],
+      "@/constants/*": ["./src/lib/constants/*"]
+    },
+
+    // Additional type checking
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    // Next.js specific
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "allowImportingTsExtensions": false,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/**/*",
+    "app/**/*",
+    "components/**/*",
+    "lib/**/*",
+    "types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.spec.tsx",
+    "**/*.test.tsx"
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  }
 }

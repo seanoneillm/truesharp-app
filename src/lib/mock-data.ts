@@ -1,0 +1,475 @@
+import { User, Bet, Pick, Seller, Subscription, PerformanceMetrics } from './types'
+
+// Mock Users
+export const mockUsers: User[] = [
+  {
+    id: '1',
+    username: 'sharpbettor',
+    displayName: 'Mike Johnson',
+    email: 'mike@example.com',
+    avatar: 'MJ',
+    bio: 'Former Vegas insider with 15+ years experience. Specializing in NFL spreads and NBA totals with proven long-term results.',
+    location: 'Las Vegas, NV',
+    website: 'https://sharpbettor.com',
+    isVerified: true,
+    sellerEnabled: true,
+    verificationStatus: 'verified',
+    totalFollowers: 2847,
+    totalFollowing: 156,
+    joinDate: new Date('2023-01-15'),
+    createdAt: new Date('2023-01-15'),
+    updatedAt: new Date('2024-12-20'),
+  },
+  {
+    id: '2',
+    username: 'mlbmaster',
+    displayName: 'Sarah Chen',
+    email: 'sarah@example.com',
+    avatar: 'SC',
+    bio: 'MLB analytics expert with proprietary models. Focus on player props and team totals during regular season.',
+    location: 'Chicago, IL',
+    isVerified: true,
+    sellerEnabled: true,
+    verificationStatus: 'verified',
+    totalFollowers: 1654,
+    totalFollowing: 89,
+    joinDate: new Date('2022-03-10'),
+    createdAt: new Date('2022-03-10'),
+    updatedAt: new Date('2024-12-19'),
+  },
+  {
+    id: '3',
+    username: 'nflkings',
+    displayName: 'Tony Rodriguez',
+    email: 'tony@example.com',
+    avatar: 'TR',
+    bio: 'Rising star with incredible football instincts. Strong record on primetime games and playoff predictions.',
+    location: 'Miami, FL',
+    isVerified: true,
+    sellerEnabled: true,
+    verificationStatus: 'verified',
+    totalFollowers: 892,
+    totalFollowing: 234,
+    joinDate: new Date('2024-09-15'),
+    createdAt: new Date('2024-09-15'),
+    updatedAt: new Date('2024-12-18'),
+  },
+]
+
+// Mock Bets
+export const mockBets: Bet[] = [
+  {
+    id: '1',
+    userId: '1',
+    externalBetId: 'dk_123456',
+    sportsbookId: 'draftkings',
+    sport: 'NBA',
+    league: 'NBA',
+    betType: 'spread',
+    description: 'Lakers -4.5 vs Warriors',
+    odds: -110,
+    stake: 100,
+    potentialPayout: 190.91,
+    actualPayout: 190.91,
+    status: 'won',
+    placedAt: new Date('2024-12-20T20:00:00'),
+    settledAt: new Date('2024-12-21T02:30:00'),
+    gameDate: new Date('2024-12-20T22:00:00'),
+    teams: {
+      home: 'Golden State Warriors',
+      away: 'Los Angeles Lakers'
+    },
+    isPublic: true,
+    createdAt: new Date('2024-12-20T20:00:00'),
+  },
+  {
+    id: '2',
+    userId: '1',
+    externalBetId: 'fd_789012',
+    sportsbookId: 'fanduel',
+    sport: 'NFL',
+    league: 'NFL',
+    betType: 'moneyline',
+    description: 'Chiefs ML vs Bills',
+    odds: 150,
+    stake: 50,
+    potentialPayout: 125,
+    status: 'pending',
+    placedAt: new Date('2024-12-21T14:00:00'),
+    gameDate: new Date('2024-12-22T20:25:00'),
+    teams: {
+      home: 'Buffalo Bills',
+      away: 'Kansas City Chiefs'
+    },
+    isPublic: true,
+    createdAt: new Date('2024-12-21T14:00:00'),
+  },
+  {
+    id: '3',
+    userId: '2',
+    externalBetId: 'dk_345678',
+    sportsbookId: 'draftkings',
+    sport: 'MLB',
+    league: 'MLB',
+    betType: 'total',
+    description: 'Over 8.5 Runs - Yankees vs Red Sox',
+    odds: -105,
+    stake: 75,
+    potentialPayout: 146.43,
+    actualPayout: 0,
+    status: 'lost',
+    placedAt: new Date('2024-12-19T19:00:00'),
+    settledAt: new Date('2024-12-19T23:45:00'),
+    gameDate: new Date('2024-12-19T19:10:00'),
+    teams: {
+      home: 'Boston Red Sox',
+      away: 'New York Yankees'
+    },
+    isPublic: true,
+    createdAt: new Date('2024-12-19T19:00:00'),
+  },
+]
+
+// Mock Picks
+export const mockPicks: Pick[] = [
+  {
+    id: '1',
+    userId: '1',
+    betId: '1',
+    sport: 'NBA',
+    title: 'Lakers -4.5 vs Warriors',
+    description: 'Point spread bet on Lakers to cover',
+    analysis: 'Lakers have been dominant at home this season, covering 8 of last 10. Warriors dealing with key injuries to Curry and Thompson.',
+    confidence: 4,
+    odds: '-110',
+    tier: 'premium',
+    status: 'won',
+    result: '+$91',
+    postedAt: new Date('2024-12-20T18:00:00'),
+    gameTime: new Date('2024-12-20T22:00:00'),
+    isManual: false,
+    engagement: {
+      views: 234,
+      likes: 45,
+      comments: 12,
+      shares: 8
+    }
+  },
+  {
+    id: '2',
+    userId: '1',
+    betId: '2',
+    sport: 'NFL',
+    title: 'Chiefs ML vs Bills',
+    description: 'Moneyline bet on Chiefs to win',
+    analysis: 'Chiefs are undefeated at home in playoffs. Bills struggling with road performance in cold weather conditions.',
+    confidence: 5,
+    odds: '+150',
+    tier: 'premium',
+    status: 'pending',
+    postedAt: new Date('2024-12-21T12:00:00'),
+    gameTime: new Date('2024-12-22T20:25:00'),
+    isManual: false,
+    engagement: {
+      views: 567,
+      likes: 89,
+      comments: 23,
+      shares: 15
+    }
+  },
+  {
+    id: '3',
+    userId: '2',
+    betId: '3',
+    sport: 'MLB',
+    title: 'Over 8.5 Runs - Yankees vs Red Sox',
+    description: 'Total runs over bet',
+    analysis: 'Weather conditions favorable for offense. Both bullpens have struggled recently with ERA over 4.50.',
+    confidence: 3,
+    odds: '-105',
+    tier: 'silver',
+    status: 'lost',
+    result: '-$75',
+    postedAt: new Date('2024-12-19T17:00:00'),
+    gameTime: new Date('2024-12-19T19:10:00'),
+    isManual: false,
+    engagement: {
+      views: 189,
+      likes: 23,
+      comments: 8,
+      shares: 3
+    }
+  },
+]
+
+// Mock Sellers
+export const mockSellers: Seller[] = [
+  {
+    userId: '1',
+    isActive: true,
+    tier: 'elite',
+    specialization: ['NFL', 'NBA'],
+    pricing: {
+      bronze: 29,
+      silver: 49,
+      premium: 89
+    },
+    stats: {
+      totalPicks: 487,
+      winRate: 68.4,
+      roi: 34.2,
+      subscribers: 2847,
+      rating: 4.9,
+      totalRevenue: 124750
+    },
+    verificationBadges: ['Top Performer', 'Verified Pro', 'Hot Streak'],
+    commissionRate: 0.15,
+    payoutSettings: {
+      method: 'bank',
+      schedule: 'weekly',
+      email: 'mike@example.com'
+    }
+  },
+  {
+    userId: '2',
+    isActive: true,
+    tier: 'pro',
+    specialization: ['MLB'],
+    pricing: {
+      bronze: 19,
+      silver: 39,
+      premium: 69
+    },
+    stats: {
+      totalPicks: 892,
+      winRate: 64.2,
+      roi: 28.7,
+      subscribers: 1654,
+      rating: 4.8,
+      totalRevenue: 67890
+    },
+    verificationBadges: ['MLB Expert', 'Analytics Pro'],
+    commissionRate: 0.15,
+    payoutSettings: {
+      method: 'paypal',
+      schedule: 'biweekly',
+      email: 'sarah@example.com'
+    }
+  },
+  {
+    userId: '3',
+    isActive: true,
+    tier: 'rising',
+    specialization: ['NFL', 'CFB'],
+    pricing: {
+      bronze: 25,
+      silver: 45,
+      premium: 75
+    },
+    stats: {
+      totalPicks: 156,
+      winRate: 71.3,
+      roi: 41.8,
+      subscribers: 892,
+      rating: 4.9,
+      totalRevenue: 23450
+    },
+    verificationBadges: ['Rising Star', 'Hot Streak', 'New Talent'],
+    commissionRate: 0.15,
+    payoutSettings: {
+      method: 'stripe',
+      schedule: 'monthly',
+      email: 'tony@example.com'
+    }
+  },
+]
+
+// Mock Subscriptions
+export const mockSubscriptions: Subscription[] = [
+  {
+    id: '1',
+    subscriberId: 'current_user',
+    sellerId: '1',
+    tier: 'premium',
+    price: 89,
+    status: 'active',
+    startedAt: new Date('2024-12-15'),
+    expiresAt: new Date('2025-01-15'),
+    stripeSubscriptionId: 'sub_123456',
+    createdAt: new Date('2024-12-15'),
+  },
+  {
+    id: '2',
+    subscriberId: 'current_user',
+    sellerId: '2',
+    tier: 'silver',
+    price: 39,
+    status: 'active',
+    startedAt: new Date('2024-11-08'),
+    expiresAt: new Date('2025-01-08'),
+    stripeSubscriptionId: 'sub_789012',
+    createdAt: new Date('2024-11-08'),
+  },
+  {
+    id: '3',
+    subscriberId: 'current_user',
+    sellerId: '3',
+    tier: 'bronze',
+    price: 25,
+    status: 'cancelled',
+    startedAt: new Date('2024-10-20'),
+    expiresAt: new Date('2024-12-20'),
+    stripeSubscriptionId: 'sub_345678',
+    createdAt: new Date('2024-10-20'),
+  },
+]
+
+// Mock Performance Metrics
+export const mockPerformanceMetrics: PerformanceMetrics = {
+  totalBets: 247,
+  winRate: 64.2,
+  roi: 18.5,
+  profit: 2847,
+  avgBetSize: 87,
+  variance: 15.3,
+  sharpeRatio: 1.8,
+  closingLineValue: 2.3,
+  streaks: {
+    current: { type: 'win', count: 8 },
+    longest: { type: 'win', count: 12 }
+  }
+}
+
+// Mock Connected Sportsbooks
+export const mockConnectedSportsbooks = [
+  {
+    id: '1',
+    userId: 'current_user',
+    sportsbookId: 'draftkings',
+    status: 'connected' as const,
+    lastSync: new Date('2024-12-21T10:02:00'),
+    totalBetsTracked: 124,
+    connectionDate: new Date('2024-11-15'),
+    credentialsEncrypted: 'encrypted_data_123'
+  },
+  {
+    id: '2',
+    userId: 'current_user',
+    sportsbookId: 'fanduel',
+    status: 'connected' as const,
+    lastSync: new Date('2024-12-21T09:58:00'),
+    totalBetsTracked: 89,
+    connectionDate: new Date('2024-12-01'),
+    credentialsEncrypted: 'encrypted_data_456'
+  },
+  {
+    id: '3',
+    userId: 'current_user',
+    sportsbookId: 'betmgm',
+    status: 'error' as const,
+    lastSync: new Date('2024-12-21T08:15:00'),
+    totalBetsTracked: 56,
+    connectionDate: new Date('2024-10-20'),
+    error: 'Authentication failed. Please reconnect.',
+    credentialsEncrypted: 'encrypted_data_789'
+  }
+]
+
+// Mock Analytics Data
+export const mockAnalyticsData = {
+  profitOverTime: [
+    { date: '2024-11-01', profit: 450, cumulative: 450 },
+    { date: '2024-11-15', profit: 320, cumulative: 770 },
+    { date: '2024-12-01', profit: 680, cumulative: 1450 },
+    { date: '2024-12-15', profit: 890, cumulative: 2340 },
+    { date: '2024-12-21', profit: 507, cumulative: 2847 },
+  ],
+  winRateByMonth: [
+    { month: 'Aug', winRate: 58.3, bets: 45 },
+    { month: 'Sep', winRate: 62.1, bets: 52 },
+    { month: 'Oct', winRate: 65.8, bets: 61 },
+    { month: 'Nov', winRate: 63.2, bets: 47 },
+    { month: 'Dec', winRate: 67.4, bets: 42 },
+  ],
+  sportBreakdown: [
+    { sport: 'NFL', bets: 89, winRate: 67.4, roi: 22.1, profit: 1247 },
+    { sport: 'NBA', bets: 156, winRate: 61.5, roi: 15.8, profit: 892 },
+    { sport: 'MLB', bets: 67, winRate: 58.2, roi: 12.3, profit: 456 },
+    { sport: 'NHL', bets: 23, winRate: 69.6, roi: 28.4, profit: 321 },
+  ],
+  recentTrends: [
+    { period: 'This Week', roi: 12.5, winRate: 68.2, trend: 'up' as const },
+    { period: 'Last Week', roi: 8.3, winRate: 62.1, trend: 'up' as const },
+    { period: '2 Weeks Ago', roi: 15.7, winRate: 71.4, trend: 'up' as const },
+    { period: '3 Weeks Ago', roi: -2.1, winRate: 48.6, trend: 'down' as const },
+  ]
+}
+
+// Mock Notification Data
+export const mockNotifications = [
+  {
+    id: '1',
+    type: 'success' as const,
+    title: 'Pick Won!',
+    message: 'Your Lakers -4.5 pick just won. Great call!',
+    autoClose: true,
+    duration: 5000
+  },
+  {
+    id: '2',
+    type: 'info' as const,
+    title: 'New Subscriber',
+    message: '@newbettor23 just subscribed to your Premium tier',
+    autoClose: true,
+    duration: 5000
+  },
+  {
+    id: '3',
+    type: 'warning' as const,
+    title: 'Sportsbook Sync Issue',
+    message: 'BetMGM connection failed. Please reconnect.',
+    autoClose: false
+  }
+]
+
+// Mock Billing History
+export const mockBillingHistory = [
+  {
+    id: '1',
+    date: '2024-12-15',
+    description: '@sharpbettor - Premium Tier',
+    amount: 89.00,
+    status: 'paid' as const,
+    invoice: 'INV-2024-001'
+  },
+  {
+    id: '2',
+    date: '2024-12-08',
+    description: '@mlbmaster - Silver Tier',
+    amount: 39.00,
+    status: 'paid' as const,
+    invoice: 'INV-2024-002'
+  },
+  {
+    id: '3',
+    date: '2024-11-15',
+    description: '@sharpbettor - Premium Tier',
+    amount: 89.00,
+    status: 'paid' as const,
+    invoice: 'INV-2024-003'
+  },
+]
+
+// Export all mock data
+export const mockData = {
+  users: mockUsers,
+  bets: mockBets,
+  picks: mockPicks,
+  sellers: mockSellers,
+  subscriptions: mockSubscriptions,
+  performanceMetrics: mockPerformanceMetrics,
+  connectedSportsbooks: mockConnectedSportsbooks,
+  analytics: mockAnalyticsData,
+  notifications: mockNotifications,
+  billingHistory: mockBillingHistory,
+}
