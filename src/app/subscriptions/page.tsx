@@ -1,39 +1,60 @@
 "use client"
 
+import DashboardLayout from '@/components/dashboard/DashboardLayout'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { createBrowserClient } from '@/lib/auth/supabase'
 import {
-  AlertCircle,
   ArrowUpRight,
   BarChart3,
-  Bell,
-  Calendar,
-  CheckCircle,
-  ChevronDown,
   CreditCard,
-  DollarSign,
-  Download,
   Edit,
-  Eye,
-  Home,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Pause,
-  Percent,
-  Play,
   RefreshCw,
-  Search,
-  Settings,
-  Star,
-  Store,
-  Target,
+  Calendar,
+  DollarSign,
   TrendingUp,
-  User,
   Users,
   X,
-  XCircle
+  Pause,
+  Play,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Filter,
+  Search,
+  MoreHorizontal
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+
+// Enhanced interfaces for subscription data
+interface SubscriptionData {
+  id: string
+  subscriber_id: string
+  seller_id: string
+  strategy_id: string
+  status: 'active' | 'cancelled' | 'past_due'
+  frequency: 'weekly' | 'monthly' | 'yearly'
+  price: number
+  currency: string
+  created_at: string
+  updated_at: string
+  cancelled_at?: string
+  current_period_start?: string
+  current_period_end?: string
+  next_billing_date?: string
+  stripe_subscription_id?: string
+  // Joined data from other tables
+  strategy_name?: string
+  strategy_description?: string
+  seller_username?: string
+  seller_display_name?: string
+  strategy_performance_roi?: number
+  strategy_performance_win_rate?: number
+  strategy_performance_total_bets?: number
+}
 
 // Shield SVG Component
 const TrueSharpShield = ({ className = "h-6 w-6", variant = "default" }) => (
@@ -61,821 +82,691 @@ const TrueSharpShield = ({ className = "h-6 w-6", variant = "default" }) => (
   </svg>
 )
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home, current: false },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3, current: false },
-  { name: 'Feed', href: '/feed', icon: MessageSquare, current: false },
-  { name: 'Marketplace', href: '/marketplace', icon: Store, current: false },
-  { name: 'Subscriptions', href: '/subscriptions', icon: Users, current: true },
-  { name: 'Monetize', href: '/sell', icon: DollarSign, current: false },
-  { name: 'Settings', href: '/settings', icon: Settings, current: false },
-]
+// Subscription Card Component
+const SubscriptionCard = ({ subscription, onRefresh }: { 
+  subscription: SubscriptionData, 
+  onRefresh: () => void 
+}) => {
+  const [cancelling, setCancelling] = useState(false)
+  const [pausing, setPausing] = useState(false)
 
-export default function SubscriptionsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
-  const [selectedTimeframe, setSelectedTimeframe] = useState('7d')
-  const [showCancelModal, setShowCancelModal] = useState(false)
-  const [cancelingSubscription, setCancelingSubscription] = useState(null)
-
-  const activeSubscriptions = [
-    {
-      id: 1,
-      seller: {
-        username: '@sharpbettor',
-        displayName: 'Mike Johnson',
-        avatar: 'MJ',
-        verified: true,
-        tier: 'elite'
-      },
-      tier: 'premium',
-      price: 89,
-      status: 'active',
-      nextBilling: '2025-01-15',
-      subscribedDate: '2024-12-15',
-      autoRenew: true,
-      performance: {
-        roi: '+34.2%',
-        winRate: '68.4%',
-        pickCount: 28,
-        profit: '+$847'
-      },
-      recentPicks: 12,
-      sports: ['NFL', 'NBA']
-    },
-    {
-      id: 2,
-      seller: {
-        username: '@mlbmaster',
-        displayName: 'Sarah Chen',
-        avatar: 'SC',
-        verified: true,
-        tier: 'pro'
-      },
-      tier: 'silver',
-      price: 39,
-      status: 'active',
-      nextBilling: '2025-01-08',
-      subscribedDate: '2024-11-08',
-      autoRenew: true,
-      performance: {
-        roi: '+28.7%',
-        winRate: '64.2%',
-        pickCount: 45,
-        profit: '+$542'
-      },
-      recentPicks: 8,
-      sports: ['MLB']
-    },
-    {
-      id: 3,
-      seller: {
-        username: '@nflkings',
-        displayName: 'Tony Rodriguez',
-        avatar: 'TR',
-        verified: true,
-        tier: 'rising'
-      },
-      tier: 'bronze',
-      price: 25,
-      status: 'paused',
-      nextBilling: null,
-      subscribedDate: '2024-10-20',
-      autoRenew: false,
-      performance: {
-        roi: '+41.8%',
-        winRate: '71.3%',
-        pickCount: 18,
-        profit: '+$321'
-      },
-      recentPicks: 0,
-      sports: ['NFL', 'CFB']
-    }
-  ]
-
-  const recentPicks = [
-    {
-      id: 1,
-      seller: '@sharpbettor',
-      title: 'Lakers -4.5 vs Warriors',
-      sport: 'NBA',
-      confidence: 4,
-      analysis: 'Lakers have been dominant at home this season, covering 8 of last 10. Warriors dealing with key injuries.',
-      odds: '-110',
-      status: 'won',
-      result: '+$91',
-      postedAt: '2h ago',
-      tier: 'premium'
-    },
-    {
-      id: 2,
-      seller: '@mlbmaster',
-      title: 'Over 8.5 Runs - Yankees vs Red Sox',
-      sport: 'MLB',
-      confidence: 3,
-      analysis: 'Weather conditions favorable for offense. Both bullpens have struggled recently.',
-      odds: '-105',
-      status: 'lost',
-      result: '-$75',
-      postedAt: '4h ago',
-      tier: 'silver'
-    },
-    {
-      id: 3,
-      seller: '@sharpbettor',
-      title: 'Chiefs ML vs Bills',
-      sport: 'NFL',
-      confidence: 5,
-      analysis: 'Chiefs are undefeated at home in playoffs. Bills struggling with road performance in cold weather.',
-      odds: '+150',
-      status: 'pending',
-      result: 'TBD',
-      postedAt: '6h ago',
-      tier: 'premium'
-    },
-    {
-      id: 4,
-      seller: '@mlbmaster',
-      title: 'Dodgers -1.5 vs Padres',
-      sport: 'MLB',
-      confidence: 4,
-      analysis: 'Starting pitcher matchup heavily favors Dodgers. Padres have lost 6 straight divisional games.',
-      odds: '+120',
-      status: 'won',
-      result: '+$96',
-      postedAt: '1d ago',
-      tier: 'silver'
-    }
-  ]
-
-  const billingHistory = [
-    {
-      id: 1,
-      date: '2024-12-15',
-      description: '@sharpbettor - Premium Tier',
-      amount: 89.00,
-      status: 'paid',
-      invoice: 'INV-2024-001'
-    },
-    {
-      id: 2,
-      date: '2024-12-08',
-      description: '@mlbmaster - Silver Tier',
-      amount: 39.00,
-      status: 'paid',
-      invoice: 'INV-2024-002'
-    },
-    {
-      id: 3,
-      date: '2024-11-15',
-      description: '@sharpbettor - Premium Tier',
-      amount: 89.00,
-      status: 'paid',
-      invoice: 'INV-2024-003'
-    },
-    {
-      id: 4,
-      date: '2024-11-08',
-      description: '@mlbmaster - Silver Tier',
-      amount: 39.00,
-      status: 'paid',
-      invoice: 'INV-2024-004'
-    }
-  ]
-
-  const subscriptionStats = {
-    totalSpent: 512,
-    totalProfit: 1710,
-    netProfit: 1198,
-    roi: '+234%',
-    activeSubs: 2,
-    totalPicks: 91,
-    followedPicks: 67,
-    winRate: '66.2%'
-  }
-
-  const getTierColor = (tier) => {
-    switch (tier) {
-      case 'premium': return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+  const handleCancelSubscription = async () => {
+    setCancelling(true)
+    try {
+      // TODO: Implement Stripe cancellation
+      console.log('Cancelling subscription:', subscription.id)
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      onRefresh()
+    } catch (error) {
+      console.error('Error cancelling subscription:', error)
+    } finally {
+      setCancelling(false)
     }
   }
 
-  const handleCancelSubscription = (subscription) => {
-    setCancelingSubscription(subscription)
-    setShowCancelModal(true)
+  const formatCurrency = (amount: number) => {
+    try {
+      const validAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: subscription.currency || 'USD',
+        minimumFractionDigits: 0
+      }).format(validAmount)
+    } catch (error) {
+      return `$${amount || 0}`
+    }
   }
 
-  const confirmCancellation = () => {
-    setShowCancelModal(false)
-    setCancelingSubscription(null)
+  const formatFrequency = (freq: string) => {
+    return freq.charAt(0).toUpperCase() + freq.slice(1)
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 border-green-300">Active</Badge>
+      case 'cancelled':
+        return <Badge className="bg-red-100 text-red-800 border-red-300">Cancelled</Badge>
+      case 'past_due':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Past Due</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Mobile sidebar */}
-      <div className={`relative z-50 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-0 flex">
-          <div className="relative mr-16 flex w-full max-w-xs flex-1">
-            <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-              <button type="button" className="-m-2.5 p-2.5" onClick={() => setSidebarOpen(false)}>
-                <X className="h-6 w-6 text-white" />
-              </button>
+    <Card className="p-6 hover:shadow-lg transition-shadow">
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-2">
+              <TrueSharpShield className="h-5 w-5" />
+              <h3 className="text-lg font-semibold text-slate-900">
+                {subscription.strategy_name || 'Strategy'}
+              </h3>
+              {getStatusBadge(subscription.status)}
             </div>
-            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/95 backdrop-blur-sm px-6 pb-2 shadow-xl">
-              <div className="flex h-16 shrink-0 items-center">
-                <div className="flex items-center space-x-3">
-                  <TrueSharpShield className="h-8 w-8" />
-                  <span className="text-xl font-bold text-slate-900">TrueSharp</span>
-                </div>
-              </div>
-              <nav className="flex flex-1 flex-col">
-                <ul className="flex flex-1 flex-col gap-y-7">
-                  <li>
-                    <ul className="-mx-2 space-y-1">
-                      {navigation.map((item) => (
-                        <li key={item.name}>
-                          <Link
-                            href={item.href}
-                            className={`group flex gap-x-3 rounded-xl p-3 text-sm leading-6 font-semibold transition-all duration-200 ${
-                              item.current
-                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                                : 'text-slate-700 hover:text-blue-600 hover:bg-blue-50'
-                            }`}
-                          >
-                            <item.icon className="h-6 w-6 shrink-0" />
-                            {item.name}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                </ul>
-              </nav>
-            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
+            </p>
+            <p className="text-sm text-slate-500 line-clamp-2">
+              {subscription.strategy_description || 'No description available'}
+            </p>
+          </div>
+          <div className="ml-4">
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/80 backdrop-blur-xl border-r border-slate-200/50 px-6 shadow-lg">
-          <div className="flex h-16 shrink-0 items-center">
+        {/* Performance Metrics */}
+        <div className="grid grid-cols-3 gap-4 py-3 border-t border-b border-slate-100">
+          <div className="text-center">
+            <p className="text-sm text-slate-600">ROI</p>
+            <p className={`text-lg font-semibold ${
+              (subscription.strategy_performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {subscription.strategy_performance_roi !== null ? 
+                `${subscription.strategy_performance_roi > 0 ? '+' : ''}${subscription.strategy_performance_roi.toFixed(1)}%` : 
+                'N/A'
+              }
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-slate-600">Win Rate</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {subscription.strategy_performance_win_rate !== null ? 
+                `${subscription.strategy_performance_win_rate.toFixed(1)}%` : 
+                'N/A'
+              }
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-slate-600">Total Bets</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {subscription.strategy_performance_total_bets || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Subscription Details */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Price</span>
+            <span className="text-sm font-medium text-slate-900">
+              {formatCurrency(subscription.price)} / {formatFrequency(subscription.frequency)}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Started</span>
+            <span className="text-sm text-slate-900">
+              {new Date(subscription.created_at).toLocaleDateString()}
+            </span>
+          </div>
+
+          {subscription.status === 'active' && subscription.next_billing_date && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Next Billing</span>
+              <span className="text-sm text-slate-900">
+                {new Date(subscription.next_billing_date).toLocaleDateString()}
+              </span>
+            </div>
+          )}
+
+          {subscription.status === 'cancelled' && subscription.cancelled_at && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Cancelled</span>
+              <span className="text-sm text-slate-900">
+                {new Date(subscription.cancelled_at).toLocaleDateString()}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        {subscription.status === 'active' && (
+          <div className="flex items-center space-x-2 pt-3 border-t border-slate-100">
+            <Link
+              href={`/marketplace/${subscription.seller_username}`}
+              className="flex-1"
+            >
+              <Button variant="outline" size="sm" className="w-full">
+                <ArrowUpRight className="h-4 w-4 mr-2" />
+                View Strategy
+              </Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleCancelSubscription}
+              disabled={cancelling}
+              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              {cancelling ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b border-red-600 mr-2"></div>
+                  Cancelling...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+export default function SubscriptionsPage() {
+  const { user, loading: authLoading } = useAuth()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const fetchingRef = useRef(false)
+  const [stableSubscriptions, setStableSubscriptions] = useState<SubscriptionData[]>([])
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const fetchSubscriptions = useCallback(async () => {
+    if (!user || fetchingRef.current) return
+    
+    try {
+      fetchingRef.current = true
+      setError(null)
+      const supabase = createBrowserClient()
+
+      // First, fetch basic subscription data without joins to avoid errors
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .select(`
+          id,
+          subscriber_id,
+          seller_id,
+          strategy_id,
+          status,
+          frequency,
+          price,
+          currency,
+          created_at,
+          updated_at,
+          cancelled_at,
+          current_period_start,
+          current_period_end,
+          next_billing_date,
+          stripe_subscription_id
+        `)
+        .eq('subscriber_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (subscriptionError) {
+        console.error('Error fetching subscriptions:', subscriptionError)
+        setError(subscriptionError.message)
+        setSubscriptions([])
+        return
+      }
+
+      if (!subscriptionData || subscriptionData.length === 0) {
+        setSubscriptions([])
+        return
+      }
+
+      // Then fetch related data separately to avoid join errors
+      const strategyIds = subscriptionData.map(sub => sub.strategy_id)
+      const sellerIds = subscriptionData.map(sub => sub.seller_id)
+
+      // Fetch strategy data
+      let strategiesData = []
+      try {
+        const { data: strategies, error: strategiesError } = await supabase
+          .from('strategies')
+          .select('id, name, description, performance_roi, performance_win_rate, performance_total_bets')
+          .in('id', strategyIds)
+
+        if (strategiesError) {
+          console.warn('Error fetching strategy data:', strategiesError)
+        } else {
+          strategiesData = strategies || []
+        }
+      } catch (strategiesNetworkError) {
+        console.warn('Network error fetching strategies:', strategiesNetworkError)
+      }
+
+      // Fetch seller profile data
+      let profilesData = []
+      try {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', sellerIds)
+
+        if (profilesError) {
+          console.warn('Error fetching profile data:', profilesError)
+        } else {
+          profilesData = profiles || []
+        }
+      } catch (profilesNetworkError) {
+        console.warn('Network error fetching profiles:', profilesNetworkError)
+      }
+
+      // Combine the data safely
+      const formattedSubscriptions = subscriptionData.map(sub => {
+        const strategy = strategiesData.find(s => s.id === sub.strategy_id)
+        const profile = profilesData.find(p => p.id === sub.seller_id)
+        
+        return {
+          ...sub,
+          strategy_name: strategy?.name || 'Unknown Strategy',
+          strategy_description: strategy?.description || 'No description available',
+          seller_username: profile?.username || 'Unknown',
+          seller_display_name: profile?.display_name || profile?.username || 'Unknown',
+          strategy_performance_roi: strategy?.performance_roi || 0,
+          strategy_performance_win_rate: strategy?.performance_win_rate || 0,
+          strategy_performance_total_bets: strategy?.performance_total_bets || 0
+        }
+      })
+
+      // Only update if data actually changed (prevents unnecessary re-renders)
+      setSubscriptions(prevSubscriptions => {
+        const hasChanged = JSON.stringify(prevSubscriptions) !== JSON.stringify(formattedSubscriptions)
+        return hasChanged ? formattedSubscriptions : prevSubscriptions
+      })
+    } catch (err) {
+      console.error('Error fetching subscriptions:', err)
+      setError('Failed to load subscriptions')
+      setSubscriptions([])
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      fetchingRef.current = false
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (mounted && user) {
+      fetchSubscriptions()
+    }
+  }, [user, fetchSubscriptions, mounted])
+
+  // Debounced stable subscriptions update
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStableSubscriptions(subscriptions)
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timer)
+  }, [subscriptions])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchSubscriptions()
+  }
+
+  const activeSubscriptions = useMemo(() => {
+    if (!Array.isArray(stableSubscriptions)) {
+      return []
+    }
+    return stableSubscriptions.filter(sub => sub && sub.status === 'active')
+  }, [stableSubscriptions])
+  
+  const cancelledSubscriptions = useMemo(() => {
+    if (!Array.isArray(stableSubscriptions)) {
+      return []
+    }
+    return stableSubscriptions.filter(sub => sub && sub.status === 'cancelled')
+  }, [stableSubscriptions])
+
+  const totalMonthlySpend = useMemo(() => {
+    if (!Array.isArray(activeSubscriptions) || activeSubscriptions.length === 0) {
+      return 0
+    }
+    
+    return activeSubscriptions.reduce((total, sub) => {
+      if (!sub || typeof sub.price !== 'number') {
+        return total
+      }
+      
+      const monthlyPrice = sub.frequency === 'weekly' ? sub.price * 4.33 :
+                         sub.frequency === 'yearly' ? sub.price / 12 :
+                         sub.price
+      return total + (monthlyPrice || 0)
+    }, 0)
+  }, [activeSubscriptions])
+
+  if (authLoading || !mounted) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
             <div className="flex items-center space-x-3">
               <TrueSharpShield className="h-8 w-8" />
-              <span className="text-xl font-bold text-slate-900">TrueSharp</span>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">
+                  My Subscriptions
+                </h1>
+                <p className="text-lg text-slate-600 mt-1">
+                  Track performance and manage your strategy subscriptions
+                </p>
+              </div>
             </div>
           </div>
-          <nav className="flex flex-1 flex-col">
-            <ul className="flex flex-1 flex-col gap-y-7">
-              <li>
-                <ul className="-mx-2 space-y-1">
-                  {navigation.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className={`group flex gap-x-3 rounded-xl p-3 text-sm leading-6 font-semibold transition-all duration-200 ${
-                          item.current
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105'
-                            : 'text-slate-700 hover:text-blue-600 hover:bg-blue-50 hover:scale-105'
-                        }`}
-                      >
-                        <item.icon className="h-6 w-6 shrink-0" />
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            </ul>
-          </nav>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-xl text-slate-700 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <Link
+              href="/marketplace"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-200"
+            >
+              Browse Strategies
+              <ArrowUpRight className="h-4 w-4 ml-2" />
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Main content */}
-      <div className="lg:pl-72">
-        {/* Top header */}
-        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200/50 bg-white/80 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            className="-m-2.5 p-2.5 text-slate-700 lg:hidden hover:bg-slate-100 rounded-lg transition-colors"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="h-6 w-px bg-slate-200 lg:hidden" />
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="relative flex flex-1 max-w-lg">
-              <Search className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-slate-400 pl-3" />
-              <input
-                className="block h-full w-full border-0 py-0 pl-10 pr-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm bg-transparent"
-                placeholder="Search subscriptions..."
-                type="search"
-              />
-            </div>
-            <div className="flex items-center gap-x-4 lg:gap-x-6">
-              <button className="-m-2.5 p-2.5 text-slate-400 hover:text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-                <Bell className="h-6 w-6" />
-              </button>
-              <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-slate-200" />
-              <div className="relative">
+        {/* Tabs */}
+        <div className="flex space-x-2 bg-white border border-slate-200 p-2 rounded-xl w-fit shadow-sm">
+          {[
+            { key: 'overview', label: 'Overview' },
+            { key: 'billing', label: 'Billing' }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 capitalize ${
+                activeTab === tab.key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="p-6 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <Card className="p-8 text-center">
+                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Subscriptions</h3>
+                <p className="text-red-600 mb-6">{error}</p>
                 <button
-                  type="button"
-                  className="-m-1.5 flex items-center p-1.5 hover:bg-slate-100 rounded-xl transition-colors"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  onClick={handleRefresh}
+                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-lg">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="hidden lg:flex lg:items-center">
-                    <span className="ml-4 text-sm font-semibold leading-6 text-slate-900">@sportsbettor</span>
-                    <ChevronDown className="ml-2 h-5 w-5 text-slate-400" />
-                  </span>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
                 </button>
-                {userMenuOpen && (
-                  <div className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-xl bg-white py-2 shadow-lg ring-1 ring-slate-900/5 border border-slate-200">
-                    <Link href="/profile" className="block px-3 py-1 text-sm leading-6 text-slate-900 hover:bg-slate-50 rounded-lg mx-1">
-                      Your profile
-                    </Link>
-                    <Link href="/settings" className="block px-3 py-1 text-sm leading-6 text-slate-900 hover:bg-slate-50 rounded-lg mx-1">
-                      Settings
-                    </Link>
-                    <Link href="/" className="flex items-center px-3 py-1 text-sm leading-6 text-slate-900 hover:bg-slate-50 rounded-lg mx-1">
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign out
-                    </Link>
+              </Card>
+            ) : activeSubscriptions.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CreditCard className="h-8 w-8 text-slate-400" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900 mb-2">No subscriptions yet</h3>
+                <p className="text-slate-600 mb-6">
+                  Start following top-performing strategies from verified sellers
+                </p>
+                <Link
+                  href="/marketplace"
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all duration-200"
+                >
+                  Browse Strategies
+                  <ArrowUpRight className="h-4 w-4 ml-2" />
+                </Link>
+              </div>
+            ) : (
+              <>
+                {/* Overview Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-700">Active Subscriptions</p>
+                        <p className="text-3xl font-bold text-blue-900 mt-1">
+                          {activeSubscriptions.length}
+                        </p>
+                        <p className="text-sm text-blue-600 mt-1">
+                          {activeSubscriptions.length === 1 ? 'strategy' : 'strategies'}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-blue-100 rounded-xl">
+                        <CheckCircle className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-700">Monthly Spend</p>
+                        <p className="text-3xl font-bold text-green-900 mt-1">
+                          ${totalMonthlySpend.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-green-600 mt-1">
+                          across all subscriptions
+                        </p>
+                      </div>
+                      <div className="p-3 bg-green-100 rounded-xl">
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-6 bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-700">Avg Performance</p>
+                        <p className="text-3xl font-bold text-purple-900 mt-1">
+                          {activeSubscriptions.length > 0 ? 
+                            `+${(activeSubscriptions.reduce((sum, sub) => {
+                              const roi = sub?.strategy_performance_roi || 0
+                              return sum + (typeof roi === 'number' ? roi : 0)
+                            }, 0) / activeSubscriptions.length).toFixed(1)}%` : 
+                            '0%'
+                          }
+                        </p>
+                        <p className="text-sm text-purple-600 mt-1">
+                          average ROI
+                        </p>
+                      </div>
+                      <div className="p-3 bg-purple-100 rounded-xl">
+                        <TrendingUp className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Active Subscriptions */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-slate-900">Active Subscriptions</h2>
+                    <Badge className="bg-green-100 text-green-800 border-green-300">
+                      {activeSubscriptions.length} active
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {activeSubscriptions.map((subscription) => (
+                      <SubscriptionCard key={subscription.id} subscription={subscription} onRefresh={fetchSubscriptions} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cancelled Subscriptions */}
+                {cancelledSubscriptions.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold text-slate-900">Past Subscriptions</h2>
+                      <Badge variant="outline" className="text-gray-600">
+                        {cancelledSubscriptions.length} cancelled
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {cancelledSubscriptions.map((subscription) => (
+                        <SubscriptionCard key={subscription.id} subscription={subscription} onRefresh={fetchSubscriptions} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="space-y-6">
+            {/* Payment Method */}
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Payment Method</h2>
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-slate-600 rounded-xl flex items-center justify-center">
+                      <CreditCard className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-slate-900">No payment method on file</p>
+                      <p className="text-sm text-slate-500">Add a payment method to subscribe</p>
+                    </div>
+                  </div>
+                  <button className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Add Payment Method
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Subscription History */}
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Subscription History</h2>
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                {stableSubscriptions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Strategy
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Price
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Started
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {stableSubscriptions.map((subscription) => (
+                          <tr key={subscription.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <TrueSharpShield className="h-5 w-5 mr-3" />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {subscription.strategy_name || 'Strategy'}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    @{subscription.seller_username || 'Unknown'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {subscription.status === 'active' ? (
+                                <Badge className="bg-green-100 text-green-800 border-green-300">Active</Badge>
+                              ) : subscription.status === 'cancelled' ? (
+                                <Badge className="bg-red-100 text-red-800 border-red-300">Cancelled</Badge>
+                              ) : (
+                                <Badge variant="outline">{subscription.status}</Badge>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              ${subscription.price.toFixed(2)} / {subscription.frequency}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(subscription.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <Link
+                                href={`/marketplace/${subscription.seller_username}`}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                View
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <BarChart3 className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-900 mb-2">No subscription history</h3>
+                    <p className="text-slate-600">Your subscription history will appear here once you subscribe to strategies</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Page content */}
-        <main className="py-8">
-          <div className="px-4 sm:px-6 lg:px-8">
-            {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <TrueSharpShield className="h-8 w-8" variant="light" />
-                    <h1 className="text-3xl font-bold text-slate-900">My Subscriptions</h1>
-                  </div>
-                  <p className="text-slate-600">Track performance and manage your pick subscriptions</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <button className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-xl text-slate-700 bg-white/70 hover:bg-white transition-colors">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </button>
-                  <Link
-                    href="/marketplace"
-                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded-xl shadow-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-200 hover:scale-105"
-                  >
-                    Browse Sellers
-                    <ArrowUpRight className="h-4 w-4 ml-2" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Subscription Stats */}
-            <div className="mb-8">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <DollarSign className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="ml-4 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-slate-600 truncate">Total Spent</dt>
-                        <dd className="text-2xl font-bold text-slate-900">${subscriptionStats.totalSpent}</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <TrendingUp className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="ml-4 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-slate-600 truncate">Total Profit</dt>
-                        <dd className="text-2xl font-bold text-green-600">+${subscriptionStats.totalProfit}</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <Percent className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="ml-4 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-slate-600 truncate">Subscription ROI</dt>
-                        <dd className="text-2xl font-bold text-blue-600">{subscriptionStats.roi}</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <Target className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="ml-4 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-slate-600 truncate">Win Rate</dt>
-                        <dd className="text-2xl font-bold text-slate-900">{subscriptionStats.winRate}</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="mb-8">
-              <div className="flex space-x-2 bg-white/70 backdrop-blur-sm border border-slate-200/50 p-2 rounded-2xl w-fit shadow-lg">
-                {['overview', 'picks', 'billing'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 capitalize ${
-                      activeTab === tab
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tab Content */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-6">Active Subscriptions</h2>
-                  <div className="space-y-4">
-                    {activeSubscriptions.map((subscription) => (
-                      <div key={subscription.id} className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center flex-1">
-                            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                              {subscription.seller.avatar}
-                            </div>
-                            <div className="ml-6 flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <h3 className="text-xl font-semibold text-slate-900">{subscription.seller.username}</h3>
-                                {subscription.seller.verified && (
-                                  <TrueSharpShield className="h-5 w-5" variant="light" />
-                                )}
-                                <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getTierColor(subscription.tier)}`}>
-                                  {subscription.tier}
-                                </div>
-                                <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${
-                                  subscription.status === 'active' 
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {subscription.status === 'active' ? (
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                  ) : (
-                                    <Pause className="h-3 w-3 mr-1" />
-                                  )}
-                                  {subscription.status}
-                                </div>
-                              </div>
-                              <p className="text-slate-600 mb-3">
-                                {subscription.seller.displayName} • {subscription.sports.join(', ')}
-                              </p>
-                              <div className="flex items-center space-x-6 text-sm text-slate-600">
-                                <div className="flex items-center">
-                                  <DollarSign className="h-4 w-4 mr-1" />
-                                  <span className="font-medium">${subscription.price}/month</span>
-                                </div>
-                                {subscription.nextBilling && (
-                                  <div className="flex items-center">
-                                    <Calendar className="h-4 w-4 mr-1" />
-                                    <span>Next billing: {new Date(subscription.nextBilling).toLocaleDateString()}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center">
-                                  <BarChart3 className="h-4 w-4 mr-1" />
-                                  <span>{subscription.recentPicks} recent picks</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-8">
-                            <div className="text-center">
-                              <p className="text-lg font-bold text-green-600">{subscription.performance.roi}</p>
-                              <p className="text-xs text-slate-500">ROI</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-lg font-bold text-slate-900">{subscription.performance.winRate}</p>
-                              <p className="text-xs text-slate-500">Win Rate</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-lg font-bold text-green-600">{subscription.performance.profit}</p>
-                              <p className="text-xs text-slate-500">Your Profit</p>
-                            </div>
-                            
-                            <div className="flex flex-col space-y-2">
-                              <Link
-                                href={`/marketplace/${subscription.seller.username.replace('@', '')}`}
-                                className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-lg text-slate-700 bg-white/70 hover:bg-white transition-colors"
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </Link>
-                              {subscription.status === 'active' ? (
-                                <button 
-                                  onClick={() => handleCancelSubscription(subscription)}
-                                  className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-lg text-red-700 bg-white/70 hover:bg-red-50 transition-colors"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Cancel
-                                </button>
-                              ) : (
-                                <button className="inline-flex items-center px-4 py-2 border border-green-300 shadow-sm text-sm font-medium rounded-lg text-green-700 bg-white/70 hover:bg-green-50 transition-colors">
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Resume
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'picks' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-slate-900">Recent Picks</h2>
-                  <select
-                    value={selectedTimeframe}
-                    onChange={(e) => setSelectedTimeframe(e.target.value)}
-                    className="rounded-xl border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white/70 backdrop-blur-sm"
-                  >
-                    <option value="7d">Last 7 days</option>
-                    <option value="30d">Last 30 days</option>
-                    <option value="90d">Last 90 days</option>
-                  </select>
-                </div>
-                <div className="space-y-4">
-                  {recentPicks.map((pick) => (
-                    <div key={pick.id} className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center mb-3">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                              pick.sport === 'NBA' ? 'bg-orange-100 text-orange-800' :
-                              pick.sport === 'NFL' ? 'bg-green-100 text-green-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {pick.sport}
-                            </span>
-                            <span className="ml-3 text-sm text-slate-500">{pick.postedAt}</span>
-                            <span className="ml-3 text-sm font-medium text-slate-900">{pick.seller}</span>
-                            <div className={`ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getTierColor(pick.tier)}`}>
-                              {pick.tier}
-                            </div>
-                          </div>
-                          <h3 className="text-lg font-semibold text-slate-900 mb-2">{pick.title}</h3>
-                          <p className="text-slate-700 mb-3">{pick.analysis}</p>
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center">
-                              <span className="text-sm text-slate-500">Confidence:</span>
-                              <div className="ml-2 flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-4 w-4 ${
-                                      i < pick.confidence ? 'text-yellow-400 fill-current' : 'text-slate-300'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            <div className="text-sm text-slate-500">
-                              Odds: {pick.odds}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center justify-end mb-2">
-                            {pick.status === 'won' && <CheckCircle className="h-5 w-5 text-green-500 mr-2" />}
-                            {pick.status === 'lost' && <XCircle className="h-5 w-5 text-red-500 mr-2" />}
-                            {pick.status === 'pending' && <RefreshCw className="h-5 w-5 text-yellow-500 mr-2" />}
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                              pick.status === 'won' ? 'bg-green-100 text-green-800' :
-                              pick.status === 'lost' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {pick.status}
-                            </span>
-                          </div>
-                          <p className={`text-lg font-semibold ${
-                            pick.status === 'won' ? 'text-green-600' :
-                            pick.status === 'lost' ? 'text-red-600' :
-                            'text-slate-500'
-                          }`}>
-                            {pick.result}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'billing' && (
-              <div className="space-y-6">
-                {/* Payment Method */}
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-4">Payment Method</h2>
-                  <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center shadow-lg">
-                          <CreditCard className="h-6 w-6 text-white" />
-                        </div>
-                        <div className="ml-4">
-                          <p className="text-sm font-medium text-slate-900">•••• •••• •••• 4242</p>
-                          <p className="text-sm text-slate-500">Expires 12/27</p>
-                        </div>
-                      </div>
-                      <button className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-xl text-slate-700 bg-white/70 hover:bg-white transition-colors">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Update
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Billing History */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-slate-900">Billing History</h2>
-                    <button className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-xl text-slate-700 bg-white/70 hover:bg-white transition-colors">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download All
-                    </button>
-                  </div>
-                  <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl shadow-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50/50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Description</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Invoice</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white/50 divide-y divide-slate-200">
-                          {billingHistory.map((transaction) => (
-                            <tr key={transaction.id} className="hover:bg-white/70 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                {new Date(transaction.date).toLocaleDateString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                {transaction.description}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                ${transaction.amount.toFixed(2)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  {transaction.status}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-                                <button className="hover:text-blue-500 inline-flex items-center">
-                                  <Download className="h-4 w-4 mr-1" />
-                                  {transaction.invoice}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Next Billing */}
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-4">Upcoming Billing</h2>
-                  <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg">
-                    <div className="space-y-4">
-                      {activeSubscriptions.filter(sub => sub.nextBilling).map((subscription) => (
-                        <div key={subscription.id} className="flex items-center justify-between py-3 border-b border-slate-200 last:border-b-0">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white text-sm font-medium shadow-lg">
-                              {subscription.seller.avatar}
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-slate-900">
-                                {subscription.seller.username} - {subscription.tier}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                Next billing: {new Date(subscription.nextBilling).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-slate-900">${subscription.price}</p>
-                            <p className="text-xs text-slate-500">per month</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-6 pt-6 border-t border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <p className="text-base font-medium text-slate-900">Total Monthly</p>
-                        <p className="text-base font-medium text-slate-900">
-                          ${activeSubscriptions.filter(sub => sub.status === 'active').reduce((sum, sub) => sum + sub.price, 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
+        )}
       </div>
-
-      {/* Cancel Subscription Modal */}
-      {showCancelModal && cancelingSubscription && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-slate-200">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                <AlertCircle className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">Cancel Subscription</h3>
-            </div>
-            <p className="text-sm text-slate-600 mb-6">
-              Are you sure you want to cancel your subscription to <strong>{cancelingSubscription.seller.username}</strong>? 
-              You'll lose access to their picks immediately, but you won't be charged again.
-            </p>
-            <div className="bg-slate-50 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Current tier:</span>
-                <span className="font-medium">{cancelingSubscription.tier}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-slate-600">Monthly cost:</span>
-                <span className="font-medium">${cancelingSubscription.price}</span>
-              </div>
-              {cancelingSubscription.nextBilling && (
-                <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-slate-600">Next billing:</span>
-                  <span className="font-medium">{new Date(cancelingSubscription.nextBilling).toLocaleDateString()}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"
-              >
-                Keep Subscription
-              </button>
-              <button
-                onClick={confirmCancellation}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
-              >
-                Cancel Subscription
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </DashboardLayout>
   )
 }

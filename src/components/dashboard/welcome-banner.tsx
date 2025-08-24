@@ -1,10 +1,10 @@
 // src/components/dashboard/welcome-banner.tsx
+import { useUserProfile } from '@/lib/hooks/use-user-profile'
+import { CheckCircle, TrendingUp, X } from 'lucide-react'
 import Link from 'next/link'
-import { X, TrendingUp, Target, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 
 interface WelcomeBannerProps {
-  username?: string
   isNewUser?: boolean
   hasBets?: boolean
   hasConnectedSportsbooks?: boolean
@@ -12,13 +12,13 @@ interface WelcomeBannerProps {
 }
 
 export default function WelcomeBanner({ 
-  username = "@sportsbettor",
   isNewUser = false,
   hasBets = true,
   hasConnectedSportsbooks = true,
   dismissible = true
 }: WelcomeBannerProps) {
   const [dismissed, setDismissed] = useState(false)
+  const { username, displayName, loading } = useUserProfile()
 
   if (dismissed) return null
 
@@ -80,7 +80,7 @@ export default function WelcomeBanner({
   // Regular welcome for existing users
   return (
     <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900">Welcome back, {username}</h1>
+                            <h1 className="text-xl font-semibold mb-2">Welcome back, {loading ? 'User' : displayName || username}!</h1>
       <p className="mt-1 text-sm text-gray-600">
         Here's what's happening with your betting performance today.
       </p>

@@ -1,4 +1,4 @@
-import { AuthProvider } from '@/lib/hooks/use-auth'
+import { AuthProvider } from '@/lib/auth/AuthProvider'
 import { Inter } from 'next/font/google'
 import './globals.css'
 

@@ -121,7 +121,7 @@ export function useSearch(): UseSearchReturn {
   // Search picks
   const searchPicks = useCallback(async (searchQuery: string) => {
     try {
-      let query = supabaseDirect
+      const query = supabaseDirect
         .from('pick_posts')
         .select(`
           id,

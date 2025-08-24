@@ -1,7 +1,7 @@
 // FILE: src/lib/api/client.ts
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
 
-export const supabaseDirect = createBrowserClient()
+export const supabaseDirect = createClient()
 
 export interface PaginatedResponse<T> {
   data: T[]
@@ -55,13 +55,14 @@ export async function authenticatedRequest<T>(
   operation: (userId: string) => Promise<any>
 ): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
-    const { data: { user }, error: authError } = await supabaseDirect.auth.getUser()
+    // Use getSession instead of getUser for better client-side reliability
+    const { data: { session }, error: authError } = await supabaseDirect.auth.getSession()
     
-    if (authError || !user) {
+    if (authError || !session?.user) {
       return { success: false, error: 'Unauthorized' }
     }
 
-    const result = await operation(user.id)
+    const result = await operation(session.user.id)
     
     if (result.error) {
       return { success: false, error: result.error.message }

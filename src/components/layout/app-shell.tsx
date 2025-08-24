@@ -1,20 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
-import Sidebar from './sidebar'
-import { MobileHeader } from './mobile-nav'
-import Breadcrumbs from './breadcrumbs'
+import { useUserProfile } from '@/lib/hooks/use-user-profile'
 import {
-  Bell,
-  Search,
-  User,
-  LogOut,
-  ChevronDown,
-  Settings,
-  HelpCircle
+    Bell,
+    ChevronDown,
+    HelpCircle,
+    LogOut,
+    Search,
+    Settings,
+    User
 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useState } from 'react'
+import Breadcrumbs from './breadcrumbs'
+import { MobileHeader } from './mobile-nav'
+import Sidebar from './sidebar'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -23,11 +24,13 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const { username, displayName, loading } = useUserProfile()
 
   // Don't show app shell on auth pages or landing page
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/'
   const isAppPage = pathname.startsWith('/dashboard') || 
                    pathname.startsWith('/analytics') || 
+                   pathname.startsWith('/games') || 
                    pathname.startsWith('/marketplace') || 
                    pathname.startsWith('/subscriptions') || 
                    pathname.startsWith('/sell') || 
@@ -94,7 +97,7 @@ export default function AppShell({ children }: AppShellProps) {
                   </div>
                   <span className="hidden lg:flex lg:items-center">
                     <span className="ml-4 text-sm font-semibold leading-6 text-gray-900">
-                      @sportsbettor
+                      {loading ? 'Loading...' : username}
                     </span>
                     <ChevronDown className="ml-2 h-5 w-5 text-gray-400" />
                   </span>
@@ -104,8 +107,8 @@ export default function AppShell({ children }: AppShellProps) {
                 {userMenuOpen && (
                   <div className="absolute right-0 z-10 mt-2.5 w-48 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5">
                     <div className="px-3 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">@sportsbettor</p>
-                      <p className="text-xs text-gray-500">Pro Member</p>
+                      <p className="text-sm font-medium text-gray-900">{loading ? 'Loading...' : username}</p>
+                      <p className="text-xs text-gray-500">{loading ? '' : displayName}</p>
                     </div>
                     
                     <Link 

@@ -1,6 +1,6 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 
 interface User {
@@ -9,61 +9,268 @@ interface User {
   name?: string
 }
 
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+// Create Supabase client once using the consistent client
+const supabase = createClient()
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Auth session error:', error)
-          setUser(null)
-        } else if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email
-          })
-        } else {
-          setUser(null)
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        setUser(null)
-      } finally {
-        setLoading(false)
-      }
-    }
+// Global auth state
+const globalAuthState = {
+  initialized: false,
+  user: null as User | null,
+  loading: true,
+  initPromise: null as Promise<void> | null,
+  listeners: new Set<() => void>()
+}
 
-    checkAuth()
+const notifyListeners = () => {
+  console.log('Notifying', globalAuthState.listeners.size, 'auth listeners')
+  globalAuthState.listeners.forEach(listener => listener())
+}
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser({
+// Initialize auth once globally
+const initializeAuth = async () => {
+  if (globalAuthState.initPromise) {
+    return globalAuthState.initPromise
+  }
+
+  globalAuthState.initPromise = (async () => {
+    try {
+      console.log('Initializing auth globally')
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      console.log('Auth session result:', { 
+        hasSession: !!session, 
+        error,
+        sessionDetails: session ? {
+          user_id: session.user.id,
+          email: session.user.email,
+          expires_at: session.expires_at
+        } : null
+      })
+      
+      let currentUser = null
+      if (!error && session?.user) {
+        currentUser = {
           id: session.user.id,
           email: session.user.email || '',
           name: session.user.user_metadata?.full_name || session.user.email
-        })
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
+        }
+        console.log('User found:', currentUser.email)
+        
+        // Verify the session is still valid by making a test query
+        try {
+          const { error: testError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .single()
+            
+          if (testError) {
+            console.error('Session validation failed:', testError)
+            currentUser = null
+          } else {
+            console.log('Session validated successfully')
+          }
+        } catch (sessionError) {
+          console.error('Session validation error:', sessionError)
+          currentUser = null
+        }
+      } else {
+        console.log('No user session found')
       }
-      setLoading(false)
-    })
-
-    return () => {
-      subscription.unsubscribe()
+      
+      globalAuthState.user = currentUser
+      globalAuthState.loading = false
+      globalAuthState.initialized = true
+      
+      console.log('Auth initialization complete:', { hasUser: !!currentUser, loading: false })
+      notifyListeners()
+    } catch (error) {
+      console.error('Auth initialization failed:', error)
+      globalAuthState.user = null
+      globalAuthState.loading = false
+      globalAuthState.initialized = true
+      notifyListeners()
     }
-  }, [supabase])
+  })()
+
+  return globalAuthState.initPromise
+}
+
+// Set up auth state listener once
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  console.log('Auth state changed, updating global state')
+  let currentUser = null
+  if (session?.user) {
+    currentUser = {
+      id: session.user.id,
+      email: session.user.email || '',
+      name: session.user.user_metadata?.full_name || session.user.email
+    }
+  }
+  
+  globalAuthState.user = currentUser
+  globalAuthState.loading = false
+  notifyListeners()
+})
+
+export function useAuth() {
+  console.log('useAuth called')
+  const [user, setUser] = useState<User | null>(globalAuthState.user)
+  const [loading, setLoading] = useState(globalAuthState.loading)
+  const [, forceUpdate] = useState({})
+  
+  // Force re-render when global state changes
+  useEffect(() => {
+    const listener = () => {
+      console.log('Auth listener triggered, updating local state')
+      setUser(globalAuthState.user)
+      setLoading(globalAuthState.loading)
+      forceUpdate({}) // Force re-render
+    }
+    
+    globalAuthState.listeners.add(listener)
+    return () => {
+      globalAuthState.listeners.delete(listener)
+    }
+  }, [])
+  
+  // Initialize auth if not already done
+  if (!globalAuthState.initialized && !globalAuthState.initPromise) {
+    console.log('Starting auth initialization')
+    initializeAuth()
+  }
+
+  const signIn = async (userData: {
+    email: string
+    password: string
+    rememberMe?: boolean
+  }) => {
+    try {
+      // Ensure we have clean string values
+      const email = String(userData.email || '').trim()
+      const password = String(userData.password || '')
+      
+      // Validate inputs
+      if (!email || !password) {
+        return { error: 'Email and password are required' }
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (error) {
+        // Provide more user-friendly error messages
+        let errorMessage = error.message
+        
+        if (error.message === 'Email not confirmed') {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.'
+        } else if (error.message === 'Invalid login credentials') {
+          errorMessage = 'Invalid email or password. Please try again.'
+        } else if (error.message.includes('Email rate limit exceeded')) {
+          errorMessage = 'Too many login attempts. Please try again later.'
+        }
+        
+        return { error: errorMessage }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { error: 'An unexpected error occurred during sign in' }
+    }
+  }
+
+  const signUp = async (userData: {
+    email: string
+    password: string
+    username: string
+    displayName: string
+    termsAccepted?: boolean
+    ageVerified?: boolean
+  }) => {
+    try {
+      console.log('Starting signup with data:', {
+        email: userData.email,
+        username: userData.username,
+        displayName: userData.displayName
+      })
+
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password
+        // Temporarily remove metadata to see if that's causing the issue
+      })
+
+      console.log('Supabase auth response:', { data, error })
+
+      if (error) {
+        console.error('Supabase auth error:', error)
+        return { error: error.message }
+      }
+
+      if (data.user) {
+        console.log('User created successfully, creating profile for:', data.user.id)
+        
+        // Create user profile via API route to use service role securely
+        try {
+          const profileResponse = await fetch('/api/auth/create-profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: data.user.id,
+              username: userData.username,
+              email: userData.email
+            })
+          })
+
+          console.log('Profile API response status:', profileResponse.status)
+
+          if (!profileResponse.ok) {
+            const profileError = await profileResponse.json()
+            console.error('Profile creation error:', profileError)
+            return { error: 'Database error saving new user' }
+          }
+
+          const profileResult = await profileResponse.json()
+          console.log('Profile created successfully:', profileResult)
+        } catch (fetchError) {
+          console.error('Profile creation fetch error:', fetchError)
+          return { error: 'Database error saving new user' }
+        }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Signup error:', error)
+      return { error: 'An unexpected error occurred during signup' }
+    }
+  }
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Sign out error:', error)
+        return { error: error.message }
+      }
+      setUser(null)
+      return { error: null }
+    } catch (error) {
+      console.error('Sign out error:', error)
+      return { error: 'An unexpected error occurred during sign out' }
+    }
+  }
 
   return {
     user,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    signIn,
+    signUp,
+    signOut
   }
 }

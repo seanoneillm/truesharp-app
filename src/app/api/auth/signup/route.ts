@@ -1,5 +1,6 @@
 import { isValidEmail, isValidPassword, isValidUsername } from '@/lib/auth/auth-helpers'
-import { createRouteHandlerSupabaseClient } from '@/lib/auth/supabaseServer'
+import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { supabase, response } = createRouteHandlerSupabaseClient(request)
+    // Create supabase client for API route
+    const supabase = await createServerSupabaseClient(request)
 
     // Check if username is already taken
     const { data: existingUser, error: usernameCheckError } = await supabase
@@ -94,18 +96,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
+    // Try with normal anon client signup first
+    const anonSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    console.log('Attempting normal signup with anon client...')
+    
+    // Try normal signup first
+    const { data: authData, error: authError } = await anonSupabase.auth.signUp({
+      email: email,
+      password: password,
       options: {
         data: {
-          username: username.toLowerCase(),
-          display_name: displayName || username,
+          username: username
         },
-        emailRedirectTo: `${request.nextUrl.origin}/auth/callback`
-      },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      }
     })
+    
+    console.log('Normal signup response:', { data: authData, error: authError })
 
     if (authError) {
       console.error('Signup auth error:', authError)
@@ -142,69 +153,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // First check if profile was created by trigger
-    const { data: existingProfile } = await supabase
+    // Create profile directly using service role (no trigger dependency)
+    console.log('Creating profile for user:', authData.user.id)
+    
+    const serviceSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    
+    const { error: profileError } = await serviceSupabase
       .from('profiles')
-      .select('id')
-      .eq('id', authData.user.id)
-      .maybeSingle()
+      .insert({
+        id: authData.user.id,
+        username: username.toLowerCase(),
+        email: email
+        // Let other fields use their defaults
+      })
 
-    if (!existingProfile) {
-      // Profile wasn't created by trigger, return error
-      console.error('Profile creation error: Profile not created by trigger')
-      // Optionally, you can try to clean up the auth user if profile creation fails
+    if (profileError) {
+      console.error('Profile creation error:', profileError)
+      
+      // Clean up the auth user if profile creation fails
       try {
-        await supabase.auth.admin.deleteUser(authData.user.id)
+        await serviceSupabase.auth.admin.deleteUser(authData.user.id)
       } catch (cleanupError) {
         console.error('Cleanup error:', cleanupError)
       }
+      
       return NextResponse.json(
-        { error: 'Profile was not created by trigger. Please contact support.' },
+        { error: 'Database error creating user profile: ' + profileError.message },
         { status: 500 }
       )
-    } else {
-      // Profile exists, update it with our data
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          username: username.toLowerCase(),
-          display_name: displayName || username,
-        })
-        .eq('id', authData.user.id)
-
-      if (updateError) {
-        console.error('Profile update error:', updateError)
-        return NextResponse.json(
-          { error: 'Database error updating user profile' },
-          { status: 500 }
-        )
-      }
     }
+    
+    console.log('✅ Profile created successfully')
 
-    // Log signup event
-    const signupEvent = {
-      user_id: authData.user.id,
-      event_type: 'signup',
-      ip_address: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown',
-      user_agent: request.headers.get('user-agent') || 'unknown',
-      timestamp: new Date().toISOString(),
-      metadata: {
-        username: username.toLowerCase(),
-        email_confirmed: authData.user.email_confirmed_at ? true : false
-      }
-    }
-
-    // Store signup event (optional - for analytics)
-    try {
-      await supabase
-        .from('user_events')
-        .insert([signupEvent])
-    } catch (eventError) {
-      // Don't fail signup if event logging fails
-      console.error('Event logging error:', eventError)
-    }
+    // Signup event logging removed for now - user_events table doesn't exist yet
 
     // Return success response
     const responseData = {
@@ -215,15 +199,13 @@ export async function POST(request: NextRequest) {
         displayName: displayName || username,
         emailConfirmed: authData.user.email_confirmed_at ? true : false
       },
-      session: authData.session,
       message: authData.user.email_confirmed_at 
         ? 'Account created successfully' 
         : 'Account created! Please check your email to verify your account.'
     }
 
     return NextResponse.json(responseData, { 
-      status: 201,
-      headers: response.headers
+      status: 201
     })
 
   } catch (error) {

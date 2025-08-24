@@ -1,553 +1,1287 @@
-// src/app/settings/page.tsx
 'use client'
+
+import ProtectedRoute from '@/components/auth/protected-route'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import {
-  Bell,
+  AlertTriangle,
   Camera,
-  CheckCircle,
+  Check,
+  Copy,
   CreditCard,
   Download,
-  Eye,
   Globe,
+  Key,
   Lock,
-  MapPin,
+  Mail,
+  Monitor,
+  Moon,
   Save,
   Settings,
   Shield,
-  Smartphone,
+  ShieldCheck,
+  Sun,
   Trash2,
   User,
+  X,
   Zap
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+
+// Types for settings data
+interface UserProfile {
+  id: string
+  username: string
+  display_name: string
+  bio?: string
+  email: string
+  profile_picture_url?: string
+  is_seller: boolean
+  is_verified_seller: boolean
+  pro: string
+  public_profile: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface UserSettings {
+  theme: 'light' | 'dark' | 'system'
+  timezone: string
+  currency: string
+  email_notifications: {
+    subscriptions: boolean
+    followers: boolean
+    weekly_summary: boolean
+    marketing: boolean
+  }
+}
+
+interface SellerStripeAccount {
+  stripe_account_id: string
+  details_submitted: boolean
+  charges_enabled: boolean
+  payouts_enabled: boolean
+  requirements_due: string[]
+}
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile')
-  const [showPasswordChange, setShowPasswordChange] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
-  const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false)
+  console.log('SettingsPage component rendered')
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [activeSection, setActiveSection] = useState('profile')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+  const { user } = useAuth()
+  console.log('useAuth returned user:', user)
 
-  const connectedSportsbooks = [
-    {
-      id: 1,
-      name: 'DraftKings',
-      logo: 'DK',
-      status: 'connected',
-      lastSync: '2 minutes ago',
-      betsTracked: 124,
-      connectionDate: '2024-11-15',
-      error: null
-    },
-    {
-      id: 2,
-      name: 'FanDuel',
-      logo: 'FD',
-      status: 'connected',
-      lastSync: '5 minutes ago',
-      betsTracked: 89,
-      connectionDate: '2024-12-01',
-      error: null
-    },
-    {
-      id: 3,
-      name: 'BetMGM',
-      logo: 'BM',
-      status: 'error',
-      lastSync: '2 hours ago',
-      betsTracked: 56,
-      connectionDate: '2024-10-20',
-      error: 'Authentication failed. Please reconnect.'
+  // State for all settings sections
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [settings, setSettings] = useState<UserSettings>({
+    theme: 'light',
+    timezone: 'America/New_York',
+    currency: 'USD',
+    email_notifications: {
+      subscriptions: true,
+      followers: true,
+      weekly_summary: true,
+      marketing: true
     }
+  })
+  const [sellerAccount, setSellerAccount] = useState<SellerStripeAccount | null>(null)
+  const [subscriptions, setSubscriptions] = useState<Array<{
+    id: string;
+    strategy_id: string;
+    seller_id: string;
+    price: number;
+    frequency: string;
+    status: string;
+    strategies?: { name: string };
+    profiles?: { username: string };
+  }>>([])
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    current: '',
+    new: '',
+    confirm: ''
+  })
+  const [profileForm, setProfileForm] = useState({
+    username: '',
+    display_name: '',
+    bio: ''
+  })
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null)
+
+  const loadUserData = useCallback(async () => {
+    console.log('loadUserData called, user:', user)
+    if (!user) {
+      console.log('No user found, returning early')
+      return
+    }
+    
+    try {
+      console.log('Setting loading to true')
+      setLoading(true)
+
+      // Load profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileData) {
+        setProfile(profileData)
+        setProfileForm({
+          username: profileData.username || '',
+          display_name: profileData.display_name || '',
+          bio: profileData.bio || ''
+        })
+      }
+
+      // Load user settings
+      const { data: settingsData } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (settingsData) {
+        setSettings({
+          theme: settingsData.theme || 'light',
+          timezone: settingsData.timezone || 'America/New_York',
+          currency: settingsData.currency || 'USD',
+          email_notifications: settingsData.email_notifications || {
+            subscriptions: true,
+            followers: true,
+            weekly_summary: true,
+            marketing: true
+          }
+        })
+      }
+
+      // Load seller account if is_seller
+      if (profileData?.is_seller) {
+        const { data: stripeData } = await supabase
+          .from('seller_stripe_accounts')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+        
+        if (stripeData) {
+          setSellerAccount(stripeData)
+        }
+      }
+
+      // Load subscriptions
+      const { data: subsData } = await supabase
+        .from('subscriptions')
+        .select('*, strategies(*), profiles(*)')
+        .eq('subscriber_id', user.id)
+        .eq('status', 'active')
+
+      if (subsData) {
+        setSubscriptions(subsData)
+      }
+
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      setError('Failed to load settings')
+    } finally {
+      console.log('Setting loading to false')
+      setLoading(false)
+    }
+  }, [user, supabase])
+
+  // Load initial data
+  useEffect(() => {
+    console.log('useEffect triggered, user:', user)
+    if (user) {
+      console.log('Calling loadUserData')
+      loadUserData()
+    } else {
+      console.log('No user, not calling loadUserData')
+    }
+  }, [user, loadUserData])
+
+  const handleProfileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File size must be less than 5MB')
+        return
+      }
+      
+      // Check file type
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        setError('Only JPG and PNG files are supported')
+        return
+      }
+      
+      setProfileImageFile(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setProfileImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const saveProfile = async () => {
+    if (!user) return
+    
+    try {
+      setSaving(true)
+      setError(null)
+
+      // Upload profile image if changed
+      let profile_picture_url = profile?.profile_picture_url
+      if (profileImageFile) {
+        const fileExt = profileImageFile.name.split('.').pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('profile-pictures')
+          .upload(fileName, profileImageFile)
+
+        if (uploadError) {
+          throw uploadError
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('profile-pictures')
+          .getPublicUrl(fileName)
+
+        profile_picture_url = publicUrl
+      }
+
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: profileForm.username,
+          display_name: profileForm.display_name,
+          bio: profileForm.bio,
+          ...(profile_picture_url && { profile_picture_url })
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setSuccess('Profile updated successfully')
+      await loadUserData()
+      setProfileImageFile(null)
+      setProfileImagePreview(null)
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveSettings = async () => {
+    if (!user) return
+    
+    try {
+      setSaving(true)
+      setError(null)
+
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          theme: settings.theme,
+          timezone: settings.timezone,
+          currency: settings.currency,
+          email_notifications: settings.email_notifications
+        })
+
+      if (error) throw error
+
+      setSuccess('Settings saved successfully')
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to save settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const changePassword = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+
+      if (passwordForm.new !== passwordForm.confirm) {
+        setError('New passwords do not match')
+        return
+      }
+
+      if (passwordForm.new.length < 8) {
+        setError('Password must be at least 8 characters')
+        return
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.new
+      })
+
+      if (error) throw error
+
+      setSuccess('Password updated successfully')
+      setPasswordForm({ current: '', new: '', confirm: '' })
+      setShowPasswordModal(false)
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to update password')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const becomeASeller = async () => {
+    if (!user) return
+    
+    try {
+      setSaving(true)
+      setError(null)
+
+      // Update profile to enable seller
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_seller: true })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setSuccess('Seller account enabled! You can now create strategies.')
+      await loadUserData()
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to enable seller account')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const exportData = async () => {
+    try {
+      setSaving(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Fetch all user data
+      const [
+        { data: profileData },
+        { data: betsData },
+        { data: strategiesData },
+        { data: subscriptionsData }
+      ] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id),
+        supabase.from('bets').select('*').eq('user_id', user.id),
+        supabase.from('strategies').select('*').eq('user_id', user.id),
+        supabase.from('subscriptions').select('*').eq('subscriber_id', user.id)
+      ])
+
+      const exportData = {
+        profile: profileData?.[0],
+        bets: betsData || [],
+        strategies: strategiesData || [],
+        subscriptions: subscriptionsData || [],
+        exported_at: new Date().toISOString()
+      }
+
+      // Download as JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `truesharp-data-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      setSuccess('Data exported successfully')
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to export data')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteAccount = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+
+      // Note: In production, this would trigger a server-side cleanup process
+      // For now, we'll just sign out and show a message
+      await supabase.auth.signOut()
+      router.push('/login?message=Account deletion requested. Please contact support to complete.')
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to delete account')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const copyPublicProfileLink = () => {
+    if (profile?.username) {
+      const url = `https://truesharp.io/subscribe/${profile.username}`
+      navigator.clipboard.writeText(url)
+      setSuccess('Profile link copied to clipboard')
+    }
+  }
+
+  const sections = [
+    { id: 'profile', label: 'Profile', icon: User, description: 'Manage your public profile and personal information' },
+    { id: 'account', label: 'Account & Security', icon: Shield, description: 'Password, security, and authentication settings' },
+    { id: 'billing', label: 'Billing & Subscriptions', icon: CreditCard, description: 'Manage payments and subscription billing' },
+    { id: 'seller', label: 'Seller Settings', icon: Zap, description: 'Seller dashboard and monetization options' },
+    { id: 'privacy', label: 'Privacy & Data', icon: Lock, description: 'Privacy controls and data management' },
+    { id: 'preferences', label: 'Preferences', icon: Settings, description: 'Display, notifications, and app preferences' }
   ]
 
-  const availableSportsbooks = [
-    { name: 'Caesars', logo: 'CS', available: true },
-    { name: 'ESPN BET', logo: 'EB', available: true },
-    { name: 'BetRivers', logo: 'BR', available: true },
-    { name: 'Hard Rock', logo: 'HR', available: false },
-    { name: 'WynnBET', logo: 'WB', available: false }
-  ]
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
-    <DashboardLayout current="Settings">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your account settings and preferences
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-        {/* Settings Navigation */}
-        <div className="lg:col-span-1">
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'profile'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <User className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Profile
-            </button>
-            <button
-              onClick={() => setActiveTab('account')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'account'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Settings className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Account
-            </button>
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'security'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Shield className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Security
-            </button>
-            <button
-              onClick={() => setActiveTab('notifications')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'notifications'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Bell className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Notifications
-            </button>
-            <button
-              onClick={() => setActiveTab('privacy')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'privacy'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Eye className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Privacy
-            </button>
-            <button
-              onClick={() => setActiveTab('sportsbooks')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'sportsbooks'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Zap className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Sportsbooks
-            </button>
-            <button
-              onClick={() => setActiveTab('billing')}
-              className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'billing'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <CreditCard className="flex-shrink-0 -ml-1 mr-3 h-5 w-5" />
-              Billing
-            </button>
-          </nav>
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center space-x-3">
+              <Settings className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
+                <p className="text-lg text-slate-600 mt-1">
+                  Manage your account, preferences, and integrations
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+              profile?.pro === 'yes' 
+                ? 'bg-purple-100 text-purple-800' 
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {profile?.pro === 'yes' ? 'Pro Member' : 'Free Member'}
+            </div>
+          </div>
         </div>
 
-        {/* Settings Content */}
-        <div className="lg:col-span-3">
-          {/* Profile Tab */}
-          {activeTab === 'profile' && (
-            <div className="space-y-6">
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Profile Information</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Update your public profile information
-                  </p>
-                </div>
-                <div className="px-6 py-4 space-y-6">
-                  {/* Profile Picture */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Profile Picture
-                    </label>
-                    <div className="flex items-center space-x-4">
-                      <div className="h-16 w-16 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold">
-                        SB
-                      </div>
-                      <div>
-                        <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                          <Camera className="h-4 w-4 mr-2" />
-                          Change Photo
-                        </button>
-                        <p className="mt-1 text-xs text-gray-500">JPG, PNG up to 2MB</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Display Name
-                      </label>
-                      <input
-                        type="text"
-                        className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        defaultValue="Sports Bettor"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Username
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">@</span>
-                        <input
-                          type="text"
-                          className="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          defaultValue="sportsbettor"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bio
-                    </label>
-                    <textarea
-                      rows={4}
-                      className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Tell others about yourself..."
-                      defaultValue="Sports betting enthusiast focused on data-driven analysis and consistent profits."
-                    />
-                    <p className="mt-1 text-sm text-gray-500">Brief description for your profile.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location
-                      </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input
-                          type="text"
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="City, State"
-                          defaultValue="Miami, FL"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Website
-                      </label>
-                      <div className="relative">
-                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input
-                          type="url"
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="https://example.com"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
+        {/* Error/Success Messages */}
+        {error && (
+          <Card className="p-4 border-red-200 bg-red-50">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+              <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Account Tab */}
-          {activeTab === 'account' && (
-            <div className="space-y-6">
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Account Settings</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Manage your account preferences
-                  </p>
-                </div>
-                <div className="px-6 py-4 space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="email"
-                        className="flex-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        defaultValue="user@example.com"
-                      />
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Verified
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="tel"
-                        className="flex-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                      <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Verify
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Time Zone
-                    </label>
-                    <select className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                      <option>Eastern Time (ET)</option>
-                      <option>Central Time (CT)</option>
-                      <option>Mountain Time (MT)</option>
-                      <option>Pacific Time (PT)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Account Actions */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Account Actions</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Export your data or delete your account
-                  </p>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">Export Data</h4>
-                      <p className="text-sm text-gray-500">Download all your betting data and analytics</p>
-                    </div>
-                    <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </button>
-                  </div>
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-red-900">Delete Account</h4>
-                        <p className="text-sm text-red-600">Permanently delete your account and all data</p>
-                      </div>
-                      <button className="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        {success && (
+          <Card className="p-4 border-green-200 bg-green-50">
+            <div className="flex items-center space-x-2">
+              <Check className="h-5 w-5 text-green-600" />
+              <p className="text-green-700">{success}</p>
+              <button onClick={() => setSuccess(null)} className="ml-auto text-green-600 hover:text-green-800">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Security Tab */}
-          {activeTab === 'security' && (
-            <div className="space-y-6">
-              {/* Password */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Password</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Change your password to keep your account secure
-                  </p>
-                </div>
-                <div className="px-6 py-4">
-                  {!showPasswordChange ? (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-900">Password</p>
-                        <p className="text-sm text-gray-500">Last changed 3 months ago</p>
-                      </div>
-                      <button 
-                        onClick={() => setShowPasswordChange(true)}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                      >
-                        Change Password
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Enter current password"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Enter new password"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          className="block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Confirm new password"
-                        />
-                      </div>
-                      <div className="flex justify-end space-x-3">
-                        <button 
-                          onClick={() => setShowPasswordChange(false)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          onClick={() => setShowPasswordChange(false)}
-                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                        >
-                          Update Password
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Two-Factor Authentication */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Two-Factor Authentication</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-                <div className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                        twoFactorEnabled ? 'bg-green-100' : 'bg-gray-100'
-                      }`}>
-                        {twoFactorEnabled ? (
-                          <CheckCircle className="h-6 w-6 text-green-500" />
-                        ) : (
-                          <Lock className="h-6 w-6 text-gray-400" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Settings Navigation */}
+          <div className="lg:col-span-1">
+            <Card className="p-4">
+              <nav className="space-y-2">
+                {sections.map((section) => {
+                  const Icon = section.icon
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={`group flex items-center w-full px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                        activeSection === section.id
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Icon className="flex-shrink-0 mr-3 h-5 w-5" />
+                      <div className="text-left">
+                        <div className="font-medium">{section.label}</div>
+                        {activeSection === section.id && (
+                          <div className="text-xs text-blue-100 mt-1">{section.description}</div>
                         )}
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  )
+                })}
+              </nav>
+            </Card>
+          </div>
+
+          {/* Settings Content */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Profile Section */}
+            {activeSection === 'profile' && (
+              <Card className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Profile Information</h2>
+                    <p className="text-slate-600 mt-1">Manage your public profile and personal information</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Profile Picture */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-4">Profile Picture</label>
+                    <div className="flex items-center space-x-6">
+                      <div className="relative">
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg overflow-hidden">
+                          {profileImagePreview ? (
+                            <img src={profileImagePreview} alt="Profile" className="w-full h-full object-cover" />
+                          ) : profile?.profile_picture_url ? (
+                            <img src={profile.profile_picture_url} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            profile?.username?.charAt(0)?.toUpperCase() || 'U'
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {twoFactorEnabled ? 'Your account is protected with 2FA' : '2FA is not enabled'}
+                        {profile?.is_verified_seller && (
+                          <div className="absolute -bottom-1 -right-1 bg-blue-600 rounded-full p-1">
+                            <ShieldCheck className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          id="profile-image"
+                          accept="image/jpeg,image/png"
+                          onChange={handleProfileImageUpload}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="profile-image"
+                          className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Change Photo
+                        </label>
+                        <p className="mt-2 text-xs text-slate-500">JPG, PNG up to 5MB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Form Fields */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={profileForm.username}
+                          onChange={(e) => setProfileForm({...profileForm, username: e.target.value})}
+                          className="block w-full px-4 py-3 pl-8 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="Enter username"
+                        />
+                        <span className="absolute left-3 top-3 text-slate-400">@</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">3-20 characters, alphanumeric only</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Display Name</label>
+                      <input
+                        type="text"
+                        value={profileForm.display_name}
+                        onChange={(e) => setProfileForm({...profileForm, display_name: e.target.value})}
+                        className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        placeholder="Enter display name"
+                      />
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Bio</label>
+                      <textarea
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm({...profileForm, bio: e.target.value})}
+                        rows={3}
+                        maxLength={500}
+                        className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                        placeholder="Tell others about yourself..."
+                      />
+                      <div className="flex justify-between mt-1">
+                        <p className="text-xs text-slate-500">Brief description for your profile</p>
+                        <p className={`text-xs ${profileForm.bio.length > 450 ? 'text-red-500' : 'text-slate-500'}`}>
+                          {profileForm.bio.length}/500
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={profile?.email || ''}
+                          disabled
+                          className="block w-full px-4 py-3 pl-10 border border-slate-300 rounded-lg shadow-sm bg-slate-50 text-slate-500"
+                        />
+                        <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Email cannot be changed here. Contact support if needed.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+                    <Button
+                      onClick={saveProfile}
+                      disabled={saving}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Account & Security Section */}
+            {activeSection === 'account' && (
+              <div className="space-y-6">
+                <Card className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Account & Security</h2>
+                    <p className="text-slate-600 mt-1">Manage your password and security settings</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Password Section */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900">Password</h3>
+                          <p className="text-sm text-slate-600">Last updated 2 weeks ago</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowPasswordModal(true)}
+                          className="flex items-center"
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Change Password
+                        </Button>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-slate-600">
+                        <Lock className="h-4 w-4" />
+                        <span>Use a strong password to keep your account secure</span>
+                      </div>
+                    </div>
+
+                    {/* Security Features */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Security Features</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-slate-900">Two-Factor Authentication</div>
+                            <div className="text-sm text-slate-600">Add an extra layer of security to your account</div>
+                          </div>
+                          <Button variant="outline" disabled className="text-slate-400">
+                            Coming Soon
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-slate-900">Active Sessions</div>
+                            <div className="text-sm text-slate-600">Manage devices that are signed in to your account</div>
+                          </div>
+                          <Button variant="outline">
+                            Manage Sessions
+                          </Button>
                         </div>
                       </div>
                     </div>
-                    <div>
-                      {twoFactorEnabled ? (
-                        <button
-                          onClick={() => setTwoFactorEnabled(false)}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                        >
-                          Disable 2FA
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setShowTwoFactorSetup(true)}
-                          className="inline-flex items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
-                        >
-                          Enable 2FA
-                        </button>
-                      )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Billing & Subscriptions Section */}
+            {activeSection === 'billing' && (
+              <div className="space-y-6">
+                <Card className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Billing & Subscriptions</h2>
+                    <p className="text-slate-600 mt-1">Manage your payments and subscription billing</p>
+                  </div>
+
+                  {/* TrueSharp Pro Status */}
+                  <div className="border border-slate-200 rounded-lg p-6 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">TrueSharp Pro</h3>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <div className={`w-2 h-2 rounded-full ${
+                            profile?.pro === 'yes' ? 'bg-purple-500' : 'bg-gray-400'
+                          }`}></div>
+                          <span className="text-sm text-slate-600">
+                            {profile?.pro === 'yes' ? 'Active Pro Subscription' : 'Free Plan'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {profile?.pro === 'yes' ? (
+                          <Button variant="outline">
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Manage Billing
+                          </Button>
+                        ) : (
+                          <Button className="bg-purple-600 hover:bg-purple-700">
+                            Upgrade to Pro
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {profile?.pro === 'yes' && (
+                      <div className="mt-4 text-sm text-slate-600">
+                        <p>Next billing date: January 15, 2025</p>
+                        <p>Amount: $20.00/month</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active Subscriptions */}
+                  <div className="border border-slate-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Strategy Subscriptions</h3>
+                    {subscriptions.length > 0 ? (
+                      <div className="space-y-3">
+                        {subscriptions.map((sub) => (
+                          <div key={sub.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-lg">
+                            <div>
+                              <div className="font-medium text-slate-900">@{sub.profiles?.username}</div>
+                              <div className="text-sm text-slate-600">{sub.strategies?.name}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-slate-900">${sub.price}/{sub.frequency}</div>
+                              <Button variant="outline" size="sm" className="mt-1">
+                                Manage
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <CreditCard className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <p>No active subscriptions</p>
+                        <p className="text-sm">Browse the marketplace to find strategies to follow</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Seller Settings Section */}
+            {activeSection === 'seller' && (
+              <div className="space-y-6">
+                <Card className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Seller Settings</h2>
+                    <p className="text-slate-600 mt-1">Manage your seller account and monetization options</p>
+                  </div>
+
+                  {/* Seller Status */}
+                  <div className="border border-slate-200 rounded-lg p-6 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">Seller Status</h3>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <div className={`w-2 h-2 rounded-full ${
+                            profile?.is_seller ? 'bg-green-500' : 'bg-gray-400'
+                          }`}></div>
+                          <span className="text-sm text-slate-600">
+                            {profile?.is_seller ? 'Seller Account Active' : 'Not a Seller'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        {profile?.is_seller ? (
+                          <div className="flex space-x-2">
+                            <Button variant="outline" onClick={() => router.push('/sell')}>
+                              Seller Dashboard
+                            </Button>
+                            {profile.is_verified_seller && (
+                              <div className="flex items-center space-x-1 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg">
+                                <ShieldCheck className="h-4 w-4" />
+                                <span className="text-sm font-medium">Verified</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={becomeASeller}
+                            disabled={saving}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {saving ? 'Enabling...' : 'Become a Seller'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {/* 2FA Setup Modal */}
-                  {showTwoFactorSetup && !twoFactorEnabled && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-                        <h4 className="text-lg font-bold mb-2 text-gray-900 flex items-center">
-                          <Smartphone className="h-5 w-5 mr-2 text-blue-600" />
-                          Set Up Two-Factor Authentication
-                        </h4>
-                        <p className="text-sm text-gray-600 mb-4">
-                          Scan the QR code below with your authenticator app, then enter the 6-digit code to enable 2FA.
-                        </p>
-                        <div className="flex items-center justify-center mb-4">
-                          <div className="w-32 h-32 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                            {/* Replace with real QR code in production */}
-                            QR CODE
+
+                  {/* Public Profile Settings (Sellers Only) */}
+                  {profile?.is_seller && (
+                    <div className="border border-slate-200 rounded-lg p-6 mb-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Public Profile</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-slate-900">Make profile public</div>
+                            <div className="text-sm text-slate-600">Allow others to subscribe to your strategies</div>
                           </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={profile.public_profile}
+                              onChange={async (e) => {
+                                const { data: { user } } = await supabase.auth.getUser()
+                                if (user) {
+                                  await supabase
+                                    .from('profiles')
+                                    .update({ public_profile: e.target.checked })
+                                    .eq('id', user.id)
+                                  await loadUserData()
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            <div className={`w-11 h-6 rounded-full transition-colors ${
+                              profile.public_profile ? 'bg-blue-600' : 'bg-gray-200'
+                            }`}>
+                              <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                                profile.public_profile ? 'translate-x-5' : 'translate-x-0.5'
+                              } mt-0.5`}></div>
+                            </div>
+                          </label>
                         </div>
-                        <input
-                          type="text"
-                          className="block w-full border border-gray-300 rounded-md mb-4 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Enter 6-digit code"
-                        />
-                        <div className="flex justify-end space-x-3">
-                          <button
-                            onClick={() => setShowTwoFactorSetup(false)}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => {
-                              setTwoFactorEnabled(true);
-                              setShowTwoFactorSetup(false);
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                          >
-                            Enable 2FA
-                          </button>
+                        
+                        {profile.public_profile && (
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium text-blue-900">Public Profile URL</div>
+                                <div className="text-sm text-blue-700 font-mono">
+                                  truesharp.io/subscribe/{profile.username}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={copyPublicProfileLink}
+                                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy Link
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payout Information (Sellers Only) */}
+                  {profile?.is_seller && (
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Payout Information</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-slate-900">Connected Bank Account</div>
+                            <div className="text-sm text-slate-600">
+                              {sellerAccount?.details_submitted 
+                                ? 'Bank account connected and verified'
+                                : 'Connect your bank account to receive payouts'
+                              }
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              sellerAccount?.payouts_enabled ? 'bg-green-500' : 'bg-yellow-500'
+                            }`}></div>
+                            <Button variant="outline" size="sm">
+                              {sellerAccount?.details_submitted ? 'Manage' : 'Connect'} Account
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
+                </Card>
+              </div>
+            )}
+
+            {/* Privacy & Data Section */}
+            {activeSection === 'privacy' && (
+              <div className="space-y-6">
+                <Card className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Privacy & Data</h2>
+                    <p className="text-slate-600 mt-1">Control your privacy settings and manage your data</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Data Controls */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Data Controls</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-slate-900">Download my data</div>
+                            <div className="text-sm text-slate-600">Get a copy of all your data in JSON format</div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={exportData}
+                            disabled={saving}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            {saving ? 'Exporting...' : 'Export Data'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notification Preferences */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Notification Preferences</h3>
+                      <div className="space-y-4">
+                        {Object.entries(settings.email_notifications).map(([key, value]) => (
+                          <div key={key} className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-slate-900 capitalize">
+                                {key.replace('_', ' ')}
+                              </div>
+                              <div className="text-sm text-slate-600">
+                                {key === 'subscriptions' && 'New subscription notifications and updates'}
+                                {key === 'followers' && 'When someone follows your strategies'}
+                                {key === 'weekly_summary' && 'Weekly performance and activity summary'}
+                                {key === 'marketing' && 'Product updates and promotional emails'}
+                              </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={value}
+                                onChange={(e) => {
+                                  setSettings({
+                                    ...settings,
+                                    email_notifications: {
+                                      ...settings.email_notifications,
+                                      [key]: e.target.checked
+                                    }
+                                  })
+                                }}
+                                className="sr-only"
+                              />
+                              <div className={`w-11 h-6 rounded-full transition-colors ${
+                                value ? 'bg-blue-600' : 'bg-gray-200'
+                              }`}>
+                                <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                                  value ? 'translate-x-5' : 'translate-x-0.5'
+                                } mt-0.5`}></div>
+                              </div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end pt-4 border-t border-slate-200 mt-4">
+                        <Button onClick={saveSettings} disabled={saving}>
+                          {saving ? 'Saving...' : 'Save Preferences'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="border border-red-200 rounded-lg p-6 bg-red-50">
+                      <h3 className="text-lg font-semibold text-red-900 mb-4">Danger Zone</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-red-900">Delete Account</div>
+                            <div className="text-sm text-red-700">
+                              Permanently delete your account and all associated data
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteModal(true)}
+                            className="border-red-300 text-red-700 hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Account
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Preferences Section */}
+            {activeSection === 'preferences' && (
+              <div className="space-y-6">
+                <Card className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Preferences</h2>
+                    <p className="text-slate-600 mt-1">Customize your app experience and display settings</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Display Preferences */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Display Preferences</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Theme</label>
+                          <div className="flex space-x-3">
+                            {(['light', 'dark', 'system'] as const).map((theme) => (
+                              <button
+                                key={theme}
+                                onClick={() => setSettings({...settings, theme})}
+                                className={`flex items-center px-4 py-3 rounded-lg border transition-all ${
+                                  settings.theme === theme
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-slate-300 hover:bg-slate-50'
+                                }`}
+                              >
+                                {theme === 'light' && <Sun className="h-4 w-4 mr-2" />}
+                                {theme === 'dark' && <Moon className="h-4 w-4 mr-2" />}
+                                {theme === 'system' && <Monitor className="h-4 w-4 mr-2" />}
+                                <span className="capitalize">{theme}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Timezone</label>
+                          <select
+                            value={settings.timezone}
+                            onChange={(e) => setSettings({...settings, timezone: e.target.value})}
+                            className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="America/New_York">Eastern Time (ET)</option>
+                            <option value="America/Chicago">Central Time (CT)</option>
+                            <option value="America/Denver">Mountain Time (MT)</option>
+                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                            <option value="Europe/London">London (GMT)</option>
+                            <option value="Europe/Paris">Paris (CET)</option>
+                            <option value="Asia/Tokyo">Tokyo (JST)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Currency</label>
+                          <select
+                            value={settings.currency}
+                            onChange={(e) => setSettings({...settings, currency: e.target.value})}
+                            className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="USD">US Dollar (USD)</option>
+                            <option value="EUR">Euro (EUR)</option>
+                            <option value="GBP">British Pound (GBP)</option>
+                            <option value="CAD">Canadian Dollar (CAD)</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end pt-4 border-t border-slate-200 mt-4">
+                        <Button onClick={saveSettings} disabled={saving}>
+                          {saving ? 'Saving...' : 'Save Preferences'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Connected Accounts (Future Feature) */}
+                    <div className="border border-slate-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-4">Connected Accounts</h3>
+                      <div className="text-center py-8 text-slate-500">
+                        <Globe className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <p>Sportsbook Integration</p>
+                        <p className="text-sm">Connect your sportsbook accounts for automatic bet tracking</p>
+                        <Button variant="outline" disabled className="mt-4">
+                          Coming Soon
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Password Change Modal */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Change Password</h3>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm({...passwordForm, current: e.target.value})}
+                    className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm({...passwordForm, new: e.target.value})}
+                    className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm({...passwordForm, confirm: e.target.value})}
+                    className="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Other tabs content can be added similarly... */}
-        </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={changePassword}
+                  disabled={saving || !passwordForm.current || !passwordForm.new || !passwordForm.confirm}
+                >
+                  {saving ? 'Updating...' : 'Update Password'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Delete Account Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-red-900">Delete Account</h3>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                  <div>
+                    <div className="font-medium text-red-900">This action cannot be undone</div>
+                    <div className="text-sm text-red-700">All your data will be permanently deleted</div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-slate-600">
+                  <p className="mb-2">This will permanently delete:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li>Your profile and account information</li>
+                    <li>All betting history and analytics</li>
+                    <li>Created strategies and performance data</li>
+                    <li>Subscription history</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={deleteAccount}
+                  disabled={saving}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {saving ? 'Deleting...' : 'Delete Account'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </DashboardLayout>
+    </ProtectedRoute>
   )
 }

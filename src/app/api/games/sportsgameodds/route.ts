@@ -14,12 +14,111 @@ const SPORT_MAPPINGS = {
   'NHL': { sportID: 'HOCKEY', leagueID: 'NHL', sport_key: 'icehockey_nhl' },
   'NCAAF': { sportID: 'FOOTBALL', leagueID: 'NCAAF', sport_key: 'americanfootball_ncaaf' },
   'NCAAB': { sportID: 'BASKETBALL', leagueID: 'NCAAB', sport_key: 'basketball_ncaab' },
-  'MLS': { sportID: 'SOCCER', leagueID: 'MLS', sport_key: 'soccer_mls' }
+  'MLS': { sportID: 'SOCCER', leagueID: 'MLS', sport_key: 'soccer_mls' },
+  'UCL': { sportID: 'SOCCER', leagueID: 'UCL', sport_key: 'soccer_uefa_champs_league' }
 }
 
 // Cache for API responses (5 minutes)
 const cache = new Map<string, { data: unknown, timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Fallback to database when API is rate limited
+async function getFallbackDatabaseData(sportKey: string, dateParam: string) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  
+  try {
+    console.log('📀 Fetching fallback data from database for:', sportKey)
+    
+    // Get games from database
+    const { data: games, error } = await supabase
+      .from('games')
+      .select(`
+        *,
+        odds (*)
+      `)
+      .eq('sport_key', sportKey)
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) {
+      console.error('Database fallback error:', error)
+      return NextResponse.json({ games: [], count: 0, lastUpdated: new Date().toISOString() })
+    }
+
+    console.log('📀 Found', games?.length || 0, 'games in database fallback')
+
+    // Transform database games to frontend format
+    const transformedGames = games?.map(game => ({
+      ...game,
+      markets: transformDatabaseOdds(game.odds || [])
+    })) || []
+
+    return NextResponse.json({
+      games: transformedGames,
+      count: transformedGames.length,
+      lastUpdated: new Date().toISOString(),
+      source: 'database_fallback'
+    })
+
+  } catch (error) {
+    console.error('Database fallback error:', error)
+    return NextResponse.json({ games: [], count: 0, lastUpdated: new Date().toISOString() })
+  }
+}
+
+// Transform database odds to frontend market format
+function transformDatabaseOdds(odds: any[]) {
+  const markets = {
+    moneyline: [] as any[],
+    spread: [] as any[],
+    total: [] as any[],
+    playerProps: [] as any[]
+  }
+
+  for (const odd of odds) {
+    const market = {
+      sportsbook: odd.sportsbook_key || 'sportsGameOdds',
+      betTypeID: odd.market_type,
+      timestamp: odd.timestamp
+    }
+
+    switch (odd.market_type) {
+      case 'moneyline':
+        if (odd.home_odds) {
+          markets.moneyline.push({
+            ...market,
+            homeOdds: odd.home_odds,
+            awayOdds: odd.away_odds
+          })
+        }
+        break
+      case 'spread':
+        if (odd.home_point !== null) {
+          markets.spread.push({
+            ...market,
+            homeLine: odd.home_point,
+            homeOdds: odd.home_odds,
+            awayLine: odd.away_point,
+            awayOdds: odd.away_odds
+          })
+        }
+        break
+      case 'total':
+        if (odd.total_point !== null) {
+          markets.total.push({
+            ...market,
+            totalLine: odd.total_point,
+            overOdds: odd.over_odds,
+            underOdds: odd.under_odds
+          })
+        }
+        break
+    }
+  }
+
+  return markets
+}
 
 // Transform SportsGameOdds v2 event to our format
 function transformSportsGameOddsEvent(event: Record<string, unknown>): Record<string, unknown> {
@@ -56,105 +155,15 @@ function transformSportsGameOddsEvent(event: Record<string, unknown>): Record<st
   }
 }
 
-// Fallback function to get games from database when API is rate limited
-async function getFallbackGamesFromDatabase(
-  sportMapping: { sportID: string, leagueID: string, sport_key: string }
-) {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
-  
-  try {
-    console.log('🔍 Fetching cached games from database for:', sportMapping.sport_key)
-    
-    // Get recent games from database (last 24 hours)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    
-    const { data: games, error } = await supabase
-      .from('games')
-      .select(`
-        *,
-        odds (*)
-      `)
-      .eq('sport_key', sportMapping.sport_key)
-      .gte('created_at', oneDayAgo)
-      .order('created_at', { ascending: false })
-      .limit(10)
-    
-    if (error) {
-      console.error('❌ Database error:', error)
-      return { games: [], count: 0, lastUpdated: new Date().toISOString() }
-    }
-    
-    console.log('📋 Found', games?.length || 0, 'cached games in database')
-    
-    // Transform database games to API format
-    const transformedGames = games?.map(game => ({
-      ...game,
-      markets: transformDatabaseOddsToMarkets(game.odds || [])
-    })) || []
-    
-    return {
-      games: transformedGames,
-      count: transformedGames.length,
-      lastUpdated: new Date().toISOString(),
-      source: 'database_cache'
-    }
-    
-  } catch (error) {
-    console.error('❌ Error fetching fallback games:', error)
-    return { games: [], count: 0, lastUpdated: new Date().toISOString() }
-  }
-}
-
-// Transform database odds to market format
-function transformDatabaseOddsToMarkets(odds: Array<Record<string, unknown>>) {
-  const markets: Record<string, Array<Record<string, unknown>>> = {
-    moneyline: [],
-    spread: [],
-    total: [],
-    playerProps: []
-  }
-  
-  // Group odds by market type and sportsbook
-  const oddsGroups: Record<string, Array<Record<string, unknown>>> = {}
-  
-  odds.forEach(odd => {
-    const key = `${odd.market_type}_${odd.sportsbook_key}`
-    if (!oddsGroups[key]) {
-      oddsGroups[key] = []
-    }
-    oddsGroups[key].push(odd)
-  })
-  
-  // Transform grouped odds to market format
-  Object.entries(oddsGroups).forEach(([key, oddGroup]) => {
-    const [marketType, sportsbook] = key.split('_')
-    
-    if (marketType === 'moneyline' && oddGroup.length >= 1) {
-      const homeOdd = oddGroup.find(o => o.home_odds !== null)
-      const awayOdd = oddGroup.find(o => o.away_odds !== null)
-      
-      if (homeOdd || awayOdd) {
-        markets.moneyline.push({
-          sportsbook,
-          homeOdds: homeOdd?.home_odds || null,
-          awayOdds: awayOdd?.away_odds || null
-        })
-      }
-    }
-    // Add more market transformations as needed
-  })
-  
-  return markets
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get('sport') || 'NFL'
     const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const customStartDate = searchParams.get('customStartDate') // ISO string (YYYY-MM-DD)
     const forceRefresh = searchParams.get('refresh') === 'true'
 
-    console.log('🔍 API called with:', { sport, dateParam, forceRefresh })
+    console.log('🔍 API called with:', { sport, dateParam, customStartDate, forceRefresh })
 
     if (!API_KEY) {
       return NextResponse.json(
@@ -172,7 +181,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check cache first
-    const cacheKey = `${sport}-${dateParam}`
+    const cacheKey = `${sport}-${dateParam}-${customStartDate || ''}`
     const cached = cache.get(cacheKey)
     if (cached && !forceRefresh && Date.now() - cached.timestamp < CACHE_TTL) {
       console.log('📋 Using cached data for:', cacheKey)
@@ -182,29 +191,81 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Fetching games from SportsGameOdds API:', {
       sport,
       date: dateParam,
+      customStartDate,
       sportMapping
     })
 
     let gamesData;
     
     try {
-      // Try to fetch real data from SportsGameOdds API v2
-      const apiUrl = `${SPORTSGAMEODDS_API_BASE}/events?leagueID=${sportMapping.leagueID}&type=match`
-      console.log('🌐 Making API request to:', apiUrl)
-      
-      const response = await fetch(apiUrl, {
-        headers: {
-          'X-API-Key': API_KEY!,  // Capital X format as per documentation
-          'Content-Type': 'application/json'
+      // Calculate date range for fetching games (customStartDate or today + next 7 days)
+      // Use UTC to avoid timezone issues with the API
+      const today = new Date()
+      const todayUTC = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)) // Convert to UTC
+      // If customStartDate is provided, use it as the lower bound
+      const startISO = customStartDate || todayUTC.toISOString().split('T')[0]
+      const futureDate = new Date(todayUTC.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from now
+      const futureDateISO = futureDate.toISOString().split('T')[0]
+
+      // Fetch events with pagination (similar to your example)
+      let nextCursor: string | null = null
+      let allEvents: Record<string, unknown>[] = []
+
+      do {
+        const params = new URLSearchParams()
+        params.append('leagueID', sportMapping.leagueID)
+        params.append('type', 'match')
+        params.append('startsAfter', startISO || '')
+        params.append('startsBefore', futureDateISO || '')
+        params.append('limit', '50')
+        if (nextCursor) {
+          params.append('cursor', nextCursor)
         }
-      })
 
-      if (!response.ok) {
-        throw new Error(`SportsGameOdds API error: ${response.status} ${response.statusText}`)
+        const apiUrl = `${SPORTSGAMEODDS_API_BASE}/events?${params.toString()}`
+        console.log('🌐 Making API request to:', apiUrl)
+        console.log('📅 Date range:', { startsAfter: startISO, startsBefore: futureDateISO })
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'X-API-Key': API_KEY!,  // Capital X format as per documentation
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.log('⚠️ Rate limited - falling back to database data')
+            // Fall back to database data when rate limited
+            return await getFallbackDatabaseData(sportMapping.sport_key, (customStartDate || dateParam || ''))
+          }
+          throw new Error(`SportsGameOdds API error: ${response.status} ${response.statusText}`)
+        }
+
+        const pageData = await response.json()
+        console.log('📊 API page response:', pageData?.data?.length || 0, 'games')
+        
+        if (pageData?.success && pageData?.data) {
+          allEvents = allEvents.concat(pageData.data)
+          nextCursor = pageData.nextCursor
+        } else {
+          break
+        }
+        
+        // Safety limit to prevent infinite loops
+        if (allEvents.length > 500) {
+          console.log('⚠️ Hit safety limit of 500 events, stopping pagination')
+          break
+        }
+        
+      } while (nextCursor)
+      
+      console.log('📊 Total events fetched:', allEvents.length)
+      
+      gamesData = {
+        success: true,
+        data: allEvents
       }
-
-      gamesData = await response.json()
-      console.log('📊 Real API response:', gamesData?.data?.length || 0, 'games')
       
       // SportsGameOdds v2 returns {success: true, data: [...]}
       if (!gamesData?.success || !gamesData?.data || gamesData.data.length === 0) {
@@ -224,16 +285,6 @@ export async function GET(request: NextRequest) {
       
     } catch (apiError) {
       console.log('⚠️ SportsGameOdds API error:', apiError)
-      
-      // If rate limited (429) or other API error, try to serve cached games from database
-      if (apiError instanceof Error && apiError.message.includes('429')) {
-        console.log('🔄 Rate limited - serving games from database cache')
-        const fallbackGames = await getFallbackGamesFromDatabase(sportMapping)
-        if (fallbackGames.games.length > 0) {
-          return NextResponse.json(fallbackGames)
-        }
-      }
-      
       return NextResponse.json({
         error: `API Error: ${apiError}`,
         games: [],
@@ -391,26 +442,28 @@ async function transformAndSaveGames(
         
         // Transform SportsGameOdds event to our Game format
         const gameData = {
-          odds_api_id: event.eventID,
-          sport_key: sportMapping.sport_key,
-          home_team_key: formatTeamKey(homeTeam?.name as string),
-          away_team_key: formatTeamKey(awayTeam?.name as string),
+          id: event.eventID, // Use eventID as the primary key
+          sport: sportMapping.sport_key.split('_')[0], // 'baseball' from 'baseball_mlb'
+          league: sportMapping.leagueID, // 'MLB'
+          home_team: formatTeamKey(homeTeam?.name as string),
+          away_team: formatTeamKey(awayTeam?.name as string),
           home_team_name: homeTeam?.name || '',
           away_team_name: awayTeam?.name || '',
           game_time: event.startTime ? new Date(event.startTime as string).toISOString() : new Date().toISOString(),
-          status: event.status || 'upcoming',
+          status: event.status || 'scheduled',
           home_score: homeTeam?.score || null,
           away_score: awayTeam?.score || null,
-          last_updated: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
 
-        console.log('🔄 Saving game data:', gameData.odds_api_id, gameData.home_team_name, 'vs', gameData.away_team_name)
+        console.log('🔄 Saving game data:', gameData.id, gameData.home_team_name, 'vs', gameData.away_team_name)
 
         // Insert or update game in database
         const { data: savedGame, error: gameError } = await supabase
           .from('games')
           .upsert(gameData, {
-            onConflict: 'odds_api_id',
+            onConflict: 'id',
             ignoreDuplicates: false
           })
           .select()
@@ -483,6 +536,13 @@ async function saveOddsDataSportsGameOdds(
       return Math.round(limited * 10) / 10 // Round to 1 decimal place
     }
 
+    // Helper function to truncate strings to database field limits
+    const truncateString = (value: string | undefined | null, maxLength: number): string | null => {
+      if (!value) return null
+      const str = String(value)
+      return str.length > maxLength ? str.substring(0, maxLength) : str
+    }
+
     // SportsGameOdds odds structure: { "oddID": { oddData }, ... }
     for (const [, oddData] of Object.entries(odds)) {
       const odd = oddData as Record<string, unknown>
@@ -491,50 +551,34 @@ async function saveOddsDataSportsGameOdds(
       const betType = odd.betTypeID as string || 'unknown'
       
       let oddsRecord: Record<string, unknown> = {
-        game_id: gameId,
-        sportsbook_key: 'sportsGameOdds',
-        market_type: marketName.toLowerCase(),
-        timestamp: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        is_current_line: true,
-        is_opening_line: false,
-        line_movement_direction: null,
-        steam_move: false
+        eventid: gameId,
+        sportsbook: 'SportsGameOdds',
+        marketname: truncateString(marketName, 50), // Truncate to 50 chars
+        bettypeid: truncateString(betType, 50), // Truncate to 50 chars
+        sideid: truncateString(odd.sideID as string, 50), // Truncate to 50 chars
+        oddid: odd.oddID as string || null,
+        fetched_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
       }
 
       // Map different bet types
       if (betType === 'ml') { // Moneyline
         oddsRecord = {
           ...oddsRecord,
-          home_point: null,
-          away_point: null,
-          home_odds: odd.sideID === 'home' ? safeParseOdds(odd.bookOdds as string) : null,
-          away_odds: odd.sideID === 'away' ? safeParseOdds(odd.bookOdds as string) : null,
-          total_point: null,
-          over_odds: null,
-          under_odds: null
+          bookodds: safeParseOdds(odd.bookOdds as string),
+          line: null // No line for moneyline
         }
       } else if (betType === 'sp') { // Spread
         oddsRecord = {
           ...oddsRecord,
-          home_point: odd.sideID === 'home' ? safeParsePoints(odd.bookSpread as string) : null,
-          away_point: odd.sideID === 'away' ? safeParsePoints(odd.bookSpread as string) : null,
-          home_odds: odd.sideID === 'home' ? safeParseOdds(odd.bookOdds as string) : null,
-          away_odds: odd.sideID === 'away' ? safeParseOdds(odd.bookOdds as string) : null,
-          total_point: null,
-          over_odds: null,
-          under_odds: null
+          bookodds: safeParseOdds(odd.bookOdds as string),
+          line: (odd.bookSpread || odd.fairSpread) as string || null // Spread line
         }
       } else if (betType === 'ou') { // Over/Under
         oddsRecord = {
           ...oddsRecord,
-          home_point: null,
-          away_point: null,
-          home_odds: null,
-          away_odds: null,
-          total_point: safeParsePoints(odd.bookOverUnder as string),
-          over_odds: odd.sideID === 'over' ? safeParseOdds(odd.bookOdds as string) : null,
-          under_odds: odd.sideID === 'under' ? safeParseOdds(odd.bookOdds as string) : null
+          bookodds: safeParseOdds(odd.bookOdds as string),
+          line: (odd.bookOverUnder || odd.fairOverUnder) as string || null // Over/Under line
         }
       }
 
@@ -543,7 +587,7 @@ async function saveOddsDataSportsGameOdds(
 
     if (oddsRecords.length > 0) {
       const { error } = await supabase
-        .from('historical_odds')
+        .from('odds')
         .insert(oddsRecords)
 
       if (error) {
@@ -667,7 +711,7 @@ async function saveOddsData(
     // Batch insert odds records
     if (oddsRecords.length > 0) {
       const { error: oddsError } = await supabase
-        .from('historical_odds')
+        .from('odds')
         .insert(oddsRecords)
 
       if (oddsError) {

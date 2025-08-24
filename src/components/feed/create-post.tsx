@@ -2,6 +2,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useUserProfile } from '@/lib/hooks/use-user-profile'
 import { ImageIcon, MessageSquare, Star, TrendingUp, Trophy, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -9,9 +10,10 @@ interface CreatePostProps {
   onClose: () => void
 }
 
-export function CreatePost({ onClose }: CreatePostProps) {
-  const [postType, setPostType] = useState<'text' | 'pick' | 'celebration'>('text')
+export default function CreatePost({ onClose }: CreatePostProps) {
+  const [postType, setPostType] = useState<'text' | 'pick'>('text')
   const [content, setContent] = useState('')
+  const { username, displayName, loading } = useUserProfile()
   const [isPosting, setIsPosting] = useState(false)
 
   // Pick-specific state
@@ -225,7 +227,7 @@ export function CreatePost({ onClose }: CreatePostProps) {
                   <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
                     SB
                   </div>
-                  <span className="font-medium text-gray-900">@sportsbettor</span>
+                  <span className="font-medium text-gray-900">{loading ? 'Loading...' : (displayName || username)}</span>
                   <span className="text-sm text-gray-500">now</span>
                 </div>
                 {postType === 'pick' && pickData.title && (

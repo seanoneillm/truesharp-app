@@ -5,13 +5,18 @@ import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/profile - Get current user profile
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createServerSupabaseClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    console.log('🔄 Using cookie-based auth for API route')
+    console.log('Profile API - Auth check:', { hasUser: !!user, error: authError?.message || 'Auth session missing!' })
+    
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -22,6 +27,7 @@ export async function GET() {
     }
     return NextResponse.json({ data: profile })
   } catch (error) {
+    console.error('Profile fetch error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -29,7 +35,7 @@ export async function GET() {
 // PUT /api/profile - Update user profile
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createServerSupabaseClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -52,6 +58,7 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json({ data: profile })
   } catch (error) {
+    console.error('Profile update error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

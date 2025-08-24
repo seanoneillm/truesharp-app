@@ -10,57 +10,42 @@ export interface Database {
       profiles: {
         Row: {
           id: string
-          username: string
-          display_name: string
-          email: string
-          avatar: string | null
+          username: string | null
           bio: string | null
-          location: string | null
-          website: string | null
-          is_verified: boolean
-          seller_enabled: boolean
-          verification_status: 'unverified' | 'pending' | 'verified'
-          total_followers: number
-          total_following: number
-          join_date: string
-          created_at: string
-          updated_at: string
+          profile_picture_url: string | null
+          email: string | null
+          is_seller: boolean | null
+          is_verified_seller: boolean | null
+          pro: string | null
+          public_profile: boolean | null
+          created_at: string | null
+          updated_at: string | null
         }
         Insert: {
           id: string
-          username: string
-          display_name: string
-          email: string
-          avatar?: string | null
+          username?: string | null
           bio?: string | null
-          location?: string | null
-          website?: string | null
-          is_verified?: boolean
-          seller_enabled?: boolean
-          verification_status?: 'unverified' | 'pending' | 'verified'
-          total_followers?: number
-          total_following?: number
-          join_date?: string
-          created_at?: string
-          updated_at?: string
+          profile_picture_url?: string | null
+          email?: string | null
+          is_seller?: boolean | null
+          is_verified_seller?: boolean | null
+          pro?: string | null
+          public_profile?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Update: {
           id?: string
-          username?: string
-          display_name?: string
-          email?: string
-          avatar?: string | null
+          username?: string | null
           bio?: string | null
-          location?: string | null
-          website?: string | null
-          is_verified?: boolean
-          seller_enabled?: boolean
-          verification_status?: 'unverified' | 'pending' | 'verified'
-          total_followers?: number
-          total_following?: number
-          join_date?: string
-          created_at?: string
-          updated_at?: string
+          profile_picture_url?: string | null
+          email?: string | null
+          is_seller?: boolean | null
+          is_verified_seller?: boolean | null
+          pro?: string | null
+          public_profile?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
         }
       }
       bets: {

@@ -9,6 +9,14 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
 
+  // Allow ngrok domains for development
+  allowedDevOrigins: [
+    'localhost:3001',
+    'localhost:3000',
+    '.ngrok.io',
+    '.ngrok-free.app'
+  ],
+
   // Image optimization (updated for Next.js 15)
   images: {
     remotePatterns: [

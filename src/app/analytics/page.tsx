@@ -1,1148 +1,808 @@
-// FILE: src/app/analytics/page.tsx
 'use client'
 
+import { AnalyticsHeader } from '@/components/analytics/analytics-header'
+import { AnalyticsTab as AnalyticsTabComponent } from '@/components/analytics/analytics-tab'
+import { BetsTab } from '@/components/analytics/bets-tab'
+import { FilterOptions, FilterSystem } from '@/components/analytics/filter-system'
+import { OverviewTab } from '@/components/analytics/overview-tab'
+import { ProUpgradePrompt } from '@/components/analytics/pro-upgrade-prompt'
+import { StrategiesTab } from '@/components/analytics/strategies-tab'
+import { AnalyticsTab, TabNavigation } from '@/components/analytics/tab-navigation'
+import ProtectedRoute from '@/components/auth/protected-route'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
-import { useAnalytics } from '@/lib/hooks/use-analytics'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAnalytics, type Bet } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
-import {
-  AlertCircle,
-  ArrowUpRight,
-  BarChart3,
-  CheckCircle,
-  ChevronRight,
-  Crown,
-  Download,
-  Eye,
-  Filter,
-  List,
-  Lock,
-  RefreshCw,
-  Settings,
-  TrendingUp,
-  X,
-  Zap
-} from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-// Add the AnalyticsData type definition with bets property
-type AnalyticsData = {
-  bets: Bet[]
-  dailyProfitData: any[]
-  metrics: {
-    roi: number
-    winRate: number
-    totalProfit: number
-    totalBets: number
-    totalStaked: number
-    currentStreak: number
-    streakType: string
-    avgClv?: number
-  }
-  sportBreakdown: Array<{
-    sport: string
-    bets: number
-    winRate: number
-    roi: number
-    profit: number
-    clv?: number
-  }>
-}
-
-// Import the new components
-import { AdvancedProfitChart } from '@/components/analytics/charts/advanced-profit-chart'
-import CLVChart from '@/components/analytics/charts/clv-chart'
-// Ensure CLVChart accepts props: data and isPro
-import { CorrelationMatrix } from '@/components/analytics/charts/correlation-matrix'
-import { HeatMapChart } from '@/components/analytics/charts/heat-map-chart'
-import { AdvancedFilterPanel } from '@/components/analytics/filters/advanced-filter-panel'
-import { QuickFilters } from '@/components/analytics/filters/quick-filters'
-import { SavedFilters } from '@/components/analytics/filters/saved-filters'
-import { CustomReportBuilder } from '@/components/analytics/reports/custom-report-builder'
-import { ExportTools } from '@/components/analytics/reports/export-tools'
-
-// Shield SVG Component
-const TrueSharpShield = ({ className = "h-6 w-6", variant = "default" }) => (
-  <svg className={className} viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id={`shieldGradient-${variant}`} x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor={variant === "light" ? "#3b82f6" : "#1e40af"} />
-        <stop offset="100%" stopColor={variant === "light" ? "#1e40af" : "#1e3a8a"} />
-      </linearGradient>
-    </defs>
-    <path 
-      d="M50 5 L80 20 L80 50 Q80 85 50 110 Q20 85 20 50 L20 20 Z" 
-      fill={`url(#shieldGradient-${variant})`} 
-      stroke={variant === "light" ? "#60a5fa" : "#3b82f6"} 
-      strokeWidth="2"
-    />
-    <path 
-      d="M35 45 L45 55 L65 35" 
-      stroke="white" 
-      strokeWidth="4" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      fill="none"
-    />
-  </svg>
-)
-
-// Loading skeleton component
-const StatsSkeleton = () => (
-  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg">
-        <div className="animate-pulse">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-slate-200 rounded-2xl"></div>
-          </div>
-          <div className="h-4 bg-slate-200 rounded mb-2"></div>
-          <div className="h-8 bg-slate-200 rounded mb-2"></div>
-          <div className="h-3 bg-slate-200 rounded"></div>
-        </div>
-      </div>
-    ))}
-  </div>
-)
-
-// Bets Table Component
-type Bet = {
-  id?: string | number
-  placed_at?: string
-  sport?: string
-  description?: string
-  bet_type?: string
-  odds?: number
-  stake?: number
-  potential_payout?: number
-  actual_payout?: number
-  status?: string
-  sportsbook?: string
-  teams?: string | string[] | null
-  game_date?: string
-  clv?: number
-  closing_line?: number
-  line_movement?: number
-  expected_value?: number
-}
-
-interface BetsTableProps {
-  bets: Bet[]
-  isPro: boolean
-  isLoading: boolean
-}
-
-const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
-  if (isLoading) {
-    return (
-      <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg">
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 bg-slate-200 rounded"></div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (!bets || bets.length === 0) {
-    return (
-      <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-12 text-center shadow-lg">
-        <List className="h-16 w-16 mx-auto mb-4 text-slate-400" />
-        <h3 className="text-lg font-medium text-slate-900 mb-2">No Bets Found</h3>
-        <p className="text-slate-600">
-          Connect your sportsbook accounts or add manual bets to see your betting data here.
-        </p>
-      </div>
-    )
-  }
-
-  // Define which columns are Pro-only
-  const proColumns = [
-    'clv',
-    'line_movement',
-    'steam_move',
-    'market_consensus',
-    'sharp_money',
-    'closing_line',
-    'expected_value'
-  ]
-
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (amount === null || amount === undefined) return 'N/A'
-    return `$${Number(amount).toFixed(2)}`
-  }
-
-  const formatOdds = (odds: number | null | undefined) => {
-    if (odds === null || odds === undefined) return 'N/A'
-    return odds > 0 ? `+${odds}` : `${odds}`
-  }
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString()
-  }
-
-  const getStatusBadge = (status: string | undefined) => {
-    const statusColors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      won: 'bg-green-100 text-green-800',
-      lost: 'bg-red-100 text-red-800',
-      void: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-gray-100 text-gray-800'
-    } as const
-
-    type StatusKey = keyof typeof statusColors
-    const safeStatus: StatusKey = (status && Object.keys(statusColors).includes(status) ? status : 'pending') as StatusKey
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[safeStatus]}`}>
-        {safeStatus}
-      </span>
-    )
-  }
-
-  const BlurredCell = ({ children, isProColumn }: { children: React.ReactNode, isProColumn: boolean }) => {
-    if (isProColumn && !isPro) {
-      return (
-        <td className="relative px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-          <div className="filter blur-sm select-none">
-            {children}
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Lock className="h-4 w-4 text-slate-400" />
-          </div>
-        </td>
-      )
+// Helper functions for enhanced analytics
+function calculateCurrentStreak(bets: Bet[]): { type: 'win' | 'loss' | 'none', count: number } {
+  if (!bets.length) return { type: 'none', count: 0 }
+  
+  const sortedBets = [...bets]
+    .filter(bet => bet.status === 'won' || bet.status === 'lost')
+    .sort((a, b) => new Date(b.placed_at || 0).getTime() - new Date(a.placed_at || 0).getTime())
+  
+  if (!sortedBets.length) return { type: 'none', count: 0 }
+  
+  const currentResult = sortedBets[0]?.status === 'won' ? 'win' : 'loss'
+  let count = 1
+  
+  for (let i = 1; i < sortedBets.length; i++) {
+    const betResult = sortedBets[i]?.status === 'won' ? 'win' : 'loss'
+    if (betResult === currentResult) {
+      count++
+    } else {
+      break
     }
-    return (
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-        {children}
-      </td>
-    )
   }
-
-  return (
-    <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl shadow-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-200/50">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">All Bets ({bets.length})</h3>
-          {!isPro && (
-            <div className="flex items-center text-sm text-slate-500">
-              <Lock className="h-4 w-4 mr-1" />
-              Some data requires Pro
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <div className="overflow-x-auto max-h-96">
-        <table className="min-w-full divide-y divide-slate-200/50">
-          <thead className="bg-slate-50/50 sticky top-0">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Sport
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Description
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Bet Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Odds
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Stake
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Potential Payout
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Actual Payout
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Sportsbook
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Teams
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Game Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                <div className="flex items-center">
-                  CLV
-                  {!isPro && <Lock className="h-3 w-3 ml-1" />}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                <div className="flex items-center">
-                  Closing Line
-                  {!isPro && <Lock className="h-3 w-3 ml-1" />}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                <div className="flex items-center">
-                  Line Movement
-                  {!isPro && <Lock className="h-3 w-3 ml-1" />}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                <div className="flex items-center">
-                  Expected Value
-                  {!isPro && <Lock className="h-3 w-3 ml-1" />}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white/50 divide-y divide-slate-200/50">
-            {bets.map((bet, index) => (
-              <tr key={bet.id || index} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {formatDate(bet.placed_at)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {bet.sport || 'N/A'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-900 max-w-xs truncate">
-                  {bet.description || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {bet.bet_type || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                  {formatOdds(bet.odds)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {formatCurrency(bet.stake)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {formatCurrency(bet.potential_payout)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <span className={
-                    (bet.actual_payout ?? 0) > 0
-                      ? 'text-green-600'
-                      : (bet.actual_payout ?? 0) < 0
-                        ? 'text-red-600'
-                        : 'text-slate-900'
-                  }>
-                    {formatCurrency(bet.actual_payout)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {getStatusBadge(bet.status)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {bet.sportsbook || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {bet.teams ? (
-                    <div className="max-w-xs truncate">
-                      {typeof bet.teams === 'string' ? bet.teams : JSON.stringify(bet.teams)}
-                    </div>
-                  ) : 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  {formatDate(bet.game_date)}
-                </td>
-                <BlurredCell isProColumn={true}>
-                  {bet.clv ? `${bet.clv > 0 ? '+' : ''}${bet.clv}%` : 'N/A'}
-                </BlurredCell>
-                <BlurredCell isProColumn={true}>
-                  {formatOdds(bet.closing_line)}
-                </BlurredCell>
-                <BlurredCell isProColumn={true}>
-                  {bet.line_movement ? `${bet.line_movement > 0 ? '+' : ''}${bet.line_movement}` : 'N/A'}
-                </BlurredCell>
-                <BlurredCell isProColumn={true}>
-                  {bet.expected_value ? `${bet.expected_value > 0 ? '+' : ''}${bet.expected_value}%` : 'N/A'}
-                </BlurredCell>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {bets.length > 10 && (
-        <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-200/50">
-          <p className="text-sm text-slate-500 text-center">
-            Showing {bets.length} bets • Scroll to see more columns
-          </p>
-        </div>
-      )}
-    </div>
-  )
+  
+  return { type: currentResult, count }
 }
 
-import type { FilterState } from '@/components/analytics/filters/advanced-filter-panel'
+function calculateTrends(monthlyData: { roi: number }[]): { trend: 'up' | 'down' | 'flat', percentage: number } {
+  if (monthlyData.length < 2) return { trend: 'flat', percentage: 0 }
+  
+  const recent = monthlyData.slice(-3)
+  if (recent.length < 2) return { trend: 'flat', percentage: 0 }
+  
+  const first = recent[0]?.roi || 0
+  const last = recent[recent.length - 1]?.roi || 0
+  const change = last - first
+  
+  if (Math.abs(change) < 1) return { trend: 'flat', percentage: 0 }
+  return { 
+    trend: change > 0 ? 'up' : 'down', 
+    percentage: Math.abs(change) 
+  }
+}
 
-interface SavedFilter {
+// Using interfaces from the analytics hook
+
+interface UserProfile {
+  username: string
+  isPro: boolean
+}
+
+// Using Bet interface from the analytics hook
+
+interface Strategy {
   id: string
   name: string
   description: string
-  filters: FilterState
-  createdAt: Date
-  useCount: number
-  isFavorite: boolean
-  isShared: boolean
-  tags: string[]
+  filter_config: FilterOptions
+  monetized: boolean
+  pricing_weekly?: number
+  pricing_monthly?: number
+  pricing_yearly?: number
+  subscriber_count: number
+  performance_roi: number
+  performance_win_rate: number
+  performance_total_bets: number
+  created_at: string
+  updated_at: string
+  // Additional leaderboard fields
+  winning_bets: number
+  losing_bets: number
+  push_bets: number
+  primary_sport?: string
+  bet_type?: string
+  verification_status?: string
+  is_verified_seller?: boolean
+  overall_rank?: number
+  sport_rank?: number
+  is_eligible?: boolean
+  minimum_bets_met?: boolean
 }
 
-export default function EnhancedAnalyticsPage() {
-  const { user, loading: authLoading } = useAuth() // Use the correct useAuth hook
-  const [selectedTimeframe, setSelectedTimeframe] = useState('30d')
-  const [showProUpgrade, setShowProUpgrade] = useState(false)
-  const [isPro, setIsPro] = useState(false)
-  const [activeView, setActiveView] = useState('overview')
-  const [activeFilters, setActiveFilters] = useState<string[]>([])
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
-  const { analyticsData, isLoading, error, filters, updateFilters, totalBets, filteredBetsCount } = useAnalytics(user, isPro)
-  // Extract bets array from analyticsData, fallback to empty array if not available
-  const bets = analyticsData?.bets || []
+const defaultFilters: FilterOptions = {
+  // Core database filters - now arrays for multi-select
+  betTypes: ['All'],
+  leagues: ['All'],
+  statuses: ['All'],
+  isParlays: ['All'],
+  sides: ['All'],
+  oddsTypes: ['All'],
+  
+  // Time and sportsbook filters
+  timeRange: 'All time',
+  sportsbooks: [],
+  
+  // Legacy filters (keep for backward compatibility)
+  sports: []
+}
 
+export default function AnalyticsPage() {
+  const { user, loading: authLoading } = useAuth()
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('strategies')
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMoreBets, setHasMoreBets] = useState(true)
+  const [loadingMoreBets, setLoadingMoreBets] = useState(false)
+  const [strategies, setStrategies] = useState<Strategy[]>([])
+  const [strategiesLoading, setStrategiesLoading] = useState(false)
+  
+  // Get userId from URL parameters
+  const [urlUserId, setUrlUserId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    // Extract userId from URL parameters
+    const searchParams = new URLSearchParams(window.location.search)
+    const userIdParam = searchParams.get('userId')
+    if (userIdParam) {
+      setUrlUserId(userIdParam)
+      console.log('Found userId in URL:', userIdParam.substring(0, 8) + '...')
+    }
+  }, [])
+  
+  // Local filter state to prevent resets
+  const [localFilters, setLocalFilters] = useState<FilterOptions>(defaultFilters)
 
-  const timeframes = [
-    { label: 'Last 7 Days', value: '7d', free: true },
-    { label: 'Last 30 Days', value: '30d', free: true },
-    { label: 'This Month', value: 'month', free: true },
-    { label: 'Last 90 Days', value: '90d', free: false },
-    { label: 'Year to Date', value: 'ytd', free: false },
-    { label: 'All Time', value: 'all', free: false },
-  ];
+  // Use the analytics hook
+  const { 
+    analyticsData, 
+    isLoading: analyticsLoading, 
+    error: analyticsError, 
+    filters, 
+    updateFilters, 
+    totalBets 
+  } = useAnalytics(user, userProfile?.isPro || false)
 
-  const proFeatures = [
-    "Unlimited filtering & custom date ranges",
-    "Advanced profit, CLV, and correlation charts",
-    "Custom report builder & export tools",
-    "Performance by bet type, sportsbook, and more",
-    "Real-time analytics & streak tracking",
-    "Save and share filter presets",
-    "Heatmaps and advanced breakdowns",
-    "Priority support"
-  ];
+  // TEMPORARY: Development mode to show analytics without auth - FORCED UPDATE
+  const isDev = process.env.NODE_ENV === 'development'
+  const DEV_USER_ID = '28991397-dae7-42e8-a822-0dffc6ff49b7'
 
-  const handleProFeatureClick = () => {
-    if (!isPro) {
-      setShowProUpgrade(true)
+  useEffect(() => {
+    console.log('🔥 Analytics useEffect triggered!')
+    console.log('📊 Analytics useEffect - authLoading:', authLoading, 'user:', user?.id || 'no user', 'isDev:', isDev, 'urlUserId:', urlUserId?.substring(0, 8) + '...' || 'none')
+    
+    // In development mode, skip auth check
+    if (isDev) {
+      console.log('🚀 Development mode: set default profile')
+      setUserProfile({
+        username: 'DevUser',
+        isPro: true // Force Pro status in development for testing
+      })
+      
+      // Also fetch strategies in development mode using URL userId if available
+      if (urlUserId) {
+        console.log('🎯 Development mode: fetching strategies for URL userId:', urlUserId)
+        fetchStrategies(urlUserId)
+      } else {
+        console.log('❌ No urlUserId available for fetching strategies')
+        // Try fetchStrategies anyway with the DEV_USER_ID
+        fetchStrategies('28991397-dae7-42e8-a822-0dffc6ff49b7')
+      }
+      return
+    }
+    
+    // Production mode: wait for auth to complete
+    if (!authLoading && user) {
+      console.log('User authenticated, fetching profile for:', user.id)
+      fetchUserProfile(user.id)
+      fetchStrategies(user.id)
+    } else if (!authLoading && !user) {
+      console.log('No user found after auth loading complete')
+    }
+  }, [user, authLoading, isDev, urlUserId])
+
+  const fetchStrategies = async (userId?: string) => {
+    console.log('🎯 fetchStrategies called with userId:', userId?.substring(0, 8) + '...')
+    setStrategiesLoading(true)
+    try {
+      // Use provided userId or fallback to authenticated user
+      const effectiveUserId = userId || user?.id
+      const url = effectiveUserId ? `/api/strategies?userId=${effectiveUserId}` : '/api/strategies'
+      console.log('Fetching strategies with URL:', url)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Strategies fetched successfully:', result.strategies?.length || 0)
+        console.log('📋 Strategy data:', result.strategies)
+        setStrategies(result.strategies || [])
+      } else {
+        console.error('Failed to fetch strategies:', response.status)
+        setStrategies([])
+      }
+    } catch (error) {
+      console.error('Error fetching strategies:', error)
+      setStrategies([])
+    } finally {
+      setStrategiesLoading(false)
     }
   }
 
-  const handleFilterToggle = (filterId: string) => {
-    setActiveFilters(prev =>
-      prev.includes(filterId)
-        ? prev.filter(id => id !== filterId)
-        : [...prev, filterId]
-    )
-  }
-
-  const handleFiltersChange = (filters: FilterState) => {
-    // Implement filter logic here if needed
-    console.log('Filters changed:', filters)
-  }
-
-  const handleSaveFilter = (name: string, filters: FilterState) => {
-    const newFilter: SavedFilter = {
-      id: `filter_${Date.now()}`,
-      name,
-      description: `Custom filter with ${Object.keys(filters).length} criteria`,
-      filters,
-      createdAt: new Date(),
-      useCount: 0,
-      isFavorite: false,
-      isShared: false,
-      tags: []
-    }
-    setSavedFilters(prev => [...prev, newFilter])
-  }
-
-  type LoadFilterHandler = (filter: SavedFilter) => void
-
-  const handleLoadFilter: LoadFilterHandler = (filter) => {
-    handleFiltersChange(filter.filters)
-  }
-
-  const handleTimeframeChange = (newTimeframe: string) => {
-    const timeframe = timeframes.find(t => t.value === newTimeframe)
-    if (timeframe && (timeframe.free || isPro)) {
-      setSelectedTimeframe(newTimeframe)
-      updateFilters({ timeframe: newTimeframe })
-    } else if (!isPro) {
-      handleProFeatureClick()
+  const fetchUserProfile = async (userId?: string) => {
+    const effectiveUserId = userId || user?.id
+    console.log('fetchUserProfile called with:', effectiveUserId)
+    if (!effectiveUserId) return
+    
+    try {
+      console.log('Attempting to fetch profile from /api/profile (relative URL)')
+      const response = await fetch('/api/profile')
+      console.log('Profile API response:', response.status, response.ok, 'URL:', response.url)
+      if (response.ok) {
+        const result = await response.json()
+        const profile = result.data
+        const fallbackProfile = {
+          username: profile.username || (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'User',
+          isPro: profile.pro === 'yes'
+        }
+        console.log('Setting profile from API:', fallbackProfile)
+        setUserProfile(fallbackProfile)
+      } else {
+        console.log('Profile API failed with status:', response.status, '- using fallback profile')
+        // Set default values if profile fetch fails (including 401 auth errors)
+        const fallbackProfile = {
+          username: (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'TestUser',
+          isPro: false
+        }
+        console.log('Setting fallback profile:', fallbackProfile)
+        setUserProfile(fallbackProfile)
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err)
+      // Set default values if profile fetch fails
+      const fallbackProfile = {
+        username: (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'TestUser',
+        isPro: false
+      }
+      console.log('Setting error fallback profile:', fallbackProfile)
+      setUserProfile(fallbackProfile)
     }
   }
 
-  // Show loading if auth is still loading
-  if (authLoading) {
+  const loadMoreBets = async () => {
+    if (loadingMoreBets || !hasMoreBets) return
+    
+    setLoadingMoreBets(true)
+    
+    try {
+      // Simulate loading more bets by generating additional data
+      const nextPage = currentPage + 1
+      const additionalBets = Array.from({ length: 10 }, (_, i) => {
+        const index = (nextPage - 1) * 10 + i
+        const teamNames = [
+          ['Lakers', 'Warriors'], ['Cowboys', 'Giants'], ['Yankees', 'Red Sox'], 
+          ['Chiefs', 'Broncos'], ['Celtics', 'Heat'], ['Rangers', 'Devils'],
+          ['Dodgers', 'Padres'], ['Bills', 'Patriots'], ['Clippers', 'Suns'],
+          ['Astros', 'Angels'], ['49ers', 'Seahawks'], ['Knicks', 'Nets'],
+          ['Rams', 'Cardinals'], ['Packers', 'Bears'], ['Mets', 'Phillies']
+        ]
+        
+        const betTypes = ['Spread', 'Moneyline', 'Total Over', 'Total Under', 'Player Props']
+        const sportsbooks = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'ESPN BET']
+        const sports = ['NFL', 'NBA', 'MLB', 'NHL']
+        
+        const teams = teamNames[index % teamNames.length] || ['Team A', 'Team B']
+        const betType = betTypes[index % betTypes.length] || 'Moneyline'
+        const sportsbook = sportsbooks[index % sportsbooks.length] || 'DraftKings'
+        const sport = sports[index % sports.length] || 'NFL'
+        
+        const stakeAmount = 50 + Math.random() * 200
+        const oddsValue = Math.random() > 0.5 ? Math.round(100 + Math.random() * 300) : Math.round(-110 - Math.random() * 200)
+        const isWin = Math.random() > 0.4 // 60% win rate
+        
+        let betDescription = ''
+        let lineValue = 0
+        
+        switch (betType) {
+          case 'Spread':
+            lineValue = (Math.random() - 0.5) * 14
+            betDescription = `${teams[0]} ${lineValue > 0 ? '+' : ''}${lineValue.toFixed(1)}`
+            break
+          case 'Moneyline':
+            betDescription = `${teams[0]} to Win`
+            break
+          case 'Total Over':
+            lineValue = 45 + Math.random() * 10
+            betDescription = `Over ${lineValue.toFixed(1)} Total Points`
+            break
+          case 'Total Under':
+            lineValue = 45 + Math.random() * 10
+            betDescription = `Under ${lineValue.toFixed(1)} Total Points`
+            break
+          case 'Player Props':
+            const playerNames = ['LeBron James', 'Tom Brady', 'Aaron Judge', 'Connor McDavid', 'Steph Curry']
+            const props = ['Points', 'Yards', 'Home Runs', 'Goals', 'Assists']
+            const player = playerNames[Math.floor(Math.random() * playerNames.length)]
+            const prop = props[Math.floor(Math.random() * props.length)]
+            lineValue = 1.5 + Math.random() * 3
+            betDescription = `${player} Over ${lineValue.toFixed(1)} ${prop}`
+            break
+        }
+
+        const placedDate = new Date(Date.now() - (index + 10) * 24 * 60 * 60 * 1000).toISOString()
+        
+        return {
+          id: `bet-${index + 11}`,
+          sport: sport,
+          league: sport,
+          home_team: teams[1] || 'Home Team',
+          away_team: teams[0] || 'Away Team',
+          bet_type: betType,
+          bet_description: betDescription,
+          description: betDescription,
+          line_value: lineValue !== 0 ? lineValue : undefined,
+          odds: oddsValue > 0 ? `+${oddsValue}` : `${oddsValue}`,
+          stake: Math.round(stakeAmount),
+          potential_payout: Math.round(stakeAmount * (1 + Math.abs(oddsValue) / 100)),
+          status: isWin ? 'won' as const : 'lost' as const,
+          profit: isWin ? Math.round(stakeAmount * Math.abs(oddsValue) / 100) : -Math.round(stakeAmount),
+          placed_at: placedDate,
+          game_date: new Date(new Date(placedDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+          sportsbook: sportsbook,
+          settled_at: new Date(new Date(placedDate).getTime() + 3 * 60 * 60 * 1000).toISOString()
+        } as Bet
+      })
+      
+      setRecentBets(prev => [...prev, ...additionalBets])
+      setCurrentPage(nextPage)
+      
+      // Simulate reaching the end after a few pages
+      if (nextPage >= 5) {
+        setHasMoreBets(false)
+      }
+      
+    } catch (err) {
+      console.error('Error loading more bets:', err)
+    } finally {
+      setLoadingMoreBets(false)
+    }
+  }
+
+  const handleFiltersChange = useCallback((newFilters: FilterOptions) => {
+    console.log('Filter change triggered:', newFilters)
+    
+    // Update local state immediately for UI responsiveness
+    setLocalFilters(newFilters)
+    
+    // Convert FilterOptions to AnalyticsFilters format for the hook
+    const sports: string[] = []
+    const betTypes: string[] = []
+    const results: string[] = []
+    
+    // Handle leagues filter - map to database sport column (which contains leagues)
+    if (newFilters.leagues && !newFilters.leagues.includes('All')) {
+      sports.push(...newFilters.leagues)
+    }
+    
+    // Handle bet types filter - map to database bet_type column
+    if (newFilters.betTypes && !newFilters.betTypes.includes('All')) {
+      betTypes.push(...newFilters.betTypes)
+    }
+    
+    // Handle statuses filter - map to database status column
+    if (newFilters.statuses && !newFilters.statuses.includes('All')) {
+      results.push(...newFilters.statuses)
+    } else {
+      results.push('won', 'lost', 'pending', 'void', 'cancelled')
+    }
+    
+    // Include legacy filters for backward compatibility
+    if (newFilters.sports) {
+      sports.push(...newFilters.sports)
+    }
+    
+    console.log('Updating analytics filters:', { sports, betTypes })
+    
+    // Directly update filters - debouncing is now handled in the hook
+    updateFilters({
+      sports: [...new Set(sports)], // Remove duplicates
+      betTypes: [...new Set(betTypes)], // Remove duplicates
+      sportsbooks: newFilters.sportsbooks || [],
+      results: [...new Set(results)], // Use calculated results
+      timeframe: newFilters.timeRange === '7 days' ? '7d' : 
+                 newFilters.timeRange === '30 days' ? '30d' :
+                 newFilters.timeRange === '3 months' ? '90d' :
+                 newFilters.timeRange === 'This Year' ? 'ytd' : 'all',
+      dateRange: { 
+        start: newFilters.customStartDate || null, 
+        end: newFilters.customEndDate || null 
+      },
+      minOdds: newFilters.oddsRange?.min || null,
+      maxOdds: newFilters.oddsRange?.max || null,
+      minStake: newFilters.stakeRange?.min || null,
+      maxStake: newFilters.stakeRange?.max || null,
+      // New database-specific filters
+      isParlay: newFilters.isParlays && !newFilters.isParlays.includes('All') ? newFilters.isParlays.includes('true') : null,
+      side: newFilters.sides && !newFilters.sides.includes('All') ? newFilters.sides.join(',') : null,
+      oddsType: newFilters.oddsTypes && !newFilters.oddsTypes.includes('All') ? newFilters.oddsTypes.join(',') : null
+    })
+  }, [updateFilters])
+
+  const handleClearFilters = useCallback(() => {
+    console.log('Clearing all filters')
+    
+    // Reset local state immediately
+    setLocalFilters(defaultFilters)
+    
+    // Update analytics filters directly - debouncing is handled in the hook
+    updateFilters({
+      sports: [],
+      betTypes: [],
+      sportsbooks: [],
+      results: ['won', 'lost', 'pending', 'void', 'cancelled'],
+      timeframe: 'all',
+      dateRange: { start: null, end: null },
+      minOdds: null,
+      maxOdds: null,
+      minStake: null,
+      maxStake: null,
+      isParlay: null,
+      side: null,
+      oddsType: null
+    })
+  }, [updateFilters])
+
+  const handleExportData = async () => {
+    // TODO: Implement data export functionality
+    console.log('Exporting analytics data...')
+  }
+
+  const handleCreateStrategy = async (strategy: {
+    name: string
+    description: string
+    filters: FilterOptions
+    monetized: boolean
+    pricing_weekly?: number
+    pricing_monthly?: number
+    pricing_yearly?: number
+  }) => {
+    try {
+      // Include user ID for fallback authentication like in betslip
+      // Ensure statuses is always set to ['All'] for strategy creation
+      const filtersWithDefaults = {
+        ...strategy.filters,
+        statuses: strategy.filters.statuses || ['All']
+      }
+      
+      const requestBody = {
+        name: strategy.name,
+        description: strategy.description,
+        filter_config: filtersWithDefaults, // Map filters to filter_config for API
+        monetized: strategy.monetized,
+        pricing_weekly: strategy.pricing_weekly,
+        pricing_monthly: strategy.pricing_monthly,
+        pricing_yearly: strategy.pricing_yearly,
+        userId: user?.id // Include user ID as fallback
+      }
+
+      const response = await fetch('/api/strategies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create strategy')
+      }
+
+      const result = await response.json()
+      console.log('Strategy created successfully:', result)
+      
+      // Refresh strategies list
+      fetchStrategies()
+    } catch (error) {
+      console.error('Error creating strategy:', error)
+      throw error
+    }
+  }
+
+  const handleUpdateStrategy = async (id: string, updates: Partial<Strategy>) => {
+    try {
+      const response = await fetch('/api/strategies', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, ...updates }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update strategy')
+      }
+
+      console.log('Strategy updated successfully')
+      
+      // Refresh strategies list
+      fetchStrategies()
+    } catch (error) {
+      console.error('Error updating strategy:', error)
+      throw error
+    }
+  }
+
+  const handleDeleteStrategy = async (id: string) => {
+    try {
+      const response = await fetch(`/api/strategies?id=${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete strategy')
+      }
+
+      console.log('Strategy deleted successfully')
+      
+      // Refresh strategies list
+      fetchStrategies()
+    } catch (error) {
+      console.error('Error deleting strategy:', error)
+      throw error
+    }
+  }
+
+  if (authLoading || analyticsLoading) {
+    console.log('Showing loading skeleton - authLoading:', authLoading, 'analyticsLoading:', analyticsLoading)
     return (
-      <DashboardLayout current="Analytics">
-        <div className="px-4 sm:px-6 lg:px-8 py-8">
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-sm text-gray-500">Loading authentication...</p>
-            </div>
-          </div>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </DashboardLayout>
     )
   }
 
-  // Mock data for charts (will be replaced with real data)
-  const mockProfitData = analyticsData.dailyProfitData.map(day => ({
-    date: day.date,
-    cumulativeProfit: day.cumulativeProfit,
-    dailyProfit: day.profit,
-    roi: analyticsData.metrics.roi,
-    units: day.cumulativeProfit / 100, // Mock units conversion
-    bets: day.bets
+  if (!user && !authLoading && !isDev) {
+    console.log('Showing login prompt - user:', user, 'authLoading:', authLoading, 'analyticsLoading:', analyticsLoading, 'isDev:', isDev)
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Please Log In
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            You need to be logged in to view your analytics.
+          </p>
+          <a 
+            href="/login"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Go to Login
+          </a>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (analyticsError) {
+    console.log('Showing error - error:', analyticsError)
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <p className="text-red-600">Error loading analytics: {analyticsError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!analyticsData || !userProfile) {
+    console.log('Showing analytics loading - analyticsData:', !!analyticsData, 'userProfile:', !!userProfile)
+    console.log('Current userProfile state:', userProfile)
+    console.log('Current analyticsData state:', analyticsData ? 'loaded' : 'null')
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <p>Loading analytics data...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Data: {analyticsData ? '✓' : '⏳'} Profile: {userProfile ? '✓' : '⏳'}
+          </p>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  console.log('Rendering main analytics content')
+  console.log('Analytics data metrics:', analyticsData?.metrics)
+  console.log('User profile:', userProfile)
+
+  // Safety check for analytics data structure
+  const metrics = analyticsData?.metrics || {
+    totalBets: 0,
+    winRate: 0,
+    roi: 0,
+    totalProfit: 0,
+    avgStake: 0,
+    biggestWin: 0,
+    biggestLoss: 0,
+    expectedValue: 0,
+    avgClv: 0,
+    straightBetsCount: 0,
+    parlayBetsCount: 0,
+    voidBetsCount: 0,
+    streakType: 'none' as const,
+    currentStreak: 0
+  }
+
+  const dailyProfitData = analyticsData?.dailyProfitData || []
+  const monthlyData = analyticsData?.monthlyData || []
+  const recentBets = analyticsData?.recentBets || []
+
+  // Transform chart data for overview with enhanced calculations
+  const chartData = dailyProfitData.map((item) => ({
+    date: item.date,
+    profit: item.profit,
+    cumulative: item.cumulativeProfit
   }))
 
-  const mockCLVData = analyticsData.dailyProfitData.map(day => ({
-    date: day.date,
-    clv: analyticsData.metrics.avgClv || 0.02,
-    clvPositive: Math.floor(day.bets * 0.6),
-    clvNegative: Math.floor(day.bets * 0.4),
-    averageClv: analyticsData.metrics.avgClv || 0.025,
-    sharpRatio: 0.65
-  }))
+  // Enhanced monthly data for trends
+  const enhancedMonthlyData = monthlyData.length > 0 ? monthlyData : 
+    dailyProfitData.map((item) => ({
+      month: item.date,
+      profit: item.profit,
+      roi: metrics.avgStake > 0 ? (item.profit / metrics.avgStake) * 100 : 0,
+      volume: metrics.avgStake,
+      bets: item.bets,
+      wins: item.profit > 0 ? 1 : 0
+    }))
+
+  // Calculate current streak from analytics data - map 'none' to 'loss' for compatibility
+  const currentStreak = {
+    type: metrics.streakType === 'none' ? 'loss' as const : metrics.streakType as 'win' | 'loss',
+    count: metrics.streakType === 'none' ? 0 : metrics.currentStreak
+  }
+
+  // Use enhanced analytics data directly
+  const transformedAnalytics = {
+    totalBets: metrics.totalBets,
+    winRate: metrics.winRate,
+    roi: metrics.roi,
+    netProfit: metrics.totalProfit,
+    averageStake: metrics.avgStake,
+    largestWin: metrics.biggestWin,
+    largestLoss: metrics.biggestLoss,
+    currentStreak,
+    expectedValue: metrics.expectedValue,
+    avgClv: metrics.avgClv,
+    straightBetsCount: metrics.straightBetsCount,
+    parlayBetsCount: metrics.parlayBetsCount,
+    voidBetsCount: metrics.voidBetsCount,
+    sportBreakdown: analyticsData.sportBreakdown.map(sport => ({
+      sport: sport.sport,
+      count: sport.bets,
+      profit: sport.profit,
+      winRate: sport.winRate,
+      roi: sport.roi
+    })),
+    betTypeBreakdown: analyticsData.betTypeBreakdown,
+    sideBreakdown: analyticsData.sideBreakdown,
+    monthlyData: enhancedMonthlyData,
+    trends: calculateTrends(enhancedMonthlyData),
+    // Enhanced CLV and line movement data (Pro features)
+    clvData: userProfile.isPro ? analyticsData.lineMovementData.map(item => ({
+      date: item.date,
+      clv: item.clv,
+      profit: item.profit
+    })) : [],
+    lineMovementData: userProfile.isPro ? analyticsData.lineMovementData.map(item => ({
+      betId: `bet-${item.date}`,
+      openingLine: item.odds,
+      closingLine: item.lineValue,
+      movement: 'sharp' as const,
+      profit: item.profit
+    })) : []
+  }
+
 
   return (
-    <DashboardLayout current="Analytics">
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <TrueSharpShield className="h-8 w-8" variant="light" />
-                <h1 className="text-3xl font-bold text-slate-900">Performance Analytics</h1>
-                {/* Pro/Free Toggle */}
-                <div className="flex items-center space-x-2 ml-4">
-                  <span className={`text-sm font-medium ${!isPro ? 'text-blue-600' : 'text-slate-500'}`}>
-                    Free
-                  </span>
-                  <button
-                    onClick={() => setIsPro(!isPro)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isPro ? 'bg-blue-600' : 'bg-slate-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        isPro ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                  <span className={`text-sm font-medium ${isPro ? 'text-blue-600' : 'text-slate-500'}`}>
-                    Pro
-                  </span>
-                  {isPro && <Crown className="h-4 w-4 text-yellow-500" />}
-                </div>
-              </div>
-              <p className="text-slate-600">
-                {isPro 
-                  ? "Advanced analytics with unlimited filtering and professional insights"
-                  : "Deep dive into your verified betting performance with advanced analytics"
-                }
-              </p>
-              {/* Data summary */}
-              <div className="flex items-center space-x-4 mt-2 text-sm text-slate-500">
-                <span>Total Bets: {totalBets}</span>
-                <span>Filtered: {filteredBetsCount}</span>
-                {analyticsData.metrics.totalStaked > 0 && (
-                  <span>Total Staked: ${analyticsData.metrics.totalStaked.toFixed(2)}</span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* View Toggle */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setActiveView('overview')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === 'overview' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Eye className="h-4 w-4 mr-1 inline" />
-                  Overview
-                </button>
-                <button
-                  onClick={() => setActiveView('bets')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === 'bets' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <List className="h-4 w-4 mr-1 inline" />
-                  Bets
-                </button>
-                <button
-                  onClick={() => isPro ? setActiveView('advanced') : handleProFeatureClick()}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === 'advanced' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  } ${!isPro ? 'opacity-60' : ''}`}
-                >
-                  <BarChart3 className="h-4 w-4 mr-1 inline" />
-                  Advanced
-                  {!isPro && <Lock className="h-3 w-3 ml-1 inline" />}
-                </button>
-                <button
-                  onClick={() => isPro ? setActiveView('reports') : handleProFeatureClick()}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === 'reports' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  } ${!isPro ? 'opacity-60' : ''}`}
-                >
-                  <Settings className="h-4 w-4 mr-1 inline" />
-                  Reports
-                  {!isPro && <Lock className="h-3 w-3 ml-1 inline" />}
-                </button>
-              </div>
-              
-              <button 
-                onClick={() => window.location.reload()}
-                className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-xl text-slate-700 bg-white/70 hover:bg-white transition-colors"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </button>
-              <button
-                onClick={isPro ? undefined : handleProFeatureClick}
-                className={`inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded-xl shadow-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-200 hover:scale-105 ${!isPro ? 'opacity-75' : ''}`}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export Data
-                {!isPro && <Lock className="h-4 w-4 ml-1" />}
-              </button>
-            </div>
-          </div>
-        </div>
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div className="space-y-6">
+        {/* Analytics Header */}
+        <AnalyticsHeader
+          username={userProfile.username}
+          totalBets={metrics.totalBets}
+          winRate={metrics.winRate}
+          totalProfit={metrics.totalProfit}
+          roi={metrics.roi}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            {isPro && activeView === 'advanced' ? (
-              // Advanced Pro Filters
-              <div className="space-y-6">
-                <AdvancedFilterPanel
-                  isPro={isPro}
-                  onFiltersChange={handleFiltersChange}
-                  savedFilters={savedFilters}
-                  onSaveFilter={handleSaveFilter}
-                  onLoadFilter={(filters) => {
-                    // If passed a SavedFilter, extract .filters, otherwise assume it's already FilterState
-                    if ('filters' in filters) {
-                      handleFiltersChange(filters.filters as FilterState)
-                    } else {
-                      handleFiltersChange(filters)
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              // Original Free Filters
-              <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-lg sticky top-24">
-                <div className="flex items-center space-x-2 mb-6">
-                  <Filter className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
-                  {isPro && (
-                    <div className="ml-auto">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Quick Filters for Pro */}
-                {isPro && (
-                  <div className="mb-6">
-                    <QuickFilters
-                      activeFilters={activeFilters}
-                      onFilterToggle={handleFilterToggle}
-                      onFilterApply={handleFiltersChange}
-                      isPro={isPro}
-                    />
-                  </div>
-                )}
+        {/* Pro Upgrade Banner */}
+        {!userProfile.isPro && (
+          <ProUpgradePrompt
+            variant="banner"
+            context="general"
+            onUpgrade={() => {
+              // TODO: Implement Stripe checkout
+              console.log('Upgrade to Pro clicked')
+            }}
+          />
+        )}
 
-                <div className="space-y-6">
-                  {/* Timeframe Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3">
-                      Time Period
-                    </label>
-                    <div className="space-y-2">
-                      {timeframes.map((timeframe) => (
-                        <button
-                          key={timeframe.value}
-                          onClick={() => handleTimeframeChange(timeframe.value)}
-                          disabled={!timeframe.free && !isPro}
-                          className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-200 ${
-                            selectedTimeframe === timeframe.value
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-blue-600 shadow-lg'
-                              : (timeframe.free || isPro) 
-                                ? 'border-slate-300 hover:border-blue-300 hover:bg-blue-50'
-                                : 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{timeframe.label}</span>
-                            {!timeframe.free && !isPro && <Lock className="h-4 w-4" />}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+        {/* Universal Filter System */}
+        <FilterSystem
+          isPro={userProfile.isPro}
+          filters={localFilters}
+          onFiltersChange={handleFiltersChange}
+          onClearFilters={handleClearFilters}
+        />
 
-                {/* Saved Filters for Pro */}
-                {isPro && savedFilters.length > 0 && (
-                  <div className="mt-6">
-                    <SavedFilters
-                      savedFilters={savedFilters}
-                      onLoadFilter={handleLoadFilter}
-                      onDeleteFilter={(id) => setSavedFilters(prev => prev.filter(f => f.id !== id))}
-                      onUpdateFilter={(id, updates) => setSavedFilters(prev => prev.map(f => f.id === id ? {...f, ...updates} : f))}
-                      onShareFilter={() => {}}
-                      isPro={isPro}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+        {/* Tab Navigation */}
+        <TabNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          betCount={recentBets.length}
+          strategyCount={strategies.length}
+        />
 
-          {/* Main Content */}
-          <div className="lg:col-span-3 space-y-8">
-            {!user && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 shadow-lg">
-                <div className="flex items-center">
-                  <AlertCircle className="h-6 w-6 text-yellow-600 mr-3" />
-                  <div>
-                    <h3 className="text-lg font-medium text-yellow-800">Sign in Required</h3>
-                    <p className="text-yellow-700 mt-1">Please sign in to view your betting analytics.</p>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <OverviewTab
+            recentBets={recentBets}
+            chartData={chartData}
+            selectedTimePeriod={filters.timeframe === '7d' ? '7 days' :
+                               filters.timeframe === '30d' ? '30 days' :
+                               filters.timeframe === '90d' ? '3 months' :
+                               filters.timeframe === 'ytd' ? 'This Year' : 'All time'}
+            onTimePeriodChange={(period) => {
+              const timeframe = period === '7 days' ? '7d' :
+                               period === '30 days' ? '30d' :
+                               period === '3 months' ? '90d' :
+                               period === 'This Year' ? 'ytd' : 'all'
+              updateFilters({...filters, timeframe})
+            }}
+            totalProfit={analyticsData?.metrics?.totalProfit || 0}
+            isLoading={analyticsLoading}
+          />
+        )}
 
-            {activeView === 'overview' && (
-              <>
-                {/* Performance Metrics */}
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 mb-6">Key Metrics</h2>
-                  {isLoading ? (
-                    <StatsSkeleton />
-                  ) : error ? (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 shadow-lg">
-                      <div className="flex items-center">
-                        <AlertCircle className="h-6 w-6 text-red-600 mr-3" />
-                        <div>
-                          <h3 className="text-lg font-medium text-red-800">Error Loading Data</h3>
-                          <p className="text-red-700 mt-1">{error}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : analyticsData && analyticsData.metrics.totalBets > 0 ? (
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                      {/* ROI Card */}
-                      <div className="group relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 shadow-lg">
-                            <TrendingUp className="h-6 w-6 text-white" />
-                          </div>
-                          {isPro && <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Real-time</div>}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-600 mb-1">ROI</p>
-                          <p className={`text-2xl font-bold mb-2 ${analyticsData.metrics.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {analyticsData.metrics.roi.toFixed(2)}%
-                          </p>
-                          <p className="text-xs text-slate-500">Return on investment</p>
-                        </div>
-                      </div>
+        {activeTab === 'bets' && (
+          <BetsTab
+            bets={recentBets.map(bet => ({
+              ...bet,
+              odds: bet.odds.toString(),
+              status: bet.status === 'cancelled' ? 'void' as const : bet.status as 'pending' | 'won' | 'lost' | 'void'
+            }))}
+            totalBets={metrics.totalBets}
+            isLoading={loadingMoreBets}
+            hasMore={hasMoreBets}
+            onLoadMore={loadMoreBets}
+            onSort={(field, direction) => {
+              // TODO: Implement sorting
+              console.log('Sort:', field, direction)
+            }}
+          />
+        )}
 
-                      {/* Win Rate Card */}
-                      <div className="group relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
-                            <CheckCircle className="h-6 w-6 text-white" />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-600 mb-1">Win Rate</p>
-                          <p className="text-2xl font-bold text-slate-900 mb-2">{analyticsData.metrics.winRate.toFixed(1)}%</p>
-                          <p className="text-xs text-slate-500">Percentage of bets won</p>
-                        </div>
-                      </div>
+        {activeTab === 'analytics' && (
+          <AnalyticsTabComponent
+            data={transformedAnalytics}
+            isPro={userProfile.isPro}
+            isLoading={false}
+          />
+        )}
 
-                      {/* Total Profit Card */}
-                      <div className="group relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={`p-3 rounded-2xl shadow-lg ${analyticsData.metrics.totalProfit >= 0 ? 'bg-gradient-to-br from-green-500 to-emerald-500' : 'bg-gradient-to-br from-red-500 to-rose-500'}`}>
-                            <ArrowUpRight className="h-6 w-6 text-white" />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-600 mb-1">Total Profit</p>
-                          <p className={`text-2xl font-bold mb-2 ${analyticsData.metrics.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            ${analyticsData.metrics.totalProfit.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-slate-500">Net profit/loss</p>
-                        </div>
-                      </div>
-
-                      {/* Total Bets Card */}
-                      <div className="group relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-500 shadow-lg">
-                            <BarChart3 className="h-6 w-6 text-white" />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-600 mb-1">Total Bets</p>
-                          <p className="text-2xl font-bold text-slate-900 mb-2">{analyticsData.metrics.totalBets}</p>
-                          <p className="text-xs text-slate-500">{analyticsData.metrics.currentStreak > 0 ? `${analyticsData.metrics.currentStreak} ${analyticsData.metrics.streakType} streak` : 'No active streak'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center shadow-lg">
-                      <TrueSharpShield className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <h3 className="text-lg font-medium text-slate-900 mb-2">No Betting Data Found</h3>
-                      <p className="text-slate-600 mb-4">
-                        {user ? "Connect your sportsbook accounts or add some sample bets to start tracking your betting performance." : "Sign in to view your betting analytics."}
-                      </p>
-                      {user && (
-                        <div className="flex justify-center space-x-4">
-                          <button 
-                            onClick={() => window.location.href = '/settings'}
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            Connect Sportsbook
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = '/bets'}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                          >
-                            Add Manual Bet
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Charts Section */}
-                {analyticsData.metrics.totalBets > 0 && (
-                  <div className="space-y-8">
-                    <AdvancedProfitChart
-                      data={mockProfitData}
-                      isPro={isPro}
-                      timeframe={selectedTimeframe}
-                      onTimeframeChange={handleTimeframeChange}
-                    />
-                  </div>
-                )}
-
-                {/* Sport Breakdown */}
-                {analyticsData.sportBreakdown.length > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-lg font-semibold text-slate-900">Performance by Sport</h2>
-                      <button
-                        onClick={isPro ? () => setActiveView('advanced') : handleProFeatureClick}
-                        className="text-sm text-blue-600 hover:text-blue-500 flex items-center"
-                      >
-                        View Advanced <ChevronRight className="h-4 w-4 ml-1" />
-                        {!isPro && <Lock className="h-3 w-3 ml-1" />}
-                      </button>
-                    </div>
-                    <div className="bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-2xl shadow-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-200/50">
-                          <thead className="bg-slate-50/50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                Sport
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                Total Bets
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                Win Rate
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                ROI
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                Profit
-                              </th>
-                              {isPro && (
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  CLV
-                                </th>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white/50 divide-y divide-slate-200/50">
-                            {analyticsData.sportBreakdown.map((sport) => (
-                              <tr key={sport.sport} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="text-sm font-medium text-slate-900">{sport.sport}</span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                  {sport.bets}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                  {sport.winRate.toFixed(1)}%
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <span className={sport.roi >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                    {sport.roi.toFixed(1)}%
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <span className={sport.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                    ${sport.profit.toFixed(2)}
-                                  </span>
-                                </td>
-                                {isPro && (
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                                    {sport.clv ? `+${sport.clv.toFixed(3)}` : 'N/A'}
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {activeView === 'bets' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center">
-                    <List className="h-5 w-5 mr-2" />
-                    All Bets Data
-                  </h2>
-                  <div className="flex items-center space-x-2 text-sm text-slate-500">
-                    <span>Raw data from Supabase</span>
-                    {isLoading && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    )}
-                  </div>
-                </div>
-                
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl p-6 shadow-lg mb-6">
-                    <div className="flex items-center">
-                      <AlertCircle className="h-6 w-6 text-red-600 mr-3" />
-                      <div>
-                        <h3 className="text-lg font-medium text-red-800">Error Loading Bets</h3>
-                        <p className="text-red-700 mt-1">{error}</p>
-                        <pre className="text-xs text-red-600 mt-2 bg-red-100 p-2 rounded overflow-x-auto">
-                          {JSON.stringify(error, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Debug Information */}
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-lg mb-6">
-                  <h3 className="text-sm font-medium text-blue-800 mb-2">Debug Information</h3>
-                  <div className="text-xs text-blue-700 space-y-1">
-                    <p>User: {user ? 'Authenticated' : 'Not authenticated'}</p>
-                    <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
-                    <p>Error: {error ? 'Yes' : 'No'}</p>
-                    <p>Bets Array: {bets ? `${bets.length} items` : 'Undefined/null'}</p>
-                    <p>Analytics Data: {analyticsData ? 'Available' : 'Not available'}</p>
-                    <p>Pro Mode: {isPro ? 'Enabled' : 'Disabled'}</p>
-                  </div>
-                  {bets && bets.length > 0 && (
-                    <details className="mt-3">
-                      <summary className="text-xs text-blue-800 cursor-pointer">View First Bet Raw Data</summary>
-                      <pre className="text-xs text-blue-600 mt-2 bg-blue-100 p-2 rounded overflow-x-auto max-h-40">
-                        {JSON.stringify(bets[0], null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-
-                <BetsTable 
-                  bets={bets || []} 
-                  isPro={isPro} 
-                  isLoading={isLoading}
-                />
-              </div>
-            )}
-
-            {activeView === 'advanced' && isPro && (
-              <div className="space-y-8">
-                <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
-                  <Crown className="h-5 w-5 text-yellow-500 mr-2" />
-                  Advanced Analytics
-                </h2>
-                
-                <CLVChart data={mockCLVData} isPro={isPro} />
-                
-                <HeatMapChart
-                  data={[]} // Add mock heat map data
-                  isPro={isPro}
-                  metric="roi"
-                  onMetricChange={() => {}}
-                />
-                
-                <CorrelationMatrix
-                  data={[]} // Add mock correlation data
-                  isPro={isPro}
-                  selectedMetrics={['Odds', 'Win Rate', 'ROI']}
-                  onMetricsChange={() => {}}
-                />
-              </div>
-            )}
-
-            {activeView === 'reports' && isPro && (
-              <div className="space-y-8">
-                <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
-                  <Crown className="h-5 w-5 text-yellow-500 mr-2" />
-                  Custom Reports
-                </h2>
-                
-                <CustomReportBuilder
-                  isPro={isPro}
-                  onReportGenerate={() => {}}
-                  savedTemplates={[]}
-                  onSaveTemplate={() => {}}
-                />
-                
-                <ExportTools
-                  isPro={isPro}
-                  reportData={{}}
-                  onExport={() => {}}
-                />
-              </div>
-            )}
-
-            {/* Pro Upgrade Banner - Only show if not Pro */}
-            {!isPro && (
-              <div className="bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 rounded-3xl p-8 text-white shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-4">
-                      <Crown className="h-8 w-8 text-yellow-300 mr-3" />
-                      <h3 className="text-2xl font-bold">Unlock Advanced Analytics</h3>
-                    </div>
-                    <p className="text-blue-100 mb-6 max-w-2xl">
-                      Get unlimited filtering, custom date ranges, and professional-grade analytics tools to maximize your edge.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 mb-6 max-w-2xl">
-                      {proFeatures.slice(0, 4).map((feature, index) => (
-                        <div key={index} className="flex items-center">
-                          <TrueSharpShield className="h-4 w-4 mr-2" variant="light" />
-                          <span className="text-sm text-blue-100">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="mb-4">
-                      <div className="text-4xl font-bold mb-1">$19.99</div>
-                      <div className="text-blue-200 text-sm">/month</div>
-                    </div>
-                    <button
-                      onClick={() => setIsPro(true)}
-                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-blue-600 bg-white hover:bg-blue-50 transition-all duration-200 hover:scale-105 shadow-lg"
-                    >
-                      Try Pro Mode
-                      <ArrowUpRight className="h-5 w-5 ml-2" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Pro Upgrade Modal */}
-        {showProUpgrade && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <Crown className="h-6 w-6 text-blue-600" />
-                    <h3 className="text-lg font-medium text-slate-900">Upgrade to Pro</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowProUpgrade(false)}
-                    className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-                <div className="mb-6">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <TrueSharpShield className="h-5 w-5" variant="light" />
-                    <span className="text-sm font-medium text-slate-900">This feature requires TrueSharp Pro</span>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-4">
-                    Upgrade now for unlimited analytics and advanced features that help you maximize your betting edge.
-                  </p>
-                  <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-4 border border-slate-200/50">
-                    <h4 className="text-sm font-medium text-slate-900 mb-3">What you'll get:</h4>
-                    <div className="space-y-2">
-                      {proFeatures.slice(0, 4).map((feature, index) => (
-                        <div key={index} className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                          <span className="text-xs text-slate-700">{feature}</span>
-                        </div>
-                      ))}
-                      <div className="text-xs text-slate-500 mt-2">+ {proFeatures.length - 4} more features</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={() => setShowProUpgrade(false)}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                  >
-                    Maybe Later
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsPro(true);
-                      setShowProUpgrade(false);
-                    }}
-                    className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    Try Pro Mode
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {activeTab === 'strategies' && (
+          <StrategiesTab
+            strategies={strategies}
+            isLoading={strategiesLoading}
+            currentFilters={localFilters}
+            onCreateStrategy={handleCreateStrategy}
+            onUpdateStrategy={handleUpdateStrategy}
+            onDeleteStrategy={handleDeleteStrategy}
+            onFiltersChange={handleFiltersChange}
+          />
         )}
       </div>
     </DashboardLayout>
+    </ProtectedRoute>
   )
 }

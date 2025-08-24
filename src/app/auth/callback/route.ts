@@ -1,4 +1,4 @@
-import { createRouteHandlerSupabaseClient } from '@/lib/auth/supabaseServer'
+import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') || '/dashboard'
 
   if (code) {
-    const { supabase } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createServerSupabaseClient(request)
     
     try {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -24,39 +24,8 @@ export async function GET(request: NextRequest) {
       }
 
       if (data.user) {
-        // Update user profile to mark email as verified
-        try {
-          await supabase
-            .from('profiles')
-            .update({ 
-              email_verified: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', data.user.id)
-        } catch (profileError) {
-          console.error('Profile update error:', profileError)
-          // Don't fail the callback if profile update fails
-        }
-
-        // Log email verification event
-        try {
-          await supabase
-            .from('user_events')
-            .insert([
-              {
-                user_id: data.user.id,
-                event_type: 'email_verified',
-                timestamp: new Date().toISOString(),
-                ip_address: request.headers.get('x-forwarded-for') || 
-                           request.headers.get('x-real-ip') || 
-                           'unknown',
-                user_agent: request.headers.get('user-agent') || 'unknown'
-              }
-            ])
-        } catch (eventError) {
-          console.error('Event logging error:', eventError)
-          // Don't fail the callback if event logging fails
-        }
+        // Profile update not needed - email verification is handled by Supabase auth
+        console.log('✅ Email verification successful for user:', data.user.id)
       }
 
       // Successful verification - redirect to next page

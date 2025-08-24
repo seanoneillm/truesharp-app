@@ -1,0 +1,567 @@
+"use client"
+
+import React, { useState, useEffect } from 'react'
+import { 
+  CreditCard, 
+  Download, 
+  Calendar,
+  DollarSign,
+  Settings,
+  ArrowLeft,
+  ExternalLink,
+  Shield,
+  AlertTriangle,
+  Check,
+  RefreshCw,
+  Clock,
+  Receipt,
+  FileText,
+  Wallet,
+  Bell
+} from 'lucide-react'
+import { BillingHistory } from '@/components/subscriptions/billing-history'
+import Link from 'next/link'
+
+// Shield SVG Component
+const TrueSharpShield = ({ className = "h-6 w-6", variant = "default" }) => (
+  <svg className={className} viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id={`shieldGradient-${variant}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor={variant === "light" ? "#3b82f6" : "#1e40af"} />
+        <stop offset="100%" stopColor={variant === "light" ? "#1e40af" : "#1e3a8a"} />
+      </linearGradient>
+    </defs>
+    <path 
+      d="M50 5 L80 20 L80 50 Q80 85 50 110 Q20 85 20 50 L20 20 Z" 
+      fill={`url(#shieldGradient-${variant})`} 
+      stroke={variant === "light" ? "#60a5fa" : "#3b82f6"} 
+      strokeWidth="2"
+    />
+    <path 
+      d="M35 45 L45 55 L65 35" 
+      stroke="white" 
+      strokeWidth="4" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      fill="none"
+    />
+  </svg>
+)
+
+export default function BillingManagementPage() {
+  const [activeTab, setActiveTab] = useState<'overview' | 'payment-methods' | 'history' | 'settings'>('overview')
+  const [isLoading, setIsLoading] = useState(true)
+  const [billingData, setBillingData] = useState({
+    paymentMethods: [],
+    upcomingCharges: [],
+    billingHistory: [],
+    preferences: {}
+  })
+
+  // Mock data - replace with actual API calls
+  useEffect(() => {
+    const loadBillingData = async () => {
+      setIsLoading(true)
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      setBillingData({
+        paymentMethods: [
+          {
+            id: '1',
+            type: 'card',
+            brand: 'visa',
+            last4: '4242',
+            exp_month: 12,
+            exp_year: 2027,
+            is_default: true
+          }
+        ],
+        upcomingCharges: [
+          {
+            id: '1',
+            strategy_name: 'NFL Favorites',
+            seller_username: 'profootball_expert',
+            amount: 29.99,
+            next_billing_date: '2024-02-15',
+            frequency: 'monthly'
+          },
+          {
+            id: '2',
+            strategy_name: 'NBA Props Master',
+            seller_username: 'basketball_analytics',
+            amount: 49.99,
+            next_billing_date: '2024-02-18',
+            frequency: 'monthly'
+          }
+        ],
+        billingHistory: [],
+        preferences: {
+          email_receipts: true,
+          billing_notifications: true,
+          auto_pay: true
+        }
+      })
+      setIsLoading(false)
+    }
+
+    loadBillingData()
+  }, [])
+
+  const handleManagePaymentMethod = () => {
+    // Open Stripe Customer Portal
+    window.open('https://billing.stripe.com/session/live_...', '_blank')
+  }
+
+  const handleDownloadReceipts = () => {
+    // Download all receipts
+    console.log('Downloading all receipts...')
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
+
+  if (isLoading) {
+    return <BillingManagementLoading />
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 rounded-2xl p-8 text-white shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-2">
+                  <Link
+                    href="/subscriptions"
+                    className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Link>
+                  <TrueSharpShield className="h-8 w-8" variant="light" />
+                  <h1 className="text-3xl font-bold">Billing Management</h1>
+                </div>
+                <p className="text-blue-100">Manage your payment methods and billing preferences</p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={handleDownloadReceipts}
+                  className="inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-xl text-white bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Receipts
+                </button>
+                <button
+                  onClick={handleManagePaymentMethod}
+                  className="inline-flex items-center px-4 py-2 bg-white/20 text-white font-medium rounded-xl hover:bg-white/30 transition-all duration-200 backdrop-blur-sm"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Stripe Portal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-8">
+          <div className="flex space-x-2 bg-white/70 backdrop-blur-sm border border-slate-200/50 p-2 rounded-2xl w-fit shadow-lg">
+            {[
+              { key: 'overview', label: 'Overview', icon: DollarSign },
+              { key: 'payment-methods', label: 'Payment Methods', icon: CreditCard },
+              { key: 'history', label: 'History', icon: Receipt },
+              { key: 'settings', label: 'Settings', icon: Settings }
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key as any)}
+                className={`flex items-center px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  activeTab === key
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className="h-4 w-4 mr-2" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Current Month Summary */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Month Summary</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 w-fit mx-auto mb-3 shadow-lg">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(billingData.upcomingCharges.reduce((sum, charge) => sum + charge.amount, 0))}
+                  </p>
+                  <p className="text-sm text-gray-600">Monthly Total</p>
+                </div>
+
+                <div className="text-center">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 w-fit mx-auto mb-3 shadow-lg">
+                    <Check className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{billingData.upcomingCharges.length}</p>
+                  <p className="text-sm text-gray-600">Active Subscriptions</p>
+                </div>
+
+                <div className="text-center">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 w-fit mx-auto mb-3 shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {billingData.upcomingCharges.length > 0 
+                      ? new Date(Math.min(...billingData.upcomingCharges.map(c => new Date(c.next_billing_date).getTime()))).toLocaleDateString()
+                      : 'N/A'
+                    }
+                  </p>
+                  <p className="text-sm text-gray-600">Next Charge</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Method Overview */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Payment Method</h3>
+                <button
+                  onClick={handleManagePaymentMethod}
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage
+                </button>
+              </div>
+
+              {billingData.paymentMethods.length > 0 ? (
+                <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="p-3 rounded-lg bg-gray-50">
+                    <CreditCard className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      •••• •••• •••• {billingData.paymentMethods[0].last4}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Expires {billingData.paymentMethods[0].exp_month}/{billingData.paymentMethods[0].exp_year}
+                    </p>
+                  </div>
+                  {billingData.paymentMethods[0].is_default && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      <Check className="h-3 w-3 mr-1" />
+                      Default
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No payment methods on file</p>
+                  <button
+                    onClick={handleManagePaymentMethod}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add Payment Method
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Upcoming Charges */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Charges</h3>
+
+              {billingData.upcomingCharges.length > 0 ? (
+                <div className="space-y-4">
+                  {billingData.upcomingCharges.map((charge) => (
+                    <div key={charge.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-2 rounded-lg bg-blue-50">
+                          <Wallet className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            @{charge.seller_username} - {charge.strategy_name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Next billing: {new Date(charge.next_billing_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900">{formatCurrency(charge.amount)}</p>
+                        <p className="text-sm text-gray-500 capitalize">{charge.frequency}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-4 mt-6 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-gray-900">Total Monthly</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {formatCurrency(billingData.upcomingCharges.reduce((sum, charge) => sum + charge.amount, 0))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No upcoming charges</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'payment-methods' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Payment Methods</h3>
+                <button
+                  onClick={handleManagePaymentMethod}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Add New Method
+                </button>
+              </div>
+
+              {billingData.paymentMethods.length > 0 ? (
+                <div className="space-y-4">
+                  {billingData.paymentMethods.map((method) => (
+                    <div key={method.id} className="flex items-center justify-between p-6 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-3 rounded-lg bg-gray-50">
+                          <CreditCard className="h-6 w-6 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            •••• •••• •••• {method.last4}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {method.brand?.toUpperCase()} • Expires {method.exp_month}/{method.exp_year}
+                          </p>
+                        </div>
+                        {method.is_default && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            <Check className="h-3 w-3 mr-1" />
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleManagePaymentMethod}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Manage
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CreditCard className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No payment methods</h4>
+                  <p className="text-gray-600 mb-6">Add a payment method to manage your subscriptions</p>
+                  <button
+                    onClick={handleManagePaymentMethod}
+                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Add Payment Method
+                  </button>
+                </div>
+              )}
+
+              {/* Security Notice */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">Secure Payment Processing</p>
+                    <p>
+                      All payment information is securely processed by Stripe. TrueSharp never stores your 
+                      complete card details on our servers.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <BillingHistory
+            transactions={[]} // Pass actual billing history data
+            isLoading={false}
+            hasMore={false}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Billing Preferences</h3>
+
+              <div className="space-y-6">
+                {/* Email Receipts */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Email Receipts</h4>
+                    <p className="text-sm text-gray-600">Receive email receipts for all payments</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked={billingData.preferences.email_receipts} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {/* Billing Notifications */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Billing Notifications</h4>
+                    <p className="text-sm text-gray-600">Get notified before upcoming charges</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked={billingData.preferences.billing_notifications} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {/* Auto Pay */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Automatic Payments</h4>
+                    <p className="text-sm text-gray-600">Automatically pay subscription charges</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked={billingData.preferences.auto_pay} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Portal Access */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Portal</h3>
+              <p className="text-gray-600 mb-4">
+                Access your Stripe customer portal to manage payment methods, view detailed billing history, 
+                and update billing information.
+              </p>
+              <button
+                onClick={handleManagePaymentMethod}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Customer Portal
+              </button>
+            </div>
+
+            {/* Support */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Need Help?</h3>
+              <p className="text-gray-600 mb-4">
+                If you have questions about billing or need assistance with payment issues, 
+                our support team is here to help.
+              </p>
+              <div className="flex items-center space-x-4">
+                <Link
+                  href="/help"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Help Center
+                </Link>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Contact Support
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BillingManagementLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Loading */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 rounded-2xl p-8 text-white shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="h-8 w-8 bg-white/20 rounded animate-pulse" />
+                  <div className="h-8 w-8 bg-white/20 rounded animate-pulse" />
+                  <div className="h-8 bg-white/20 rounded w-56 animate-pulse" />
+                </div>
+                <div className="h-5 bg-white/20 rounded w-80 animate-pulse" />
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="h-10 bg-white/20 rounded-xl w-32 animate-pulse" />
+                <div className="h-10 bg-white/20 rounded-xl w-28 animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Loading */}
+        <div className="mb-8">
+          <div className="flex space-x-2 bg-white/70 backdrop-blur-sm border border-slate-200/50 p-2 rounded-2xl w-fit shadow-lg">
+            {[...Array(4)].map((_, index) => (
+              <div
+                key={index}
+                className={`h-12 rounded-xl ${
+                  index === 0 ? 'bg-blue-200 w-32' : 'bg-gray-200 w-36'
+                } animate-pulse`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Content Loading */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div className="h-6 bg-gray-200 rounded w-48 mb-4 animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="text-center">
+                  <div className="w-12 h-12 bg-gray-200 rounded-xl mx-auto mb-3 animate-pulse" />
+                  <div className="h-8 bg-gray-200 rounded w-20 mx-auto mb-2 animate-pulse" />
+                  <div className="h-4 bg-gray-200 rounded w-24 mx-auto animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
