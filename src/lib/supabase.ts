@@ -40,8 +40,8 @@ export async function createServerClient() {
 }
 
 // Alternative server client for API routes with explicit request
-export function createServerClientFromRequest(request: Request) {
-  const { createServerClient: createSSRClient } = require('@supabase/ssr')
+export async function createServerClientFromRequest(request: Request) {
+  const { createServerClient: createSSRClient } = await import('@supabase/ssr')
   
   // Extract cookies from request headers
   const cookieHeader = request.headers.get('cookie') || ''
@@ -69,6 +69,22 @@ export function createServerClientFromRequest(request: Request) {
           // No-op for API routes
         },
       },
+    }
+  )
+}
+
+// Service role client for admin operations (bypasses RLS)
+export async function createServiceRoleClient() {
+  const { createClient } = await import('@supabase/supabase-js')
+  
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     }
   )
 }
@@ -585,6 +601,32 @@ export type Database = {
                     created_at?: string
                   }
                 }
+              posts: {
+                Row: {
+                  id: string
+                  user_id: string
+                  content: string
+                  image_url: string | null
+                  created_at: string
+                  updated_at: string
+                }
+                Insert: {
+                  id?: string
+                  user_id: string
+                  content: string
+                  image_url?: string | null
+                  created_at?: string
+                  updated_at?: string
+                }
+                Update: {
+                  id?: string
+                  user_id?: string
+                  content?: string
+                  image_url?: string | null
+                  created_at?: string
+                  updated_at?: string
+                }
               }
             }
           }
+        }

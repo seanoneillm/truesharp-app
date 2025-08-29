@@ -7,8 +7,15 @@ import type { Database } from './supabase'
 // For API routes and server components
 export const createServerSupabaseClient = async (request?: NextRequest) => {
   if (request) {
-    // For API routes - extract JWT and use direct authorization
+    // For API routes - try multiple authentication methods
+    console.log('🔄 Creating server Supabase client for API route')
+    
+    // Debug: Log all available cookies (RequestCookies doesn't have entries/forEach)
+    console.log('🍪 Cookies available:', request.cookies.size, 'total cookies')
+    
+    // Method 1: Try to extract JWT from auth-token cookie
     const authTokenCookie = request.cookies.get('sb-trsogafrxpptszxydycn-auth-token')?.value;
+    console.log('Auth token cookie found:', !!authTokenCookie)
     
     if (authTokenCookie) {
       // Extract JWT from array format
@@ -18,7 +25,7 @@ export const createServerSupabaseClient = async (request?: NextRequest) => {
           const parsed = JSON.parse(authTokenCookie);
           if (Array.isArray(parsed) && parsed.length > 0) {
             jwt = parsed[0];
-            console.log(`🚀 Using direct JWT authorization for API route`);
+            console.log('🚀 Using direct JWT authorization for API route');
             
             // Create client with direct Authorization header
             const { createClient } = await import('@supabase/supabase-js');
@@ -35,7 +42,39 @@ export const createServerSupabaseClient = async (request?: NextRequest) => {
             );
           }
         } catch (e) {
-          console.log(`⚠️ Failed to parse JWT from cookie, falling back to cookie method`);
+          console.log('⚠️ Failed to parse JWT from cookie, falling back to cookie method');
+        }
+      } else if (typeof jwt === 'string' && jwt.length > 100) {
+        // Direct JWT string - validate it first
+        try {
+          // Simple JWT validation - check if it has 3 parts and isn't expired
+          const parts = jwt.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]))
+            const now = Math.floor(Date.now() / 1000)
+            
+            if (payload.exp && payload.exp > now) {
+              console.log('🚀 Using validated JWT string authorization for API route');
+              const { createClient } = await import('@supabase/supabase-js');
+              return createClient<Database>(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${jwt}`
+                    }
+                  }
+                }
+              );
+            } else {
+              console.log('⚠️ JWT token expired, falling back to cookie method');
+            }
+          } else {
+            console.log('⚠️ Invalid JWT format, falling back to cookie method');
+          }
+        } catch (e) {
+          console.log('⚠️ JWT validation failed, falling back to cookie method');
         }
       }
     }

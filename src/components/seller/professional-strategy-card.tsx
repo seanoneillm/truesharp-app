@@ -16,12 +16,16 @@ import {
   AlertTriangle,
   Eye,
   Globe,
-  Lock
+  Lock,
+  Share2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
+import { OpenBetsDisplay } from '@/components/shared/open-bets-display'
+import { OpenBet } from '@/lib/queries/open-bets'
+import ShareStrategyModal from '@/components/strategies/ShareStrategyModal'
 
 export interface StrategyData {
   id: string
@@ -41,6 +45,9 @@ export interface StrategyData {
   created_at: string
   updated_at: string
   start_date?: string // Start date for strategy filtering
+  open_bets?: OpenBet[] // Open bets for this strategy
+  open_bets_count?: number
+  total_potential_profit?: number
 }
 
 interface ProfessionalStrategyCardProps {
@@ -65,6 +72,7 @@ const ProfessionalStrategyCardComponent = ({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showMonetizationModal, setShowMonetizationModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   
   const [editedStrategy, setEditedStrategy] = useState<Partial<StrategyData>>({
     name: strategy.name,
@@ -234,6 +242,16 @@ const ProfessionalStrategyCardComponent = ({
               ) : (
                 <>
                   <Button
+                    onClick={() => setShowShareModal(true)}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading || !strategy.monetized}
+                    className="bg-blue-50 border-blue-300 hover:bg-blue-100"
+                  >
+                    <Share2 className="h-4 w-4 mr-1" />
+                    Share
+                  </Button>
+                  <Button
                     onClick={handleEdit}
                     variant="outline"
                     size="sm"
@@ -307,6 +325,18 @@ const ProfessionalStrategyCardComponent = ({
             </div>
           </div>
         </div>
+
+        {/* Open Bets Section */}
+        {strategy.open_bets && strategy.open_bets.length > 0 && (
+          <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 border-t border-gray-100">
+            <OpenBetsDisplay 
+              bets={strategy.open_bets} 
+              title="Current Open Bets"
+              maxBets={3}
+              compact={false}
+            />
+          </div>
+        )}
 
         {/* Monetization & Pricing */}
         <div className="p-6 bg-gray-50 border-t border-gray-100">
@@ -618,6 +648,14 @@ const ProfessionalStrategyCardComponent = ({
           </div>
         </div>
       </Modal>
+
+      {/* Share Strategy Modal */}
+      <ShareStrategyModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        strategyId={strategy.id}
+        openBets={strategy.open_bets || []}
+      />
     </>
   )
 }

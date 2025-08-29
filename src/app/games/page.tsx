@@ -244,6 +244,47 @@ function GamesPageContent() {
     return acc;
   }, {} as Record<string, number>);
 
+  // Season detection helpers (including preseason and playoffs)
+  const isInSeason = (league: LeagueType): boolean => {
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    
+    const seasonMap: Record<LeagueType, number[]> = {
+      'MLB': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // February-November (spring training + playoffs)
+      'NBA': [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7], // September-July (preseason + playoffs)
+      'NFL': [7, 8, 9, 10, 11, 12, 1, 2, 3], // July-March (preseason + playoffs)
+      'NHL': [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7], // September-July (preseason + playoffs)
+      'NCAAF': [7, 8, 9, 10, 11, 12, 1, 2], // July-February (preseason + bowl games/playoffs)
+      'NCAAB': [10, 11, 12, 1, 2, 3, 4, 5], // October-May (preseason + March Madness)
+      'MLS': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // Year-round (preseason + MLS Cup)
+      'Champions League': [8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7] // August-July (qualifiers + final)
+    };
+    
+    return seasonMap[league]?.includes(month) ?? false;
+  };
+
+  const getSeasonMessage = (league: LeagueType, date: Date | null): string => {
+    const inSeason = isInSeason(league);
+    const dateStr = date ? formatDateHeader(date).toLowerCase() : 'this date';
+    
+    if (inSeason) {
+      return `No ${league} games scheduled for ${dateStr}. Games may be scheduled for other dates.`;
+    }
+    
+    const seasonInfo: Record<LeagueType, string> = {
+      'NFL': 'NFL season runs July-March (preseason through playoffs)',
+      'NBA': 'NBA season runs September-July (preseason through playoffs)', 
+      'NHL': 'NHL season runs September-July (preseason through playoffs)',
+      'NCAAF': 'College Football season runs July-February (preseason through bowl games)',
+      'NCAAB': 'College Basketball season runs October-May (preseason through March Madness)',
+      'MLB': 'MLB season runs February-November (spring training through World Series)',
+      'MLS': 'MLS season runs year-round (preseason through MLS Cup)',
+      'Champions League': 'Champions League runs August-July (qualifiers through final)'
+    };
+    
+    return `${league} is currently off-season. ${seasonInfo[league]}.`;
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -299,6 +340,10 @@ function GamesPageContent() {
           onLeagueChange={setActiveLeague}
           availableLeagues={availableLeagues}
           gameCounts={gameCounts}
+          seasonStatus={availableLeagues.reduce((acc, league) => {
+            acc[league] = isInSeason(league);
+            return acc;
+          }, {} as Record<LeagueType, boolean>)}
         />
 
         {/* Games List */}
@@ -317,17 +362,25 @@ function GamesPageContent() {
               <Calendar className="w-16 h-16 text-slate-300" />
               <div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                  No {activeLeague} Games Today
+                  No {activeLeague} Games Available
                 </h3>
                 <p className="text-slate-600 mb-4">
-                  There are no {activeLeague} games scheduled for {selectedDate ? formatDateHeader(selectedDate).toLowerCase() : 'today'}.
+                  {getSeasonMessage(activeLeague, selectedDate)}
                 </p>
-                <button
-                  onClick={handleManualFetch}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Fetch Latest Odds
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <button
+                    onClick={handleManualFetch}
+                    disabled={isLoading || isFetching}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {isFetching ? 'Fetching...' : 'Check for Games'}
+                  </button>
+                  {!isInSeason(activeLeague) && (
+                    <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                      💡 Try MLB or MLS for current games
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

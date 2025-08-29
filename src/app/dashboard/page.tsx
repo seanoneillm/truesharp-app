@@ -26,6 +26,11 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🏠 Dashboard - Current user:', user?.id || 'No user', 'Email:', user?.email || 'No email')
+  }, [user])
+
   useEffect(() => {
     async function fetchProfile() {
       if (!user) {

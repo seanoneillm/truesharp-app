@@ -34,6 +34,7 @@ interface StrategyData {
   is_verified: boolean
   verification_status: string
   rank: number | null
+  leaderboard_score?: number // Composite algorithm score
   last_bet_date: string | null
   last_updated: string
   created_at: string

@@ -56,6 +56,13 @@ export const navigationRoutes: NavigationRoute[] = [
     icon: 'MessageSquare',
     description: 'Social community features',
     requiresAuth: true
+  },
+  {
+    name: 'Add to Strategies',
+    href: '/add-bets-to-strategies',
+    icon: 'Plus',
+    description: 'Add pending bets to strategies',
+    requiresAuth: true
   }
 ]
 

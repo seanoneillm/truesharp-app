@@ -6,13 +6,16 @@ import { BetsTab } from '@/components/analytics/bets-tab'
 import { FilterOptions, FilterSystem } from '@/components/analytics/filter-system'
 import { OverviewTab } from '@/components/analytics/overview-tab'
 import { ProUpgradePrompt } from '@/components/analytics/pro-upgrade-prompt'
+import { SharpSportsIntegration } from '@/components/analytics/sharpsports-integration'
 import { StrategiesTab } from '@/components/analytics/strategies-tab'
 import { AnalyticsTab, TabNavigation } from '@/components/analytics/tab-navigation'
 import ProtectedRoute from '@/components/auth/protected-route'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { useAnalytics, type Bet } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { RefreshCw, Link } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 // Helper functions for enhanced analytics
@@ -62,6 +65,28 @@ function calculateTrends(monthlyData: { roi: number }[]): { trend: 'up' | 'down'
 interface UserProfile {
   username: string
   isPro: boolean
+}
+
+// Utility function to determine pro status from various formats
+function determineProStatus(profile: any): boolean {
+  if (!profile) return false
+  
+  // Check various possible pro status fields and formats
+  const proFields = [
+    profile.pro,
+    profile.is_pro, 
+    profile.isPro,
+    profile.is_premium,
+    profile.premium
+  ]
+  
+  for (const field of proFields) {
+    if (field === 'yes' || field === true || field === 1 || field === '1') {
+      return true
+    }
+  }
+  
+  return false
 }
 
 // Using Bet interface from the analytics hook
@@ -121,19 +146,9 @@ export default function AnalyticsPage() {
   const [loadingMoreBets, setLoadingMoreBets] = useState(false)
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [strategiesLoading, setStrategiesLoading] = useState(false)
-  
-  // Get userId from URL parameters
-  const [urlUserId, setUrlUserId] = useState<string | null>(null)
-  
-  useEffect(() => {
-    // Extract userId from URL parameters
-    const searchParams = new URLSearchParams(window.location.search)
-    const userIdParam = searchParams.get('userId')
-    if (userIdParam) {
-      setUrlUserId(userIdParam)
-      console.log('Found userId in URL:', userIdParam.substring(0, 8) + '...')
-    }
-  }, [])
+  const [isRefreshingBets, setIsRefreshingBets] = useState(false)
+  const [isLinkingSportsbooks, setIsLinkingSportsbooks] = useState(false)
+  const [refreshResult, setRefreshResult] = useState<string | null>(null)
   
   // Local filter state to prevent resets
   const [localFilters, setLocalFilters] = useState<FilterOptions>(defaultFilters)
@@ -148,43 +163,198 @@ export default function AnalyticsPage() {
     totalBets 
   } = useAnalytics(user, userProfile?.isPro || false)
 
-  // TEMPORARY: Development mode to show analytics without auth - FORCED UPDATE
-  const isDev = process.env.NODE_ENV === 'development'
-  const DEV_USER_ID = '28991397-dae7-42e8-a822-0dffc6ff49b7'
-
+  // Improved user profile fetching with better error handling
   useEffect(() => {
-    console.log('🔥 Analytics useEffect triggered!')
-    console.log('📊 Analytics useEffect - authLoading:', authLoading, 'user:', user?.id || 'no user', 'isDev:', isDev, 'urlUserId:', urlUserId?.substring(0, 8) + '...' || 'none')
-    
-    // In development mode, skip auth check
-    if (isDev) {
-      console.log('🚀 Development mode: set default profile')
-      setUserProfile({
-        username: 'DevUser',
-        isPro: true // Force Pro status in development for testing
-      })
-      
-      // Also fetch strategies in development mode using URL userId if available
-      if (urlUserId) {
-        console.log('🎯 Development mode: fetching strategies for URL userId:', urlUserId)
-        fetchStrategies(urlUserId)
-      } else {
-        console.log('❌ No urlUserId available for fetching strategies')
-        // Try fetchStrategies anyway with the DEV_USER_ID
-        fetchStrategies('28991397-dae7-42e8-a822-0dffc6ff49b7')
+    async function fetchProfile() {
+      if (!user) {
+        console.log('📊 Analytics - No user found, skipping profile fetch')
+        return
       }
+
+      console.log('📊 Analytics - Fetching profile for user:', user.email, 'ID:', user.id)
+
+      // Set immediate fallback profile while fetching
+      const immediateProfile = {
+        username: user.name || (user.email?.split('@')[0]) || user.id.split('-')[0] || 'User',
+        isPro: false
+      }
+      setUserProfile(immediateProfile)
+
+      try {
+        const response = await fetch(`/api/profile?userId=${user.id}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        console.log('📊 Analytics - Profile API response status:', response.status)
+        
+        if (response.ok) {
+          const result = await response.json()
+          const profile = result.data
+          console.log('📊 Analytics - Profile data received:', profile)
+          
+          if (profile) {
+            const isPro = determineProStatus(profile)
+            const enhancedProfile = {
+              username: profile.username || profile.display_name || user.name || (user.email?.split('@')[0]) || user.id.substring(0, 8) || 'User',
+              isPro: isPro
+            }
+            console.log('📊 Analytics - Setting enhanced profile:', enhancedProfile)
+            console.log('📊 Analytics - Pro status details:', { 
+              rawPro: profile.pro, 
+              type: typeof profile.pro, 
+              isPro: isPro,
+              is_pro: profile.is_pro,
+              allFields: { pro: profile.pro, is_pro: profile.is_pro, isPro: profile.isPro }
+            })
+            setUserProfile(enhancedProfile)
+          } else {
+            console.log('📊 Analytics - Profile data is null, keeping fallback')
+          }
+        } else {
+          const errorText = await response.text()
+          console.log('📊 Analytics - Profile fetch failed:', response.status, errorText)
+          // Keep the immediate fallback profile we already set
+        }
+      } catch (error) {
+        console.error('📊 Analytics - Profile fetch error:', error)
+        // Keep the immediate fallback profile we already set
+      }
+
+      // Always fetch strategies if we have a user
+      if (user.id) {
+        fetchStrategies(user.id)
+      }
+    }
+
+    fetchProfile()
+  }, [user])
+
+  const handleRefreshAllBets = async () => {
+    if (!user?.id) {
+      setRefreshResult('❌ User not authenticated')
       return
     }
-    
-    // Production mode: wait for auth to complete
-    if (!authLoading && user) {
-      console.log('User authenticated, fetching profile for:', user.id)
-      fetchUserProfile(user.id)
-      fetchStrategies(user.id)
-    } else if (!authLoading && !user) {
-      console.log('No user found after auth loading complete')
+
+    // Show professional warning popup
+    const userConfirmed = window.confirm(
+      "Bet Sync in Progress\n\n" +
+      "This process will sync all your betting data and may take several minutes to complete.\n\n" +
+      "⚠️ Please do not close this browser tab or navigate away until the sync is finished.\n\n" +
+      "Click OK to continue or Cancel to abort."
+    )
+
+    if (!userConfirmed) {
+      return
     }
-  }, [user, authLoading, isDev, urlUserId])
+
+    setIsRefreshingBets(true)
+    setRefreshResult(null)
+    
+    try {
+      console.log('🔄 Starting combined SharpSports refresh for user', user.id)
+      
+      const response = await fetch('/api/sharpsports/refresh-all-bets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ Combined refresh completed:', result.message)
+        setRefreshResult(`✅ ${result.message}`)
+        
+        // Show detailed results if available
+        if (result.results) {
+          const { step1, step2, step3 } = result.results
+          let details = []
+          if (step1?.success) details.push(`✅ Fetched ${step1.stats?.totalBettors || 0} bettors`)
+          if (step2?.success) details.push(`✅ Matched ${step2.stats?.matchedProfiles || 0} profiles`)
+          if (step3?.success) details.push(`✅ Synced ${step3.stats?.newBets || 0} new bets`)
+          
+          if (details.length > 0) {
+            setRefreshResult(`✅ Success: ${details.join(', ')}`)
+          }
+        }
+        
+        // Clear result after 5 seconds
+        setTimeout(() => setRefreshResult(null), 5000)
+      } else {
+        console.error('❌ Combined refresh failed:', result.error)
+        setRefreshResult(`❌ ${result.error || 'Refresh failed'}`)
+      }
+    } catch (error) {
+      console.error('❌ Error during combined refresh:', error)
+      setRefreshResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsRefreshingBets(false)
+    }
+  }
+
+  const handleLinkSportsbooks = async () => {
+    if (!user?.id) return
+
+    setIsLinkingSportsbooks(true)
+    
+    try {
+      console.log('🔗 Generating SharpSports context for Booklink UI')
+      
+      const response = await fetch('/api/sharpsports/context', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId: user.id,
+          redirectUrl: window.location.hostname === 'localhost' 
+            ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
+            : `${window.location.origin}/api/sharpsports/accounts`
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate context: ${response.status}`)
+      }
+
+      const { contextId } = await response.json()
+      console.log('✅ Generated SharpSports context ID:', contextId)
+
+      const booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
+      
+      console.log('📋 Opening Booklink UI:', booklinkUrl)
+      
+      const popup = window.open(
+        booklinkUrl, 
+        'sharpsports-booklink',
+        'width=700,height=800,scrollbars=yes,resizable=yes,location=yes'
+      )
+
+      if (!popup) {
+        console.error('Popup blocked')
+        return
+      }
+
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          console.log('📝 Booklink popup closed')
+        }
+      }, 1000)
+
+    } catch (error) {
+      console.error('Error generating SharpSports context:', error)
+    } finally {
+      setIsLinkingSportsbooks(false)
+    }
+  }
 
   const fetchStrategies = async (userId?: string) => {
     console.log('🎯 fetchStrategies called with userId:', userId?.substring(0, 8) + '...')
@@ -216,45 +386,6 @@ export default function AnalyticsPage() {
     }
   }
 
-  const fetchUserProfile = async (userId?: string) => {
-    const effectiveUserId = userId || user?.id
-    console.log('fetchUserProfile called with:', effectiveUserId)
-    if (!effectiveUserId) return
-    
-    try {
-      console.log('Attempting to fetch profile from /api/profile (relative URL)')
-      const response = await fetch('/api/profile')
-      console.log('Profile API response:', response.status, response.ok, 'URL:', response.url)
-      if (response.ok) {
-        const result = await response.json()
-        const profile = result.data
-        const fallbackProfile = {
-          username: profile.username || (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'User',
-          isPro: profile.pro === 'yes'
-        }
-        console.log('Setting profile from API:', fallbackProfile)
-        setUserProfile(fallbackProfile)
-      } else {
-        console.log('Profile API failed with status:', response.status, '- using fallback profile')
-        // Set default values if profile fetch fails (including 401 auth errors)
-        const fallbackProfile = {
-          username: (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'TestUser',
-          isPro: false
-        }
-        console.log('Setting fallback profile:', fallbackProfile)
-        setUserProfile(fallbackProfile)
-      }
-    } catch (err) {
-      console.error('Error fetching user profile:', err)
-      // Set default values if profile fetch fails
-      const fallbackProfile = {
-        username: (user?.email?.split('@')[0]) || effectiveUserId.split('-')[0] || 'TestUser',
-        isPro: false
-      }
-      console.log('Setting error fallback profile:', fallbackProfile)
-      setUserProfile(fallbackProfile)
-    }
-  }
 
   const loadMoreBets = async () => {
     if (loadingMoreBets || !hasMoreBets) return
@@ -363,12 +494,13 @@ export default function AnalyticsPage() {
     
     // Convert FilterOptions to AnalyticsFilters format for the hook
     const sports: string[] = []
+    const leagues: string[] = []
     const betTypes: string[] = []
     const results: string[] = []
     
-    // Handle leagues filter - map to database sport column (which contains leagues)
+    // Handle leagues filter - map to database league column
     if (newFilters.leagues && !newFilters.leagues.includes('All')) {
-      sports.push(...newFilters.leagues)
+      leagues.push(...newFilters.leagues)
     }
     
     // Handle bet types filter - map to database bet_type column
@@ -388,11 +520,12 @@ export default function AnalyticsPage() {
       sports.push(...newFilters.sports)
     }
     
-    console.log('Updating analytics filters:', { sports, betTypes })
+    console.log('Updating analytics filters:', { sports, leagues, betTypes })
     
     // Directly update filters - debouncing is now handled in the hook
     updateFilters({
       sports: [...new Set(sports)], // Remove duplicates
+      leagues: [...new Set(leagues)], // Remove duplicates
       betTypes: [...new Set(betTypes)], // Remove duplicates
       sportsbooks: newFilters.sportsbooks || [],
       results: [...new Set(results)], // Use calculated results
@@ -424,6 +557,7 @@ export default function AnalyticsPage() {
     // Update analytics filters directly - debouncing is handled in the hook
     updateFilters({
       sports: [],
+      leagues: [],
       betTypes: [],
       sportsbooks: [],
       results: ['won', 'lost', 'pending', 'void', 'cancelled'],
@@ -542,8 +676,9 @@ export default function AnalyticsPage() {
     }
   }
 
+
+  // Show loading state - improved to handle user recognition better
   if (authLoading || analyticsLoading) {
-    console.log('Showing loading skeleton - authLoading:', authLoading, 'analyticsLoading:', analyticsLoading)
     return (
       <DashboardLayout>
         <div className="space-y-6">
@@ -555,23 +690,42 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (!user && !authLoading && !isDev) {
-    console.log('Showing login prompt - user:', user, 'authLoading:', authLoading, 'analyticsLoading:', analyticsLoading, 'isDev:', isDev)
+  // If no user is authenticated, show error
+  if (!user) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Please Log In
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            You need to be logged in to view your analytics.
-          </p>
-          <a 
-            href="/login"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          <p className="text-red-600">Please sign in to view your analytics</p>
+          <button 
+            onClick={() => window.location.href = '/auth/signin'}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Go to Login
-          </a>
+            Sign In
+          </button>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Show minimal loading if user profile is still loading
+  if (!userProfile) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold mb-2">
+                  Loading your analytics...
+                </h1>
+                <p className="text-blue-100 text-lg">
+                  Please wait while we fetch your data
+                </p>
+              </div>
+            </div>
+          </div>
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </DashboardLayout>
     )
@@ -594,21 +748,6 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (!analyticsData || !userProfile) {
-    console.log('Showing analytics loading - analyticsData:', !!analyticsData, 'userProfile:', !!userProfile)
-    console.log('Current userProfile state:', userProfile)
-    console.log('Current analyticsData state:', analyticsData ? 'loaded' : 'null')
-    return (
-      <DashboardLayout>
-        <div className="text-center py-12">
-          <p>Loading analytics data...</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Data: {analyticsData ? '✓' : '⏳'} Profile: {userProfile ? '✓' : '⏳'}
-          </p>
-        </div>
-      </DashboardLayout>
-    )
-  }
 
   console.log('Rendering main analytics content')
   console.log('Analytics data metrics:', analyticsData?.metrics)
@@ -716,16 +855,20 @@ export default function AnalyticsPage() {
         />
 
         {/* Pro Upgrade Banner */}
-        {!userProfile.isPro && (
-          <ProUpgradePrompt
-            variant="banner"
-            context="general"
-            onUpgrade={() => {
-              // TODO: Implement Stripe checkout
-              console.log('Upgrade to Pro clicked')
-            }}
-          />
-        )}
+        {(() => {
+          console.log('📊 Analytics - Checking Pro banner display:', { userProfile: userProfile, isPro: userProfile.isPro, shouldShowBanner: !userProfile.isPro })
+          return !userProfile.isPro && (
+            <ProUpgradePrompt
+              variant="banner"
+              context="general"
+              onUpgrade={() => {
+                // TODO: Implement Stripe checkout
+                console.log('Upgrade to Pro clicked')
+              }}
+            />
+          )
+        })()}
+
 
         {/* Universal Filter System */}
         <FilterSystem
@@ -783,11 +926,16 @@ export default function AnalyticsPage() {
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsTabComponent
-            data={transformedAnalytics}
-            isPro={userProfile.isPro}
-            isLoading={false}
-          />
+          (() => {
+            console.log('📊 Analytics - Rendering AnalyticsTabComponent with isPro:', userProfile.isPro)
+            return (
+              <AnalyticsTabComponent
+                data={transformedAnalytics}
+                isPro={userProfile.isPro}
+                isLoading={false}
+              />
+            )
+          })()
         )}
 
         {activeTab === 'strategies' && (
@@ -801,6 +949,50 @@ export default function AnalyticsPage() {
             onFiltersChange={handleFiltersChange}
           />
         )}
+
+        {/* Floating Action Buttons */}
+        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+          {/* Refresh Result Toast */}
+          {refreshResult && (
+            <div className={`mb-3 p-3 rounded-lg shadow-lg max-w-sm text-sm ${
+              refreshResult.startsWith('✅') 
+                ? 'bg-green-50 border border-green-200 text-green-800'
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              {refreshResult}
+            </div>
+          )}
+          
+          {/* Link Sportsbooks Button */}
+          <Button
+            onClick={handleLinkSportsbooks}
+            disabled={isLinkingSportsbooks}
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+          >
+            {isLinkingSportsbooks ? (
+              <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <Link className="h-5 w-5 mr-2" />
+            )}
+            Link Sportsbooks
+          </Button>
+          
+          {/* Refresh Bets Button */}
+          <Button
+            onClick={handleRefreshAllBets}
+            disabled={isRefreshingBets}
+            size="lg"
+            className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
+          >
+            {isRefreshingBets ? (
+              <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-5 w-5 mr-2" />
+            )}
+            Refresh Bets
+          </Button>
+        </div>
       </div>
     </DashboardLayout>
     </ProtectedRoute>

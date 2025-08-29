@@ -24,6 +24,7 @@ export interface StrategyLeaderboardData {
   win_rate: number
   overall_rank?: number
   sport_rank?: number
+  leaderboard_score?: number
   primary_sport?: string
   strategy_type?: string
   bet_type?: string
@@ -75,8 +76,11 @@ export function calculateROIScore(roi: number): number {
  * Rewards sustainable win rates, penalizes extreme outliers
  */
 export function calculateWinRateScore(winRate: number, totalBets: number): number {
+  // Convert decimal to percentage if needed
+  const winRatePercent = winRate > 1 ? winRate : winRate * 100
+  
   // Base score from win rate (50% = 50 points, 60% = 100 points, etc.)
-  const baseScore = Math.max(0, (winRate - 40) * 2.5)
+  const baseScore = Math.max(0, (winRatePercent - 40) * 2.5)
   
   // Consistency bonus based on sample size
   let consistencyMultiplier = 1.0
@@ -157,10 +161,21 @@ export function calculateLeaderboardScore(
   weights: RankingWeights = DEFAULT_WEIGHTS
 ): number {
   const roiScore = calculateROIScore(strategy.roi_percentage)
-  const winRateScore = calculateWinRateScore(strategy.win_rate * 100, strategy.total_bets)
+  const winRateScore = calculateWinRateScore(strategy.win_rate, strategy.total_bets)
   const volumeScore = calculateVolumeScore(strategy.total_bets)
   const maturityScore = calculateMaturityScore(strategy.created_at)
   const activityScore = calculateActivityScore(null, strategy.updated_at) // Using updated_at as proxy
+  
+  // Debug logging for score calculation
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`Strategy ${strategy.strategy_name} scores:`, {
+      roi: roiScore.toFixed(1),
+      winRate: winRateScore.toFixed(1), 
+      volume: volumeScore.toFixed(1),
+      maturity: maturityScore.toFixed(1),
+      activity: activityScore.toFixed(1)
+    })
+  }
   
   const compositeScore = 
     (roiScore * weights.roiPerformance) +

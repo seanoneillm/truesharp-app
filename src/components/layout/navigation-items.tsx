@@ -9,6 +9,7 @@ import {
     Gamepad2,
     Home,
     MessageSquare,
+    Plus,
     Store
 } from 'lucide-react'
 import Link from 'next/link'
@@ -21,7 +22,8 @@ const iconMap = {
   Store,
   DollarSign,
   CreditCard,
-  MessageSquare
+  MessageSquare,
+  Plus
 }
 
 interface NavigationItemsProps {

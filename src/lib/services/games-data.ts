@@ -73,13 +73,21 @@ export class GamesDataService {
     try {
       console.log('🎯 Fetching MLB games for date:', date);
       
-      // First, try to get games for the specific date
+      // Convert date to Eastern time range (UTC-4 for EDT, UTC-5 for EST)
+      // For simplicity, assuming EDT (UTC-4) year-round since games are mostly during EDT season
+      const easternDate = new Date(date + 'T00:00:00.000-04:00');
+      const startTime = new Date(easternDate.getTime());
+      const endTime = new Date(easternDate.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+      
+      console.log(`🕐 Eastern time range: ${startTime.toISOString()} to ${endTime.toISOString()}`);
+      
+      // First, try to get games for the specific Eastern time date range
       const { data: games, error: gamesError } = await this.supabase
         .from('games')
         .select('*')
         .eq('league', 'MLB')
-        .gte('game_time', `${date}T00:00:00.000Z`)
-        .lt('game_time', `${date}T23:59:59.999Z`)
+        .gte('game_time', startTime.toISOString())
+        .lt('game_time', endTime.toISOString())
         .order('game_time', { ascending: true });
 
       // No fallback - only show games for the specific date
@@ -152,12 +160,20 @@ export class GamesDataService {
     try {
       console.log(`🎯 Fetching ${league} games with ALL odds (ML/SP/OU/Props) for date:`, date);
       
+      // Convert date to Eastern time range (UTC-4 for EDT, UTC-5 for EST)
+      // For simplicity, assuming EDT (UTC-4) year-round since games are mostly during EDT season
+      const easternDate = new Date(date + 'T00:00:00.000-04:00');
+      const startTime = new Date(easternDate.getTime());
+      const endTime = new Date(easternDate.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+      
+      console.log(`🕐 ${league} Eastern time range: ${startTime.toISOString()} to ${endTime.toISOString()}`);
+      
       const { data: games, error: gamesError } = await this.supabase
         .from('games')
         .select('*')
         .eq('league', league.toUpperCase())
-        .gte('game_time', `${date}T00:00:00.000Z`)
-        .lt('game_time', `${date}T23:59:59.999Z`)
+        .gte('game_time', startTime.toISOString())
+        .lt('game_time', endTime.toISOString())
         .order('game_time', { ascending: true });
 
       if (gamesError) {

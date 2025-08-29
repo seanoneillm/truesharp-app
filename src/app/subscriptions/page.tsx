@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
+// Note: Using API endpoint /api/subscriptions-open-bets instead of direct query
+import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
 import {
   ArrowUpRight,
   BarChart3,
@@ -54,6 +56,9 @@ interface SubscriptionData {
   strategy_performance_roi?: number
   strategy_performance_win_rate?: number
   strategy_performance_total_bets?: number
+  // Open bets data
+  open_bets?: any[]
+  open_bets_count?: number
 }
 
 // Shield SVG Component
@@ -82,13 +87,12 @@ const TrueSharpShield = ({ className = "h-6 w-6", variant = "default" }) => (
   </svg>
 )
 
-// Subscription Card Component
+// Enhanced Subscription Card Component
 const SubscriptionCard = ({ subscription, onRefresh }: { 
   subscription: SubscriptionData, 
   onRefresh: () => void 
 }) => {
   const [cancelling, setCancelling] = useState(false)
-  const [pausing, setPausing] = useState(false)
 
   const handleCancelSubscription = async () => {
     setCancelling(true)
@@ -121,144 +125,173 @@ const SubscriptionCard = ({ subscription, onRefresh }: {
     return freq.charAt(0).toUpperCase() + freq.slice(1)
   }
 
+  const formatPercentage = (value: number | null) => {
+    if (value === null) return '0.0%'
+    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800 border-green-300">Active</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-300 font-medium">✓ Active</Badge>
       case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 border-red-300">Cancelled</Badge>
+        return <Badge className="bg-red-100 text-red-800 border-red-300 font-medium">✗ Cancelled</Badge>
       case 'past_due':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Past Due</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 font-medium">⚠ Past Due</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline" className="font-medium">{status}</Badge>
     }
   }
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow">
-      <div className="space-y-4">
-        {/* Header */}
+    <Card className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-slate-50 to-gray-50 p-6 border-b border-gray-100">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
-              <TrueSharpShield className="h-5 w-5" />
-              <h3 className="text-lg font-semibold text-slate-900">
-                {subscription.strategy_name || 'Strategy'}
-              </h3>
-              {getStatusBadge(subscription.status)}
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-xl">
+                <TrueSharpShield className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">
+                  {subscription.strategy_name || 'Strategy'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2">
-              by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
-            </p>
-            <p className="text-sm text-slate-500 line-clamp-2">
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">
               {subscription.strategy_description || 'No description available'}
             </p>
-          </div>
-          <div className="ml-4">
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-3 gap-4 py-3 border-t border-b border-slate-100">
-          <div className="text-center">
-            <p className="text-sm text-slate-600">ROI</p>
-            <p className={`text-lg font-semibold ${
-              (subscription.strategy_performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {subscription.strategy_performance_roi !== null ? 
-                `${subscription.strategy_performance_roi > 0 ? '+' : ''}${subscription.strategy_performance_roi.toFixed(1)}%` : 
-                'N/A'
-              }
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-slate-600">Win Rate</p>
-            <p className="text-lg font-semibold text-slate-900">
-              {subscription.strategy_performance_win_rate !== null ? 
-                `${subscription.strategy_performance_win_rate.toFixed(1)}%` : 
-                'N/A'
-              }
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-slate-600">Total Bets</p>
-            <p className="text-lg font-semibold text-slate-900">
-              {subscription.strategy_performance_total_bets || 0}
-            </p>
+            <div className="flex items-center space-x-3">
+              {getStatusBadge(subscription.status)}
+              <span className="inline-flex items-center px-3 py-1 text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-full font-medium">
+                <Calendar className="h-3 w-3 mr-1" />
+                Since {new Date(subscription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Subscription Details */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-600">Price</span>
-            <span className="text-sm font-medium text-slate-900">
-              {formatCurrency(subscription.price)} / {formatFrequency(subscription.frequency)}
-            </span>
+      {/* Performance Metrics */}
+      <div className="p-6 border-b border-gray-100">
+        <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+          <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
+          Performance Metrics
+        </h4>
+        <div className="grid grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+              <p className="text-xs font-medium text-green-700 mb-1">ROI</p>
+              <p className={`text-xl font-bold ${
+                (subscription.strategy_performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {formatPercentage(subscription.strategy_performance_roi)}
+              </p>
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
+              <p className="text-xs font-medium text-blue-700 mb-1">Win Rate</p>
+              <p className="text-xl font-bold text-blue-600">
+                {subscription.strategy_performance_win_rate !== null ? 
+                  `${subscription.strategy_performance_win_rate.toFixed(1)}%` : 
+                  'N/A'
+                }
+              </p>
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100">
+              <p className="text-xs font-medium text-purple-700 mb-1">Total Bets</p>
+              <p className="text-xl font-bold text-purple-600">
+                {subscription.strategy_performance_total_bets || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Open Bets Display */}
+      {subscription.open_bets && subscription.open_bets.length > 0 && (
+        <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 border-b border-gray-100">
+          <SubscriberOpenBetsDisplay 
+            bets={subscription.open_bets} 
+            title="Current Open Picks"
+            maxBets={5}
+          />
+        </div>
+      )}
+
+
+      {/* Subscription Details & Pricing */}
+      <div className="p-6 bg-gray-50">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <h5 className="text-sm font-semibold text-gray-700 flex items-center">
+              <DollarSign className="h-4 w-4 mr-2 text-green-600" />
+              Subscription Details
+            </h5>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Price</span>
+                <span className="text-sm font-semibold text-gray-900 bg-white px-3 py-1 rounded-full border">
+                  {formatCurrency(subscription.price)} / {formatFrequency(subscription.frequency)}
+                </span>
+              </div>
+              {subscription.status === 'active' && subscription.next_billing_date && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Next Billing</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {new Date(subscription.next_billing_date).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-600">Started</span>
-            <span className="text-sm text-slate-900">
-              {new Date(subscription.created_at).toLocaleDateString()}
-            </span>
-          </div>
-
-          {subscription.status === 'active' && subscription.next_billing_date && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Next Billing</span>
-              <span className="text-sm text-slate-900">
-                {new Date(subscription.next_billing_date).toLocaleDateString()}
-              </span>
+          {subscription.status === 'active' && (
+            <div className="space-y-3">
+              <h5 className="text-sm font-semibold text-gray-700">Actions</h5>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleCancelSubscription}
+                  disabled={cancelling}
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
+                >
+                  {cancelling ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-2"></div>
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel Subscription
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 
           {subscription.status === 'cancelled' && subscription.cancelled_at && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Cancelled</span>
-              <span className="text-sm text-slate-900">
-                {new Date(subscription.cancelled_at).toLocaleDateString()}
-              </span>
+            <div className="space-y-3">
+              <h5 className="text-sm font-semibold text-gray-700">Status</h5>
+              <div className="text-sm text-gray-600 bg-white p-3 rounded-lg border">
+                <p className="flex items-center">
+                  <Clock className="h-4 w-4 mr-2 text-red-500" />
+                  Cancelled on {new Date(subscription.cancelled_at).toLocaleDateString()}
+                </p>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Actions */}
-        {subscription.status === 'active' && (
-          <div className="flex items-center space-x-2 pt-3 border-t border-slate-100">
-            <Link
-              href={`/marketplace/${subscription.seller_username}`}
-              className="flex-1"
-            >
-              <Button variant="outline" size="sm" className="w-full">
-                <ArrowUpRight className="h-4 w-4 mr-2" />
-                View Strategy
-              </Button>
-            </Link>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleCancelSubscription}
-              disabled={cancelling}
-              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              {cancelling ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-b border-red-600 mr-2"></div>
-                  Cancelling...
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </>
-              )}
-            </Button>
-          </div>
-        )}
       </div>
     </Card>
   )
@@ -267,6 +300,7 @@ const SubscriptionCard = ({ subscription, onRefresh }: {
 export default function SubscriptionsPage() {
   const { user, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
+
   const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -282,106 +316,97 @@ export default function SubscriptionsPage() {
   const fetchSubscriptions = useCallback(async () => {
     if (!user || fetchingRef.current) return
     
+    console.log('🔍 Subscriptions - Fetching subscriptions for user:', user.id)
+    console.log('🔍 Subscriptions - Using API URL:', '/api/subscriptions')
+    
     try {
       fetchingRef.current = true
       setError(null)
-      const supabase = createBrowserClient()
 
-      // First, fetch basic subscription data without joins to avoid errors
-      const { data: subscriptionData, error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .select(`
-          id,
-          subscriber_id,
-          seller_id,
-          strategy_id,
-          status,
-          frequency,
-          price,
-          currency,
-          created_at,
-          updated_at,
-          cancelled_at,
-          current_period_start,
-          current_period_end,
-          next_billing_date,
-          stripe_subscription_id
-        `)
-        .eq('subscriber_id', user.id)
-        .order('created_at', { ascending: false })
+      // Use the same API approach as the marketplace
+      const response = await fetch('/api/subscriptions', {
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch subscriptions: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      
+      console.log('🔍 Subscriptions - API response:', {
+        success: data.success,
+        subscriptionsCount: data.subscriptions?.length || 0,
+        error: data.error
+      })
 
-      if (subscriptionError) {
-        console.error('Error fetching subscriptions:', subscriptionError)
-        setError(subscriptionError.message)
+      if (!data.success) {
+        setError(data.error || 'Failed to load subscriptions')
         setSubscriptions([])
         return
       }
 
-      if (!subscriptionData || subscriptionData.length === 0) {
+      const subscriptionData = data.subscriptions || []
+      
+      if (subscriptionData.length === 0) {
+        console.log('🔍 Subscriptions - No subscription data found')
         setSubscriptions([])
         return
       }
 
-      // Then fetch related data separately to avoid join errors
-      const strategyIds = subscriptionData.map(sub => sub.strategy_id)
-      const sellerIds = subscriptionData.map(sub => sub.seller_id)
+      console.log('🔍 Subscriptions - Found', subscriptionData.length, 'subscriptions')
 
-      // Fetch strategy data
-      let strategiesData = []
+      // Enhance subscriptions with open bets data using API endpoint
       try {
-        const { data: strategies, error: strategiesError } = await supabase
-          .from('strategies')
-          .select('id, name, description, performance_roi, performance_win_rate, performance_total_bets')
-          .in('id', strategyIds)
-
-        if (strategiesError) {
-          console.warn('Error fetching strategy data:', strategiesError)
-        } else {
-          strategiesData = strategies || []
-        }
-      } catch (strategiesNetworkError) {
-        console.warn('Network error fetching strategies:', strategiesNetworkError)
-      }
-
-      // Fetch seller profile data
-      let profilesData = []
-      try {
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, display_name')
-          .in('id', sellerIds)
-
-        if (profilesError) {
-          console.warn('Error fetching profile data:', profilesError)
-        } else {
-          profilesData = profiles || []
-        }
-      } catch (profilesNetworkError) {
-        console.warn('Network error fetching profiles:', profilesNetworkError)
-      }
-
-      // Combine the data safely
-      const formattedSubscriptions = subscriptionData.map(sub => {
-        const strategy = strategiesData.find(s => s.id === sub.strategy_id)
-        const profile = profilesData.find(p => p.id === sub.seller_id)
+        console.log('🎯 Subscriptions - Fetching open bets via API endpoint')
         
-        return {
-          ...sub,
-          strategy_name: strategy?.name || 'Unknown Strategy',
-          strategy_description: strategy?.description || 'No description available',
-          seller_username: profile?.username || 'Unknown',
-          seller_display_name: profile?.display_name || profile?.username || 'Unknown',
-          strategy_performance_roi: strategy?.performance_roi || 0,
-          strategy_performance_win_rate: strategy?.performance_win_rate || 0,
-          strategy_performance_total_bets: strategy?.performance_total_bets || 0
-        }
-      })
+        // Fetch open bets via API endpoint (uses service role)
+        const openBetsResponse = await fetch('/api/subscriptions-open-bets', {
+          credentials: 'include'
+        })
+        
+        if (openBetsResponse.ok) {
+          const openBetsData = await openBetsResponse.json()
+          console.log('🎯 Subscriptions - Open bets API response:', openBetsData)
+          
+          if (openBetsData.success && openBetsData.openBetsByStrategy) {
+            const openBetsByStrategy = openBetsData.openBetsByStrategy
+            
+            // Map open bets to subscriptions
+            const enhancedSubscriptions = subscriptionData.map(sub => {
+              const openBets = openBetsByStrategy[sub.strategy_id] || []
+              
+              return {
+                ...sub,
+                open_bets: openBets,
+                open_bets_count: openBets.length
+              }
+            })
+            
+            // Log summary of open bets found
+            const totalOpenBets = enhancedSubscriptions.reduce((sum, sub) => sum + (sub.open_bets_count || 0), 0)
+            console.log('🎯 Subscriptions - Summary: Found', totalOpenBets, 'total open bets across all subscriptions')
 
-      // Only update if data actually changed (prevents unnecessary re-renders)
-      setSubscriptions(prevSubscriptions => {
-        const hasChanged = JSON.stringify(prevSubscriptions) !== JSON.stringify(formattedSubscriptions)
-        return hasChanged ? formattedSubscriptions : prevSubscriptions
-      })
+            // Update subscriptions with open bets data
+            setSubscriptions(prevSubscriptions => {
+              const hasChanged = JSON.stringify(prevSubscriptions) !== JSON.stringify(enhancedSubscriptions)
+              return hasChanged ? enhancedSubscriptions : prevSubscriptions
+            })
+          } else {
+            console.log('🎯 Subscriptions - No open bets found or API error')
+            // Use subscriptions without open bets
+            setSubscriptions(subscriptionData)
+          }
+        } else {
+          console.warn('🎯 Subscriptions - Open bets API failed:', openBetsResponse.statusText)
+          // Fallback to subscriptions without open bets
+          setSubscriptions(subscriptionData)
+        }
+      } catch (openBetsError) {
+        console.warn('Failed to fetch open bets via API, using regular subscription data:', openBetsError)
+        // Fallback to original subscriptions without open bets
+        setSubscriptions(subscriptionData)
+      }
     } catch (err) {
       console.error('Error fetching subscriptions:', err)
       setError('Failed to load subscriptions')
@@ -462,9 +487,11 @@ export default function SubscriptionsPage() {
     )
   }
 
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -632,7 +659,7 @@ export default function SubscriptionsPage() {
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {activeSubscriptions.map((subscription) => (
                       <SubscriptionCard key={subscription.id} subscription={subscription} onRefresh={fetchSubscriptions} />
                     ))}
@@ -649,7 +676,7 @@ export default function SubscriptionsPage() {
                       </Badge>
                     </div>
                     
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                       {cancelledSubscriptions.map((subscription) => (
                         <SubscriptionCard key={subscription.id} subscription={subscription} onRefresh={fetchSubscriptions} />
                       ))}

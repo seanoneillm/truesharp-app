@@ -1,208 +1,174 @@
-import { createClient } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
-import { rankStrategies, isStrategyEligible, type StrategyLeaderboardData } from '@/lib/marketplace/ranking'
+import { calculateLeaderboardScore, isStrategyEligible, type StrategyLeaderboardData } from '@/lib/marketplace/ranking'
 
 export async function POST() {
   try {
-    const supabase = createClient()
+    const supabase = await createServerClient()
     
-    // First, get all strategies with their associated user and bet data
-    const { data: strategies, error: strategiesError } = await supabase
-      .from('strategies')
-      .select(`
-        id,
-        user_id,
-        name,
-        description,
-        primary_sport,
-        strategy_type,
-        bet_type,
-        is_monetized,
-        pricing_weekly,
-        pricing_monthly,
-        pricing_yearly,
-        subscriber_count,
-        created_at,
-        updated_at,
-        profiles!strategies_user_id_fkey (
-          username,
-          display_name,
-          is_verified_seller
-        )
-      `)
-      .eq('is_active', true)
-
-    if (strategiesError) {
-      console.error('Error fetching strategies:', strategiesError)
-      return NextResponse.json({ error: 'Failed to fetch strategies' }, { status: 500 })
-    }
-
-    if (!strategies || strategies.length === 0) {
-      return NextResponse.json({ message: 'No strategies found' }, { status: 200 })
-    }
-
-    const leaderboardData: StrategyLeaderboardData[] = []
-
-    // Process each strategy to calculate performance metrics
-    for (const strategy of strategies) {
-      // Get bet statistics for this strategy
-      const { data: betStats, error: betError } = await supabase
-        .from('user_bets')
-        .select('outcome, odds, stake, potential_payout')
-        .eq('strategy_id', strategy.id)
-        .not('outcome', 'is', null) // Only settled bets
-
-      if (betError) {
-        console.warn(`Error fetching bets for strategy ${strategy.id}:`, betError)
-        continue
-      }
-
-      // Calculate performance metrics
-      const totalBets = betStats?.length || 0
-      const winningBets = betStats?.filter(bet => bet.outcome === 'win').length || 0
-      const losingBets = betStats?.filter(bet => bet.outcome === 'loss').length || 0
-      const pushBets = betStats?.filter(bet => bet.outcome === 'push').length || 0
-      
-      // Ensure bet counts add up correctly (fix constraint violation)
-      const calculatedTotal = winningBets + losingBets + pushBets
-      const adjustedTotal = Math.max(totalBets, calculatedTotal)
-      const adjustedLosing = adjustedTotal - winningBets - pushBets
-      
-      const winRate = adjustedTotal > 0 ? winningBets / adjustedTotal : 0
-      
-      // Calculate ROI
-      const totalStaked = betStats?.reduce((sum, bet) => sum + (bet.stake || 0), 0) || 0
-      const totalPayout = betStats?.reduce((sum, bet) => {
-        if (bet.outcome === 'win') return sum + (bet.potential_payout || 0)
-        if (bet.outcome === 'push') return sum + (bet.stake || 0)
-        return sum
-      }, 0) || 0
-      
-      const roiPercentage = totalStaked > 0 ? ((totalPayout - totalStaked) / totalStaked) * 100 : 0
-
-      // Get the most recent bet date (currently unused but may be needed later)
-      // const { data: lastBet } = await supabase
-      //   .from('user_bets')
-      //   .select('created_at')
-      //   .eq('strategy_id', strategy.id)
-      //   .order('created_at', { ascending: false })
-      //   .limit(1)
-
-      // Prepare leaderboard entry
-      const leaderboardEntry: StrategyLeaderboardData = {
-        id: crypto.randomUUID(),
-        strategy_id: strategy.id,
-        user_id: strategy.user_id,
-        strategy_name: strategy.name,
-        username: strategy.profiles?.username || 'unknown',
-        is_verified_seller: strategy.profiles?.is_verified_seller || false,
-        total_bets: adjustedTotal,
-        winning_bets: winningBets,
-        losing_bets: adjustedLosing,
-        push_bets: pushBets,
-        roi_percentage: roiPercentage,
-        win_rate: winRate,
-        primary_sport: strategy.primary_sport,
-        strategy_type: strategy.strategy_type,
-        bet_type: strategy.bet_type,
-        is_eligible: false, // Will be calculated below
-        minimum_bets_met: adjustedTotal >= 100,
-        verification_status: strategy.profiles?.is_verified_seller ? 'verified' : 'unverified',
-        is_monetized: strategy.is_monetized,
-        subscription_price_weekly: strategy.pricing_weekly,
-        subscription_price_monthly: strategy.pricing_monthly,
-        subscription_price_yearly: strategy.pricing_yearly,
-        created_at: strategy.created_at,
-        updated_at: strategy.updated_at,
-        last_calculated_at: new Date().toISOString()
-      }
-
-      // Check eligibility
-      leaderboardEntry.is_eligible = isStrategyEligible(leaderboardEntry)
-      
-      leaderboardData.push(leaderboardEntry)
-    }
-
-    // Rank all strategies
-    const rankedStrategies = rankStrategies(leaderboardData)
-
-    // Add sport-specific rankings
-    const sportsRankings = new Map<string, number>()
+    // First, ensure the leaderboard_score column exists
+    console.log('Adding leaderboard_score column if it doesn\'t exist...')
     
-    for (const sport of ['NBA', 'NFL', 'MLB', 'NHL', 'Multi-Sport']) {
-      const sportStrategies = rankedStrategies.filter(s => 
-        s.primary_sport === sport && s.is_eligible
-      )
-      
-      sportStrategies.forEach((strategy, index) => {
-        sportsRankings.set(`${strategy.strategy_id}_${sport}`, index + 1)
+    try {
+      const { error: columnError } = await supabase.rpc('exec_sql', {
+        sql_text: `
+          ALTER TABLE public.strategy_leaderboard 
+          ADD COLUMN IF NOT EXISTS leaderboard_score numeric(8, 2) NULL;
+          
+          CREATE INDEX IF NOT EXISTS idx_strategy_leaderboard_score_desc 
+          ON public.strategy_leaderboard USING btree (leaderboard_score DESC);
+        `
       })
-    }
 
-    // Clear existing leaderboard data
-    const { error: deleteError } = await supabase
-      .from('strategy_leaderboard')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
-
-    if (deleteError) {
-      console.warn('Error clearing leaderboard:', deleteError)
-    }
-
-    // Insert new leaderboard data in batches
-    const batchSize = 100
-    let insertedCount = 0
-
-    for (let i = 0; i < rankedStrategies.length; i += batchSize) {
-      const batch = rankedStrategies.slice(i, i + batchSize).map(strategy => ({
-        id: strategy.id,
-        strategy_id: strategy.strategy_id,
-        user_id: strategy.user_id,
-        strategy_name: strategy.strategy_name,
-        username: strategy.username,
-        is_verified_seller: strategy.is_verified_seller,
-        total_bets: strategy.total_bets,
-        winning_bets: strategy.winning_bets,
-        losing_bets: strategy.losing_bets,
-        push_bets: strategy.push_bets,
-        roi_percentage: strategy.roi_percentage,
-        win_rate: strategy.win_rate,
-        overall_rank: strategy.overall_rank,
-        sport_rank: sportsRankings.get(`${strategy.strategy_id}_${strategy.primary_sport}`) || null,
-        primary_sport: strategy.primary_sport,
-        strategy_type: strategy.strategy_type,
-        bet_type: strategy.bet_type,
-        is_eligible: strategy.is_eligible,
-        minimum_bets_met: strategy.minimum_bets_met,
-        verification_status: strategy.verification_status,
-        is_monetized: strategy.is_monetized,
-        subscription_price_weekly: strategy.subscription_price_weekly,
-        subscription_price_monthly: strategy.subscription_price_monthly,
-        subscription_price_yearly: strategy.subscription_price_yearly,
-        created_at: strategy.created_at,
-        updated_at: strategy.updated_at,
-        last_calculated_at: strategy.last_calculated_at
-      }))
-
-      const { error: insertError } = await supabase
-        .from('strategy_leaderboard')
-        .insert(batch)
-
-      if (insertError) {
-        console.error(`Error inserting batch ${i / batchSize + 1}:`, insertError)
-        continue
+      if (columnError) {
+        console.log('Column creation result:', columnError)
       }
+    } catch (err) {
+      console.log('Could not execute SQL directly, continuing...')
+    }
+    
+    // Get existing leaderboard data
+    const { data: leaderboardData, error: leaderboardError } = await supabase
+      .from('strategy_leaderboard')
+      .select('*')
 
-      insertedCount += batch.length
+    if (leaderboardError) {
+      console.error('Error fetching leaderboard data:', leaderboardError)
+      return NextResponse.json({ error: 'Failed to fetch leaderboard data' }, { status: 500 })
+    }
+
+    if (!leaderboardData || leaderboardData.length === 0) {
+      return NextResponse.json({ message: 'No leaderboard data found' }, { status: 200 })
+    }
+
+    console.log(`Found ${leaderboardData.length} strategies in leaderboard`)
+
+    // Calculate leaderboard scores for each strategy
+    let updatedCount = 0
+    let errorCount = 0
+
+    for (const strategy of leaderboardData) {
+      try {
+        // Calculate the leaderboard score using our algorithm
+        const score = calculateLeaderboardScore({
+          id: strategy.id,
+          strategy_id: strategy.strategy_id,
+          user_id: strategy.user_id,
+          strategy_name: strategy.strategy_name,
+          username: strategy.username,
+          is_verified_seller: strategy.is_verified_seller || false,
+          total_bets: strategy.total_bets || 0,
+          winning_bets: strategy.winning_bets || 0,
+          losing_bets: strategy.losing_bets || 0,
+          push_bets: strategy.push_bets || 0,
+          roi_percentage: parseFloat(strategy.roi_percentage?.toString() || '0'),
+          win_rate: parseFloat(strategy.win_rate?.toString() || '0'),
+          overall_rank: strategy.overall_rank,
+          sport_rank: strategy.sport_rank,
+          leaderboard_score: strategy.leaderboard_score,
+          primary_sport: strategy.primary_sport,
+          strategy_type: strategy.strategy_type,
+          bet_type: strategy.bet_type,
+          is_eligible: strategy.is_eligible || false,
+          minimum_bets_met: strategy.minimum_bets_met || false,
+          verification_status: strategy.verification_status || 'unverified',
+          is_monetized: strategy.is_monetized || false,
+          subscription_price_weekly: strategy.subscription_price_weekly,
+          subscription_price_monthly: strategy.subscription_price_monthly,
+          subscription_price_yearly: strategy.subscription_price_yearly,
+          created_at: strategy.created_at || new Date().toISOString(),
+          updated_at: strategy.updated_at || new Date().toISOString(),
+          last_calculated_at: strategy.last_calculated_at || new Date().toISOString()
+        })
+
+        // Check eligibility
+        const eligible = isStrategyEligible({
+          id: strategy.id,
+          strategy_id: strategy.strategy_id,
+          user_id: strategy.user_id,
+          strategy_name: strategy.strategy_name,
+          username: strategy.username,
+          is_verified_seller: strategy.is_verified_seller || false,
+          total_bets: strategy.total_bets || 0,
+          winning_bets: strategy.winning_bets || 0,
+          losing_bets: strategy.losing_bets || 0,
+          push_bets: strategy.push_bets || 0,
+          roi_percentage: parseFloat(strategy.roi_percentage?.toString() || '0'),
+          win_rate: parseFloat(strategy.win_rate?.toString() || '0'),
+          overall_rank: strategy.overall_rank,
+          sport_rank: strategy.sport_rank,
+          leaderboard_score: strategy.leaderboard_score,
+          primary_sport: strategy.primary_sport,
+          strategy_type: strategy.strategy_type,
+          bet_type: strategy.bet_type,
+          is_eligible: strategy.is_eligible || false,
+          minimum_bets_met: strategy.minimum_bets_met || false,
+          verification_status: strategy.verification_status || 'unverified',
+          is_monetized: strategy.is_monetized || false,
+          subscription_price_weekly: strategy.subscription_price_weekly,
+          subscription_price_monthly: strategy.subscription_price_monthly,
+          subscription_price_yearly: strategy.subscription_price_yearly,
+          created_at: strategy.created_at || new Date().toISOString(),
+          updated_at: strategy.updated_at || new Date().toISOString(),
+          last_calculated_at: strategy.last_calculated_at || new Date().toISOString()
+        })
+
+        // Update the strategy with the calculated score
+        const { error: updateError } = await supabase
+          .from('strategy_leaderboard')
+          .update({
+            leaderboard_score: score,
+            is_eligible: eligible,
+            last_calculated_at: new Date().toISOString()
+          })
+          .eq('id', strategy.id)
+
+        if (updateError) {
+          console.error(`Error updating strategy ${strategy.strategy_name}:`, updateError)
+          errorCount++
+        } else {
+          updatedCount++
+          if (updatedCount % 10 === 0) {
+            console.log(`Updated ${updatedCount} strategies...`)
+          }
+        }
+
+      } catch (error) {
+        console.error(`Error processing strategy ${strategy.strategy_name}:`, error)
+        errorCount++
+      }
+    }
+
+    // Now update the overall ranks based on leaderboard scores
+    const { data: scoredStrategies, error: fetchScoredError } = await supabase
+      .from('strategy_leaderboard')
+      .select('id, leaderboard_score, is_eligible')
+      .not('leaderboard_score', 'is', null)
+      .order('leaderboard_score', { ascending: false })
+
+    if (!fetchScoredError && scoredStrategies) {
+      const eligibleStrategies = scoredStrategies.filter(s => s.is_eligible)
+      
+      for (let i = 0; i < eligibleStrategies.length; i++) {
+        const { error: rankError } = await supabase
+          .from('strategy_leaderboard')
+          .update({ overall_rank: i + 1 })
+          .eq('id', eligibleStrategies[i].id)
+
+        if (rankError) {
+          console.error(`Error updating rank for strategy ${eligibleStrategies[i].id}:`, rankError)
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Leaderboard populated successfully`,
+      message: `Leaderboard scores calculated successfully`,
       stats: {
-        totalStrategies: strategies.length,
-        eligibleStrategies: rankedStrategies.filter(s => s.is_eligible).length,
-        insertedEntries: insertedCount
+        totalStrategies: leaderboardData.length,
+        updatedStrategies: updatedCount,
+        errorCount: errorCount,
+        eligibleStrategies: scoredStrategies?.filter(s => s.is_eligible).length || 0
       }
     })
 

@@ -608,54 +608,28 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userIdParam = searchParams.get('userId')
-    
-    console.log('Strategies API - userId parameter:', userIdParam?.substring(0, 8) + '...')
-    
     const supabase = await createServerSupabaseClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    console.log('Strategies API - session user:', user?.id?.substring(0, 8) + '...', 'auth error:', authError?.message)
-    
-    // Use userId from parameter if session auth fails (like analytics API)
-    let finalUserId = user?.id
-    let querySupabase = supabase
-    
-    if ((authError || !user) && userIdParam) {
-      console.log('Session auth failed, using service role client directly')
-      
-      // Use service role client directly without user validation
-      const adminSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
-      
-      finalUserId = userIdParam
-      querySupabase = adminSupabase
-      console.log('Using service role client for queries with userId parameter')
-    } else if (authError || !user) {
-      console.log('No authentication available')
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    console.log('Using final user ID:', finalUserId?.substring(0, 8) + '...')
 
-    // Get strategies from strategy_leaderboard table with strategy details including start_date
-    const { data: leaderboardStrategies, error } = await querySupabase
+    // Get strategies from strategy_leaderboard table with strategy details
+    const { data: leaderboardStrategies, error } = await supabase
       .from('strategy_leaderboard')
       .select(`
         *,
         strategies!inner(start_date, date_ranges, filter_config)
       `)
-      .eq('user_id', finalUserId)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log('Leaderboard strategies found:', leaderboardStrategies?.length || 0)
+    console.log('Strategies found:', leaderboardStrategies?.length || 0)
 
     // Transform leaderboard data to match expected format for frontend
     const transformedStrategies = leaderboardStrategies?.map(strategy => {

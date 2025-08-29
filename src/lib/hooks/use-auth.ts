@@ -49,30 +49,51 @@ const initializeAuth = async () => {
       
       let currentUser = null
       if (!error && session?.user) {
-        currentUser = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.full_name || session.user.email
-        }
-        console.log('User found:', currentUser.email)
-        
-        // Verify the session is still valid by making a test query
-        try {
-          const { error: testError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', session.user.id)
-            .single()
-            
-          if (testError) {
-            console.error('Session validation failed:', testError)
+        // Check if session is expired
+        if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+          console.log('Session has expired, refreshing...')
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+          
+          if (refreshError || !refreshedSession) {
+            console.log('Failed to refresh session, signing out')
+            await supabase.auth.signOut()
             currentUser = null
           } else {
-            console.log('Session validated successfully')
+            console.log('Session refreshed successfully')
+            session = refreshedSession
           }
-        } catch (sessionError) {
-          console.error('Session validation error:', sessionError)
-          currentUser = null
+        }
+
+        if (session?.user) {
+          currentUser = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.full_name || session.user.email
+          }
+          console.log('User found:', currentUser.email, 'User ID:', currentUser.id)
+          
+          // Verify the session is still valid by making a test query
+          try {
+            const { error: testError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', session.user.id)
+              .single()
+              
+            if (testError) {
+              console.error('Session validation failed:', testError)
+              console.log('Clearing invalid session...')
+              await supabase.auth.signOut()
+              currentUser = null
+            } else {
+              console.log('Session validated successfully')
+            }
+          } catch (sessionError) {
+            console.error('Session validation error:', sessionError)
+            console.log('Clearing invalid session...')
+            await supabase.auth.signOut()
+            currentUser = null
+          }
         }
       } else {
         console.log('No user session found')
@@ -97,8 +118,8 @@ const initializeAuth = async () => {
 }
 
 // Set up auth state listener once
-supabase.auth.onAuthStateChange(async (_event, session) => {
-  console.log('Auth state changed, updating global state')
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state changed:', event, 'Session exists:', !!session)
   let currentUser = null
   if (session?.user) {
     currentUser = {
@@ -106,6 +127,9 @@ supabase.auth.onAuthStateChange(async (_event, session) => {
       email: session.user.email || '',
       name: session.user.user_metadata?.full_name || session.user.email
     }
+    console.log('Auth state change - User ID:', currentUser.id, 'Email:', currentUser.email)
+  } else {
+    console.log('Auth state change - No user found')
   }
   
   globalAuthState.user = currentUser
@@ -257,11 +281,28 @@ export function useAuth() {
         console.error('Sign out error:', error)
         return { error: error.message }
       }
+      // Clear global state immediately
+      globalAuthState.user = null
+      globalAuthState.loading = false
       setUser(null)
+      notifyListeners()
       return { error: null }
     } catch (error) {
       console.error('Sign out error:', error)
       return { error: 'An unexpected error occurred during sign out' }
+    }
+  }
+
+  const refreshAuth = async () => {
+    try {
+      console.log('Manually refreshing auth state...')
+      globalAuthState.initialized = false
+      globalAuthState.initPromise = null
+      await initializeAuth()
+      return { error: null }
+    } catch (error) {
+      console.error('Auth refresh error:', error)
+      return { error: 'Failed to refresh authentication' }
     }
   }
 
@@ -271,6 +312,7 @@ export function useAuth() {
     isAuthenticated: !!user,
     signIn,
     signUp,
-    signOut
+    signOut,
+    refreshAuth
   }
 }

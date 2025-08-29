@@ -47,6 +47,7 @@ export interface Bet {
 
 export interface AnalyticsFilters {
   sports: string[]
+  leagues: string[]
   betTypes: string[]
   dateRange: {
     start: string | null
@@ -155,6 +156,7 @@ export interface AnalyticsData {
 
 const defaultFilters: AnalyticsFilters = {
   sports: [],
+  leagues: [],
   betTypes: [],
   dateRange: { start: null, end: null },
   sportsbooks: [],
@@ -214,6 +216,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
         userId: user.id,
         timeframe: currentFilters.timeframe,
         ...(currentFilters.sports.length > 0 && { sport: currentFilters.sports.join(',') }),
+        ...(currentFilters.leagues.length > 0 && { league: currentFilters.leagues.join(',') }),
         ...(currentFilters.betTypes.length > 0 && { bet_type: currentFilters.betTypes.join(',') }),
         ...(currentFilters.results.length > 0 && currentFilters.results.length < 5 && { status: currentFilters.results.join(',') }),
         ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay.toString() }),

@@ -30,14 +30,17 @@ async function getFallbackDatabaseData(sportKey: string, dateParam: string) {
     console.log('📀 Fetching fallback data from database for:', sportKey)
     
     // Get games from database
+    // Convert sport_key back to league (e.g., 'baseball_mlb' -> 'MLB')
+    const league = sportKey.split('_')[1]?.toUpperCase() || sportKey.toUpperCase()
+    
     const { data: games, error } = await supabase
       .from('games')
       .select(`
         *,
         odds (*)
       `)
-      .eq('sport_key', sportKey)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+      .eq('league', league)
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -479,7 +482,16 @@ async function transformAndSaveGames(
 
         // Process and save odds data for SportsGameOdds format
         if (event.odds && savedGame) {
+          console.log(`🎯 Found odds data for game ${savedGame.id}:`, Object.keys(event.odds).length, 'odds entries')
           await saveOddsDataSportsGameOdds(savedGame.id, event.odds as Record<string, unknown>)
+        } else {
+          console.log(`⚠️ No odds data found for game ${savedGame.id}. Fetching odds separately...`)
+          // Fetch odds separately for this event
+          try {
+            await fetchAndSaveOddsForEvent(savedGame.id, event.eventID as string, sportMapping)
+          } catch (oddsError) {
+            console.error(`❌ Error fetching odds for event ${event.eventID}:`, oddsError)
+          }
         }
 
         transformedGames.push({
@@ -503,6 +515,41 @@ async function transformAndSaveGames(
   } catch (error) {
     console.error('❌ Error in transformAndSaveGames:', error)
     throw error
+  }
+}
+
+// Fetch odds separately for an event
+async function fetchAndSaveOddsForEvent(
+  gameId: string, 
+  eventId: string, 
+  sportMapping: { sportID: string, leagueID: string, sport_key: string }
+) {
+  try {
+    console.log(`🎯 Fetching odds for event ${eventId}`)
+    
+    // Fetch odds for this specific event
+    const oddsUrl = `${SPORTSGAMEODDS_API_BASE}/events/${eventId}/odds`
+    const response = await fetch(oddsUrl, {
+      headers: {
+        'X-API-Key': API_KEY!,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      console.log(`⚠️ Failed to fetch odds for event ${eventId}: ${response.status}`)
+      return
+    }
+
+    const oddsData = await response.json()
+    console.log(`✅ Fetched odds for event ${eventId}:`, oddsData?.data ? Object.keys(oddsData.data).length : 0, 'odds entries')
+
+    if (oddsData?.success && oddsData?.data) {
+      await saveOddsDataSportsGameOdds(gameId, oddsData.data)
+    }
+
+  } catch (error) {
+    console.error(`❌ Error fetching odds for event ${eventId}:`, error)
   }
 }
 
@@ -586,9 +633,18 @@ async function saveOddsDataSportsGameOdds(
     }
 
     if (oddsRecords.length > 0) {
+      // First, update the updated_at timestamp for all records
+      const recordsWithTimestamp = oddsRecords.map(record => ({
+        ...record,
+        updated_at: new Date().toISOString()
+      }))
+
       const { error } = await supabase
         .from('odds')
-        .insert(oddsRecords)
+        .upsert(recordsWithTimestamp, {
+          onConflict: 'eventid,oddid',
+          ignoreDuplicates: false
+        })
 
       if (error) {
         console.error('❌ Error saving odds:', error)
@@ -708,11 +764,20 @@ async function saveOddsData(
       }
     }
 
-    // Batch insert odds records
+    // Batch upsert odds records
     if (oddsRecords.length > 0) {
+      // First, update the updated_at timestamp for all records
+      const recordsWithTimestamp = oddsRecords.map(record => ({
+        ...record,
+        updated_at: new Date().toISOString()
+      }))
+
       const { error: oddsError } = await supabase
         .from('odds')
-        .insert(oddsRecords)
+        .upsert(recordsWithTimestamp, {
+          onConflict: 'eventid,oddid',
+          ignoreDuplicates: false
+        })
 
       if (oddsError) {
         console.error('❌ Error saving odds:', oddsError)

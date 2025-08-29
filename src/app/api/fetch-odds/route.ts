@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         const apiUrl = new URL('/api/games/sportsgameodds', request.url);
         apiUrl.searchParams.set('sport', sportKey);
         apiUrl.searchParams.set('date', dateStr);
-        apiUrl.searchParams.set('forceRefresh', 'true');
+        apiUrl.searchParams.set('refresh', 'true');
         
         promises.push(
           fetch(apiUrl.toString())

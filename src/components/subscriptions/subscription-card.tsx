@@ -25,6 +25,8 @@ import {
   UserCheck
 } from 'lucide-react'
 import { SubscriptionCardProps } from '@/types/subscriptions'
+import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
+import { OpenBet } from '@/lib/queries/open-bets'
 
 export function SubscriptionCard({ 
   subscription, 
@@ -272,6 +274,18 @@ export function SubscriptionCard({
               <p className="text-xs text-gray-500">Total Bets</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Open Bets Section */}
+      {subscription.strategy?.open_bets && subscription.strategy.open_bets.length > 0 && (
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+          <SubscriberOpenBetsDisplay 
+            bets={subscription.strategy.open_bets} 
+            title="Current Open Picks"
+            maxBets={3}
+            showTitle={true}
+          />
         </div>
       )}
 

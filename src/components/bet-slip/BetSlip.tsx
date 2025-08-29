@@ -86,11 +86,8 @@ export default function BetSlip() {
     try {
       // Ensure we have a fresh session before making the API call
       console.log('🔄 Checking and refreshing session before bet submission...');
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const { createClient } = await import('@/lib/supabase');
+      const supabase = createClient();
       
       // Get current session and refresh if needed
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();

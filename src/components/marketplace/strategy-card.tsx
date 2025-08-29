@@ -35,6 +35,7 @@ interface StrategyData {
   is_verified: boolean
   verification_status: string
   rank: number | null
+  leaderboard_score?: number // Composite algorithm score
   last_bet_date: string | null
   last_updated: string
   created_at: string
@@ -105,9 +106,16 @@ export function StrategyCard({
           <div className="flex items-center space-x-4 flex-1">
             {/* Rank Badge */}
             {strategy.rank && (
-              <div className={`flex items-center space-x-1 ${rankStyle.bg} ${rankStyle.text} px-2 py-1 rounded-full text-xs font-bold shadow-sm flex-shrink-0`}>
-                {rankStyle.icon}
-                <span>#{strategy.rank}</span>
+              <div className="flex flex-col items-center space-y-1 flex-shrink-0">
+                <div className={`flex items-center space-x-1 ${rankStyle.bg} ${rankStyle.text} px-2 py-1 rounded-full text-xs font-bold shadow-sm`}>
+                  {rankStyle.icon}
+                  <span>#{strategy.rank}</span>
+                </div>
+                {strategy.leaderboard_score && (
+                  <div className="text-xs text-slate-500 font-medium" title="Composite Algorithm Score">
+                    Score: {strategy.leaderboard_score.toFixed(1)}
+                  </div>
+                )}
               </div>
             )}
             

@@ -3,6 +3,8 @@
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { usePosts } from '@/lib/hooks/use-posts'
+import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Bookmark,
   Camera,
@@ -10,7 +12,6 @@ import {
   Globe,
   Heart,
   Loader2,
-  Lock,
   MessageCircle,
   MessageSquare,
   MoreHorizontal,
@@ -18,8 +19,6 @@ import {
   RefreshCw,
   Send,
   Share2,
-  Star,
-  Trophy,
   User,
   Users,
   X
@@ -27,55 +26,24 @@ import {
 import Image from 'next/image'
 import { useState } from 'react'
 
-// Types for feed data
-interface UserType {
-  id: string
-  username: string
-  displayName: string
-  profilePicture?: string
-  verified: boolean
-  tier: 'elite' | 'pro' | 'rising' | 'member'
-}
-
-interface Post {
-  id: string
-  user: UserType
-  type: 'pick' | 'celebration' | 'analysis' | 'text'
-  content: {
-    text?: string
-    title?: string
-    analysis?: string
-    sport?: string
-    confidence?: number
-    odds?: string
-    status?: 'pending' | 'won' | 'lost' | 'void'
-    result?: string
-    streak?: number
-    imageUrl?: string
-  }
-  engagement: {
-    likes: number
-    comments: number
-    shares: number
-    saved: boolean
-    liked: boolean
-  }
-  timestamp: string
-  createdAt: Date
-}
-
 export default function FeedPage() {
   const [activeTab, setActiveTab] = useState<'public' | 'subscriptions'>('public')
   const [showCreatePost, setShowCreatePost] = useState(false)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(false)
   
   // Post creation state
   const [postContent, setPostContent] = useState('')
   const [postImage, setPostImage] = useState<File | null>(null)
   const [postImagePreview, setPostImagePreview] = useState<string | null>(null)
-  const [postVisibility, setPostVisibility] = useState<'public' | 'subscribers'>('public')
   const [isPosting, setIsPosting] = useState(false)
+
+  // Use the auth hook to check authentication status
+  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  
+  // Use the posts hook
+  const { posts, loading, error, hasMore, loadMore, refresh, createPost } = usePosts({
+    filter: activeTab,
+    autoRefresh: true
+  })
 
   // Character limit for posts
   const maxCharacters = 500
@@ -111,72 +79,37 @@ export default function FeedPage() {
     
     setIsPosting(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const newPost: Post = {
-      id: Date.now().toString(),
-      user: {
-        id: 'current-user',
-        username: 'sportsbettor',
-        displayName: 'Your Name',
-        verified: false,
-        tier: 'member'
-      },
-      type: 'text',
-      content: {
-        text: postContent,
-        ...(postImagePreview && { imageUrl: postImagePreview })
-      },
-      engagement: { likes: 0, comments: 0, shares: 0, saved: false, liked: false },
-      timestamp: 'now',
-      createdAt: new Date()
+    try {
+      await createPost(postContent, postImage || undefined)
+      
+      // Reset form
+      setPostContent('')
+      setPostImage(null)
+      setPostImagePreview(null)
+      setShowCreatePost(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create post')
+    } finally {
+      setIsPosting(false)
     }
+  }
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
     
-    setPosts([newPost, ...posts])
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
     
-    // Reset form
-    setPostContent('')
-    setPostImage(null)
-    setPostImagePreview(null)
-    setIsPosting(false)
-    setShowCreatePost(false)
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    
+    return date.toLocaleDateString()
   }
-
-  const handleLike = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? {
-            ...post,
-            engagement: {
-              ...post.engagement,
-              liked: !post.engagement.liked,
-              likes: post.engagement.liked 
-                ? post.engagement.likes - 1 
-                : post.engagement.likes + 1
-            }
-          }
-        : post
-    ))
-  }
-
-  const handleSave = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? {
-            ...post,
-            engagement: {
-              ...post.engagement,
-              saved: !post.engagement.saved
-            }
-          }
-        : post
-    ))
-  }
-
-  const filteredPosts = activeTab === 'subscriptions' 
-    ? posts.filter(post => post.user.verified) // Show only verified users for subscriptions
-    : posts
 
   return (
     <DashboardLayout>
@@ -191,7 +124,7 @@ export default function FeedPage() {
                   Community Feed
                 </h1>
                 <p className="text-lg text-slate-600 mt-1">
-                  Latest verified picks, wins, and insights from the community
+                  Latest posts and insights from the community
                 </p>
               </div>
             </div>
@@ -200,7 +133,8 @@ export default function FeedPage() {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => setLoading(true)}
+              onClick={refresh}
+              disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -213,6 +147,13 @@ export default function FeedPage() {
               Create Post
             </Button>
           </div>
+        </div>
+
+        {/* Debug Auth Status */}
+        <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 text-sm">
+          <strong>Debug Auth Status:</strong> 
+          {authLoading ? ' Loading...' : isAuthenticated ? ` Logged in as ${user?.email}` : ' Not logged in'}
+          {user && <span> (ID: {user.id})</span>}
         </div>
 
         {/* Tab Navigation */}
@@ -248,46 +189,59 @@ export default function FeedPage() {
           {/* Feed */}
           <div className="lg:col-span-3">
             <div className="space-y-6">
-              {filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => (
+              {/* Error State */}
+              {error && (
+                <Card className="p-6 bg-red-50 border-red-200">
+                  <div className="flex items-center space-x-3">
+                    <X className="h-5 w-5 text-red-500" />
+                    <div>
+                      <h3 className="text-red-800 font-medium">Error loading posts</h3>
+                      <p className="text-red-600 text-sm">{error}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Loading State */}
+              {loading && posts.length === 0 && (
+                <Card className="p-12 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+                  <p className="text-slate-600">Loading posts...</p>
+                </Card>
+              )}
+
+              {/* Posts */}
+              {posts.map((post) => (
                 <Card key={post.id} className="p-6 hover:shadow-lg transition-all duration-300">
                   {/* Post Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center font-bold text-white shadow-lg">
-                        {post.user.profilePicture ? (
+                        {post.profiles.profile_picture_url ? (
                           <Image
-                            src={post.user.profilePicture}
-                            alt={post.user.username}
+                            src={post.profiles.profile_picture_url}
+                            alt={post.profiles.username || 'User'}
                             width={48}
                             height={48}
                             className="rounded-full"
                           />
                         ) : (
-                          post.user.username.substring(0, 2).toUpperCase()
+                          (post.profiles.username || 'U').substring(0, 2).toUpperCase()
                         )}
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-slate-900">@{post.user.username}</span>
-                          {post.user.verified && (
+                          <span className="font-semibold text-slate-900">
+                            @{post.profiles.username || 'anonymous'}
+                          </span>
+                          {post.profiles.is_verified_seller && (
                             <div className="h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
                               <div className="h-2 w-2 bg-white rounded-full" />
                             </div>
                           )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            post.user.tier === 'elite' ? 'bg-purple-100 text-purple-800' :
-                            post.user.tier === 'pro' ? 'bg-blue-100 text-blue-800' :
-                            post.user.tier === 'rising' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {post.user.tier}
-                          </span>
                         </div>
                         <div className="flex items-center space-x-2 text-sm text-slate-600">
-                          <span>{post.user.displayName}</span>
-                          <span>•</span>
-                          <span>{post.timestamp}</span>
+                          <span>{formatRelativeTime(post.created_at)}</span>
                         </div>
                       </div>
                     </div>
@@ -297,107 +251,46 @@ export default function FeedPage() {
                   </div>
 
                   {/* Post Content */}
-                  {post.type === 'pick' ? (
-                    <div className="mb-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          post.content.sport === 'NBA' ? 'bg-orange-100 text-orange-800' :
-                          post.content.sport === 'NFL' ? 'bg-green-100 text-green-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {post.content.sport}
-                        </span>
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < (post.content.confidence ?? 0) ? 'text-yellow-400 fill-current' : 'text-slate-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        {post.content.status && (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            post.content.status === 'won' ? 'bg-green-100 text-green-800' :
-                            post.content.status === 'lost' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {post.content.status}
-                          </span>
-                        )}
+                  <div className="mb-4">
+                    <p className="text-slate-900 text-lg whitespace-pre-wrap">{post.content}</p>
+                    {post.image_url && (
+                      <div className="mt-3 rounded-xl overflow-hidden">
+                        <Image
+                          src={post.image_url}
+                          alt="Post image"
+                          width={500}
+                          height={300}
+                          className="w-full h-auto"
+                        />
                       </div>
-                      <h3 className="text-lg font-bold text-slate-900 mb-2">{post.content.title}</h3>
-                      <p className="text-slate-700 mb-3">{post.content.analysis}</p>
-                      <div className="flex items-center space-x-4 text-sm text-slate-600">
-                        <span>Odds: {post.content.odds}</span>
-                        {post.content.result && (
-                          <span className={post.content.status === 'won' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                            {post.content.result}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ) : post.type === 'celebration' ? (
-                    <div className="mb-4">
-                      <p className="text-slate-900 text-lg mb-3">{post.content.text}</p>
-                      {post.content.streak && (
-                        <div className="inline-flex items-center px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl">
-                          <Trophy className="h-4 w-4 mr-2" />
-                          <span className="font-semibold">{post.content.streak} Win Streak</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mb-4">
-                      <p className="text-slate-900 text-lg">{post.content.text}</p>
-                      {post.content.imageUrl && (
-                        <div className="mt-3 rounded-xl overflow-hidden">
-                          <Image
-                            src={post.content.imageUrl}
-                            alt="Post image"
-                            width={500}
-                            height={300}
-                            className="w-full h-auto"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Engagement */}
                   <div className="flex items-center justify-between pt-4 border-t border-slate-200">
                     <div className="flex items-center space-x-6">
-                      <button 
-                        onClick={() => handleLike(post.id)}
-                        className={`flex items-center space-x-2 transition-colors ${
-                          post.engagement.liked ? 'text-red-500' : 'text-slate-600 hover:text-red-500'
-                        }`}
-                      >
-                        <Heart className={`h-5 w-5 ${post.engagement.liked ? 'fill-current' : ''}`} />
-                        <span className="text-sm">{post.engagement.likes}</span>
+                      <button className="flex items-center space-x-2 text-slate-600 hover:text-red-500 transition-colors">
+                        <Heart className="h-5 w-5" />
+                        <span className="text-sm">0</span>
                       </button>
                       <button className="flex items-center space-x-2 text-slate-600 hover:text-blue-500 transition-colors">
                         <MessageCircle className="h-5 w-5" />
-                        <span className="text-sm">{post.engagement.comments}</span>
+                        <span className="text-sm">0</span>
                       </button>
                       <button className="flex items-center space-x-2 text-slate-600 hover:text-green-500 transition-colors">
                         <Share2 className="h-5 w-5" />
-                        <span className="text-sm">{post.engagement.shares}</span>
+                        <span className="text-sm">0</span>
                       </button>
                     </div>
-                    <button 
-                      onClick={() => handleSave(post.id)}
-                      className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${
-                        post.engagement.saved ? 'text-blue-500' : 'text-slate-400'
-                      }`}
-                    >
-                      <Bookmark className={`h-5 w-5 ${post.engagement.saved ? 'fill-current' : ''}`} />
+                    <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                      <Bookmark className="h-5 w-5 text-slate-400" />
                     </button>
                   </div>
                 </Card>
-              ))
-              ) : (
+              ))}
+
+              {/* Empty State */}
+              {!loading && posts.length === 0 && !error && (
                 <Card className="p-12 text-center">
                   <MessageSquare className="h-16 w-16 text-slate-300 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-slate-600 mb-2">No posts yet</h3>
@@ -417,10 +310,14 @@ export default function FeedPage() {
                 </Card>
               )}
 
-              {/* Load more - only show if there are posts */}
-              {filteredPosts.length > 0 && (
+              {/* Load More */}
+              {hasMore && posts.length > 0 && (
                 <div className="text-center py-6">
-                  <Button variant="outline" disabled={loading}>
+                  <Button 
+                    variant="outline" 
+                    onClick={loadMore} 
+                    disabled={loading}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -452,18 +349,6 @@ export default function FeedPage() {
               </div>
             </Card>
 
-            {/* Suggested Users */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Suggested for You</h3>
-              <div className="space-y-4">
-                <div className="text-center py-6 text-slate-500">
-                  <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm">No suggestions yet</p>
-                  <p className="text-xs text-slate-400">Follow some users to get personalized recommendations</p>
-                </div>
-              </div>
-            </Card>
-
             {/* Community Stats */}
             <Card className="p-6 bg-gradient-to-br from-blue-600 to-cyan-600 text-white">
               <div className="flex items-center space-x-2 mb-4">
@@ -472,16 +357,18 @@ export default function FeedPage() {
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-blue-100">Active Users</span>
-                  <span className="font-bold">2,847</span>
+                  <span className="text-blue-100">Total Posts</span>
+                  <span className="font-bold">{posts.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-blue-100">Picks Today</span>
-                  <span className="font-bold">156</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-100">Win Rate</span>
-                  <span className="font-bold">68.2%</span>
+                  <span className="text-blue-100">Active Today</span>
+                  <span className="font-bold">
+                    {posts.filter(p => {
+                      const today = new Date()
+                      const postDate = new Date(p.created_at)
+                      return postDate.toDateString() === today.toDateString()
+                    }).length}
+                  </span>
                 </div>
               </div>
             </Card>
@@ -511,7 +398,7 @@ export default function FeedPage() {
                     <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="font-semibold text-slate-900">@sportsbettor</span>
+                    <span className="font-semibold text-slate-900">@you</span>
                     <p className="text-sm text-slate-600">Share your thoughts with the community</p>
                   </div>
                 </div>
@@ -521,7 +408,7 @@ export default function FeedPage() {
                   <textarea
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
-                    placeholder="What's on your mind? Share your latest pick, analysis, or celebration..."
+                    placeholder="What's on your mind? Share your latest thoughts, analysis, or celebrations..."
                     className="w-full h-32 p-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     maxLength={maxCharacters}
                   />
@@ -575,40 +462,12 @@ export default function FeedPage() {
                   )}
                 </div>
 
-                {/* Visibility Settings */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Visibility</label>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => setPostVisibility('public')}
-                      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        postVisibility === 'public'
-                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                          : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
-                      }`}
-                    >
-                      <Globe className="h-4 w-4 mr-2" />
-                      Public
-                    </button>
-                    <button
-                      onClick={() => setPostVisibility('subscribers')}
-                      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        postVisibility === 'subscribers'
-                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                          : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
-                      }`}
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Subscribers Only
-                    </button>
-                  </div>
-                </div>
-
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                   <Button
                     variant="outline"
                     onClick={() => setShowCreatePost(false)}
+                    disabled={isPosting}
                   >
                     Cancel
                   </Button>

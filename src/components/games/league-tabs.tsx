@@ -7,6 +7,7 @@ interface LeagueTabsProps {
   onLeagueChange: (league: LeagueType) => void;
   availableLeagues: LeagueType[];
   gameCounts?: Record<string, number>;
+  seasonStatus?: Record<LeagueType, boolean>;
 }
 
 const LEAGUE_CONFIGS = {
@@ -64,7 +65,8 @@ export default function LeagueTabs({
   activeLeague, 
   onLeagueChange, 
   availableLeagues, 
-  gameCounts = {}
+  gameCounts = {},
+  seasonStatus = {}
 }: LeagueTabsProps) {
 
   return (
@@ -81,6 +83,7 @@ export default function LeagueTabs({
             const config = LEAGUE_CONFIGS[league];
             const gameCount = gameCounts[config.sport_key] || 0;
             const isActive = activeLeague === league;
+            const inSeason = seasonStatus[league] ?? true;
 
             return (
               <button
@@ -90,10 +93,16 @@ export default function LeagueTabs({
                   relative flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200
                   ${isActive
                     ? `bg-gradient-to-r ${config.color} text-white shadow-lg transform scale-105`
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:shadow-md'
+                    : inSeason
+                      ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:shadow-md'
+                      : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50 hover:text-slate-500'
                   }
                 `}
+                title={inSeason ? undefined : `${league} is currently off-season`}
               >
+                {!inSeason && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border border-white" />
+                )}
                 <span className="text-lg">{config.icon}</span>
                 <span>{config.name}</span>
                 {gameCount > 0 && (
@@ -101,11 +110,14 @@ export default function LeagueTabs({
                     inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full
                     ${isActive 
                       ? 'bg-white/20 text-white' 
-                      : 'bg-blue-100 text-blue-600'
+                      : 'bg-green-100 text-green-600'
                     }
                   `}>
                     {gameCount}
                   </span>
+                )}
+                {!inSeason && gameCount === 0 && (
+                  <span className="text-xs text-amber-600">OFF</span>
                 )}
               </button>
             );

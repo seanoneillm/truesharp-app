@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get('start_date')
     const endDateParam = searchParams.get('end_date')
     const sport = searchParams.get('sport')
+    const league = searchParams.get('league')
     const betType = searchParams.get('bet_type')
     const status = searchParams.get('status')
     const isParlay = searchParams.get('is_parlay')
@@ -162,6 +163,24 @@ export async function GET(request: NextRequest) {
         } else {
           // Straight bet - check if it matches any sport filter
           return sportsList.includes(bet.sport.toLowerCase())
+        }
+      })
+    }
+    
+    if (league) {
+      // Handle multiple leagues - convert to case-insensitive array
+      const leaguesList = league.split(',').map(l => l.trim().toLowerCase()).filter(l => l)
+      
+      // For parlays: include if ANY leg matches ANY of the league filters
+      // For straight bets: include if the bet matches ANY of the league filters
+      bets = bets.filter(bet => {
+        if (bet.is_parlay && bet.parlay_id) {
+          // Check if any leg of this parlay matches any league filter
+          const parlayLegs = allBets.filter(b => b.parlay_id === bet.parlay_id)
+          return parlayLegs.some(leg => leaguesList.includes(leg.league.toLowerCase()))
+        } else {
+          // Straight bet - check if it matches any league filter
+          return leaguesList.includes(bet.league.toLowerCase())
         }
       })
     }

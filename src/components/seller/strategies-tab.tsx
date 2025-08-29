@@ -14,7 +14,8 @@ import {
   createStrategy,
   type StrategyUpdateData 
 } from '@/lib/api/strategies'
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
+import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 
 export function StrategiesTab() {
   const { user, loading: authLoading } = useAuth()
@@ -32,21 +33,39 @@ export function StrategiesTab() {
     try {
       setLoading(true)
       console.log('Loading strategies for user:', user.id)
-      console.log('User object:', user)
       
-      // Test if Supabase is accessible
-      const supabase = createBrowserClient()
-      const { data: testData, error: testError } = await supabase.auth.getUser()
-      console.log('Auth check:', { testData, testError })
+      // Fetch regular strategies first to ensure we always show all strategies
+      const regularStrategies = await fetchUserStrategies(user.id)
+      console.log('Regular strategies loaded:', regularStrategies)
       
-      const data = await fetchUserStrategies(user.id)
-      console.log('Strategies loaded successfully:', data)
-      setStrategies(data)
+      // Try to enhance with open bets data
+      try {
+        const strategiesWithBets = await getSellerStrategiesWithOpenBets(user.id)
+        
+        // Merge the data - use regular strategies as base, enhance with open bets where available
+        const enhancedStrategies = regularStrategies.map(strategy => {
+          const strategyWithBets = strategiesWithBets.find(s => s.id === strategy.id)
+          if (strategyWithBets) {
+            return {
+              ...strategy,
+              open_bets: strategyWithBets.open_bets,
+              open_bets_count: strategyWithBets.open_bets_count,
+              total_potential_profit: strategyWithBets.total_potential_profit
+            }
+          }
+          return strategy
+        })
+        
+        setStrategies(enhancedStrategies)
+      } catch (openBetsError) {
+        console.warn('Failed to fetch open bets, using regular strategies:', openBetsError)
+        setStrategies(regularStrategies)
+      }
     } catch (error) {
       console.error('Error loading strategies:', error)
       addToast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to load strategies',
+        description: 'Failed to load strategies',
         variant: 'destructive'
       })
     } finally {
@@ -76,7 +95,7 @@ export function StrategiesTab() {
       }
       
       // Add connectivity check
-      const supabase = createBrowserClient()
+      const supabase = createClient()
       const { data: connTest, error: connError } = await supabase.auth.getUser()
       console.log('Connection test before save:', { connTest, connError })
       
@@ -113,6 +132,7 @@ export function StrategiesTab() {
       setActionLoading(false)
     }
   }, [])
+
 
   const handleCreateStrategy = async () => {
     if (!user) return

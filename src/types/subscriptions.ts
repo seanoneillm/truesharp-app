@@ -1,3 +1,5 @@
+import { OpenBet } from '@/lib/queries/open-bets'
+
 export interface Subscription {
   id: string
   subscriber_id: string
@@ -29,6 +31,8 @@ export interface Subscription {
     performance_roi?: number
     performance_win_rate?: number
     performance_total_bets: number
+    open_bets?: OpenBet[]
+    open_bets_count?: number
   }
 }
 

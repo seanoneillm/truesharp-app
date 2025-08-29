@@ -4,9 +4,11 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ToastProvider } from '@/components/ui/toast'
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
 import StrategiesTab from '@/components/seller/strategies-tab'
+import { EnhancedOpenBets } from '@/components/seller/enhanced-open-bets'
+import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 import {
     DollarSign,
     Plus,
@@ -34,6 +36,11 @@ interface SellerData {
 export default function SellPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const { user, loading: authLoading } = useAuth()
+
+  // Debug logging
+  useEffect(() => {
+    console.log('💰 Sell - Current user:', user?.id || 'No user', 'Email:', user?.email || 'No email')
+  }, [user])
   const [sellerData, setSellerData] = useState<SellerData>({
     totalRevenue: 0,
     subscriberCount: 0,
@@ -113,7 +120,7 @@ export default function SellPage() {
 
     try {
       setOpenBetsLoading(true)
-      const supabase = createBrowserClient()
+      const supabase = createClient()
 
       const { data: bets, error } = await supabase
         .from('bets')
@@ -158,7 +165,7 @@ export default function SellPage() {
     try {
       fetchingRef.current = true
       setLoading(true)
-      const supabase = createBrowserClient()
+      const supabase = createClient()
 
       // Fetch open bets alongside seller data - call directly to avoid dependency issue
       if (user) {
@@ -494,84 +501,12 @@ export default function SellPage() {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Open Bets Section */}
-            <Card>
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">Open Bets</h2>
-                    <p className="text-blue-100">
-                      {openBetsSummary.count} pending bets • ${openBetsSummary.totalProfit.toFixed(2)} potential profit
-                    </p>
-                  </div>
-                  <div className="p-3 bg-white/10 rounded-xl">
-                    <Trophy className="h-8 w-8" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 min-h-[200px]">
-                {(openBetsLoading && openBets.length === 0) ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse">
-                        <div className="h-16 bg-gray-200 rounded-lg"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : Array.isArray(openBets) && openBets.length > 0 ? (
-                  <div className="space-y-4">
-                    {openBets.map((bet) => (
-                      <div key={bet?.id || Math.random()} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors duration-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {bet?.sport || 'Unknown'}
-                              </span>
-                              {bet?.sportsbook && (
-                                <span className="text-xs text-gray-500">{bet.sportsbook}</span>
-                              )}
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Pending
-                              </span>
-                            </div>
-                            <p className="font-medium text-gray-900 mb-1">{bet?.bet_description || 'No description'}</p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span>Odds: {typeof bet?.odds === 'number' && bet.odds > 0 ? '+' : ''}{bet?.odds || 'N/A'}</span>
-                              <span>Stake: ${Number(bet?.stake || 0).toFixed(2)}</span>
-                              {bet?.game_date && (
-                                <span>Game: {new Date(bet.game_date).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">
-                              +${Math.max(((bet?.potential_payout || 0) - (bet?.stake || 0)), 0).toFixed(2)}
-                            </div>
-                            <div className="text-xs text-gray-500">potential profit</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Open Bets</h3>
-                    <p className="text-gray-600 mb-6">
-                      You don&apos;t have any pending bets at the moment.
-                    </p>
-                    <Link href="/games">
-                      <Button className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Place a Bet
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </Card>
+            {/* Enhanced Open Bets Section */}
+            <EnhancedOpenBets
+              openBets={openBets}
+              loading={openBetsLoading}
+              onRefresh={refreshData}
+            />
 
             {/* Business Insights Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
