@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { Calendar, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
@@ -52,7 +52,7 @@ export default function TodaysBets() {
       }
 
       try {
-        const supabase = createBrowserClient()
+        const supabase = createClient()
         
         // Get today's date in EST timezone
         const today = new Date()

@@ -82,23 +82,22 @@ async function createLeaderboardEntry(strategyId: string, supabase: SupabaseClie
 export async function fetchUserStrategies(userId: string): Promise<StrategyData[]> {
   const supabase = createBrowserClient()
   
-  console.log('Fetching strategies for user:', userId)
+  console.log('Fetching strategies from leaderboard for user:', userId)
   console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
   
   try {
     const { data, error } = await supabase
-      .from('strategies')
+      .from('strategy_leaderboard')
       .select(`
-        id,
-        name,
-        description,
-        monetized,
-        pricing_weekly,
-        pricing_monthly,
-        pricing_yearly,
-        performance_roi,
-        performance_win_rate,
-        performance_total_bets,
+        strategy_id,
+        strategy_name,
+        is_monetized,
+        subscription_price_weekly,
+        subscription_price_monthly,
+        subscription_price_yearly,
+        roi_percentage,
+        win_rate,
+        total_bets,
         created_at,
         updated_at,
         start_date
@@ -123,7 +122,7 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
     }
 
     // Get subscriber counts from subscriptions table for each strategy
-    const strategyIds = data.map(strategy => strategy.id)
+    const strategyIds = data.map(strategy => strategy.strategy_id)
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from('subscriptions')
       .select('strategy_id, frequency, status')
@@ -159,13 +158,25 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
       return acc
     }, {} as Record<string, { total: number; weekly: number; monthly: number; yearly: number }>) : {}
 
-    // Add subscriber counts to strategy data
+    // Map leaderboard data to StrategyData format and add subscriber counts
     const strategiesWithSubscriberCounts = data.map(strategy => ({
-      ...strategy,
-      subscriber_count: subscriberCounts[strategy.id]?.total || 0,
-      weekly_subscribers: subscriberCounts[strategy.id]?.weekly || 0,
-      monthly_subscribers: subscriberCounts[strategy.id]?.monthly || 0,
-      yearly_subscribers: subscriberCounts[strategy.id]?.yearly || 0
+      id: strategy.strategy_id,
+      name: strategy.strategy_name,
+      description: '', // Not available in leaderboard, could join with strategies table if needed
+      monetized: strategy.is_monetized || false,
+      pricing_weekly: strategy.subscription_price_weekly,
+      pricing_monthly: strategy.subscription_price_monthly,
+      pricing_yearly: strategy.subscription_price_yearly,
+      performance_roi: strategy.roi_percentage,
+      performance_win_rate: strategy.win_rate * 100, // Convert from decimal to percentage
+      performance_total_bets: strategy.total_bets,
+      created_at: strategy.created_at,
+      updated_at: strategy.updated_at,
+      start_date: strategy.start_date,
+      subscriber_count: subscriberCounts[strategy.strategy_id]?.total || 0,
+      weekly_subscribers: subscriberCounts[strategy.strategy_id]?.weekly || 0,
+      monthly_subscribers: subscriberCounts[strategy.strategy_id]?.monthly || 0,
+      yearly_subscribers: subscriberCounts[strategy.strategy_id]?.yearly || 0
     }))
 
     return strategiesWithSubscriberCounts

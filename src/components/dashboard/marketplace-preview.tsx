@@ -1,95 +1,84 @@
 'use client'
 
-import { createBrowserClient } from '@/lib/auth/supabase'
-import { Award, Star, TrendingUp, Users } from 'lucide-react'
+import { Award, Star, TrendingUp, Users, ArrowRight, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-interface TopSeller {
+interface StrategyData {
   id: string
   strategy_id: string
   user_id: string
   strategy_name: string
+  strategy_description: string
   username: string
-  user_display_name?: string
-  is_verified_seller: boolean
+  display_name: string
+  profile_picture_url: string | null
+  total_bets: number
   roi_percentage: number
   win_rate: number
-  total_bets: number
-  is_monetized: boolean
-  subscription_price_bronze?: number
-  subscription_price_silver?: number
-  subscription_price_premium?: number
-  overall_rank?: number
+  primary_sport: string
+  strategy_type: string
+  price: number
+  pricing_weekly: number
+  pricing_monthly: number
+  pricing_yearly: number
+  subscriber_count: number
+  is_verified: boolean
   verification_status: string
+  rank: number | null
+  leaderboard_score?: number
+  last_bet_date: string | null
+  last_updated: string
+  created_at: string
 }
 
 export default function MarketplacePreview() {
-  const [topSellers, setTopSellers] = useState<TopSeller[]>([])
+  const [topStrategies, setTopStrategies] = useState<StrategyData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchTopSellers() {
+    const fetchTopStrategies = async () => {
       try {
-        const supabase = createBrowserClient()
+        const params = new URLSearchParams({
+          sort: 'roi',
+          limit: '3'
+        })
         
-        // Fetch top performing strategies from the leaderboard table
-        const { data: leaderboardData, error: leaderboardError } = await supabase
-          .from('strategy_leaderboard')
-          .select(`
-            id,
-            strategy_id,
-            user_id,
-            strategy_name,
-            username,
-            user_display_name,
-            is_verified_seller,
-            roi_percentage,
-            win_rate,
-            total_bets,
-            is_monetized,
-            subscription_price_bronze,
-            subscription_price_silver,
-            subscription_price_premium,
-            overall_rank,
-            verification_status
-          `)
-          .eq('is_eligible', true)
-          .eq('is_monetized', true)
-          .gte('total_bets', 10) // Minimum 10 bets for leaderboard
-          .order('roi_percentage', { ascending: false })
-          .limit(5)
-
-        if (leaderboardError) {
-          console.error('Error fetching leaderboard:', leaderboardError?.message || leaderboardError)
-          setTopSellers([])
-          setLoading(false)
-          return
-        }
-
-        if (leaderboardData && leaderboardData.length > 0) {
-          setTopSellers(leaderboardData)
+        const response = await fetch(`/api/marketplace?${params.toString()}`)
+        const data = await response.json()
+        
+        if (data.error) {
+          console.error('Error fetching strategies:', data.error)
+          setTopStrategies([])
         } else {
-          setTopSellers([])
+          setTopStrategies(data.data || [])
         }
-
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : error)
+        setTopStrategies([])
       } finally {
         setLoading(false)
       }
     }
 
-    fetchTopSellers()
+    fetchTopStrategies()
   }, [])
 
   if (loading) {
     return (
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Top Performers</h2>
-        <div className="animate-pulse space-y-3">
+      <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl p-6 border border-gray-100">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="p-3 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl">
+            <Trophy className="h-6 w-6 text-emerald-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Marketplace Stars</h2>
+            <p className="text-sm text-gray-500">Top performing strategies</p>
+          </div>
+        </div>
+        <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            <div key={i} className="h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl"></div>
           ))}
         </div>
       </div>
@@ -97,95 +86,119 @@ export default function MarketplacePreview() {
   }
 
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+    <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <Star className="h-5 w-5 text-amber-600" />
+          <div className="p-3 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl shadow-sm">
+            <Trophy className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Top Performers</h2>
-            <p className="text-sm text-gray-500">Best sellers in marketplace</p>
+            <h2 className="text-xl font-bold text-gray-900">Marketplace Stars</h2>
+            <p className="text-sm text-gray-500">Top performing strategies</p>
           </div>
+        </div>
+        <div className="flex items-center text-emerald-600">
+          <Star className="h-4 w-4 fill-current" />
         </div>
       </div>
 
-      {topSellers.length === 0 ? (
-        <div className="text-center py-8">
-          <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-sm font-medium text-gray-900 mb-2">No sellers available</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Check back soon for top performing bettors.
+      {topStrategies.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="mx-auto h-20 w-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+            <Award className="h-10 w-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No strategies available</h3>
+          <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+            Check back soon for top performing strategies from our community.
           </p>
           <Link
             href="/marketplace"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl shadow-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200"
           >
-            Browse Marketplace
+            <Award className="h-4 w-4 mr-2" />
+            Explore Marketplace
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {topSellers.map((seller, index) => (
+        <div className="space-y-4">
+          {topStrategies.map((strategy, index) => (
             <div
-              key={seller.id}
-              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+              key={strategy.id}
+              className="group relative bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1"
             >
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">
-                      #{index + 1}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900">
-                      {seller.strategy_name}
-                    </p>
-                    {seller.is_verified_seller && (
-                      <Award className="h-4 w-4 text-yellow-500" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <span className="text-white font-bold text-lg">
+                        #{index + 1}
+                      </span>
+                    </div>
+                    {index === 0 && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                        <Star className="h-3 w-3 text-white fill-current" />
+                      </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">
-                    by @{seller.username}
-                  </p>
-                  <div className="flex items-center space-x-3 mt-1">
-                    <div className="flex items-center space-x-1">
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                      <span className="text-xs text-green-600 font-medium">
-                        {seller.roi_percentage?.toFixed(1) || '0'}% ROI
-                      </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {strategy.strategy_name}
+                      </p>
+                      <div className="flex items-center space-x-1 bg-emerald-100 px-2 py-1 rounded-full">
+                        <TrendingUp className="h-3 w-3 text-emerald-600" />
+                        <span className="text-xs font-semibold text-emerald-700">
+                          {strategy.roi_percentage?.toFixed(1) || '0'}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-3 w-3 text-blue-500" />
-                      <span className="text-xs text-blue-600 font-medium">
-                        {seller.total_bets || 0} bets
-                      </span>
+                    <p className="text-xs text-gray-500 mb-2">
+                      by @{strategy.username}
+                    </p>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-1">
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                        <span className="text-xs text-gray-600 font-medium">
+                          {(strategy.win_rate || 0).toFixed(0)}% win rate
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Users className="h-3 w-3 text-blue-500" />
+                        <span className="text-xs text-gray-600 font-medium">
+                          {strategy.total_bets || 0} bets
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="text-right">
-                <div className="text-sm font-bold text-gray-900">
-                  ${seller.subscription_price_bronze || seller.subscription_price_silver || seller.subscription_price_premium || 25}/mo
-                </div>
-                <div className="text-xs text-gray-500">
-                  {(seller.win_rate * 100)?.toFixed(1) || '0'}% win rate
+                
+                <div className="text-right">
+                  <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                    ${strategy.pricing_monthly || strategy.pricing_weekly || strategy.pricing_yearly || strategy.price || 25}
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">
+                    {strategy.pricing_monthly ? '/month' : strategy.pricing_weekly ? '/week' : strategy.pricing_yearly ? '/year' : '/month'}
+                  </div>
+                  <div className="flex items-center justify-end mt-1">
+                    <div className="flex items-center space-x-1 text-orange-500">
+                      <Users className="h-3 w-3" />
+                      <span className="text-xs font-semibold">{strategy.subscriber_count || 0}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
           
-          {/* Browse All Link */}
-          <div className="text-center pt-4">
+          {/* Enhanced Browse All Link */}
+          <div className="text-center pt-6 border-t border-gray-100">
             <Link
               href="/marketplace"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200"
             >
-              Browse All Strategies
+              <Trophy className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+              Discover All Strategies
+              <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>

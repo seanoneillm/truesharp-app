@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { ChevronDown, HelpCircle, Settings } from 'lucide-react'
+import { ChevronDown, HelpCircle, Settings, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
@@ -49,6 +49,7 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
     router.push(path)
     setIsOpen(false)
   }
+
 
   const getUserInitials = () => {
     if (!isHydrated || loading) return 'U'

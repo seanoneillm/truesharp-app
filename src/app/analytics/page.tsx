@@ -139,11 +139,12 @@ const defaultFilters: FilterOptions = {
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>('strategies')
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('analytics')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMoreBets, setHasMoreBets] = useState(true)
   const [loadingMoreBets, setLoadingMoreBets] = useState(false)
+  const [additionalBets, setAdditionalBets] = useState<Bet[]>([]) // State for additional loaded bets
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [strategiesLoading, setStrategiesLoading] = useState(false)
   const [isRefreshingBets, setIsRefreshingBets] = useState(false)
@@ -471,7 +472,7 @@ export default function AnalyticsPage() {
         } as Bet
       })
       
-      setRecentBets(prev => [...prev, ...additionalBets])
+      setAdditionalBets(prev => [...prev, ...additionalBets])
       setCurrentPage(nextPage)
       
       // Simulate reaching the end after a few pages
@@ -773,7 +774,7 @@ export default function AnalyticsPage() {
 
   const dailyProfitData = analyticsData?.dailyProfitData || []
   const monthlyData = analyticsData?.monthlyData || []
-  const recentBets = analyticsData?.recentBets || []
+  const recentBets = [...(analyticsData?.recentBets || []), ...additionalBets]
 
   // Transform chart data for overview with enhanced calculations
   const chartData = dailyProfitData.map((item) => ({
@@ -837,7 +838,12 @@ export default function AnalyticsPage() {
       closingLine: item.lineValue,
       movement: 'sharp' as const,
       profit: item.profit
-    })) : []
+    })) : [],
+    // Enhanced analytics data from SQL functions
+    roiOverTime: analyticsData.roiOverTime || [],
+    leagueBreakdown: analyticsData.leagueBreakdown || [],
+    winRateVsExpected: analyticsData.winRateVsExpected || [],
+    monthlyPerformance: analyticsData.monthlyPerformance || []
   }
 
 
@@ -928,11 +934,18 @@ export default function AnalyticsPage() {
         {activeTab === 'analytics' && (
           (() => {
             console.log('📊 Analytics - Rendering AnalyticsTabComponent with isPro:', userProfile.isPro)
+            console.log('📊 Enhanced Analytics Data:', {
+              roiOverTime: transformedAnalytics.roiOverTime,
+              leagueBreakdown: transformedAnalytics.leagueBreakdown,
+              winRateVsExpected: transformedAnalytics.winRateVsExpected,
+              monthlyPerformance: transformedAnalytics.monthlyPerformance
+            })
             return (
               <AnalyticsTabComponent
                 data={transformedAnalytics}
                 isPro={userProfile.isPro}
                 isLoading={false}
+                user={user}
               />
             )
           })()

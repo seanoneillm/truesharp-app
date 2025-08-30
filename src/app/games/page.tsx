@@ -22,6 +22,7 @@ function GamesPageContent() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Toast notifications for bet slip actions
@@ -152,10 +153,15 @@ function GamesPageContent() {
     loadGamesForDate(normalizedDate);
   };
 
-    const handleManualFetch = async () => {
+  // Retry mechanism with exponential backoff
+  const handleManualFetchWithRetry = async (currentRetryCount = 0) => {
+    const maxRetries = 2;
+    const baseDelay = 2000; // 2 seconds
+    
     if (!selectedDate) return;
     
     setIsFetching(true);
+    setRetryCount(currentRetryCount);
     
     try {
       const response = await fetch('/api/fetch-odds', {
@@ -169,21 +175,115 @@ function GamesPageContent() {
         })
       });
       
+      // Check if the request failed due to network/server issues
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limited - offer retry option
+          const shouldRetry = currentRetryCount < maxRetries && confirm(
+            `⏱️ Rate limited by the odds API. Would you like to automatically retry in ${Math.pow(2, currentRetryCount + 1)} seconds? (Attempt ${currentRetryCount + 1}/${maxRetries + 1})`
+          );
+          
+          if (shouldRetry) {
+            const delay = baseDelay * Math.pow(2, currentRetryCount); // Exponential backoff
+            console.log(`⏳ Retrying in ${delay}ms...`);
+            setTimeout(() => {
+              handleManualFetchWithRetry(currentRetryCount + 1);
+            }, delay);
+            return;
+          } else {
+            alert('⏱️ Rate limited by the odds API. Please wait 5-10 minutes before trying again manually.');
+            console.warn('⚠️ Rate limited by odds API - user declined retry');
+            return;
+          }
+        } else if (response.status >= 500) {
+          // Server error - offer retry for server errors
+          if (currentRetryCount < maxRetries) {
+            const shouldRetry = confirm(
+              `🚨 Server error occurred. Would you like to retry? (Attempt ${currentRetryCount + 1}/${maxRetries + 1})`
+            );
+            if (shouldRetry) {
+              setTimeout(() => {
+                handleManualFetchWithRetry(currentRetryCount + 1);
+              }, baseDelay);
+              return;
+            }
+          }
+          alert('🚨 Server error occurred. Please try again later.');
+          console.error('❌ Server error:', response.status, response.statusText);
+          return;
+        } else {
+          // Other HTTP error
+          alert(`❌ Request failed: ${response.status} ${response.statusText}`);
+          console.error('❌ HTTP error:', response.status, response.statusText);
+          return;
+        }
+      }
+      
       const result = await response.json();
       
-      if (result.success) {
+      if (result.success || (result.successfulRequests && result.successfulRequests > 0)) {
         console.log('✅ Manual odds fetch completed:', result);
+        
+        // Show detailed success message
+        const successMsg = result.message || `Successfully fetched ${result.totalGames || 0} games from ${result.successfulRequests || 0}/${result.totalRequests || 0} API requests`;
+        alert(`✅ ${successMsg}`);
+        
+        // Reset retry count on success
+        setRetryCount(0);
+        
         // Refresh the games data after fetching new odds
         await loadGamesForDate(selectedDate);
       } else {
         console.error('❌ Manual fetch failed:', result);
+        if (result.message?.includes('rate limit')) {
+          // Handle rate limiting in response
+          const shouldRetry = currentRetryCount < maxRetries && confirm(
+            `⏱️ ${result.message} Would you like to automatically retry in ${Math.pow(2, currentRetryCount + 1)} seconds?`
+          );
+          
+          if (shouldRetry) {
+            const delay = baseDelay * Math.pow(2, currentRetryCount);
+            setTimeout(() => {
+              handleManualFetchWithRetry(currentRetryCount + 1);
+            }, delay);
+            return;
+          }
+        }
+        
+        alert(`❌ ${result.message || result.error || 'Fetch failed'}`);
       }
     } catch (error) {
       console.error('❌ Error during manual fetch:', error);
+      
+      // Handle different types of errors with retry option
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        const shouldRetry = currentRetryCount < maxRetries && confirm(
+          `🌐 Network error: Unable to connect to the server. Would you like to retry? (Attempt ${currentRetryCount + 1}/${maxRetries + 1})`
+        );
+        
+        if (shouldRetry) {
+          setTimeout(() => {
+            handleManualFetchWithRetry(currentRetryCount + 1);
+          }, baseDelay);
+          return;
+        }
+        
+        alert('🌐 Network error: Unable to connect to the server. Please check your connection and try again.');
+      } else if (error instanceof Error) {
+        alert(`❌ Error: ${error.message}`);
+      } else {
+        alert('❌ An unexpected error occurred. Please try again.');
+      }
     } finally {
-      setIsFetching(false);
+      if (currentRetryCount === 0) {
+        setIsFetching(false);
+        setRetryCount(0);
+      }
     }
   };
+
+  // Wrapper function for backward compatibility
+  const handleManualFetch = () => handleManualFetchWithRetry(0);
 
 
   // Map league to sport key helper function
@@ -321,7 +421,9 @@ function GamesPageContent() {
               >
                 <RefreshCw className={`w-4 h-4 ${(isLoading || isFetching) ? 'animate-spin' : ''}`} />
                 <span>
-                  {isFetching ? 'Fetching...' : isLoading ? 'Loading...' : 'Fetch Odds'}
+                  {isFetching ? 
+                    (retryCount > 0 ? `Retrying... (${retryCount}/2)` : 'Fetching...') : 
+                    isLoading ? 'Loading...' : 'Fetch Odds'}
                 </span>
               </button>
             </div>
@@ -373,7 +475,9 @@ function GamesPageContent() {
                     disabled={isLoading || isFetching}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
-                    {isFetching ? 'Fetching...' : 'Check for Games'}
+                    {isFetching ? 
+                      (retryCount > 0 ? `Retrying... (${retryCount}/2)` : 'Fetching...') : 
+                      'Check for Games'}
                   </button>
                   {!isInSeason(activeLeague) && (
                     <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">

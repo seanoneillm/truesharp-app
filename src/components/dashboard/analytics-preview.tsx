@@ -256,29 +256,33 @@ export default function AnalyticsPreview() {
   }
 
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+    <div className="bg-gradient-to-br from-white to-purple-50 shadow-xl rounded-2xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-purple-600" />
+          <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl shadow-sm">
+            <BarChart3 className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Analytics Preview</h2>
-            <p className="text-sm text-gray-500">Performance insights</p>
+            <h2 className="text-xl font-bold text-gray-900">Performance Analytics</h2>
+            <p className="text-sm text-gray-500">Your betting insights</p>
           </div>
+        </div>
+        <div className="flex items-center text-purple-600">
+          <div className="h-2 w-2 bg-purple-400 rounded-full animate-pulse mr-2"></div>
+          <span className="text-sm font-medium">Live</span>
         </div>
       </div>
 
       {/* Time Period Toggles */}
-      <div className="flex space-x-1 mb-4 p-1 bg-gray-100 rounded-lg">
+      <div className="flex space-x-1 mb-6 p-1 bg-gradient-to-r from-gray-100 to-gray-150 rounded-xl shadow-inner">
         {(['week', 'month', 'year'] as TimePeriod[]).map((period) => (
           <button
             key={period}
             onClick={() => setSelectedPeriod(period)}
-            className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+            className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 ${
               selectedPeriod === period
-                ? 'bg-white text-purple-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
             }`}
           >
             {getPeriodLabel(period)}
@@ -323,33 +327,37 @@ export default function AnalyticsPreview() {
       )}
 
       {/* Total Profit Display */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+      <div className="mb-6 p-6 bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl border border-gray-200 shadow-lg">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-full ${
-              totalProfit >= 0 ? 'bg-green-100' : 'bg-red-100'
+          <div className="flex items-center space-x-4">
+            <div className={`p-4 rounded-2xl shadow-lg ${
+              totalProfit >= 0 
+                ? 'bg-gradient-to-br from-green-100 to-emerald-200' 
+                : 'bg-gradient-to-br from-red-100 to-red-200'
             }`}>
               {totalProfit >= 0 ? (
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <TrendingUp className="h-6 w-6 text-green-600" />
               ) : (
-                <TrendingDown className="h-5 w-5 text-red-600" />
+                <TrendingDown className="h-6 w-6 text-red-600" />
               )}
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-1">Total Profit/Loss</div>
-              <div className={`text-2xl font-bold ${
-                totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
+              <div className="text-sm text-gray-500 font-medium mb-1">Total Profit/Loss</div>
+              <div className={`text-3xl font-bold ${
+                totalProfit >= 0 
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent' 
+                  : 'bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent'
               }`}>
                 {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-500">{getPeriodLabel(selectedPeriod)}</div>
-            <div className={`text-lg font-semibold ${
-              totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
+            <div className="text-sm text-gray-500 font-medium mb-2">{getPeriodLabel(selectedPeriod)}</div>
+            <div className={`text-3xl font-bold ${
+              totalProfit >= 0 ? 'text-green-500' : 'text-red-500'
             }`}>
-              {totalProfit >= 0 ? '↗' : '↘'}
+              {totalProfit >= 0 ? '📈' : '📉'}
             </div>
           </div>
         </div>
@@ -380,12 +388,14 @@ export default function AnalyticsPreview() {
       </div>
 
       {/* View Full Analytics Link */}
-      <div className="mt-6 text-center">
+      <div className="mt-8 text-center border-t border-gray-100 pt-6">
         <Link
           href="/analytics"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+          className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:from-purple-700 hover:to-purple-800 transform hover:scale-105 transition-all duration-200"
         >
-          View Full Analytics
+          <BarChart3 className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+          View Detailed Analytics
+          <div className="ml-2 group-hover:translate-x-1 transition-transform">→</div>
         </Link>
       </div>
     </div>

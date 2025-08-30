@@ -6,7 +6,11 @@ import { Card } from '@/components/ui/card'
 import { ToastProvider } from '@/components/ui/toast'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { SellerProfileEditor } from '@/components/seller/seller-profile-editor'
 import StrategiesTab from '@/components/seller/strategies-tab'
+import { SubscribersTab } from '@/components/seller/subscribers-tab'
+import { FinancialsTab } from '@/components/seller/financials-tab'
+import { AnalyticsTab } from '@/components/seller/analytics-tab'
 import { EnhancedOpenBets } from '@/components/seller/enhanced-open-bets'
 import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 import {
@@ -18,6 +22,7 @@ import {
     Target,
     TrendingUp,
     Trophy,
+    User,
     Users
 } from 'lucide-react'
 import Link from 'next/link'
@@ -35,6 +40,7 @@ interface SellerData {
 
 export default function SellPage() {
   const [activeTab, setActiveTab] = useState('overview')
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const { user, loading: authLoading } = useAuth()
 
   // Debug logging
@@ -384,6 +390,15 @@ export default function SellPage() {
           </div>
           <div className="flex items-center space-x-3">
             <Button 
+              onClick={() => setProfileEditorOpen(true)}
+              variant="outline"
+              size="sm"
+              className="text-sm border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Customize Profile
+            </Button>
+            <Button 
               onClick={refreshData}
               variant="outline"
               size="sm"
@@ -391,6 +406,15 @@ export default function SellPage() {
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
+            </Button>
+            <Button 
+              onClick={() => setProfileEditorOpen(true)}
+              variant="outline"
+              size="sm"
+              className="text-sm border-purple-300 text-purple-600 hover:bg-purple-50"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Edit Profile
             </Button>
             <Link href="/games">
               <Button className="bg-blue-600 hover:bg-blue-700">
@@ -635,50 +659,26 @@ export default function SellPage() {
         )}
 
         {activeTab === 'subscribers' && (
-          <Card className="p-12 text-center">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No subscribers yet</h3>
-            <p className="text-gray-600 mb-4">Monetize your strategies to start attracting subscribers</p>
-            <Button 
-              onClick={() => setActiveTab('strategies')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Setup Pricing
-            </Button>
-          </Card>
+          <SubscribersTab />
         )}
 
         {activeTab === 'financials' && (
-          <Card className="p-12 text-center">
-            <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No revenue yet</h3>
-            <p className="text-gray-600 mb-4">Start earning revenue by monetizing your strategies</p>
-            <Button 
-              onClick={() => setActiveTab('strategies')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Target className="h-4 w-4 mr-2" />
-              Create Strategy
-            </Button>
-          </Card>
+          <FinancialsTab />
         )}
 
         {activeTab === 'analytics' && (
-          <Card className="p-12 text-center">
-            <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No analytics yet</h3>
-            <p className="text-gray-600 mb-4">Analytics will appear once you have active strategies and picks</p>
-            <Button 
-              onClick={() => setActiveTab('strategies')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Get Started
-            </Button>
-          </Card>
+          <AnalyticsTab />
         )}
         </div>
+        
+        {/* Seller Profile Editor Modal */}
+        <SellerProfileEditor
+          isOpen={profileEditorOpen}
+          onClose={() => setProfileEditorOpen(false)}
+          onSuccess={() => {
+            // Could add a refresh callback here if needed
+          }}
+        />
       </DashboardLayout>
     </ToastProvider>
   )

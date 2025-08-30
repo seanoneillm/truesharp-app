@@ -215,21 +215,20 @@ export async function getSellerStrategiesWithOpenBets(
   const supabase = supabaseClient || createClient()
 
   try {
-    // First, get user's strategies
+    // First, get user's strategies from leaderboard
     const { data: strategies, error: strategiesError } = await supabase
-      .from('strategies')
+      .from('strategy_leaderboard')
       .select(`
-        id,
-        name,
-        description,
+        strategy_id,
+        strategy_name,
         user_id,
-        performance_roi,
-        performance_win_rate,
-        performance_total_bets,
-        pricing_weekly,
-        pricing_monthly,
-        pricing_yearly,
-        subscriber_count
+        roi_percentage,
+        win_rate,
+        total_bets,
+        subscription_price_weekly,
+        subscription_price_monthly,
+        subscription_price_yearly,
+        is_monetized
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -239,7 +238,7 @@ export async function getSellerStrategiesWithOpenBets(
       return []
     }
 
-    const strategyIds = strategies.map(s => s.id)
+    const strategyIds = strategies.map(s => s.strategy_id)
     
     // Get open bets for these strategies - try strategy_bets first
     let openBetsByStrategy = await getOpenBetsForStrategies(strategyIds, supabase)
@@ -251,13 +250,23 @@ export async function getSellerStrategiesWithOpenBets(
 
     // Combine strategies with their open bets
     const strategiesWithBets = strategies.map(strategy => {
-      const openBets = openBetsByStrategy[strategy.id] || []
+      const openBets = openBetsByStrategy[strategy.strategy_id] || []
       const totalPotentialProfit = openBets.reduce((sum, bet) => {
         return sum + Math.max(0, bet.potential_payout - bet.stake)
       }, 0)
 
       return {
-        ...strategy,
+        id: strategy.strategy_id,
+        name: strategy.strategy_name,
+        description: '', // Not available in leaderboard
+        user_id: strategy.user_id,
+        performance_roi: strategy.roi_percentage,
+        performance_win_rate: strategy.win_rate * 100, // Convert from decimal to percentage
+        performance_total_bets: strategy.total_bets,
+        pricing_weekly: strategy.subscription_price_weekly,
+        pricing_monthly: strategy.subscription_price_monthly,
+        pricing_yearly: strategy.subscription_price_yearly,
+        subscriber_count: 0, // Would need to join with subscriptions if needed
         open_bets: openBets,
         open_bets_count: openBets.length,
         total_potential_profit: totalPotentialProfit

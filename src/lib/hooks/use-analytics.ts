@@ -1,6 +1,14 @@
-// FILE: src/lib/hooks/use-analytics.ts (Final fixed version)
+// FILE: src/lib/hooks/use-analytics.ts (Enhanced version)
 import type { User } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import {
+  fetchEnhancedAnalytics,
+  type AnalyticsFilters as EnhancedFilters,
+  type ROIOverTimeData,
+  type PerformanceByLeagueData,
+  type WinRateVsExpectedData,
+  type MonthlyPerformanceData
+} from '@/lib/analytics/enhanced-analytics'
 
 // Keep all your existing interfaces exactly the same
 export interface Bet {
@@ -152,6 +160,12 @@ export interface AnalyticsData {
   dailyProfitData: DailyProfitData[]
   recentBets: Bet[]
   topPerformingSports: SportBreakdown[]
+  // Enhanced analytics data
+  roiOverTime: ROIOverTimeData[]
+  leagueBreakdown: PerformanceByLeagueData[]
+  winRateVsExpected: WinRateVsExpectedData[]
+  monthlyPerformance: MonthlyPerformanceData[]
+  bets: Bet[] // Raw bets data for the bets table
 }
 
 const defaultFilters: AnalyticsFilters = {
@@ -184,6 +198,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
   }, [filters])
 
   const fetchAnalytics = useCallback(async (forceFetch = false) => {
+    console.log('🔍 fetchAnalytics called with user:', user?.id, 'forceFetch:', forceFetch)
     if (!user) {
       console.log('No user provided to fetchAnalytics')
       setLoading(false)
@@ -211,65 +226,103 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
 
       const currentFilters = latestFiltersRef.current
 
-      // Build query parameters - include userId like bet submission
-      const params = new URLSearchParams({
-        userId: user.id,
-        timeframe: currentFilters.timeframe,
-        ...(currentFilters.sports.length > 0 && { sport: currentFilters.sports.join(',') }),
-        ...(currentFilters.leagues.length > 0 && { league: currentFilters.leagues.join(',') }),
-        ...(currentFilters.betTypes.length > 0 && { bet_type: currentFilters.betTypes.join(',') }),
-        ...(currentFilters.results.length > 0 && currentFilters.results.length < 5 && { status: currentFilters.results.join(',') }),
-        ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay.toString() }),
-        ...(currentFilters.side && { side: currentFilters.side }),
-        ...(currentFilters.oddsType && { odds_type: currentFilters.oddsType }),
-        ...(currentFilters.minOdds !== null && currentFilters.minOdds !== undefined && { min_odds: currentFilters.minOdds.toString() }),
-        ...(currentFilters.maxOdds !== null && currentFilters.maxOdds !== undefined && { max_odds: currentFilters.maxOdds.toString() }),
-        ...(currentFilters.minStake !== null && currentFilters.minStake !== undefined && { min_stake: currentFilters.minStake.toString() }),
-        ...(currentFilters.maxStake !== null && currentFilters.maxStake !== undefined && { max_stake: currentFilters.maxStake.toString() }),
-        ...(currentFilters.dateRange.start && { start_date: currentFilters.dateRange.start }),
-        ...(currentFilters.dateRange.end && { end_date: currentFilters.dateRange.end })
-      })
+      // Convert filters to enhanced analytics format
+      const enhancedFilters: EnhancedFilters = {
+        ...(currentFilters.sports.length > 0 && { leagues: currentFilters.sports }), // Map sports to leagues for now
+        ...(currentFilters.leagues.length > 0 && { leagues: currentFilters.leagues }),
+        ...(currentFilters.betTypes.length > 0 && { bet_types: currentFilters.betTypes }),
+        ...(currentFilters.sportsbooks.length > 0 && { sportsbooks: currentFilters.sportsbooks }),
+        ...(currentFilters.minOdds !== null && currentFilters.minOdds !== undefined && { odds_min: currentFilters.minOdds }),
+        ...(currentFilters.maxOdds !== null && currentFilters.maxOdds !== undefined && { odds_max: currentFilters.maxOdds }),
+        ...(currentFilters.minStake !== null && currentFilters.minStake !== undefined && { stake_min: currentFilters.minStake }),
+        ...(currentFilters.maxStake !== null && currentFilters.maxStake !== undefined && { stake_max: currentFilters.maxStake }),
+        ...(currentFilters.dateRange.start && { date_from: currentFilters.dateRange.start }),
+        ...(currentFilters.dateRange.end && { date_to: currentFilters.dateRange.end }),
+        ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay }),
+        ...(currentFilters.side && { side: currentFilters.side })
+      }
 
-      console.log('Making analytics API call with userId parameter:', user.id)
-      const response = await fetch(`/api/analytics?${params}`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
+      // Fetch both old and enhanced analytics data in parallel
+      console.log('🔍 About to fetch enhanced analytics for user:', user.id)
+      const [legacyResponse, enhancedData] = await Promise.all([
+        // Legacy API call
+        fetch(`/api/analytics?${new URLSearchParams({
+          userId: user.id,
+          timeframe: currentFilters.timeframe,
+          ...(currentFilters.sports.length > 0 && { sport: currentFilters.sports.join(',') }),
+          ...(currentFilters.leagues.length > 0 && { league: currentFilters.leagues.join(',') }),
+          ...(currentFilters.betTypes.length > 0 && { bet_type: currentFilters.betTypes.join(',') }),
+          ...(currentFilters.results.length > 0 && currentFilters.results.length < 5 && { status: currentFilters.results.join(',') }),
+          ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay.toString() }),
+          ...(currentFilters.side && { side: currentFilters.side }),
+          ...(currentFilters.oddsType && { odds_type: currentFilters.oddsType }),
+          ...(currentFilters.minOdds !== null && currentFilters.minOdds !== undefined && { min_odds: currentFilters.minOdds.toString() }),
+          ...(currentFilters.maxOdds !== null && currentFilters.maxOdds !== undefined && { max_odds: currentFilters.maxOdds.toString() }),
+          ...(currentFilters.minStake !== null && currentFilters.minStake !== undefined && { min_stake: currentFilters.minStake.toString() }),
+          ...(currentFilters.maxStake !== null && currentFilters.maxStake !== undefined && { max_stake: currentFilters.maxStake.toString() }),
+          ...(currentFilters.dateRange.start && { start_date: currentFilters.dateRange.start }),
+          ...(currentFilters.dateRange.end && { end_date: currentFilters.dateRange.end })
+        })}`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        }),
+        // Enhanced analytics functions
+        (async () => {
+          try {
+            console.log('🔍 Calling fetchEnhancedAnalytics with:', user.id, enhancedFilters)
+            const result = await fetchEnhancedAnalytics(user.id, enhancedFilters)
+            console.log('✅ fetchEnhancedAnalytics completed:', result)
+            return result
+          } catch (error) {
+            console.error('🚨 fetchEnhancedAnalytics failed:', error)
+            return {
+              roiOverTime: [],
+              performanceByLeague: [],
+              winRateVsExpected: [],
+              monthlyPerformance: []
+            }
+          }
+        })()
+      ])
       
-      if (!response.ok) {
+      if (!legacyResponse.ok) {
         // Handle authentication errors specifically
-        if (response.status === 401) {
+        if (legacyResponse.status === 401) {
           console.log('Analytics API returned 401 - authentication failed')
-          // Clear any invalid session data
           setAnalyticsData(null)
           setError('Authentication required. Please log in again.')
           setLoading(false)
           return
         }
-        throw new Error(`API error: ${response.status}`)
+        throw new Error(`API error: ${legacyResponse.status}`)
       }
 
-      const result = await response.json()
+      const legacyResult = await legacyResponse.json()
       
-      if (result.error) {
-        throw new Error(result.error)
+      if (legacyResult.error) {
+        throw new Error(legacyResult.error)
       }
 
-      console.log('Successfully fetched analytics:', result.data)
+      console.log('Successfully fetched legacy analytics:', legacyResult.data)
+      console.log('Successfully fetched enhanced analytics:', enhancedData)
       
-      // Transform API response to match our interface
+      // Combine legacy and enhanced data
       const data: AnalyticsData = {
-        metrics: result.data.metrics,
-        sportBreakdown: result.data.sportBreakdown || [],
-        betTypeBreakdown: result.data.betTypeBreakdown || [],
-        sideBreakdown: result.data.sideBreakdown || [],
-        lineMovementData: result.data.lineMovementData || [],
-        monthlyData: result.data.monthlyData || [],
-        dailyProfitData: result.data.dailyProfitData || [],
-        recentBets: result.data.recentBets || [],
-        topPerformingSports: result.data.topPerformingSports || []
+        metrics: legacyResult.data.metrics,
+        sportBreakdown: legacyResult.data.sportBreakdown || [],
+        betTypeBreakdown: legacyResult.data.betTypeBreakdown || [],
+        sideBreakdown: legacyResult.data.sideBreakdown || [],
+        lineMovementData: legacyResult.data.lineMovementData || [],
+        monthlyData: legacyResult.data.monthlyData || [],
+        dailyProfitData: legacyResult.data.dailyProfitData || [],
+        recentBets: legacyResult.data.recentBets || [],
+        topPerformingSports: legacyResult.data.topPerformingSports || [],
+        // Enhanced analytics data
+        roiOverTime: enhancedData.roiOverTime || [],
+        leagueBreakdown: enhancedData.performanceByLeague || [],
+        winRateVsExpected: enhancedData.winRateVsExpected || [],
+        monthlyPerformance: enhancedData.monthlyPerformance || [],
+        bets: legacyResult.data.recentBets || []
       }
       
       setAnalyticsData(data)
@@ -322,7 +375,13 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
     monthlyData: [],
     dailyProfitData: [],
     recentBets: [],
-    topPerformingSports: []
+    topPerformingSports: [],
+    // Enhanced analytics empty data
+    roiOverTime: [],
+    leagueBreakdown: [],
+    winRateVsExpected: [],
+    monthlyPerformance: [],
+    bets: []
   }
 
   const updateFilters = (newFilters: Partial<AnalyticsFilters>) => {

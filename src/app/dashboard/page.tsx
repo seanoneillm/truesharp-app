@@ -9,7 +9,7 @@ import SellerPreview from '@/components/dashboard/seller-preview'
 import SubscriptionsPreview from '@/components/dashboard/subscriptions-preview'
 import TodaysBets from '@/components/dashboard/todays-bets'
 import WelcomeSection from '@/components/dashboard/welcome-section'
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useEffect, useState } from 'react'
 
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       }
 
       try {
-        const supabase = createBrowserClient()
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('*')

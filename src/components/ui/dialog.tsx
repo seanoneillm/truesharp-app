@@ -21,6 +21,10 @@ interface DialogTitleProps {
   children: ReactNode
 }
 
+interface DialogDescriptionProps {
+  children: ReactNode
+}
+
 interface DialogTriggerProps {
   children: ReactNode
   asChild?: boolean
@@ -48,7 +52,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
@@ -56,7 +60,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
       />
       
       {/* Dialog Content */}
-      <div className="relative z-10 w-full max-w-lg mx-4">
+      <div className="relative z-10 w-full my-auto">
         {children}
       </div>
     </div>
@@ -95,5 +99,13 @@ export function DialogTitle({ children }: DialogTitleProps) {
     <h2 className="text-lg font-semibold text-slate-900 flex items-center justify-between">
       {children}
     </h2>
+  )
+}
+
+export function DialogDescription({ children }: DialogDescriptionProps) {
+  return (
+    <p className="text-sm text-slate-600 mt-2">
+      {children}
+    </p>
   )
 }

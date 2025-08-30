@@ -2,14 +2,16 @@
 "use client"
 
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
-import { Badge } from '@/components/ui/badge'
+import { StrategyCard } from '@/components/marketplace/strategy-card'
+import { SubscriptionPricingModal } from '@/components/marketplace/subscription-pricing-modal'
+import { useAuth } from '@/lib/hooks/use-auth'
+import { useSubscribe } from '@/lib/hooks/use-subscribe'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn, formatDate, formatCurrency } from '@/lib/utils'
-import { ArrowLeft, Calendar, CheckCircle, Crown, Flag, MessageSquare, Share2, Shield, Star, TrendingUp, UserPlus, Users, Activity } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { ArrowLeft, Share2, Copy, CheckCircle, Store } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface SellerProfile {
   id: string
@@ -17,43 +19,62 @@ interface SellerProfile {
   profile_picture_url: string | null
   is_verified_seller: boolean
   bio: string | null
+  profile_img: string | null
+  banner_img: string | null
   created_at: string
   strategies: Array<{
     id: string
-    name: string
-    description: string
-    performance_roi: number
-    performance_win_rate: number
-    performance_total_bets: number
-    subscriber_count: number
-    pricing_weekly: number
-    pricing_monthly: number
-    pricing_yearly: number
+    strategy_id: string
+    user_id: string
+    strategy_name: string
+    username: string
+    is_verified_seller: boolean
+    total_bets: number
+    winning_bets: number
+    losing_bets: number
+    roi_percentage: number
+    win_rate: number
+    overall_rank: number | null
+    primary_sport: string
+    strategy_type: string
+    is_monetized: boolean
+    subscription_price_weekly: number
+    subscription_price_monthly: number
+    subscription_price_yearly: number
     created_at: string
+    updated_at: string
   }>
 }
 
-interface RecentBet {
+interface StrategyData {
   id: string
-  sport: string
-  bet_type: string
-  bet_description: string
-  odds: number
-  stake: number
-  status: string
-  profit: number | null
-  placed_at: string
-  game_date: string | null
+  strategy_id: string
+  user_id: string
+  strategy_name: string
+  strategy_description: string
+  username: string
+  display_name: string
+  profile_picture_url: string | null
+  total_bets: number
+  roi_percentage: number
+  win_rate: number
+  primary_sport: string
+  strategy_type: string
+  price: number
+  pricing_weekly: number
+  pricing_monthly: number
+  pricing_yearly: number
+  subscriber_count: number
+  is_verified: boolean
+  verification_status: string
+  rank: number | null
+  leaderboard_score?: number
+  last_bet_date: string | null
+  last_updated: string
+  created_at: string
+  start_date?: string
 }
 
-interface SellerStats {
-  totalStrategies: number
-  totalSubscribers: number
-  totalBets: number
-  avgROI: number
-  avgWinRate: number
-  monthlyEarnings: number
-}
 
 interface SellerProfilePageProps {
   params: Promise<{
@@ -62,13 +83,124 @@ interface SellerProfilePageProps {
 }
 
 export default function SellerProfilePage({ params }: SellerProfilePageProps) {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [isFollowing, setIsFollowing] = useState(false)
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null)
-  const [sellerStats, setSellerStats] = useState<SellerStats | null>(null)
-  const [recentBets, setRecentBets] = useState<RecentBet[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
+  
+  // Subscription modal state
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
+  const [selectedStrategy, setSelectedStrategy] = useState<StrategyData | null>(null)
+
+  // Authentication
+  const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
+
+  // Strategy subscription management
+  const { subscribe, checkSubscription, isLoading: subscriptionLoading } = useSubscribe()
+  const [subscriptions, setSubscriptions] = useState<Record<string, any>>({})
+
+  // Check subscription for a strategy
+  const isSubscribedToStrategy = (strategyId: string) => {
+    return !!subscriptions[strategyId]
+  }
+
+  const getSubscriptionToStrategy = (strategyId: string) => {
+    return subscriptions[strategyId] || null
+  }
+
+  // Handle subscription modal
+  const handleSubscribeClick = (strategyId: string, sellerId: string) => {
+    // Check if user is authenticated before allowing subscription
+    if (!isAuthenticated || !user) {
+      // Redirect to login page
+      router.push('/login?redirect=' + encodeURIComponent(window.location.pathname))
+      return
+    }
+
+    const strategy = sellerProfile?.strategies.find(s => s.strategy_id === strategyId)
+    if (strategy) {
+      // Convert to StrategyData format
+      const strategyData: StrategyData = {
+        id: strategy.id,
+        strategy_id: strategy.strategy_id,
+        user_id: strategy.user_id,
+        strategy_name: strategy.strategy_name,
+        strategy_description: '', // Not provided by API
+        username: strategy.username,
+        display_name: strategy.username,
+        profile_picture_url: sellerProfile.profile_img,
+        total_bets: strategy.total_bets,
+        roi_percentage: strategy.roi_percentage,
+        win_rate: strategy.win_rate,
+        primary_sport: strategy.primary_sport,
+        strategy_type: strategy.strategy_type,
+        price: strategy.subscription_price_monthly || 0,
+        pricing_weekly: strategy.subscription_price_weekly || 0,
+        pricing_monthly: strategy.subscription_price_monthly || 0,
+        pricing_yearly: strategy.subscription_price_yearly || 0,
+        subscriber_count: 0, // Not provided by API
+        is_verified: strategy.is_verified_seller,
+        verification_status: strategy.is_verified_seller ? 'verified' : 'unverified',
+        rank: strategy.overall_rank,
+        last_bet_date: null,
+        last_updated: strategy.updated_at,
+        created_at: strategy.created_at
+      }
+      setSelectedStrategy(strategyData)
+      setSubscriptionModalOpen(true)
+    }
+  }
+
+  // Handle subscription purchase
+  const handleSubscribe = async (frequency: 'weekly' | 'monthly' | 'yearly', price: number) => {
+    if (!selectedStrategy || !user) return
+
+    try {
+      const result = await subscribe({
+        strategyId: selectedStrategy.strategy_id,
+        sellerId: selectedStrategy.user_id,
+        frequency,
+        price
+      })
+
+      if (result.success && result.subscription) {
+        // Update local subscriptions state
+        setSubscriptions(prev => ({
+          ...prev,
+          [selectedStrategy.strategy_id]: result.subscription
+        }))
+        
+        // Close modal
+        setSubscriptionModalOpen(false)
+        setSelectedStrategy(null)
+        
+        // Show success message
+        console.log('Successfully subscribed to strategy!')
+      } else {
+        console.error('Subscription failed:', result.error)
+      }
+    } catch (error) {
+      console.error('Subscription error:', error)
+    }
+  }
+
+  const handleCloseSubscriptionModal = () => {
+    setSubscriptionModalOpen(false)
+    setSelectedStrategy(null)
+  }
+
+  // Copy profile link to clipboard
+  const copyProfileLink = async () => {
+    try {
+      const url = `${window.location.origin}/marketplace/${sellerProfile?.username}`
+      await navigator.clipboard.writeText(url)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy link:', error)
+    }
+  }
 
   useEffect(() => {
     const fetchSellerProfile = async () => {
@@ -79,48 +211,19 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
         const resolvedParams = await params
         const username = resolvedParams.username
         
-        // Fetch seller profile with strategies
-        const profileResponse = await fetch(`/api/marketplace/seller/${username}`)
+        // Fetch seller profile with strategies using new API
+        const profileResponse = await fetch(`/api/seller-profile?username=${encodeURIComponent(username)}`)
         const profileData = await profileResponse.json()
+        
+        console.log('Profile API response:', profileData)
         
         if (profileData.error) {
           setError(profileData.error)
           return
         }
         
+        console.log('Setting seller profile data:', profileData.data)
         setSellerProfile(profileData.data)
-        
-        // Calculate aggregated stats
-        if (profileData.data?.strategies) {
-          const strategies = profileData.data.strategies
-          const totalStrategies = strategies.length
-          const totalSubscribers = strategies.reduce((sum: number, s: any) => sum + s.subscriber_count, 0)
-          const totalBets = strategies.reduce((sum: number, s: any) => sum + s.performance_total_bets, 0)
-          const avgROI = strategies.length > 0 ? strategies.reduce((sum: number, s: any) => sum + (s.performance_roi || 0), 0) / strategies.length : 0
-          const avgWinRate = strategies.length > 0 ? strategies.reduce((sum: number, s: any) => sum + (s.performance_win_rate || 0), 0) / strategies.length : 0
-          
-          // Estimate monthly earnings (rough calculation)
-          const monthlyEarnings = strategies.reduce((sum: number, s: any) => {
-            return sum + (s.subscriber_count * (s.pricing_monthly || 0))
-          }, 0)
-          
-          setSellerStats({
-            totalStrategies,
-            totalSubscribers,
-            totalBets,
-            avgROI,
-            avgWinRate,
-            monthlyEarnings
-          })
-        }
-        
-        // Fetch recent bets for this seller
-        const betsResponse = await fetch(`/api/marketplace/seller/${username}/bets`)
-        const betsData = await betsResponse.json()
-        
-        if (!betsData.error && betsData.data) {
-          setRecentBets(betsData.data)
-        }
         
       } catch (err) {
         console.error('Error fetching seller profile:', err)
@@ -133,60 +236,105 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
     fetchSellerProfile()
   }, [params])
 
+  // Load user's existing subscriptions
+  useEffect(() => {
+    const loadSubscriptions = async () => {
+      if (!isAuthenticated || !user || !sellerProfile?.strategies.length) return
+
+      try {
+        const subscriptionPromises = sellerProfile.strategies.map(async (strategy) => {
+          const result = await checkSubscription(strategy.strategy_id)
+          return {
+            strategyId: strategy.strategy_id,
+            subscription: result.subscription
+          }
+        })
+
+        const results = await Promise.all(subscriptionPromises)
+        const subscriptionMap: Record<string, any> = {}
+        
+        results.forEach(({ strategyId, subscription }) => {
+          if (subscription) {
+            subscriptionMap[strategyId] = subscription
+          }
+        })
+
+        setSubscriptions(subscriptionMap)
+      } catch (error) {
+        console.error('Error loading subscriptions:', error)
+      }
+    }
+
+    loadSubscriptions()
+  }, [sellerProfile, isAuthenticated, user, checkSubscription])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading seller profile...</p>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            {/* Header skeleton */}
+            <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-24 h-24 bg-gray-200 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
+            {/* Content skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-48 bg-gray-200 rounded-lg"></div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   if (error || !sellerProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Seller not found</h1>
-          <p className="text-gray-600 mb-4">{error || "The seller you're looking for doesn't exist."}</p>
-          <Link href="/marketplace">
-            <Button>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Marketplace
-            </Button>
-          </Link>
+      <DashboardLayout>
+        <div className="min-h-[400px] flex items-center justify-center">
+          <div className="text-center">
+            <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Seller not found</h1>
+            <p className="text-gray-600 mb-4">{error || "The seller you're looking for doesn't exist."}</p>
+            <Link href="/marketplace">
+              <Button>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Marketplace
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
-  const getTierBadge = (avgROI: number, totalBets: number, isVerified: boolean) => {
-    if (isVerified && avgROI > 20 && totalBets > 500) {
-      return { tier: 'elite', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Crown }
-    }
-    if (avgROI > 10 && totalBets > 200) {
-      return { tier: 'pro', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Shield }
-    }
-    if (avgROI > 5 && totalBets > 50) {
-      return { tier: 'rising', color: 'bg-green-100 text-green-800 border-green-200', icon: TrendingUp }
-    }
-    return { tier: 'starter', color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Star }
-  }
-
-  const formatDateString = (dateString: string) => {
-    return formatDate(new Date(dateString), {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
   }
 
-  const tierInfo = sellerStats 
-    ? getTierBadge(sellerStats.avgROI, sellerStats.totalBets, sellerProfile.is_verified_seller)
-    : { tier: 'starter', color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Star }
+  // Calculate stats from strategies
+  const stats = sellerProfile.strategies.reduce(
+    (acc, strategy) => {
+      acc.totalBets += strategy.total_bets
+      acc.totalROI += strategy.roi_percentage
+      acc.totalWinRate += strategy.win_rate
+      return acc
+    },
+    { totalBets: 0, totalROI: 0, totalWinRate: 0 }
+  )
 
-  const TierIcon = tierInfo.icon
+  const avgROI = sellerProfile.strategies.length > 0 ? stats.totalROI / sellerProfile.strategies.length : 0
+  const avgWinRate = sellerProfile.strategies.length > 0 ? stats.totalWinRate / sellerProfile.strategies.length : 0
 
   return (
     <DashboardLayout>
@@ -202,30 +350,58 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
         </div>
 
         {/* Profile Header */}
-        <Card className="mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
           <div className="relative">
-            {/* Cover gradient */}
-            <div className="h-32 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-lg" />
+            {/* Banner */}
+            <div className={cn(
+              "h-32 bg-gradient-to-r from-blue-600 to-blue-700",
+              sellerProfile.banner_img && "bg-none"
+            )}>
+              {sellerProfile.banner_img ? (
+                <img
+                  src={sellerProfile.banner_img}
+                  alt="Profile banner"
+                  className="w-full h-32 object-cover"
+                  onError={(e) => {
+                    console.log('Banner image failed to load:', sellerProfile.banner_img)
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <div className="absolute top-2 left-2 text-white text-xs opacity-50">
+                  No banner image
+                </div>
+              )}
+            </div>
             
             <div className="relative px-6 pb-6">
               {/* Profile Info */}
               <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6 -mt-16">
                 <div className="relative">
-                  {sellerProfile.profile_picture_url ? (
+                  {(sellerProfile.profile_img || sellerProfile.profile_picture_url) ? (
                     <img
-                      src={sellerProfile.profile_picture_url}
+                      src={sellerProfile.profile_img || sellerProfile.profile_picture_url || ''}
                       alt={sellerProfile.username}
-                      className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-lg"
+                      className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
+                      onError={(e) => {
+                        console.log('Profile image failed to load:', sellerProfile.profile_img || sellerProfile.profile_picture_url)
+                        e.currentTarget.style.display = 'none'
+                        // Show fallback
+                        const fallback = document.createElement('div')
+                        fallback.className = 'h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl border-4 border-white shadow-lg'
+                        fallback.textContent = sellerProfile.username.charAt(0).toUpperCase()
+                        e.currentTarget.parentNode?.appendChild(fallback)
+                      }}
                     />
                   ) : (
-                    <div className="h-32 w-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl border-4 border-white shadow-lg">
+                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl border-4 border-white shadow-lg">
                       {sellerProfile.username.charAt(0).toUpperCase()}
                     </div>
                   )}
                   {sellerProfile.is_verified_seller && (
                     <div className="absolute -bottom-2 -right-2">
                       <div className="bg-blue-500 rounded-full p-1">
-                        <CheckCircle className="h-6 w-6 text-white" />
+                        <CheckCircle className="h-4 w-4 text-white" />
                       </div>
                     </div>
                   )}
@@ -236,26 +412,31 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                     <div>
                       <div className="flex items-center space-x-3">
                         <h1 className="text-2xl font-bold text-gray-900">@{sellerProfile.username}</h1>
-                        <Badge className={cn(tierInfo.color)}>
-                          <TierIcon className="h-4 w-4 mr-1" />
-                          {tierInfo.tier.charAt(0).toUpperCase() + tierInfo.tier.slice(1)}
-                        </Badge>
+                        {sellerProfile.is_verified_seller && (
+                          <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Verified
+                          </div>
+                        )}
                       </div>
-                      <p className="text-lg text-gray-600 mt-1">{sellerProfile.username}</p>
+                      
+                      {/* Bio */}
+                      {sellerProfile.bio && sellerProfile.bio.trim() && (
+                        <p className="text-gray-600 mt-2 max-w-2xl whitespace-pre-wrap">{sellerProfile.bio}</p>
+                      )}
+                      {/* Debug bio info */}
+                      {(!sellerProfile.bio || !sellerProfile.bio.trim()) && (
+                        <p className="text-gray-400 mt-2 max-w-2xl italic text-sm">No bio available</p>
+                      )}
                       
                       {/* Quick Stats */}
                       <div className="flex items-center space-x-6 mt-3 text-sm text-gray-600">
                         <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-1" />
-                          {sellerStats?.totalSubscribers.toLocaleString() || 0} subscribers
+                          <Store className="h-4 w-4 mr-1" />
+                          {sellerProfile.strategies.length} {sellerProfile.strategies.length === 1 ? 'strategy' : 'strategies'}
                         </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          Joined {formatDateString(sellerProfile.created_at)}
-                        </div>
-                        <div className="flex items-center">
-                          <Activity className="h-4 w-4 mr-1" />
-                          {sellerStats?.totalStrategies || 0} strategies
+                        <div className="text-sm text-gray-500">
+                          Joined {formatDate(sellerProfile.created_at)}
                         </div>
                       </div>
                     </div>
@@ -264,278 +445,137 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                     <div className="flex items-center space-x-3 mt-4 sm:mt-0">
                       <Button 
                         variant="outline" 
-                        onClick={() => setIsFollowing(!isFollowing)}
+                        onClick={copyProfileLink}
                         className={cn(
-                          isFollowing && "bg-green-50 text-green-700 border-green-200"
+                          copySuccess && "bg-green-50 text-green-700 border-green-200"
                         )}
                       >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        {isFollowing ? 'Following' : 'Follow'}
-                      </Button>
-                      <Button variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Message
+                        {copySuccess ? (
+                          <><CheckCircle className="h-4 w-4 mr-2" />Copied!</>
+                        ) : (
+                          <><Copy className="h-4 w-4 mr-2" />Copy Link</>
+                        )}
                       </Button>
                       <Button variant="outline">
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
-                      </Button>
-                      <Button variant="outline">
-                        <Flag className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bio */}
-              {sellerProfile.bio && (
-                <div className="mt-6">
-                  <p className="text-gray-700 max-w-3xl">{sellerProfile.bio}</p>
-                </div>
-              )}
-
               {/* Performance Overview */}
-              {sellerStats && (
+              {sellerProfile.strategies.length > 0 && (
                 <div className="mt-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-slate-50 rounded-lg">
                       <div className={`text-2xl font-bold mb-1 ${
-                        sellerStats.avgROI >= 0 ? 'text-green-600' : 'text-red-600'
+                        avgROI >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {sellerStats.avgROI >= 0 ? '+' : ''}{sellerStats.avgROI.toFixed(1)}%
+                        {avgROI >= 0 ? '+' : ''}{avgROI.toFixed(1)}%
                       </div>
                       <div className="text-sm text-slate-600">Average ROI</div>
                     </div>
                     
                     <div className="text-center p-4 bg-slate-50 rounded-lg">
                       <div className="text-2xl font-bold text-slate-900 mb-1">
-                        {sellerStats.avgWinRate.toFixed(1)}%
+                        {avgWinRate.toFixed(1)}%
                       </div>
                       <div className="text-sm text-slate-600">Win Rate</div>
                     </div>
                     
                     <div className="text-center p-4 bg-slate-50 rounded-lg">
                       <div className="text-2xl font-bold text-slate-900 mb-1">
-                        {sellerStats.totalBets.toLocaleString()}
+                        {stats.totalBets.toLocaleString()}
                       </div>
                       <div className="text-sm text-slate-600">Total Bets</div>
                     </div>
                     
                     <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600 mb-1">
-                        {formatCurrency(sellerStats.monthlyEarnings)}
+                      <div className="text-2xl font-bold text-blue-600 mb-1">
+                        {sellerProfile.strategies.length}
                       </div>
-                      <div className="text-sm text-slate-600">Est. Monthly</div>
+                      <div className="text-sm text-slate-600">Strategies</div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="strategies">Strategies</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="bets">Recent Bets</TabsTrigger>
-            <TabsTrigger value="subscribe">Subscribe</TabsTrigger>
-          </TabsList>
+        {/* Strategies Grid */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-slate-900">
+              Strategies ({sellerProfile.strategies.length})
+            </h2>
+          </div>
 
-          <TabsContent value="strategies" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Active Strategies</h3>
-              <div className="space-y-4">
-                {sellerProfile.strategies.map((strategy) => (
-                  <div key={strategy.id} className="border border-slate-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 mb-2">{strategy.name}</h4>
-                        <p className="text-sm text-gray-600 mb-3">{strategy.description}</p>
-                        
-                        <div className="grid grid-cols-3 gap-4 mb-3">
-                          <div className="text-center">
-                            <div className={`text-lg font-bold ${
-                              (strategy.performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {(strategy.performance_roi || 0) >= 0 ? '+' : ''}{(strategy.performance_roi || 0).toFixed(1)}%
-                            </div>
-                            <div className="text-xs text-slate-500">ROI</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-slate-900">
-                              {(strategy.performance_win_rate || 0).toFixed(1)}%
-                            </div>
-                            <div className="text-xs text-slate-500">Win Rate</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-slate-900">
-                              {strategy.performance_total_bets || 0}
-                            </div>
-                            <div className="text-xs text-slate-500">Total Bets</div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{strategy.subscriber_count || 0} subscribers</span>
-                          <span>Created {formatDateString(strategy.created_at)}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-gray-600 mb-2">From</div>
-                        <div className="text-lg font-bold text-blue-600">
-                          ${strategy.pricing_weekly}/wk
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ${strategy.pricing_monthly}/mo
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {sellerProfile.strategies.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    No active strategies yet
-                  </div>
-                )}
-              </div>
-            </Card>
-          </TabsContent>
+          {sellerProfile.strategies.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="text-gray-600 font-medium mb-2">No strategies available</div>
+              <div className="text-gray-500 text-sm">This seller hasn't created any public strategies yet</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sellerProfile.strategies.map((strategy, index) => {
+                const strategyData: StrategyData = {
+                  id: strategy.id,
+                  strategy_id: strategy.strategy_id,
+                  user_id: strategy.user_id,
+                  strategy_name: strategy.strategy_name,
+                  strategy_description: '', // Not provided
+                  username: strategy.username,
+                  display_name: strategy.username,
+                  profile_picture_url: sellerProfile.profile_img,
+                  total_bets: strategy.total_bets,
+                  roi_percentage: strategy.roi_percentage,
+                  win_rate: strategy.win_rate,
+                  primary_sport: strategy.primary_sport,
+                  strategy_type: strategy.strategy_type,
+                  price: strategy.subscription_price_monthly || 0,
+                  pricing_weekly: strategy.subscription_price_weekly || 0,
+                  pricing_monthly: strategy.subscription_price_monthly || 0,
+                  pricing_yearly: strategy.subscription_price_yearly || 0,
+                  subscriber_count: 0, // Not provided
+                  is_verified: strategy.is_verified_seller,
+                  verification_status: strategy.is_verified_seller ? 'verified' : 'unverified',
+                  rank: strategy.overall_rank,
+                  last_bet_date: null,
+                  last_updated: strategy.updated_at,
+                  created_at: strategy.created_at
+                }
+                
+                return (
+                  <StrategyCard
+                    key={strategy.strategy_id}
+                    strategy={strategyData}
+                    index={index}
+                    isSubscribed={isSubscribedToStrategy(strategy.strategy_id)}
+                    subscription={getSubscriptionToStrategy(strategy.strategy_id)}
+                    onSubscribe={handleSubscribeClick}
+                    isLoading={subscriptionLoading}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-          <TabsContent value="performance" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Overview</h3>
-              {sellerStats && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <div className={`text-3xl font-bold mb-2 ${
-                        sellerStats.avgROI >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {sellerStats.avgROI >= 0 ? '+' : ''}{sellerStats.avgROI.toFixed(1)}%
-                      </div>
-                      <div className="text-sm text-slate-600">Average ROI</div>
-                    </div>
-                    
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <div className="text-3xl font-bold text-slate-900 mb-2">
-                        {sellerStats.avgWinRate.toFixed(1)}%
-                      </div>
-                      <div className="text-sm text-slate-600">Win Rate</div>
-                    </div>
-                    
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <div className="text-3xl font-bold text-slate-900 mb-2">
-                        {sellerStats.totalBets.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-slate-600">Total Bets</div>
-                    </div>
-                    
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {sellerStats.totalSubscribers.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-slate-600">Subscribers</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="bets" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Bets</h3>
-              <div className="space-y-4">
-                {recentBets.map((bet) => (
-                  <div key={bet.id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Badge variant="secondary">{bet.sport}</Badge>
-                          <Badge variant="outline">{bet.bet_type}</Badge>
-                        </div>
-                        <h4 className="font-medium text-gray-900">{bet.bet_description}</h4>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                          <span>Stake: {formatCurrency(bet.stake)}</span>
-                          <span>Odds: {bet.odds > 0 ? '+' : ''}{bet.odds}</span>
-                          <span>{formatDateString(bet.placed_at)}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={cn(
-                          bet.status === 'won' ? 'bg-green-100 text-green-800' :
-                          bet.status === 'lost' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        )}>
-                          {bet.status}
-                        </Badge>
-                        {bet.profit !== null && (
-                          <p className={cn(
-                            "text-sm font-medium mt-1",
-                            bet.profit > 0 ? 'text-green-600' :
-                            bet.profit < 0 ? 'text-red-600' :
-                            'text-gray-500'
-                          )}>
-                            {bet.profit > 0 ? '+' : ''}{formatCurrency(bet.profit)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {recentBets.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    No recent bets available
-                  </div>
-                )}
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="subscribe" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Subscribe to Strategies</h3>
-              <div className="space-y-4">
-                {sellerProfile.strategies.map((strategy) => (
-                  <div key={strategy.id} className="border border-slate-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{strategy.name}</h4>
-                        <p className="text-sm text-gray-600 mt-1">{strategy.description}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm">
-                          <span className="text-green-600 font-medium">
-                            {(strategy.performance_roi || 0).toFixed(1)}% ROI
-                          </span>
-                          <span className="text-blue-600">
-                            {strategy.subscriber_count || 0} subscribers
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
-                            ${strategy.pricing_weekly}/week
-                          </Button>
-                          <Button size="sm">
-                            ${strategy.pricing_monthly}/month
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {sellerProfile.strategies.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    No strategies available for subscription
-                  </div>
-                )}
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        
+        {/* Subscription Modal */}
+        {selectedStrategy && (
+          <SubscriptionPricingModal
+            isOpen={subscriptionModalOpen}
+            onClose={handleCloseSubscriptionModal}
+            onSubscribe={handleSubscribe}
+            strategy={selectedStrategy}
+            isLoading={subscriptionLoading}
+          />
+        )}
       </div>
     </DashboardLayout>
   )

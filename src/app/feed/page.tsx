@@ -149,12 +149,6 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* Debug Auth Status */}
-        <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 text-sm">
-          <strong>Debug Auth Status:</strong> 
-          {authLoading ? ' Loading...' : isAuthenticated ? ` Logged in as ${user?.email}` : ' Not logged in'}
-          {user && <span> (ID: {user.id})</span>}
-        </div>
 
         {/* Tab Navigation */}
         <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
@@ -334,20 +328,6 @@ export default function FeedPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Trending Topics */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Flame className="h-5 w-5 text-orange-500" />
-                <h3 className="text-lg font-semibold text-slate-900">Trending</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="text-center py-6 text-slate-500">
-                  <Flame className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm">No trending topics yet</p>
-                  <p className="text-xs text-slate-400">Check back later for popular hashtags</p>
-                </div>
-              </div>
-            </Card>
 
             {/* Community Stats */}
             <Card className="p-6 bg-gradient-to-br from-blue-600 to-cyan-600 text-white">

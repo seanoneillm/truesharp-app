@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -265,8 +266,8 @@ export function BetsTab({
                   </TableHeader>
                   <TableBody>
                     {bets.map((bet) => (
-                      <>
-                        <TableRow key={bet.id} className="cursor-pointer hover:bg-gray-50">
+                      <React.Fragment key={bet.id}>
+                        <TableRow className="cursor-pointer hover:bg-gray-50">
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -453,7 +454,7 @@ export function BetsTab({
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>

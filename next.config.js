@@ -35,6 +35,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'assets.truesharp.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'trsogafrxpptszxydycn.supabase.co',
       }
     ],
     formats: ['image/avif', 'image/webp'],

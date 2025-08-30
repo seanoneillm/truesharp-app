@@ -289,6 +289,8 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
     let pendingBets = []
     let fetchError = null
     
+    console.log(`🔍 Looking for bets with game_id: ${gameId}`)
+    
     try {
       const { data, error } = await serviceSupabase
         .from('bets')
@@ -331,8 +333,62 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
     }
     
     if (!pendingBets || pendingBets.length === 0) {
-      console.log(`ℹ️ No pending bets found for game ${gameId}`)
-      return { settled: 0 }
+      console.log(`ℹ️ No pending bets found for exact game_id ${gameId}`)
+      
+      // Try fallback approach: find bets by team names if we have game info
+      console.log(`🔍 Trying fallback: searching for bets by team names...`)
+      
+      // Get the current game info to extract team names
+      const { data: gameInfo, error: gameError } = await serviceSupabase
+        .from('games')
+        .select('home_team, away_team, home_team_name, away_team_name, league, sport')
+        .eq('id', gameId)
+        .maybeSingle()
+      
+      if (!gameError && gameInfo) {
+        console.log(`🏟️ Game info: ${gameInfo.away_team_name} @ ${gameInfo.home_team_name} (${gameInfo.league})`)
+        
+        // Try to find bets that match these team names
+        const teamVariations = [
+          gameInfo.home_team_name,
+          gameInfo.away_team_name,
+          gameInfo.home_team,
+          gameInfo.away_team
+        ].filter(Boolean).filter((name, index, arr) => arr.indexOf(name) === index) // Remove duplicates
+        
+        console.log(`🔍 Searching for bets matching team variations:`, teamVariations)
+        
+        for (const teamName of teamVariations) {
+          const { data: teamBets, error: teamBetsError } = await serviceSupabase
+            .from('bets')
+            .select('*')
+            .eq('status', 'pending')
+            .eq('sport', gameInfo.league) // Match by sport/league
+            .or(`home_team.ilike.%${teamName}%,away_team.ilike.%${teamName}%,bet_description.ilike.%${teamName}%`)
+            .limit(20) // Reasonable limit
+          
+          if (!teamBetsError && teamBets && teamBets.length > 0) {
+            console.log(`🎯 Found ${teamBets.length} bets matching team "${teamName}"`)
+            
+            // Update these bets with the correct game_id for future reference
+            for (const bet of teamBets) {
+              await serviceSupabase
+                .from('bets')
+                .update({ game_id: gameId })
+                .eq('id', bet.id)
+              console.log(`🔄 Updated bet ${bet.id} with game_id ${gameId}`)
+            }
+            
+            pendingBets.push(...teamBets)
+            break // Found matches, no need to continue
+          }
+        }
+      }
+      
+      if (pendingBets.length === 0) {
+        console.log(`ℹ️ Still no pending bets found after fallback search`)
+        return { settled: 0 }
+      }
     }
     
     console.log(`📝 Found ${pendingBets.length} pending bets to potentially settle for game ${gameId}`)
@@ -361,6 +417,8 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
         
         // Fallback: try to find odds by bet type if no oddid match
         if (!odds && bet.bet_type) {
+          console.log(`🔍 No exact oddid match, trying bet type: ${bet.bet_type}`)
+          
           const { data: fallbackOdds, error: fallbackError } = await oddsSupabase
             .from('odds')
             .select('*')
@@ -370,6 +428,9 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
           
           if (!fallbackError && fallbackOdds && fallbackOdds.length > 0) {
             odds = fallbackOdds[0]
+            console.log(`✅ Found fallback odds by bet type for bet ${bet.id}`)
+          } else {
+            console.log(`⚠️ No fallback odds found by bet type for bet ${bet.id}`)
           }
         }
         

@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserClient } from '@/lib/auth/supabase'
+import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { DollarSign, Store, TrendingUp, Users } from 'lucide-react'
 import Link from 'next/link'
@@ -49,7 +49,7 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
       }
 
       try {
-        const supabase = createBrowserClient()
+        const supabase = createClient()
         
         // Check if user is a seller first
         if (!profile?.is_seller) {

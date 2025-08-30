@@ -48,11 +48,12 @@ export async function POST(request: NextRequest) {
     const results = await Promise.all(promises);
     const totalGames = results.reduce((sum, result) => sum + result.gameCount, 0);
     const successfulRequests = results.filter(r => r.success).length;
+    const rateLimitedRequests = results.filter(r => r.error && r.error.includes('rate limit')).length;
     
     // Group results by sport for better reporting
     const sportResults = results.reduce((acc, result) => {
       if (!acc[result.sport]) {
-        acc[result.sport] = { games: 0, successfulDays: 0, totalDays: 0 };
+        acc[result.sport] = { games: 0, successfulDays: 0, totalDays: 0, rateLimited: 0 };
       }
       const sportData = acc[result.sport];
       if (sportData) {
@@ -61,29 +62,57 @@ export async function POST(request: NextRequest) {
         if (result.success) {
           sportData.successfulDays += 1;
         }
+        if (result.error && result.error.includes('rate limit')) {
+          sportData.rateLimited += 1;
+        }
       }
       return acc;
-    }, {} as Record<string, { games: number, successfulDays: number, totalDays: number }>);
+    }, {} as Record<string, { games: number, successfulDays: number, totalDays: number, rateLimited: number }>);
+    
+    // Determine overall success and create appropriate message
+    const isPartialSuccess = successfulRequests > 0 && successfulRequests < promises.length;
+    const hasRateLimiting = rateLimitedRequests > 0;
+    
+    let message = '';
+    let success = successfulRequests > 0;
+    
+    if (hasRateLimiting && successfulRequests === 0) {
+      message = `All requests were rate limited. Using cached/database data. Please wait 5-10 minutes before trying again.`;
+      success = false;
+    } else if (hasRateLimiting && isPartialSuccess) {
+      message = `Partial success: ${successfulRequests}/${promises.length} requests succeeded, ${rateLimitedRequests} were rate limited. Some data may be cached.`;
+    } else if (successfulRequests === promises.length) {
+      message = `All requests succeeded! Fetched ${totalGames} games.`;
+    } else if (successfulRequests > 0) {
+      message = `Partial success: ${successfulRequests}/${promises.length} requests succeeded.`;
+    } else {
+      message = 'All requests failed. Please try again later.';
+      success = false;
+    }
     
     console.log('✅ Manual odds fetch completed:', {
       sports: sportsToFetch,
       baseDate: baseDate.toISOString().split('T')[0],
       totalGames,
       successfulRequests,
+      rateLimitedRequests,
       totalRequests: promises.length,
-      sportResults
+      sportResults,
+      message
     });
     
     return NextResponse.json({
-      success: successfulRequests > 0,
+      success,
       sports: sportsToFetch,
       baseDate: baseDate.toISOString().split('T')[0],
       totalGames,
       successfulRequests,
+      rateLimitedRequests,
       totalRequests: promises.length,
       daysProcessed: 7,
       sportResults,
       results,
+      message,
       lastUpdated: new Date().toISOString()
     });
     

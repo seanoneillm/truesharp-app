@@ -31,7 +31,7 @@ const tabs = [
     id: 'analytics' as AnalyticsTab,
     label: 'Analytics',
     icon: TrendingUp,
-    description: 'Performance insights and charts'
+    description: 'Advanced charts and custom analytics'
   },
   {
     id: 'strategies' as AnalyticsTab,

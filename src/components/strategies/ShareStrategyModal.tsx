@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Download, Twitter, Instagram, Copy, Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { X, Download, Twitter, Instagram, Copy, Eye, EyeOff, MessageCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { TrueSharpShield } from '@/components/ui/truesharp-shield';
 import { OpenBet } from '@/lib/queries/open-bets';
@@ -119,6 +119,46 @@ export default function ShareStrategyModal({ isOpen, onClose, strategyId, strate
       newSelected.add(betId);
     }
     setSelectedBets(newSelected);
+  };
+
+  const getStatusIcon = (status: string = 'pending') => {
+    switch (status) {
+      case 'won':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'lost':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case 'void':
+        return <Clock className="h-4 w-4 text-yellow-500" />
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />
+    }
+  };
+
+  const getStatusColor = (status: string = 'pending') => {
+    switch (status) {
+      case 'won':
+        return 'bg-green-100 text-green-800'
+      case 'lost':
+        return 'bg-red-100 text-red-800'
+      case 'void':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  };
+
+  const formatBetDescription = (bet: OpenBet) => {
+    let description = bet.bet_description || '';
+    
+    if (bet.line_value !== null && bet.line_value !== undefined) {
+      if (bet.bet_type === 'spread') {
+        description += ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}`;
+      } else if (bet.bet_type === 'total') {
+        description += ` ${bet.line_value}`;
+      }
+    }
+    
+    return description;
   };
 
   const formatBetDisplay = (bet: OpenBet) => {
@@ -407,33 +447,58 @@ export default function ShareStrategyModal({ isOpen, onClose, strategyId, strate
                 {allBets.map((bet) => {
                   const display = formatBetDisplay(bet);
                   const isSelected = selectedBets.has(bet.id);
+                  const status = bet.status || 'pending';
                   
                   return (
                     <div
                       key={bet.id}
-                      className={`p-3 border rounded-lg ${
+                      className={`relative bg-gradient-to-r from-gray-50 to-white rounded-lg border p-3 hover:shadow-sm transition-all duration-200 ${
                         isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="font-medium">{display.teams}</div>
-                          <div className="text-sm text-gray-600">
-                            {display.line} • {display.odds}
+                        <div className="flex items-start space-x-3 flex-1">
+                          <div className="flex-shrink-0 mt-1">
+                            {getStatusIcon(status)}
                           </div>
-                          <div className="text-xs text-gray-500">{display.gameDate}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 mb-1">
+                              {formatBetDescription(bet)}
+                            </div>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {bet.sport}
+                              </span>
+                              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                {display.odds}
+                              </span>
+                              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                {bet.bet_type?.charAt(0).toUpperCase() + bet.bet_type?.slice(1) || 'Bet'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {bet.home_team && bet.away_team ? `${bet.away_team} vs ${bet.home_team}` : display.teams} • {display.gameDate}
+                            </div>
+                          </div>
                         </div>
                         <button
                           onClick={() => toggleBetSelection(bet.id)}
-                          className={`ml-2 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          className={`ml-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                             isSelected 
-                              ? 'bg-red-500 border-red-500 text-white' 
-                              : 'border-gray-300 hover:border-red-400'
+                              ? 'bg-red-500 border-red-500 text-white hover:bg-red-600' 
+                              : 'border-gray-300 hover:border-red-400 hover:text-red-500'
                           }`}
                         >
                           <X size={12} />
                         </button>
                       </div>
+                      
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${
+                        status === 'won' ? 'bg-green-500' :
+                        status === 'lost' ? 'bg-red-500' :
+                        status === 'void' ? 'bg-yellow-500' :
+                        'bg-blue-500'
+                      }`}></div>
                     </div>
                   );
                 })}
@@ -465,24 +530,76 @@ export default function ShareStrategyModal({ isOpen, onClose, strategyId, strate
                 <p className="text-gray-600">by @{strategy?.profiles.username}</p>
               </div>
 
-              {/* Bets */}
-              <div className="space-y-3">
+              {/* Bets - styled like Today's Bets */}
+              <div className="space-y-4">
                 {selectedBetsList.map((bet) => {
                   const display = formatBetDisplay(bet);
+                  const status = bet.status || 'pending';
                   
                   return (
-                    <div key={bet.id} className="p-3 border border-gray-200 rounded-lg">
-                      <div className="font-medium text-gray-800">{display.teams}</div>
-                      <div className="text-sm text-gray-600">
-                        {isPreviewMode ? (
-                          <span className="inline-block bg-gray-300 text-gray-500 px-2 py-0.5 rounded text-xs font-mono">
-                            {'•'.repeat(Math.max(8, Math.floor(display.line.length / 2)))}
-                          </span>
-                        ) : (
-                          <span>{display.line}</span>
-                        )} • {display.odds}
+                    <div
+                      key={bet.id}
+                      className="relative bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <div className="flex-shrink-0 mt-1">
+                            {getStatusIcon(status)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-semibold text-gray-900">
+                                {isPreviewMode ? (
+                                  <span className="inline-block bg-gray-300 text-transparent px-2 py-1 rounded text-xs font-mono">
+                                    {'●'.repeat(Math.max(12, Math.floor(formatBetDescription(bet).length * 0.8)))}
+                                  </span>
+                                ) : (
+                                  formatBetDescription(bet)
+                                )}
+                              </h4>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {bet.sport}
+                              </span>
+                              {isPreviewMode ? (
+                                <>
+                                  <span className="inline-block bg-gray-300 text-transparent px-2 py-0.5 rounded text-xs font-mono">
+                                    {'●●●●'}
+                                  </span>
+                                  <span className="inline-block bg-gray-300 text-transparent px-2 py-0.5 rounded text-xs font-mono">
+                                    {'●●●●●'}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                    {display.odds}
+                                  </span>
+                                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                    {bet.bet_type?.charAt(0).toUpperCase() + bet.bet_type?.slice(1) || 'Bet'}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            
+                            <div className="text-xs text-gray-500">
+                              {bet.home_team && bet.away_team ? `${bet.away_team} vs ${bet.home_team}` : display.teams} • {display.gameDate}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">{display.gameDate}</div>
+                      
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${
+                        status === 'won' ? 'bg-green-500' :
+                        status === 'lost' ? 'bg-red-500' :
+                        status === 'void' ? 'bg-yellow-500' :
+                        'bg-blue-500'
+                      }`}></div>
                     </div>
                   );
                 })}

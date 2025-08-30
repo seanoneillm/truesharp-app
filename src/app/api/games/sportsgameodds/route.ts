@@ -30,8 +30,11 @@ async function getFallbackDatabaseData(sportKey: string, dateParam: string) {
     console.log('📀 Fetching fallback data from database for:', sportKey)
     
     // Get games from database
-    // Convert sport_key back to league (e.g., 'baseball_mlb' -> 'MLB')
-    const league = sportKey.split('_')[1]?.toUpperCase() || sportKey.toUpperCase()
+    // Map sport_key to actual league name used in database
+    const sportMappingReverse = Object.entries(SPORT_MAPPINGS).find(([, mapping]) => 
+      mapping.sport_key === sportKey
+    );
+    const league = sportMappingReverse ? sportMappingReverse[0] : sportKey.toUpperCase()
     
     const { data: games, error } = await supabase
       .from('games')
@@ -202,12 +205,22 @@ export async function GET(request: NextRequest) {
     
     try {
       // Calculate date range for fetching games (customStartDate or today + next 7 days)
-      // Use UTC to avoid timezone issues with the API
-      const today = new Date()
-      const todayUTC = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)) // Convert to UTC
-      // If customStartDate is provided, use it as the lower bound
-      const startISO = customStartDate || todayUTC.toISOString().split('T')[0]
-      const futureDate = new Date(todayUTC.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from now
+      // Use proper timezone handling for consistent date matching
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Local midnight
+      
+      // If customStartDate is provided, use it as the lower bound, otherwise use today
+      let startDate: Date;
+      if (customStartDate) {
+        startDate = new Date(customStartDate + 'T00:00:00.000Z');
+      } else {
+        startDate = today;
+      }
+      
+      const futureDate = new Date(startDate.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from start
+      
+      // Format dates for API (YYYY-MM-DD format)
+      const startISO = startDate.toISOString().split('T')[0]
       const futureDateISO = futureDate.toISOString().split('T')[0]
 
       // Fetch events with pagination (similar to your example)
@@ -228,6 +241,12 @@ export async function GET(request: NextRequest) {
         const apiUrl = `${SPORTSGAMEODDS_API_BASE}/events?${params.toString()}`
         console.log('🌐 Making API request to:', apiUrl)
         console.log('📅 Date range:', { startsAfter: startISO, startsBefore: futureDateISO })
+        console.log('🏟️ Sport details:', { 
+          sport, 
+          leagueID: sportMapping.leagueID, 
+          sportID: sportMapping.sportID,
+          sport_key: sportMapping.sport_key 
+        })
         
         const response = await fetch(apiUrl, {
           headers: {
@@ -446,10 +465,10 @@ async function transformAndSaveGames(
         // Transform SportsGameOdds event to our Game format
         const gameData = {
           id: event.eventID, // Use eventID as the primary key
-          sport: sportMapping.sport_key.split('_')[0], // 'baseball' from 'baseball_mlb'
-          league: sportMapping.leagueID, // 'MLB'
-          home_team: formatTeamKey(homeTeam?.name as string),
-          away_team: formatTeamKey(awayTeam?.name as string),
+          sport: sportMapping.leagueID, // Use league ID directly (e.g., 'MLB', 'NFL', 'NBA')
+          league: sportMapping.leagueID, // Keep consistent
+          home_team: normalizeTeamName(homeTeam?.name as string),
+          away_team: normalizeTeamName(awayTeam?.name as string),
           home_team_name: homeTeam?.name || '',
           away_team_name: awayTeam?.name || '',
           game_time: event.startTime ? new Date(event.startTime as string).toISOString() : new Date().toISOString(),
@@ -642,7 +661,7 @@ async function saveOddsDataSportsGameOdds(
       const { error } = await supabase
         .from('odds')
         .upsert(recordsWithTimestamp, {
-          onConflict: 'eventid,oddid',
+          onConflict: 'eventid,oddid,sportsbook',
           ignoreDuplicates: false
         })
 
@@ -775,7 +794,7 @@ async function saveOddsData(
       const { error: oddsError } = await supabase
         .from('odds')
         .upsert(recordsWithTimestamp, {
-          onConflict: 'eventid,oddid',
+          onConflict: 'game_id,sportsbook_key,market_type',
           ignoreDuplicates: false
         })
 
@@ -791,13 +810,52 @@ async function saveOddsData(
   }
 }
 
-function formatTeamKey(teamName: string): string {
-  if (!teamName) return 'unknown'
+function normalizeTeamName(teamName: string): string {
+  if (!teamName) return 'Unknown'
   
+  // Common MLB team name normalizations to match betting data
+  const teamMappings: Record<string, string> = {
+    // MLB teams
+    'New York Yankees': 'NY Yankees',
+    'New York Mets': 'NY Mets', 
+    'Los Angeles Dodgers': 'LA Dodgers',
+    'Los Angeles Angels': 'LA Angels',
+    'Chicago White Sox': 'Chi White Sox',
+    'Chicago Cubs': 'Chi Cubs',
+    'San Francisco Giants': 'SF Giants',
+    'St. Louis Cardinals': 'St Louis Cardinals',
+    'Tampa Bay Rays': 'Tampa Bay',
+    'Kansas City Royals': 'Kansas City',
+    'San Diego Padres': 'San Diego',
+    'Colorado Rockies': 'Colorado',
+    'Arizona Diamondbacks': 'Arizona',
+    'Washington Nationals': 'Washington',
+    'Minnesota Twins': 'Minnesota',
+    'Cleveland Guardians': 'Cleveland',
+    'Detroit Tigers': 'Detroit',
+    'Milwaukee Brewers': 'Milwaukee',
+    'Cincinnati Reds': 'Cincinnati',
+    'Pittsburgh Pirates': 'Pittsburgh',
+    'Miami Marlins': 'Miami',
+    'Atlanta Braves': 'Atlanta',
+    'Philadelphia Phillies': 'Philadelphia',
+    'Oakland Athletics': 'Oakland',
+    'Seattle Mariners': 'Seattle',
+    'Texas Rangers': 'Texas',
+    'Houston Astros': 'Houston',
+    'Boston Red Sox': 'Boston',
+    'Toronto Blue Jays': 'Toronto',
+    'Baltimore Orioles': 'Baltimore'
+  }
+  
+  // Return mapped name if available, otherwise clean up the original
+  const mapped = teamMappings[teamName]
+  if (mapped) return mapped
+  
+  // Clean up team name while preserving readability
   return teamName
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function getMarketType(betTypeID: string): string {
