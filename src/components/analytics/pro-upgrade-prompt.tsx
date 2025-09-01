@@ -27,28 +27,28 @@ interface ProUpgradePromptProps {
 
 const FEATURES_BY_CONTEXT = {
   analytics: [
-    { icon: Zap, title: 'Closing Line Value (CLV) Tracking', description: 'Track your edge against the market' },
-    { icon: TrendingUp, title: 'Predictive Analytics', description: 'AI-powered performance forecasting' },
-    { icon: Activity, title: 'Variance Analysis', description: 'Advanced statistical insights' },
-    { icon: BarChart3, title: 'Custom Dashboards', description: 'Build personalized analytics views' }
+    { icon: BarChart3, title: 'Advanced analytics', description: 'Professional-grade performance tracking' },
+    { icon: LineChart, title: 'Custom analytics chart creation', description: 'Build personalized chart views' },
+    { icon: TrendingUp, title: 'CLV analysis', description: 'Track your edge against closing lines' },
+    { icon: Activity, title: 'Line movement analysis on all bets', description: 'See how lines moved for every bet' }
   ],
   filters: [
-    { icon: Target, title: '20+ Sports Coverage', description: 'Including niche markets and esports' },
-    { icon: Settings, title: 'Custom Date Ranges', description: 'Unlimited historical analysis' },
-    { icon: LineChart, title: 'Granular Bet Analysis', description: 'Line movement and value tracking' },
-    { icon: PieChart, title: 'Team-Specific Insights', description: 'Deep performance breakdowns' }
+    { icon: BarChart3, title: 'Advanced analytics', description: 'Professional-grade performance tracking' },
+    { icon: LineChart, title: 'Custom analytics chart creation', description: 'Build personalized chart views' },
+    { icon: TrendingUp, title: 'CLV analysis', description: 'Track your edge against closing lines' },
+    { icon: Activity, title: 'Line movement analysis on all bets', description: 'See how lines moved for every bet' }
   ],
   charts: [
-    { icon: Activity, title: 'Interactive Visualizations', description: 'Professional-grade chart tools' },
-    { icon: TrendingUp, title: 'Correlation Analysis', description: 'Identify betting pattern relationships' },
-    { icon: BarChart3, title: 'Heat Map Analytics', description: 'Visual performance patterns' },
-    { icon: Target, title: 'Multi-Variable Plots', description: 'Complex data relationships' }
+    { icon: BarChart3, title: 'Advanced analytics', description: 'Professional-grade performance tracking' },
+    { icon: LineChart, title: 'Custom analytics chart creation', description: 'Build personalized chart views' },
+    { icon: TrendingUp, title: 'CLV analysis', description: 'Track your edge against closing lines' },
+    { icon: Activity, title: 'Line movement analysis on all bets', description: 'See how lines moved for every bet' }
   ],
   general: [
-    { icon: Crown, title: 'Complete Analytics Suite', description: 'All premium features included' },
-    { icon: Zap, title: 'Priority Support', description: '24/7 customer support access' },
-    { icon: TrendingUp, title: 'Early Access', description: 'Beta features and new tools' },
-    { icon: Settings, title: 'Unlimited Everything', description: 'No restrictions on usage' }
+    { icon: BarChart3, title: 'Advanced analytics', description: 'Professional-grade performance tracking' },
+    { icon: LineChart, title: 'Custom analytics chart creation', description: 'Build personalized chart views' },
+    { icon: TrendingUp, title: 'CLV analysis', description: 'Track your edge against closing lines' },
+    { icon: Activity, title: 'Line movement analysis on all bets', description: 'See how lines moved for every bet' }
   ]
 }
 
@@ -127,10 +127,10 @@ export function ProUpgradePrompt({
             <span className="text-3xl font-bold text-gray-900">$20</span>
             <span className="text-gray-600">/month</span>
           </div>
-          <p className="text-sm text-gray-500 mb-6">Cancel anytime • 7-day free trial</p>
+          <p className="text-sm text-gray-500 mb-6">Cancel anytime</p>
           <Button onClick={handleUpgrade} size="lg" className="w-full md:w-auto">
             <Crown className="w-4 h-4 mr-2" />
-            Start Free Trial
+            Upgrade to Pro
           </Button>
         </div>
       </div>
@@ -180,8 +180,8 @@ export function ProUpgradePrompt({
                 <span className="text-2xl font-bold text-gray-900">$20</span>
                 <span className="text-gray-600 ml-1">/month</span>
               </div>
-              <Badge variant="outline" className="text-green-600 border-green-600">
-                7-day free trial
+              <Badge variant="outline" className="text-blue-600 border-blue-600">
+                Cancel anytime
               </Badge>
             </div>
             

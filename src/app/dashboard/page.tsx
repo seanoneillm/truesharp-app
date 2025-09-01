@@ -117,11 +117,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Bottom Row - Full Width Pro Prompt */}
-              {(!profile?.pro || profile?.pro !== 'active') && (
-                <div className="w-full">
-                  <ProPrompt />
-                </div>
-              )}
+              <div className="w-full">
+                <ProPrompt />
+              </div>
             </div>
           </div>
         </div>

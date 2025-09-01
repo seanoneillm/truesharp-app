@@ -138,18 +138,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const updates = await request.json()
+    console.log('API Profile Update - User:', user.id)
+    console.log('API Profile Update - Updates:', updates)
+    
+    const updateFields: any = {
+      updated_at: new Date().toISOString(),
+    }
+
+    // Only include fields that are provided in the request
+    if (updates.username !== undefined) updateFields.username = updates.username
+    if (updates.display_name !== undefined) updateFields.display_name = updates.display_name
+    if (updates.bio !== undefined) updateFields.bio = updates.bio
+    if (updates.profile_picture_url !== undefined) updateFields.profile_picture_url = updates.profile_picture_url
+    if (updates.pro !== undefined) updateFields.pro = updates.pro
+
     const { data: profile, error } = await supabase
       .from('profiles')
-      .update({
-        display_name: updates.displayName,
-        bio: updates.bio,
-        location: updates.location,
-        website: updates.website,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateFields)
       .eq('id', user.id)
       .select()
       .single()
+      
+    console.log('API Profile Update - Result:', { profile, error })
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }

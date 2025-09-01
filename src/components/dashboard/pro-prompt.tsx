@@ -1,17 +1,37 @@
 'use client'
 
+import { ProSubscriptionModal } from '@/components/subscription/pro-subscription-modal'
+import { useProfile } from '@/lib/hooks/use-profile'
 import { ArrowRight, Check, Crown } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 export default function ProPrompt() {
+  const [showModal, setShowModal] = useState(false)
+  const { profile, loading } = useProfile()
+  
   const proFeatures = [
-    'Advanced analytics and insights',
-    'Unlimited strategy tracking', 
-    'Priority customer support',
-    'Early access to new features',
-    'Line movement tracking',
-    'Custom dashboard views'
+    'Advanced analytics',
+    'Custom analytics chart creation',
+    'CLV analysis',
+    'Line movement analysis on all bets'
   ]
+
+  // Show loading state while profile is being fetched
+  if (loading) {
+    return (
+      <div className="bg-gray-200 rounded-xl p-8 animate-pulse">
+        <div className="h-6 bg-gray-300 rounded mb-4"></div>
+        <div className="h-4 bg-gray-300 rounded mb-6"></div>
+        <div className="h-10 bg-gray-300 rounded"></div>
+      </div>
+    )
+  }
+
+  // Don't show if user is already Pro
+  if (profile?.pro === 'yes') {
+    return null
+  }
 
   return (
     <div className="bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 border border-yellow-200 shadow-xl rounded-xl p-8 relative overflow-hidden">
@@ -61,21 +81,21 @@ export default function ProPrompt() {
                 </div>
                 
                 <div className="space-y-3">
-                  <Link
-                    href="/subscriptions/pro"
+                  <button
+                    onClick={() => setShowModal(true)}
                     className="w-full inline-flex justify-center items-center px-6 py-4 border border-transparent text-lg font-semibold rounded-xl text-white bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
                     <Crown className="h-5 w-5 mr-2" />
                     Upgrade to Pro
                     <ArrowRight className="h-5 w-5 ml-2" />
-                  </Link>
+                  </button>
                   
-                  <Link
-                    href="/pro"
+                  <button
+                    onClick={() => setShowModal(true)}
                     className="w-full inline-flex justify-center items-center px-6 py-3 border border-yellow-300 text-sm font-medium rounded-xl text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors"
                   >
                     Learn More About Pro Features
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -89,6 +109,14 @@ export default function ProPrompt() {
           </div>
         </div>
       </div>
+
+      <ProSubscriptionModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={() => {
+          // Modal will close automatically and profile will refresh
+        }}
+      />
     </div>
   )
 }

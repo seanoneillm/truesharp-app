@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -49,6 +50,10 @@ interface ChartDataPoint {
   cumulative: number
 }
 
+interface AnalyticsData {
+  roiOverTime: { day: string; net_profit: number; stake: number; roi_pct: number; bets: number }[]
+}
+
 interface OverviewTabProps {
   recentBets: Bet[]
   chartData: ChartDataPoint[]
@@ -56,6 +61,7 @@ interface OverviewTabProps {
   onTimePeriodChange: (period: string) => void
   totalProfit: number
   isLoading?: boolean
+  analyticsData?: AnalyticsData
 }
 
 const TIME_PERIODS = ['This Week', 'This Month', 'This Year']
@@ -66,8 +72,97 @@ export function OverviewTab({
   selectedTimePeriod,
   onTimePeriodChange,
   totalProfit,
-  isLoading = false
+  isLoading = false,
+  analyticsData
 }: OverviewTabProps) {
+  // Independent time period state for this chart only
+  const [chartTimePeriod, setChartTimePeriod] = useState<'week' | 'month' | 'year'>('month')
+
+  // Process data using chart's own time period but respect other page filters through recentBets
+  const getProfitChartData = () => {
+    if (!analyticsData?.roiOverTime) return []
+
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+
+    let start: Date, end: Date
+    switch (chartTimePeriod) {
+      case 'week':
+        const startOfWeek = new Date(now)
+        startOfWeek.setDate(now.getDate() - now.getDay())
+        startOfWeek.setHours(0, 0, 0, 0)
+        start = startOfWeek
+        end = new Date()
+        break
+      case 'month':
+        start = new Date(currentYear, currentMonth, 1)
+        end = new Date(currentYear, currentMonth + 1, 0)
+        break
+      case 'year':
+        start = new Date(currentYear, 0, 1)
+        end = new Date(currentYear, 11, 31)
+        break
+    }
+
+    // Filter data by time period
+    const sourceData = analyticsData.roiOverTime
+      .filter(item => {
+        const itemDate = new Date(item.day)
+        return itemDate >= start && itemDate <= end
+      })
+      .sort((a, b) => new Date(a.day).getTime() - new Date(b.day).getTime())
+
+    if (sourceData.length === 0) return []
+
+    // Calculate cumulative profit over time
+    let cumulativeProfit = 0
+    
+    if (chartTimePeriod === 'week' || chartTimePeriod === 'month') {
+      // Daily view with cumulative profit
+      return sourceData.map(item => {
+        cumulativeProfit += item.net_profit
+        return {
+          dateLabel: new Date(item.day).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          profit: cumulativeProfit
+        }
+      })
+    } else {
+      // Monthly view with cumulative profit
+      const monthlyData: { [key: string]: { dateLabel: string; dailyProfits: number[] } } = {}
+      
+      sourceData.forEach(item => {
+        const date = new Date(item.day)
+        const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            dateLabel: date.toLocaleDateString('en-US', { 
+              month: 'short'
+            }),
+            dailyProfits: []
+          }
+        }
+        
+        monthlyData[monthKey].dailyProfits.push(item.net_profit)
+      })
+      
+      // Convert to cumulative monthly totals
+      return Object.keys(monthlyData)
+        .sort()
+        .map(monthKey => {
+          const monthProfit = monthlyData[monthKey].dailyProfits.reduce((sum, profit) => sum + profit, 0)
+          cumulativeProfit += monthProfit
+          return {
+            dateLabel: monthlyData[monthKey].dateLabel,
+            profit: cumulativeProfit
+          }
+        })
+    }
+  }
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'won':
@@ -118,83 +213,96 @@ export function OverviewTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profit Chart */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5" />
-                  <span>Profit Over Time</span>
-                </CardTitle>
-                <div className="flex space-x-2">
-                  {TIME_PERIODS.map(period => (
-                    <Button
-                      key={period}
-                      variant={selectedTimePeriod === period ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => onTimePeriodChange(period)}
-                    >
-                      {period}
-                    </Button>
-                  ))}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+            <CardHeader className="pb-4">
+              <CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Total Profit Over Time</h3>
+                      <p className="text-sm text-gray-500">{`cumulative profit tracking`}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                      {['This Week', 'This Month', 'This Year'].map((period) => {
+                        const periodKey = period.includes('Week') ? 'week' : period.includes('Month') ? 'month' : 'year'
+                        return (
+                          <button
+                            key={period}
+                            onClick={() => setChartTimePeriod(periodKey)}
+                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                              chartTimePeriod === periodKey
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            {period.replace('This ', '')}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className={`text-3xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(totalProfit)}
-                </div>
-                <p className="text-sm text-gray-600">Total profit for {selectedTimePeriod.toLowerCase()}</p>
-              </div>
-
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                      }}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => `$${value}`}
-                    />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        `$${value.toFixed(2)}`,
-                        name === 'cumulative' ? 'Cumulative Profit' : 'Daily Profit'
-                      ]}
-                      labelFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="cumulative"
-                      stroke={totalProfit >= 0 ? "#10B981" : "#EF4444"}
-                      strokeWidth={2}
-                      dot={{ r: 2 }}
-                      activeDot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-300 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>No betting data available for this time period</p>
-                    <Link href="/games">
-                      <Button className="mt-4">
-                        Place Your First Bet
-                        <ExternalLink className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={getProfitChartData()}>
+                  <CartesianGrid 
+                    strokeDasharray="2 2" 
+                    stroke="#e2e8f0" 
+                    horizontal={true}
+                    vertical={false}
+                  />
+                  <XAxis 
+                    dataKey="dateLabel"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickLine={false}
+                    axisLine={false}
+                    angle={chartTimePeriod === 'month' ? -45 : 0}
+                    textAnchor={chartTimePeriod === 'month' ? 'end' : 'middle'}
+                    height={chartTimePeriod === 'month' ? 60 : 30}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${Math.abs(value) >= 1000 ? (value/1000).toFixed(1) + 'k' : value.toFixed(0)}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                      fontSize: '13px'
+                    }}
+                    formatter={(value: number) => [
+                      `$${value >= 0 ? '+' : ''}${value.toFixed(2)}`,
+                      'Total Profit'
+                    ]}
+                    labelFormatter={(value) => value}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    stroke="#059669" 
+                    strokeWidth={3}
+                    dot={{ r: 1.5, fill: '#059669', strokeWidth: 0 }}
+                    activeDot={{ r: 4, fill: '#059669', strokeWidth: 2, stroke: 'white' }}
+                    name="Total Profit"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              {getProfitChartData().length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-medium">No profit data available</p>
+                  <p className="text-sm">{`No data available for this ${chartTimePeriod}`}</p>
                 </div>
               )}
             </CardContent>

@@ -128,6 +128,11 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
         <p className="text-sm font-medium text-gray-900 line-clamp-2">
           {bet.gameInfo}
         </p>
+        {bet.home_team && bet.away_team && (
+          <p className="text-xs text-gray-600 mt-1">
+            {bet.away_team} @ {bet.home_team}
+          </p>
+        )}
         {bet.line_value && (
           <p className="text-xs text-gray-600">
             Line: {bet.line_value > 0 ? '+' : ''}{bet.line_value}

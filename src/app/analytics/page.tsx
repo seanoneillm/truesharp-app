@@ -139,7 +139,7 @@ const defaultFilters: FilterOptions = {
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>('analytics')
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMoreBets, setHasMoreBets] = useState(true)
@@ -910,6 +910,7 @@ export default function AnalyticsPage() {
             }}
             totalProfit={analyticsData?.metrics?.totalProfit || 0}
             isLoading={analyticsLoading}
+            analyticsData={analyticsData}
           />
         )}
 

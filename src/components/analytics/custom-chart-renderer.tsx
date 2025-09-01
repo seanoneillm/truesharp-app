@@ -172,7 +172,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
     switch (config.chartType) {
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart {...chartProps}>
               <CartesianGrid 
                 strokeDasharray="2 2" 
@@ -219,7 +219,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
       case 'bar':
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart {...chartProps}>
               <CartesianGrid 
                 strokeDasharray="2 2" 
@@ -263,7 +263,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
       case 'pie':
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={data}

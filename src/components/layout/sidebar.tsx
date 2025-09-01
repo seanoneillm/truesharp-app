@@ -20,7 +20,7 @@ export default function Sidebar({ className }: SidebarProps) {
     setIsMounted(true)
   }, [])
 
-  // Prevent hydration mismatch by not rendering dynamic content until mounted
+  // Prevent hydration mismatch by rendering consistent layout until mounted
   if (!isMounted) {
     return (
       <div 
@@ -37,6 +37,10 @@ export default function Sidebar({ className }: SidebarProps) {
               TrueSharp
             </span>
           </Link>
+          {/* Static button for SSR - no onClick handler */}
+          <div className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+            <X className="h-5 w-5 text-gray-600" />
+          </div>
         </div>
         
         {/* Navigation Content */}
@@ -64,7 +68,12 @@ export default function Sidebar({ className }: SidebarProps) {
       <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
         <Link href="/dashboard" className="flex items-center min-w-0">
           <TrueSharpShield className="h-8 w-8 text-blue-600 shrink-0" />
-          {!isCollapsed && (
+          {isMounted && !isCollapsed && (
+            <span className="ml-2 text-xl font-bold text-gray-900 truncate">
+              TrueSharp
+            </span>
+          )}
+          {!isMounted && (
             <span className="ml-2 text-xl font-bold text-gray-900 truncate">
               TrueSharp
             </span>

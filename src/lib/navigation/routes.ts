@@ -57,13 +57,6 @@ export const navigationRoutes: NavigationRoute[] = [
     description: 'Social community features',
     requiresAuth: true
   },
-  {
-    name: 'Add to Strategies',
-    href: '/add-bets-to-strategies',
-    icon: 'Plus',
-    description: 'Add pending bets to strategies',
-    requiresAuth: true
-  }
 ]
 
 export function getRouteByPath(path: string): NavigationRoute | undefined {

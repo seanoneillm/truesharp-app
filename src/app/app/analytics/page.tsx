@@ -4,6 +4,7 @@
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { useAnalytics } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useProfile } from '@/lib/hooks/use-profile'
 import {
   AlertCircle,
   ArrowUpRight,
@@ -399,9 +400,12 @@ interface SavedFilter {
 
 export default function EnhancedAnalyticsPage() {
   const { user, loading: authLoading } = useAuth() // Use the correct useAuth hook
+  const { profile, loading: profileLoading } = useProfile()
   const [selectedTimeframe, setSelectedTimeframe] = useState('30d')
   const [showProUpgrade, setShowProUpgrade] = useState(false)
-  const [isPro, setIsPro] = useState(false)
+  
+  // Use actual Pro status from profile
+  const isPro = profile?.pro === 'yes'
   const [activeView, setActiveView] = useState('overview')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
@@ -481,7 +485,7 @@ export default function EnhancedAnalyticsPage() {
   }
 
   // Show loading if auth is still loading
-  if (authLoading) {
+  if (authLoading || profileLoading) {
     return (
       <DashboardLayout current="Analytics">
         <div className="px-4 sm:px-6 lg:px-8 py-8">

@@ -395,9 +395,9 @@ export async function getSubscriberStrategiesWithOpenBets(
  * Helper function to format bet information for display
  */
 export function formatBetForDisplay(bet: OpenBet) {
-  const gameInfo = bet.home_team && bet.away_team 
+  const gameInfo = bet.bet_description || (bet.home_team && bet.away_team 
     ? `${bet.away_team} @ ${bet.home_team}`
-    : bet.bet_description
+    : 'Unknown bet')
 
   const oddsDisplay = bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`
   

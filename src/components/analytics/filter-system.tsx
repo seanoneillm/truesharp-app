@@ -222,7 +222,7 @@ function MultiSelectDropdown({ values, options, onChange, placeholder, disabled 
 }
 
 export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }: FilterSystemProps) {
-  const [isExpanded, setIsExpanded] = useState(true) // Start expanded to show default filters
+  const [isExpanded, setIsExpanded] = useState(false) // Start collapsed for cleaner initial view
   
   // Render counter for debugging (remove in production)
   const renderCountRef = useState(() => ({ count: 0 }))[0]

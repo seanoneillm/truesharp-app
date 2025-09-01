@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, CheckCircle, Crown, DollarSign, Shield, Star, Target, TrendingUp, Trophy, Users, Zap } from 'lucide-react'
+import { ArrowRight, BarChart3, CheckCircle, Crown, DollarSign, Shield, Star, Target, TrendingUp, Trophy, Users, Zap, ChevronDown, Activity, LineChart, Gamepad2, HelpCircle } from 'lucide-react'
 import Link from 'next/link'
 
 // Shield SVG Component based on your logo
@@ -27,433 +27,521 @@ const TrueSharpShield = ({ className = "h-8 w-8", variant = "default" }) => (
   </svg>
 )
 
-export default function EnhancedLandingPage() {
+export default function TrueSharpLandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(120,119,198,0.1),transparent_50%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.1),transparent_50%)] pointer-events-none" />
-      
-      {/* Header */}
-      <header className="relative z-50 border-b border-white/10 backdrop-blur-sm">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
-          <div className="flex lg:flex-1 items-center">
-            <Link href="/" className="-m-1.5 p-1.5 flex items-center space-x-3 group">
+    <div className="min-h-screen bg-white">
+      {/* Header Navigation */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-3 group">
               <TrueSharpShield className="h-10 w-10 group-hover:scale-105 transition-transform duration-200" />
-              <span className="text-2xl font-bold text-white tracking-tight">TrueSharp</span>
+              <span className="text-2xl font-bold text-gray-900 tracking-tight">TrueSharp</span>
             </Link>
           </div>
-          <div className="flex lg:flex-1 lg:justify-end space-x-4">
+
+          {/* Desktop Navigation - Removed internal links */}
+          <div className="hidden lg:flex items-center space-x-8">
+            {/* Navigation removed - users must sign up first */}
+          </div>
+
+          {/* Auth Buttons */}
+          <div className="flex items-center space-x-4">
             <Link
               href="/login"
-              className="text-sm font-semibold leading-6 text-white/90 hover:text-white transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-white/10"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2"
             >
-              Log in
+              Log In
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-blue-500 transition-all duration-200 hover:shadow-xl hover:scale-105"
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
             >
-              Get started
+              Sign Up
             </Link>
           </div>
         </nav>
       </header>
 
       {/* Hero Section */}
-      <div className="relative isolate px-6 pt-14 lg:px-8">
-        <div className="mx-auto max-w-5xl py-24 sm:py-32">
-          <div className="text-center">
-            {/* Trust Badge */}
-            <div className="mb-8 flex justify-center">
-              <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-3">
-                <TrueSharpShield className="h-6 w-6" variant="light" />
-                <span className="text-sm font-medium text-white/90">100% Verified Data Platform</span>
-                <CheckCircle className="h-5 w-5 text-green-400" />
-              </div>
-            </div>
-
-            <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl leading-tight">
-              The Only
-              <span className="text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text"> Verified</span>
-              <br />
-              Sports Betting Community
+      <section className="relative bg-gradient-to-br from-blue-50 to-indigo-100 py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              The Complete Sports Betting Platform
             </h1>
-            <p className="mt-8 text-xl leading-8 text-white/80 max-w-3xl mx-auto">
-              Track your real betting performance with automatic sportsbook sync.
-              No fake records, no manual entry - just 100% authentic data.
-              Turn your expertise into income by selling access to your stategy.
+            <p className="mt-6 text-xl leading-8 text-gray-600">
+              Track your performance with advanced analytics, discover winning strategies from verified bettors, and monetize your expertise. All with 100% verified, synced data from your sportsbooks.
             </p>
-            <div className="mt-12 flex items-center justify-center gap-x-6">
+            <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
                 href="/signup"
-                className="group rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl hover:bg-blue-500 transition-all duration-300 hover:scale-105 hover:shadow-blue-500/25 flex items-center space-x-2"
+                className="bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 rounded-lg transition-colors"
               >
-                <span>Start Tracking Free</span>
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
+                Get Started Free
               </Link>
               <Link
-                href="#features"
-                className="text-lg font-semibold leading-6 text-white/90 hover:text-white transition-colors duration-200 flex items-center space-x-2 group"
+                href="/login"
+                className="text-lg font-semibold leading-6 text-gray-900 border border-gray-300 px-8 py-4 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <span>Learn more</span>
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
+                Log In
               </Link>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Enhanced Trust Indicators */}
-        <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+      {/* How It Works Section */}
+      <section className="py-24 sm:py-32 bg-white">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              How TrueSharp Works
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Everything you need to track, discover, and profit from sports betting
+            </p>
+          </div>
+
+          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-12 lg:max-w-none lg:grid-cols-2">
             {[
-              { value: "100%", label: "Verified Data", icon: Shield },
-              { value: "15+", label: "Sportsbooks", icon: Target },
-              { value: "$0", label: "Setup Cost", icon: DollarSign },
-              { value: "24/7", label: "Auto Sync", icon: Zap }
-            ].map((stat, index) => (
-              <div key={index} className="text-center group">
-                <div className="mb-4 flex justify-center">
-                  <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 group-hover:bg-white/20 transition-all duration-300">
-                    <stat.icon className="h-6 w-6 text-blue-400" />
+              {
+                step: "1",
+                title: "Sync Your Verified Performance",
+                description: "Connect with SharpSports to automatically sync your betting history from DraftKings, FanDuel, Caesars, and 12+ other major sportsbooks. Every bet is verified and authentic - no fake records possible.",
+                icon: Shield,
+                category: "Analytics & Sync"
+              },
+              {
+                step: "2", 
+                title: "Discover Winning Strategies",
+                description: "Browse our marketplace of verified bettors and subscribe to proven strategies. See real performance data, ROI, and win rates before you subscribe. Find specialists in your favorite sports.",
+                icon: Users,
+                category: "Marketplace"
+              },
+              {
+                step: "3",
+                title: "Advanced Performance Analytics",
+                description: "Get deep insights with professional-grade analytics. Track CLV, identify your best bet types, analyze trends, and use filters to understand what's working and what isn't.",
+                icon: BarChart3,
+                category: "Analytics & Sync"
+              },
+              {
+                step: "4",
+                title: "Monetize Your Expertise",
+                description: "Turn your verified track record into income. List up to 5 strategies, set your own prices, and earn from subscriptions. Test strategies in the mock sportsbook before going live.",
+                icon: DollarSign,
+                category: "Selling"
+              }
+            ].map((item, index) => (
+              <div key={index} className="flex gap-6">
+                <div className="flex-shrink-0">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
+                    <item.icon className="h-6 w-6 text-white" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                <div className="text-white/70 text-sm">{stat.label}</div>
+                <div>
+                  <div className="mb-2">
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                      Step {item.step}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900">{item.title}</h3>
+                  <p className="mt-2 text-gray-600">{item.description}</p>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Enhanced Features Section */}
-      <div id="features" className="py-24 sm:py-32 relative">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl lg:text-center mb-20">
-            <div className="flex justify-center mb-6">
-              <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                <Trophy className="h-8 w-8 text-blue-400" />
-              </div>
+          <div className="mt-16 text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Supported Sportsbooks</h3>
+            <div className="flex items-center justify-center gap-8 opacity-60">
+              <span className="text-sm font-medium text-gray-500">DraftKings</span>
+              <span className="text-sm font-medium text-gray-500">FanDuel</span>
+              <span className="text-sm font-medium text-gray-500">Caesars</span>
+              <span className="text-sm font-medium text-gray-500">BetMGM</span>
+              <span className="text-sm font-medium text-gray-500">+12 more</span>
             </div>
-            <h2 className="text-base font-semibold leading-7 text-blue-400 tracking-wide uppercase">Everything you need</h2>
-            <p className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              Turn your strategy into a business
-            </p>
-            <p className="mt-6 text-xl leading-8 text-white/80">
-              From tracking your performance to monetizing your expertise, TrueSharp provides everything you need to succeed in sports betting.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <dl className="grid max-w-xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
-              {[
-                {
-                  icon: Shield,
-                  title: "100% Verified Tracking",
-                  description: "Automatically sync with all major sportsbooks. Every bet is verified and authentic.",
-                  gradient: "from-blue-500 to-cyan-500"
-                },
-                {
-                  icon: BarChart3,
-                  title: "Advanced Analytics",
-                  description: "Deep dive into your performance with unlimited filters, trend analysis, and predictive insights. See what works and optimize your strategy.",
-                  gradient: "from-purple-500 to-pink-500"
-                },
-                {
-                  icon: DollarSign,
-                  title: "Monetize Your Picks",
-                  description: "Turn your expertise into recurring income. Monetize your strategy with verified track records that build trust with subscribers.",
-                  gradient: "from-green-500 to-emerald-500"
-                },
-                {
-                  icon: Users,
-                  title: "Verified Community",
-                  description: "Connect with proven winners. Browse verified sellers, see real performance data, and subscribe to the best bettors in each sport.",
-                  gradient: "from-orange-500 to-red-500"
-                },
-                {
-                  icon: TrendingUp,
-                  title: "Line Movement Data",
-                  description: "Track closing line value, steam moves, and market inefficiencies. Get professional-grade data to maximize your edge.",
-                  gradient: "from-indigo-500 to-blue-500"
-                },
-                {
-                  icon: Zap,
-                  title: "Real-time Sync",
-                  description: "Your bets appear automatically within minutes. Set it up once and let TrueSharp handle the tracking while you focus on winning.",
-                  gradient: "from-yellow-500 to-orange-500"
-                }
-              ].map((feature, index) => (
-                <div key={index} className="group relative">
-                  <div className="h-full p-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl hover:bg-white/10 transition-all duration-300 hover:border-white/20 hover:scale-105">
-                    <dt className="flex items-center gap-x-4 text-xl font-semibold leading-7 text-white mb-4">
-                      <div className={`p-3 bg-gradient-to-br ${feature.gradient} rounded-2xl shadow-lg`}>
-                        <feature.icon className="h-6 w-6 text-white" />
-                      </div>
-                      {feature.title}
-                    </dt>
-                    <dd className="text-base leading-7 text-white/80">
-                      {feature.description}
-                    </dd>
-                  </div>
-                </div>
-              ))}
-            </dl>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Enhanced Pricing Section */}
-      <div className="py-24 sm:py-32 relative">
+      {/* Features Section */}
+      <section className="py-24 sm:py-32 bg-gray-50">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6">
-              Start free, upgrade when ready
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Powerful Features for Every Bettor
             </h2>
-            <p className="text-xl leading-8 text-white/80">
-              Get started with essential tracking features, then unlock advanced analytics and monetization tools.
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Whether you're tracking performance, finding strategies, or building a business
             </p>
           </div>
-          
-          <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-5xl lg:grid-cols-2">
-            {/* Free Tier */}
-            <div className="group relative">
-              <div className="h-full p-8 bg-white/5 backdrop-blur-sm border border-white/20 rounded-3xl hover:bg-white/10 transition-all duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-semibold leading-8 text-white">Free Tracking</h3>
-                  <div className="p-2 bg-green-500/20 rounded-xl">
-                    <CheckCircle className="h-6 w-6 text-green-400" />
-                  </div>
-                </div>
-                <p className="text-white/70 mb-6">
-                  Everything you need to start tracking your betting performance.
-                </p>
-                <p className="flex items-baseline gap-x-2 mb-8">
-                  <span className="text-5xl font-bold tracking-tight text-white">$0</span>
-                  <span className="text-lg font-semibold leading-6 text-white/70">/month</span>
-                </p>
-                <ul className="space-y-4 text-white/80 mb-8">
-                  {[
-                    "Unlimited bet tracking",
-                    "Basic performance analytics",
-                    "Automatic sportsbook sync",
-                    "Monetize your Strategy",
-                    "Mobile app access"
-                  ].map((feature, index) => (
-                    <li key={index} className="flex gap-x-3">
-                      <CheckCircle className="h-6 w-5 flex-none text-green-400" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/signup"
-                  className="block w-full rounded-xl bg-white/10 px-4 py-3 text-center font-semibold text-white hover:bg-white/20 transition-colors duration-200"
-                >
-                  Get started
-                </Link>
-              </div>
-            </div>
 
-            {/* Pro Tier */}
-            <div className="group relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative h-full p-8 bg-slate-900/90 backdrop-blur-sm rounded-3xl">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-semibold leading-8 text-white">TrueSharp Pro</h3>
-                  <div className="flex items-center space-x-1 bg-gradient-to-r from-blue-500 to-cyan-500 px-3 py-1 rounded-full">
-                    <Crown className="h-4 w-4 text-white" />
-                    <span className="text-xs font-bold text-white">POPULAR</span>
-                  </div>
-                </div>
-                <p className="text-white/70 mb-6">
-                  Advanced analytics and monetization tools for serious bettors.
-                </p>
-                <p className="flex items-baseline gap-x-2 mb-8">
-                  <span className="text-5xl font-bold tracking-tight text-white">$19.99</span>
-                  <span className="text-lg font-semibold leading-6 text-white/70">/month</span>
-                </p>
-                <ul className="space-y-4 text-white/80 mb-8">
-                  {[
-                    "Everything in Free",
-                    "Advanced analytics engine",
-                    "Line movement data",
-                    "Custom reports & alerts"
-                  ].map((feature, index) => (
-                    <li key={index} className="flex gap-x-3">
-                      <CheckCircle className="h-6 w-5 flex-none text-blue-400" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/signup"
-                  className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-center font-semibold text-white shadow-lg hover:from-blue-500 hover:to-cyan-500 transition-all duration-200 hover:scale-105"
-                >
-                  Start free trial
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Social Proof */}
-      <div className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              Trusted by winning bettors
-            </h2>
-            <p className="mt-6 text-xl leading-8 text-white/80">
-              Join thousands of sports bettors who trust TrueSharp to track their performance and grow their bankroll.
-            </p>
-          </div>
-          
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
             {[
               {
-                quote: "TrueSharp showed me exactly where I was losing money. The analytics are incredible - I improved my ROI by 15% in just two months.",
-                author: "@mikejohnson",
-                role: "NBA Specialist",
-                avatar: "MJ",
-                color: "bg-blue-500"
+                icon: BarChart3,
+                title: "Advanced Analytics Dashboard",
+                description: "Professional-grade performance tracking with CLV analysis, trend identification, profit/loss breakdowns, and unlimited custom filters.",
+                category: "Analytics"
               },
               {
-                quote: "I've made over $3,000 selling my picks on TrueSharp. The verified tracking builds trust with subscribers instantly.",
-                author: "@sharpbettor",
-                role: "Verified Seller",
-                avatar: "SR",
-                color: "bg-green-500"
+                icon: Shield,
+                title: "Automatic Sportsbook Sync",
+                description: "Securely connect 15+ major sportsbooks via SharpSports. Real-time bet syncing with bank-level security and 100% verification.",
+                category: "Analytics"
               },
               {
-                quote: "Finally, a platform that shows real results. No more fake screenshots or made-up records. TrueSharp is the real deal.",
-                author: "@alexdoyle",
-                role: "CFB Expert",
-                avatar: "AD",
-                color: "bg-purple-500"
+                icon: Users,
+                title: "Verified Seller Marketplace",
+                description: "Discover proven strategies from verified bettors. Browse by sport, ROI, win rate, and bet types. All performance data is authentic.",
+                category: "Marketplace"
+              },
+              {
+                icon: DollarSign,
+                title: "Strategy Monetization",
+                description: "Turn your track record into income. List up to 5 strategies, set your own subscription prices. Full subscriber management tools included.",
+                category: "Selling"
+              },
+              {
+                icon: Gamepad2,
+                title: "Mock Sportsbook Testing",
+                description: "Test new strategies risk-free in our simulated environment. Perfect for sellers to validate picks before sharing with subscribers.",
+                category: "Other"
+              },
+              {
+                icon: Activity,
+                title: "Social Feed & Community",
+                description: "Connect with other bettors, share insights, and discuss strategies in our verified community of serious sports bettors.",
+                category: "Other"
               }
-            ].map((testimonial, index) => (
-              <div key={index} className="group">
-                <div className="h-full p-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl hover:bg-white/10 transition-all duration-300 hover:border-white/20">
-                  <div className="flex gap-x-1 text-yellow-400 mb-6">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-current" />
-                    ))}
-                  </div>
-                  <blockquote className="text-lg leading-8 text-white mb-6">
-                    "{testimonial.quote}"
-                  </blockquote>
-                  <div className="flex items-center gap-x-4">
-                    <div className={`h-12 w-12 rounded-full ${testimonial.color} flex items-center justify-center`}>
-                      <span className="text-sm font-semibold text-white">{testimonial.avatar}</span>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-white">{testimonial.author}</div>
-                      <div className="text-sm text-white/70">{testimonial.role}</div>
-                    </div>
+            ].map((feature, index) => (
+              <div key={index} className="rounded-2xl bg-white p-8 shadow-sm">
+                <div className="mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
+                    <feature.icon className="h-6 w-6 text-white" />
                   </div>
                 </div>
+                <h3 className="text-lg font-semibold text-gray-900">{feature.title}</h3>
+                <p className="mt-2 text-gray-600">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Enhanced CTA Section */}
-      <div className="py-24 sm:py-32 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-900/50 to-transparent"></div>
-        <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      {/* Analytics Deep Dive Section */}
+      <section className="py-24 sm:py-32 bg-white">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Professional-Grade Analytics
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Get the insights you need to improve your betting performance
+            </p>
+          </div>
+
+          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
+            <div className="rounded-2xl bg-blue-50 p-8">
+              <BarChart3 className="h-12 w-12 text-blue-600 mb-6" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Closing Line Value (CLV) Analysis</h3>
+              <p className="text-gray-600 mb-4">
+                Track how your bets perform against closing lines - the gold standard for measuring betting skill. Identify which bet types and sports give you the best edge.
+              </p>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Positive CLV identification across all bet types</li>
+                <li>• Sport-by-sport CLV breakdowns</li>
+                <li>• Line movement tracking and analysis</li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl bg-green-50 p-8">
+              <TrendingUp className="h-12 w-12 text-green-600 mb-6" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Advanced Filtering & Trends</h3>
+              <p className="text-gray-600 mb-4">
+                Drill down into your performance with unlimited filters. Find patterns in your betting that you never knew existed.
+              </p>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Filter by date, sport, bet type, odds range</li>
+                <li>• Streak analysis and variance tracking</li>
+                <li>• Custom time period comparisons</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Marketplace Discovery Section */}
+      <section className="py-24 sm:py-32 bg-gray-50">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Discover Winning Strategies
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Subscribe to verified bettors and learn from the best in each sport
+            </p>
+          </div>
+
+          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">TB</span>
+                </div>
+                <div className="ml-3">
+                  <div className="font-medium text-gray-900">TopBaseball</div>
+                  <div className="text-sm text-gray-600">MLB Specialist</div>
+                </div>
+                <div className="ml-auto">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Verified
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                <div>
+                  <div className="text-xl font-bold text-gray-900">+23.4%</div>
+                  <div className="text-xs text-gray-600">ROI</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">847</div>
+                  <div className="text-xs text-gray-600">Bets</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">58.2%</div>
+                  <div className="text-xs text-gray-600">Win Rate</div>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">Specializes in MLB player props and run totals. Strong record in day games and division matchups.</p>
+              <div className="text-center">
+                <span className="text-sm text-gray-600">Subscription-based strategy</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">NE</span>
+                </div>
+                <div className="ml-3">
+                  <div className="font-medium text-gray-900">NFLEdge</div>
+                  <div className="text-sm text-gray-600">NFL Totals Expert</div>
+                </div>
+                <div className="ml-auto">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Verified
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                <div>
+                  <div className="text-xl font-bold text-gray-900">+19.8%</div>
+                  <div className="text-xs text-gray-600">ROI</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">312</div>
+                  <div className="text-xs text-gray-600">Bets</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">61.5%</div>
+                  <div className="text-xs text-gray-600">Win Rate</div>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">Focus on NFL over/under totals with weather and pace analysis. Best record in primetime games.</p>
+              <div className="text-center">
+                <span className="text-sm text-gray-600">Subscription-based strategy</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">BM</span>
+                </div>
+                <div className="ml-3">
+                  <div className="font-medium text-gray-900">BasketballMath</div>
+                  <div className="text-sm text-gray-600">NBA Analytics</div>
+                </div>
+                <div className="ml-auto">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Verified
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                <div>
+                  <div className="text-xl font-bold text-gray-900">+16.2%</div>
+                  <div className="text-xs text-gray-600">ROI</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">523</div>
+                  <div className="text-xs text-gray-600">Bets</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-gray-900">55.8%</div>
+                  <div className="text-xs text-gray-600">Win Rate</div>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">Data-driven NBA approach using advanced metrics. Strong in player props and alternative spreads.</p>
+              <div className="text-center">
+                <span className="text-sm text-gray-600">Subscription-based strategy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* Why TrueSharp Section */}
+      <section className="py-24 sm:py-32 bg-gray-50">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Why Sellers Choose TrueSharp
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Built on trust, transparency, and seller success
+            </p>
+          </div>
+
+          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+            <div className="text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+                <CheckCircle className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">100% Verified Credibility</h3>
+              <p className="text-gray-600">
+                Every bet is automatically verified through direct sportsbook integration. No fake records means higher subscriber trust and conversion rates.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <DollarSign className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Competitive Revenue Share</h3>
+              <p className="text-gray-600">
+                Earn from your strategies with no hidden fees. We handle payments, customer service, and platform maintenance so you can focus on winning.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                <Shield className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Secure & Private</h3>
+              <p className="text-gray-600">
+                We never store your sportsbook credentials. All syncing is handled securely by SharpSports with bank-level encryption.{' '}
+                <a 
+                  href="https://www.ncpgambling.org/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Responsible gaming resources
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Preview Section */}
+      <section className="py-24 sm:py-32 bg-white">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Get Started Today
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Join TrueSharp free and access all the tools you need for smarter sports betting
+            </p>
+          </div>
+
+          <div className="mx-auto mt-16 max-w-lg">
+            <div className="rounded-2xl bg-white p-8 shadow-sm text-center">
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">Free to Get Started</h3>
+              <p className="text-gray-600 mb-8">
+                Start using TrueSharp immediately with no upfront costs. Access all core features and begin building your verified track record.
+              </p>
+              <ul className="text-left text-gray-600 mb-8 space-y-3">
+                <li className="flex items-center"><CheckCircle className="h-5 w-5 text-green-500 mr-2" />Unlimited bet tracking and syncing</li>
+                <li className="flex items-center"><CheckCircle className="h-5 w-5 text-green-500 mr-2" />Advanced analytics and filtering</li>
+                <li className="flex items-center"><CheckCircle className="h-5 w-5 text-green-500 mr-2" />Browse verified marketplace strategies</li>
+                <li className="flex items-center"><CheckCircle className="h-5 w-5 text-green-500 mr-2" />List your own strategies for sale</li>
+                <li className="flex items-center"><CheckCircle className="h-5 w-5 text-green-500 mr-2" />Mock sportsbook for testing</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-24 sm:py-32 bg-blue-600">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-8 flex justify-center">
               <TrueSharpShield className="h-16 w-16" variant="light" />
             </div>
             <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6">
-              Ready to track like a pro?
+              Ready to Elevate Your Betting?
             </h2>
-            <p className="text-xl leading-8 text-white/80 mb-12">
-              Join the only sports betting platform with 100% verified data. Start tracking your performance and building your reputation today.
+            <p className="text-xl leading-8 text-blue-100 mb-12">
+              Whether you want to track performance, find winning strategies, or build a betting business - TrueSharp has you covered.
             </p>
-            <div className="flex items-center justify-center gap-x-6">
+            <div className="flex items-center justify-center gap-6 flex-col sm:flex-row">
               <Link
                 href="/signup"
-                className="group rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl hover:bg-blue-500 transition-all duration-300 hover:scale-105 hover:shadow-blue-500/25"
+                className="bg-white text-blue-600 px-8 py-4 text-lg font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-lg"
               >
-                Get started free
+                Get Started Free
               </Link>
               <Link
                 href="/login"
-                className="text-lg font-semibold leading-6 text-white/90 hover:text-white transition-colors duration-200 flex items-center space-x-2 group"
+                className="text-white border border-white/20 px-8 py-4 text-lg font-semibold rounded-lg hover:bg-white/10 transition-colors"
               >
-                <span>Already have an account?</span>
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
+                Log In
               </Link>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Enhanced Footer */}
-      <footer className="border-t border-white/10 bg-black/20 backdrop-blur-sm">
+      {/* Footer */}
+      <footer className="bg-gray-900">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-2 gap-8 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Brand Column */}
-            <div className="col-span-2">
+            <div className="col-span-1 lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
                 <TrueSharpShield className="h-8 w-8" />
                 <span className="text-xl font-bold text-white">TrueSharp</span>
               </div>
-              <p className="text-white/70 max-w-md">
-                The only verified sports betting platform. Track your real performance and turn your expertise into income.
+              <p className="text-gray-400 max-w-md mb-6">
+                The only verified sports betting platform where you can turn your expertise into a profitable business. Track your real performance and sell your winning strategies.
+              </p>
+              <p className="text-gray-400">
+                Email: <a href="mailto:info@truesharp.io" className="text-blue-400 hover:text-blue-300">info@truesharp.io</a>
               </p>
             </div>
 
-            {/* Footer Links */}
-            {[
-              {
-                title: "Product",
-                links: [
-                  { name: "Features", href: "#features" },
-                  { name: "Pricing", href: "/pricing" },
-                  { name: "Marketplace", href: "/marketplace" },
-                  { name: "Analytics", href: "/analytics" }
-                ]
-              },
-              {
-                title: "Company",
-                links: [
-                  { name: "About", href: "/about" },
-                  { name: "Blog", href: "/blog" },
-                  { name: "Careers", href: "/careers" },
-                  { name: "Contact", href: "/contact" }
-                ]
-              },
-              {
-                title: "Legal",
-                links: [
-                  { name: "Privacy", href: "/legal/privacy" },
-                  { name: "Terms", href: "/legal/terms" },
-                  { name: "Disclaimer", href: "/legal/disclaimer" }
-                ]
-              }
-            ].map((column, index) => (
-              <div key={index}>
-                <h3 className="text-sm font-semibold text-white mb-6">{column.title}</h3>
-                <ul className="space-y-4">
-                  {column.links.map((link, linkIndex) => (
-                    <li key={linkIndex}>
-                      <Link href={link.href} className="text-sm text-white/70 hover:text-white transition-colors duration-200">
-                        {link.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {/* Resources Column */}
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-6">Resources</h3>
+              <ul className="space-y-4">
+                <li><a href="https://www.ncpgambling.org/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-white transition-colors">Responsible Gaming</a></li>
+                <li><span className="text-sm text-gray-400">Privacy Policy</span></li>
+                <li><span className="text-sm text-gray-400">Terms of Service</span></li>
+              </ul>
+            </div>
           </div>
           
-          <div className="mt-12 pt-8 border-t border-white/10 text-center">
-            <p className="text-sm text-white/70">
+          <div className="mt-12 pt-8 border-t border-gray-800 text-center">
+            <p className="text-sm text-gray-400">
               © 2025 TrueSharp. All rights reserved.
             </p>
           </div>
