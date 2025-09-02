@@ -11,7 +11,7 @@ import { AnalyticsTab, TabNavigation } from '@/components/analytics/tab-navigati
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface AnalyticsData {
   overview: {
@@ -65,9 +65,13 @@ interface Bet {
 const defaultFilters: FilterOptions = {
   sports: [],
   betTypes: [],
-  status: ['All'],
+  leagues: [],
+  statuses: ['All'],
+  isParlays: ['All'],
+  sides: ['All'],
+  oddsTypes: ['All'],
   timeRange: 'All time',
-  sportsbooks: []
+  sportsbooks: [],
 }
 
 export default function AnalyticsPage() {
@@ -80,28 +84,30 @@ export default function AnalyticsPage() {
   const [recentBets, setRecentBets] = useState<Bet[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchAnalyticsData()
-      fetchUserProfile()
-    }
-  }, [user, authLoading, filters])
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       setError(null)
-      
+
       // Build query parameters based on filters
       const params = new URLSearchParams()
-      params.append('timeframe', filters.timeRange === 'All time' ? 'all' : 
-                   filters.timeRange === '7 days' ? '7d' :
-                   filters.timeRange === '30 days' ? '30d' :
-                   filters.timeRange === '3 months' ? '90d' :
-                   filters.timeRange === 'This Year' ? 'ytd' : '30d')
-      
+      params.append(
+        'timeframe',
+        filters.timeRange === 'All time'
+          ? 'all'
+          : filters.timeRange === '7 days'
+            ? '7d'
+            : filters.timeRange === '30 days'
+              ? '30d'
+              : filters.timeRange === '3 months'
+                ? '90d'
+                : filters.timeRange === 'This Year'
+                  ? 'ytd'
+                  : '30d'
+      )
+
       if (filters.sports.length > 0) {
         params.append('sport', filters.sports.join(','))
       }
@@ -110,31 +116,36 @@ export default function AnalyticsPage() {
       }
 
       const response = await fetch(`/api/analytics?${params.toString()}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch analytics data')
       }
-      
+
       const result = await response.json()
       setAnalyticsData(result.data)
 
       // Transform recent form data to bet format
-      const transformedBets: Bet[] = result.data.recentForm.slice(0, 10).map((form: any, index: number) => ({
-        id: `${index + 1}`,
-        sport: form.sport || 'MLB',
-        bet_description: `${form.sport} Bet`,
-        odds: form.roi > 0 ? `+${Math.round(Math.abs(form.roi) * 10)}` : `-110`,
-        stake: result.data.overview.avgBetSize || 100,
-        potential_payout: (result.data.overview.avgBetSize || 100) * (1 + Math.abs(form.roi) / 100),
-        status: form.result as 'won' | 'lost' | 'pending',
-        profit: ((result.data.overview.avgBetSize || 100) * form.roi) / 100,
-        placed_at: form.date,
-        sportsbook: 'DraftKings',
-        home_team: 'Team A',
-        away_team: 'Team B',
-        bet_type: 'Moneyline'
-      }))
-      
+      const transformedBets: Bet[] = result.data.recentForm
+        .slice(0, 10)
+        .map(
+          (form: { sport: string; roi: number; result: string; date: string }, index: number) => ({
+            id: `${index + 1}`,
+            sport: form.sport || 'MLB',
+            bet_description: `${form.sport} Bet`,
+            odds: form.roi > 0 ? `+${Math.round(Math.abs(form.roi) * 10)}` : `-110`,
+            stake: result.data.overview.avgBetSize || 100,
+            potential_payout:
+              (result.data.overview.avgBetSize || 100) * (1 + Math.abs(form.roi) / 100),
+            status: form.result as 'won' | 'lost' | 'pending',
+            profit: ((result.data.overview.avgBetSize || 100) * form.roi) / 100,
+            placed_at: form.date,
+            sportsbook: 'DraftKings',
+            home_team: 'Team A',
+            away_team: 'Team B',
+            bet_type: 'Moneyline',
+          })
+        )
+
       setRecentBets(transformedBets)
     } catch (err) {
       console.error('Error fetching analytics:', err)
@@ -142,18 +153,18 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, filters])
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     if (!user) return
-    
+
     try {
       const response = await fetch('/api/profile')
       if (response.ok) {
         const profile = await response.json()
         setUserProfile({
           username: profile.username || user.email?.split('@')[0] || 'User',
-          isPro: profile.pro === 'yes'
+          isPro: profile.pro === 'yes',
         })
       }
     } catch (err) {
@@ -161,10 +172,17 @@ export default function AnalyticsPage() {
       // Set default values if profile fetch fails
       setUserProfile({
         username: user.email?.split('@')[0] || 'User',
-        isPro: false
+        isPro: false,
       })
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchAnalyticsData()
+      fetchUserProfile()
+    }
+  }, [user, authLoading, filters, fetchAnalyticsData, fetchUserProfile])
 
   const handleFiltersChange = (newFilters: FilterOptions) => {
     setFilters(newFilters)
@@ -172,11 +190,6 @@ export default function AnalyticsPage() {
 
   const handleClearFilters = () => {
     setFilters(defaultFilters)
-  }
-
-  const handleExportData = async () => {
-    // TODO: Implement data export functionality
-    console.log('Exporting analytics data...')
   }
 
   const handleCreateStrategy = async (strategy: unknown) => {
@@ -209,13 +222,9 @@ export default function AnalyticsPage() {
   if (!user) {
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Access Denied
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Please log in to view your analytics.
-          </p>
+        <div className="py-12 text-center">
+          <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-400">Please log in to view your analytics.</p>
         </div>
       </DashboardLayout>
     )
@@ -224,11 +233,11 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <p className="text-red-600">Error loading analytics: {error}</p>
-          <button 
+          <button
             onClick={fetchAnalyticsData}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Retry
           </button>
@@ -240,7 +249,7 @@ export default function AnalyticsPage() {
   if (!analyticsData || !userProfile) {
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <p>Loading analytics data...</p>
         </div>
       </DashboardLayout>
@@ -251,7 +260,7 @@ export default function AnalyticsPage() {
   const chartData = analyticsData.profitData.map((item, index) => ({
     date: item.date,
     profit: item.profit,
-    cumulative: analyticsData.profitData.slice(0, index + 1).reduce((sum, p) => sum + p.profit, 0)
+    cumulative: analyticsData.profitData.slice(0, index + 1).reduce((sum, p) => sum + p.profit, 0),
   }))
 
   // Transform analytics data for components
@@ -263,17 +272,36 @@ export default function AnalyticsPage() {
     averageStake: analyticsData.overview.avgBetSize,
     largestWin: Math.max(...recentBets.filter(b => b.profit > 0).map(b => b.profit), 0),
     largestLoss: Math.min(...recentBets.filter(b => b.profit < 0).map(b => b.profit), 0),
-    currentStreak: { type: 'none' as const, count: 0 },
+    currentStreak: { type: 'win' as const, count: 0 },
     sportBreakdown: analyticsData.sportBreakdown.map(sport => ({
       sport: sport.sport,
       count: sport.totalBets,
       profit: sport.netProfit,
-      winRate: sport.winRate
+      winRate: sport.winRate,
     })),
-    monthlyData: [] // Will be populated from profit data if needed
+    monthlyData: [], // Will be populated from profit data if needed
+    leagueBreakdown: [],
+    roiOverTime: [],
+    winRateVsExpected: [],
+    monthlyPerformance: [],
   }
 
-  const strategies: any[] = [] // TODO: Implement strategies from database
+  const strategies: Array<{
+    id: string
+    name: string
+    description: string
+    filters: FilterOptions
+    monetized: boolean
+    pricing_weekly?: number
+    pricing_monthly?: number
+    pricing_yearly?: number
+    subscriber_count: number
+    performance_roi: number
+    performance_win_rate: number
+    performance_total_bets: number
+    created_at: string
+    updated_at: string
+  }> = [] // TODO: Implement strategies from database
 
   return (
     <DashboardLayout>
@@ -321,7 +349,7 @@ export default function AnalyticsPage() {
             recentBets={recentBets}
             chartData={chartData}
             selectedTimePeriod={filters.timeRange}
-            onTimePeriodChange={(period) => setFilters({...filters, timeRange: period})}
+            onTimePeriodChange={period => setFilters({ ...filters, timeRange: period })}
             totalProfit={analyticsData.overview.netProfit}
             isLoading={false}
           />

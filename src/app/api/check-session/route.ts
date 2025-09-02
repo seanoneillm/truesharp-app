@@ -6,12 +6,12 @@ export async function GET(request: NextRequest) {
     // Get the authorization header from the request
     const authHeader = request.headers.get('authorization')
     console.log('Auth header present:', !!authHeader)
-    
+
     if (!authHeader) {
       return NextResponse.json({
         success: false,
         error: 'No authorization header',
-        authenticated: false
+        authenticated: false,
       })
     }
 
@@ -22,14 +22,17 @@ export async function GET(request: NextRequest) {
 
     // Try to get the user from the token
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token)
 
     if (userError || !user) {
       return NextResponse.json({
         success: false,
         error: 'Invalid session',
         userError: userError?.message,
-        authenticated: false
+        authenticated: false,
       })
     }
 
@@ -50,21 +53,20 @@ export async function GET(request: NextRequest) {
       authenticated: true,
       user: {
         id: user.id,
-        email: user.email
+        email: user.email,
       },
       betsQuery: {
         error: betsError?.message || null,
         count: bets?.length || 0,
-        sampleBets: bets || []
-      }
+        sampleBets: bets || [],
+      },
     })
-
   } catch (err) {
     console.error('Session check error:', err)
     return NextResponse.json({
       success: false,
       error: 'Unexpected error',
-      authenticated: false
+      authenticated: false,
     })
   }
 }

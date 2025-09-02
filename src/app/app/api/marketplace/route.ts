@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('seller_settings')
-      .select(`
+      .select(
+        `
         *,
         profiles!inner(
           id,
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
           avatar_url,
           is_verified
         )
-      `)
+      `
+      )
       .eq('is_selling_enabled', true)
 
     // Apply filters
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       // This would need a more complex query in practice
       // For now, we'll assume specialization is stored in seller_settings
     }
-    
+
     if (verified === 'true') {
       query = query.eq('profiles.is_verified', true)
     }
@@ -63,9 +65,11 @@ export async function GET(request: NextRequest) {
         const totalBets = bets?.length || 0
         const wonBets = bets?.filter((bet: any) => bet.status === 'won').length || 0
         const totalStake = bets?.reduce((sum: number, bet: any) => sum + bet.stake, 0) || 0
-        const totalPayout = bets?.filter((bet: any) => bet.status === 'won')
-          .reduce((sum: number, bet: any) => sum + (bet.actual_payout || 0), 0) || 0
-        
+        const totalPayout =
+          bets
+            ?.filter((bet: any) => bet.status === 'won')
+            .reduce((sum: number, bet: any) => sum + (bet.actual_payout || 0), 0) || 0
+
         const winRate = totalBets > 0 ? (wonBets / totalBets) * 100 : 0
         const roi = totalStake > 0 ? ((totalPayout - totalStake) / totalStake) * 100 : 0
 
@@ -81,8 +85,8 @@ export async function GET(request: NextRequest) {
             totalBets,
             winRate: Math.round(winRate * 100) / 100,
             roi: Math.round(roi * 100) / 100,
-            subscribers: subscriberCount?.length || 0
-          }
+            subscribers: subscriberCount?.length || 0,
+          },
         }
       })
     )
@@ -90,8 +94,12 @@ export async function GET(request: NextRequest) {
     // Sort sellers
     const sortedSellers = sellersWithStats.sort(
       (
-        a: Seller & { stats: { totalBets: number; winRate: number; roi: number; subscribers: number } },
-        b: Seller & { stats: { totalBets: number; winRate: number; roi: number; subscribers: number } }
+        a: Seller & {
+          stats: { totalBets: number; winRate: number; roi: number; subscribers: number }
+        },
+        b: Seller & {
+          stats: { totalBets: number; winRate: number; roi: number; subscribers: number }
+        }
       ) => {
         switch (sortBy) {
           case 'roi':
@@ -117,8 +125,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: sortedSellers.length,
-        totalPages: Math.ceil(sortedSellers.length / limit)
-      }
+        totalPages: Math.ceil(sortedSellers.length / limit),
+      },
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

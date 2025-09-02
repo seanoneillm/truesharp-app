@@ -12,56 +12,44 @@ const protectedRoutes = [
   '/settings',
   '/profile/edit',
   '/picks',
-  '/feed'
+  '/feed',
 ]
 
 // Define routes that should redirect authenticated users
-const authRoutes = [
-  '/login',
-  '/signup'
-]
+const authRoutes = ['/login', '/signup']
 
 // Define admin routes
-const adminRoutes = [
-  '/admin'
-]
+const adminRoutes = ['/admin']
 
 // Define seller routes
-const sellerRoutes = [
-  '/sell'
-]
+const sellerRoutes = ['/sell']
 
 export async function middleware(request: NextRequest) {
   try {
     const { supabase, response } = createMiddlewareSupabaseClient(request)
-    
+
     // Get the current user
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
     if (error) {
       console.error('Middleware auth error:', error)
     }
 
     const url = request.nextUrl.clone()
-    const isProtectedRoute = protectedRoutes.some(route => 
-      url.pathname.startsWith(route)
-    )
-    const isAuthRoute = authRoutes.some(route => 
-      url.pathname.startsWith(route)
-    )
-    const isAdminRoute = adminRoutes.some(route => 
-      url.pathname.startsWith(route)
-    )
-    const isSellerRoute = sellerRoutes.some(route => 
-      url.pathname.startsWith(route)
-    )
+    const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
+    const isAuthRoute = authRoutes.some(route => url.pathname.startsWith(route))
+    const isAdminRoute = adminRoutes.some(route => url.pathname.startsWith(route))
+    const isSellerRoute = sellerRoutes.some(route => url.pathname.startsWith(route))
 
     // Handle protected routes
     if (isProtectedRoute && !user) {
       // Store the original URL to redirect back after login
       const redirectUrl = new URL('/login', request.url)
       redirectUrl.searchParams.set('redirectTo', url.pathname)
-      
+
       return NextResponse.redirect(redirectUrl)
     }
 
@@ -70,7 +58,7 @@ export async function middleware(request: NextRequest) {
       // Check if there's a redirect URL from login
       const redirectTo = url.searchParams.get('redirectTo')
       const redirectUrl = new URL(redirectTo || '/dashboard', request.url)
-      
+
       return NextResponse.redirect(redirectUrl)
     }
 
@@ -125,27 +113,19 @@ export async function middleware(request: NextRequest) {
         '/api/picks',
         '/api/subscriptions',
         '/api/feed',
-        '/api/profile'
+        '/api/profile',
       ]
 
-      const isProtectedApiRoute = protectedApiRoutes.some(route =>
-        url.pathname.startsWith(route)
-      )
+      const isProtectedApiRoute = protectedApiRoutes.some(route => url.pathname.startsWith(route))
 
       if (isProtectedApiRoute && !user) {
-        return NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
       }
 
       // Check admin API routes
       if (url.pathname.startsWith('/api/admin/')) {
         if (!user) {
-          return NextResponse.json(
-            { error: 'Authentication required' },
-            { status: 401 }
-          )
+          return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
         }
 
         const { data: profile } = await supabase
@@ -155,10 +135,7 @@ export async function middleware(request: NextRequest) {
           .single()
 
         if (!profile || profile.role !== 'admin') {
-          return NextResponse.json(
-            { error: 'Admin access required' },
-            { status: 403 }
-          )
+          return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
         }
       }
     }
@@ -176,17 +153,21 @@ export async function middleware(request: NextRequest) {
               path: url.pathname,
               timestamp: new Date().toISOString(),
               user_agent: request.headers.get('user-agent') || 'unknown',
-              ip_address: request.headers.get('x-forwarded-for') || 
-                         request.headers.get('x-real-ip') || 
-                         'unknown'
-            }
+              ip_address:
+                request.headers.get('x-forwarded-for') ||
+                request.headers.get('x-real-ip') ||
+                'unknown',
+            },
           ])
-          .then(() => {
-            // Success - no action needed
-          }, (error) => {
-            // Don't fail the request if activity logging fails
-            console.error('Activity logging error:', error)
-          })
+          .then(
+            () => {
+              // Success - no action needed
+            },
+            error => {
+              // Don't fail the request if activity logging fails
+              console.error('Activity logging error:', error)
+            }
+          )
       } catch (error) {
         // Don't fail the request if activity logging fails
         console.error('Activity logging exception:', error)
@@ -194,10 +175,9 @@ export async function middleware(request: NextRequest) {
     }
 
     return response
-
   } catch (error) {
     console.error('Middleware error:', error)
-    
+
     // Don't block the request if middleware fails
     return NextResponse.next()
   }

@@ -16,12 +16,12 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
-  
+
   const supabase = createClientComponentClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate email
     const emailValidation = validateEmail(email)
     if (!emailValidation.isValid) {
@@ -31,12 +31,12 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
 
     setIsLoading(true)
     setError('')
-    
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       })
-      
+
       if (error) {
         setError(error.message)
       } else {
@@ -64,18 +64,18 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
         <DialogHeader>
           <DialogTitle>Reset your password</DialogTitle>
         </DialogHeader>
-        
+
         <div className="pt-4">
           {!isSuccess ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-slate-600">
                 Enter your email address and we&apos;ll send you a link to reset your password.
               </p>
-              
+
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                   <div className="flex items-center text-red-700">
-                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <AlertCircle className="mr-2 h-4 w-4" />
                     <span className="text-sm">{error}</span>
                   </div>
                 </div>
@@ -85,8 +85,8 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
                 <label htmlFor="reset-email" className="block text-sm font-medium text-slate-700">
                   Email address
                 </label>
-                <div className="mt-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="relative mt-1">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Mail className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
@@ -94,8 +94,8 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    onChange={e => setEmail(e.target.value)}
+                    className="block w-full appearance-none rounded-xl border border-slate-300 py-3 pl-10 pr-3 placeholder-slate-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -105,20 +105,36 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="-ml-1 mr-2 inline h-4 w-4 animate-spin text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Sending...
                     </>
@@ -129,19 +145,17 @@ export function PasswordReset({ isOpen, onClose }: PasswordResetProps) {
               </div>
             </form>
           ) : (
-            <div className="text-center py-4">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="py-4 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
-                Check your email
-              </h3>
-              <p className="text-sm text-slate-600 mb-6">
+              <h3 className="mb-2 text-lg font-medium text-slate-900">Check your email</h3>
+              <p className="mb-6 text-sm text-slate-600">
                 We&apos;ve sent a password reset link to <strong>{email}</strong>
               </p>
               <button
                 onClick={handleClose}
-                className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                className="w-full rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Done
               </button>

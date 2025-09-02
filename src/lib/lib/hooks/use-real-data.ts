@@ -11,7 +11,7 @@ import type {
   PerformanceMetrics,
   Pick,
   Subscription,
-  User
+  User,
 } from '../types'
 
 // User Profile Hook
@@ -148,7 +148,11 @@ export function usePerformanceMetrics(filters?: FilterOptions) {
 }
 
 // Picks Hook (replaces mock data)
-export function usePicks(sellerId?: string, tier?: 'free' | 'bronze' | 'silver' | 'premium', pagination?: PaginationParams) {
+export function usePicks(
+  sellerId?: string,
+  tier?: 'free' | 'bronze' | 'silver' | 'premium',
+  pagination?: PaginationParams
+) {
   const [picks, setPicks] = useState<Pick[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -180,18 +184,21 @@ export function usePicks(sellerId?: string, tier?: 'free' | 'bronze' | 'silver' 
     fetchPicks()
   }, [fetchPicks])
 
-  const createPick = useCallback(async (pickData: Omit<Pick, 'id' | 'userId' | 'engagement' | 'postedAt'>) => {
-    try {
-      setError(null)
-      const newPick = await apiClient.createPick(pickData)
-      setPicks(prev => [newPick, ...prev])
-      return newPick
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to create pick'
-      setError(error)
-      throw err
-    }
-  }, [])
+  const createPick = useCallback(
+    async (pickData: Omit<Pick, 'id' | 'userId' | 'engagement' | 'postedAt'>) => {
+      try {
+        setError(null)
+        const newPick = await apiClient.createPick(pickData)
+        setPicks(prev => [newPick, ...prev])
+        return newPick
+      } catch (err) {
+        const error = err instanceof Error ? err.message : 'Failed to create pick'
+        setError(error)
+        throw err
+      }
+    },
+    []
+  )
 
   return {
     picks,
@@ -227,28 +234,29 @@ export function useSubscriptions() {
     fetchSubscriptions()
   }, [fetchSubscriptions])
 
-  const createSubscription = useCallback(async (sellerId: string, tier: 'bronze' | 'silver' | 'premium', price: number) => {
-    try {
-      setError(null)
-      const newSubscription = await apiClient.createSubscription(sellerId, tier, price)
-      setSubscriptions(prev => [newSubscription, ...prev])
-      return newSubscription
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to create subscription'
-      setError(error)
-      throw err
-    }
-  }, [])
+  const createSubscription = useCallback(
+    async (sellerId: string, tier: 'bronze' | 'silver' | 'premium', price: number) => {
+      try {
+        setError(null)
+        const newSubscription = await apiClient.createSubscription(sellerId, tier, price)
+        setSubscriptions(prev => [newSubscription, ...prev])
+        return newSubscription
+      } catch (err) {
+        const error = err instanceof Error ? err.message : 'Failed to create subscription'
+        setError(error)
+        throw err
+      }
+    },
+    []
+  )
 
   const cancelSubscription = useCallback(async (subscriptionId: string) => {
     try {
       setError(null)
       // TODO: Implement cancel subscription API call
-      setSubscriptions(prev => 
-        prev.map(sub => 
-          sub.id === subscriptionId 
-            ? { ...sub, status: 'cancelled' as const }
-            : sub
+      setSubscriptions(prev =>
+        prev.map(sub =>
+          sub.id === subscriptionId ? { ...sub, status: 'cancelled' as const } : sub
         )
       )
     } catch (err) {
@@ -299,7 +307,7 @@ export function useSportsbookConnections() {
       setConnections(prev => {
         const existing = prev.find(c => c.sportsbook_id === sportsbookId)
         if (existing) {
-          return prev.map(c => c.id === existing.id ? connection : c)
+          return prev.map(c => (c.id === existing.id ? connection : c))
         }
         return [...prev, connection]
       })
@@ -330,11 +338,11 @@ export function useSellers(filters?: any) {
     try {
       setIsLoading(true)
       setError(null)
-      
+
       // TODO: Implement proper sellers API
       // For now, we'll simulate with a delay and return empty array
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       setSellers([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sellers')
@@ -360,28 +368,31 @@ export function useSellers(filters?: any) {
 export function useNotifications() {
   const [notifications, setNotifications] = useState<any[]>([])
 
-  const addNotification = useCallback((notification: {
-    type: 'success' | 'error' | 'warning' | 'info'
-    title: string
-    message: string
-    autoClose?: boolean
-    duration?: number
-  }) => {
-    const newNotification = {
-      ...notification,
-      id: Date.now().toString(),
-      autoClose: notification.autoClose ?? true,
-      duration: notification.duration ?? 5000,
-    }
+  const addNotification = useCallback(
+    (notification: {
+      type: 'success' | 'error' | 'warning' | 'info'
+      title: string
+      message: string
+      autoClose?: boolean
+      duration?: number
+    }) => {
+      const newNotification = {
+        ...notification,
+        id: Date.now().toString(),
+        autoClose: notification.autoClose ?? true,
+        duration: notification.duration ?? 5000,
+      }
 
-    setNotifications(prev => [newNotification, ...prev])
+      setNotifications(prev => [newNotification, ...prev])
 
-    if (newNotification.autoClose) {
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== newNotification.id))
-      }, newNotification.duration)
-    }
-  }, [])
+      if (newNotification.autoClose) {
+        setTimeout(() => {
+          setNotifications(prev => prev.filter(n => n.id !== newNotification.id))
+        }, newNotification.duration)
+      }
+    },
+    []
+  )
 
   const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
@@ -399,7 +410,11 @@ export function useDashboardData() {
   const { profile, isLoading: profileLoading, error: profileError } = useUserProfile()
   const { metrics, isLoading: metricsLoading, error: metricsError } = usePerformanceMetrics()
   const { bets, isLoading: betsLoading, error: betsError } = useBets()
-  const { connections, isLoading: connectionsLoading, error: connectionsError } = useSportsbookConnections()
+  const {
+    connections,
+    isLoading: connectionsLoading,
+    error: connectionsError,
+  } = useSportsbookConnections()
 
   const isLoading = profileLoading || metricsLoading || betsLoading || connectionsLoading
   const error = profileError || metricsError || betsError || connectionsError
@@ -430,17 +445,20 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     }
   })
 
-  const setValue = useCallback((value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value
-      setStoredValue(valueToStore)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(valueToStore))
+  const setValue = useCallback(
+    (value: T | ((val: T) => T)) => {
+      try {
+        const valueToStore = value instanceof Function ? value(storedValue) : value
+        setStoredValue(valueToStore)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(key, JSON.stringify(valueToStore))
+        }
+      } catch (error) {
+        console.error(`Error setting localStorage key "${key}":`, error)
       }
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error)
-    }
-  }, [key, storedValue])
+    },
+    [key, storedValue]
+  )
 
   return [storedValue, setValue] as const
 }

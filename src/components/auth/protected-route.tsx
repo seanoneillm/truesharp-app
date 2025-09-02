@@ -10,10 +10,10 @@ interface ProtectedRouteProps {
   redirectTo?: string
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requireAuth = true, 
-  redirectTo = '/login' 
+export default function ProtectedRoute({
+  children,
+  requireAuth = true,
+  redirectTo = '/login',
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -21,7 +21,14 @@ export default function ProtectedRoute({
   console.log('ProtectedRoute - user:', user, 'loading:', loading, 'requireAuth:', requireAuth)
 
   useEffect(() => {
-    console.log('ProtectedRoute useEffect - loading:', loading, 'requireAuth:', requireAuth, 'user:', user)
+    console.log(
+      'ProtectedRoute useEffect - loading:',
+      loading,
+      'requireAuth:',
+      requireAuth,
+      'user:',
+      user
+    )
     if (!loading && requireAuth && !user) {
       console.log('Redirecting to login...')
       // Store the current path for redirect after login
@@ -35,9 +42,9 @@ export default function ProtectedRoute({
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+        <div className="rounded-xl bg-white p-8 text-center shadow-lg">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>

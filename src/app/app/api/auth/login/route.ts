@@ -8,17 +8,11 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
     if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
     const { supabase, response } = createRouteHandlerSupabaseClient(request)
@@ -31,10 +25,10 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Login error:', error)
-      
+
       // Return user-friendly error messages
       let errorMessage = 'Login failed'
-      
+
       switch (error.message) {
         case 'Invalid login credentials':
           errorMessage = 'Invalid email or password'
@@ -49,17 +43,11 @@ export async function POST(request: NextRequest) {
           errorMessage = error.message
       }
 
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: errorMessage }, { status: 401 })
     }
 
     if (!data.user) {
-      return NextResponse.json(
-        { error: 'Login failed - no user data' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Login failed - no user data' }, { status: 401 })
     }
 
     // Get user profile
@@ -78,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (rememberMe) {
       // Extend session to 30 days for "remember me"
       await supabase.auth.updateUser({
-        data: { remember_me: true }
+        data: { remember_me: true },
       })
     }
 
@@ -86,19 +74,16 @@ export async function POST(request: NextRequest) {
     const loginEvent = {
       user_id: data.user.id,
       event_type: 'login',
-      ip_address: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown',
+      ip_address:
+        request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
       user_agent: request.headers.get('user-agent') || 'unknown',
       timestamp: new Date().toISOString(),
-      remember_me: rememberMe || false
+      remember_me: rememberMe || false,
     }
 
     // Store login event (optional - for analytics)
     try {
-      await supabase
-        .from('user_sessions')
-        .insert([loginEvent])
+      await supabase.from('user_sessions').insert([loginEvent])
     } catch (sessionError) {
       // Don't fail login if session logging fails
       console.error('Session logging error:', sessionError)
@@ -109,27 +94,23 @@ export async function POST(request: NextRequest) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        ...profile
+        ...profile,
       },
       session: data.session,
-      message: 'Login successful'
+      message: 'Login successful',
     }
 
     // Set response headers for the updated session
     response.headers.set('Content-Type', 'application/json')
-    
-    return NextResponse.json(responseData, { 
-      status: 200,
-      headers: response.headers
-    })
 
+    return NextResponse.json(responseData, {
+      status: 200,
+      headers: response.headers,
+    })
   } catch (error) {
     console.error('Login API error:', error)
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

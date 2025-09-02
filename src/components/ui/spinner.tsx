@@ -7,11 +7,7 @@ export interface SpinnerProps {
   color?: 'primary' | 'white' | 'gray'
 }
 
-const Spinner: React.FC<SpinnerProps> = ({ 
-  size = 'default', 
-  className,
-  color = 'primary'
-}) => {
+const Spinner: React.FC<SpinnerProps> = ({ size = 'default', className, color = 'primary' }) => {
   const sizes = {
     sm: 'h-4 w-4',
     default: 'h-6 w-6',
@@ -27,24 +23,12 @@ const Spinner: React.FC<SpinnerProps> = ({
 
   return (
     <svg
-      className={cn(
-        'animate-spin',
-        sizes[size],
-        colors[color],
-        className
-      )}
+      className={cn('animate-spin', sizes[size], colors[color], className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
     >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"
@@ -64,7 +48,7 @@ export const LoadingOverlay: React.FC<{
     <div className={cn('relative', className)}>
       {children}
       {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center space-y-2">
             <Spinner size="lg" />
             <p className="text-sm text-muted-foreground">Loading...</p>
@@ -94,11 +78,11 @@ export const PageLoading: React.FC<{
   text?: string
 }> = ({ text = 'Loading page...' }) => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+    <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4">
       <Spinner size="xl" />
       <div className="text-center">
         <h3 className="text-lg font-medium">{text}</h3>
-        <p className="text-sm text-muted-foreground mt-2">Please wait while we load your content</p>
+        <p className="mt-2 text-sm text-muted-foreground">Please wait while we load your content</p>
       </div>
     </div>
   )

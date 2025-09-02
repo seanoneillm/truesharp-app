@@ -20,7 +20,7 @@ const Toast: React.FC<ToastProps> = ({
   description,
   action,
   variant = 'default',
-  onClose
+  onClose,
 }) => {
   const getIcon = () => {
     switch (variant) {
@@ -70,23 +70,11 @@ const Toast: React.FC<ToastProps> = ({
     >
       <div className="p-4">
         <div className="flex items-start">
-          <div className={cn('flex-shrink-0', getIconColor())}>
-            {getIcon()}
-          </div>
+          <div className={cn('flex-shrink-0', getIconColor())}>{getIcon()}</div>
           <div className="ml-3 w-0 flex-1 pt-0.5">
-            {title && (
-              <p className="text-sm font-medium">{title}</p>
-            )}
-            {description && (
-              <p className={cn('text-sm', title ? 'mt-1' : '')}>
-                {description}
-              </p>
-            )}
-            {action && (
-              <div className="mt-3">
-                {action}
-              </div>
-            )}
+            {title && <p className="text-sm font-medium">{title}</p>}
+            {description && <p className={cn('text-sm', title ? 'mt-1' : '')}>{description}</p>}
+            {action && <div className="mt-3">{action}</div>}
           </div>
           <div className="ml-4 flex flex-shrink-0">
             <button
@@ -110,13 +98,9 @@ interface ToastContainerProps {
 
 const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemoveToast }) => {
   return (
-    <div className="fixed top-0 right-0 z-50 w-full max-w-sm p-4 space-y-4 pointer-events-none sm:p-6">
-      {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          toast={toast}
-          onRemove={() => onRemoveToast(toast.id)}
-        />
+    <div className="pointer-events-none fixed right-0 top-0 z-50 w-full max-w-sm space-y-4 p-4 sm:p-6">
+      {toasts.map(toast => (
+        <ToastItem key={toast.id} toast={toast} onRemove={() => onRemoveToast(toast.id)} />
       ))}
     </div>
   )
@@ -134,7 +118,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
   // Auto-dismiss timer
   React.useEffect(() => {
     const duration = toast.duration ?? 5000
-    
+
     if (duration > 0) {
       const timer = setTimeout(() => {
         setIsVisible(false)
@@ -154,9 +138,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
     <div
       className={cn(
         'transform transition-all duration-300 ease-in-out',
-        isVisible
-          ? 'translate-x-0 opacity-100'
-          : 'translate-x-full opacity-0'
+        isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       )}
     >
       <Toast
@@ -188,11 +170,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToast = React.useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9)
-    setToasts((prev) => [...prev, { ...toast, id }])
+    setToasts(prev => [...prev, { ...toast, id }])
   }, [])
 
   const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+    setToasts(prev => prev.filter(toast => toast.id !== id))
   }, [])
 
   const removeAllToasts = React.useCallback(() => {
@@ -229,7 +211,7 @@ export const toast = {
   },
   info: (message: string, options?: Partial<Omit<Toast, 'id' | 'variant'>>) => {
     console.log('Info toast:', message, options)
-  }
+  },
 }
 
 export { Toast }

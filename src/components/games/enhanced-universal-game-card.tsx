@@ -1,71 +1,71 @@
-'use client';
+'use client'
 
-import { gamesDataService } from '@/lib/services/games-data';
-import { DatabaseOdds } from '@/lib/types/database';
-import { BetSelection, Game } from '@/lib/types/games';
-import { getAvailableTabs, organizeOddsByHierarchy } from '@/lib/utils/odds-hierarchy';
-import { CircleDot, Clock } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import DatabaseMarketContentFull from './markets/database-market-content-full';
-import { MainTabType } from './tabs/hierarchical-tabs';
+import { gamesDataService } from '@/lib/services/games-data'
+import { DatabaseOdds } from '@/lib/types/database'
+import { BetSelection, Game } from '@/lib/types/games'
+import { getAvailableTabs, organizeOddsByHierarchy } from '@/lib/utils/odds-hierarchy'
+import { CircleDot, Clock } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import DatabaseMarketContentFull from './markets/database-market-content-full'
+import { MainTabType } from './tabs/hierarchical-tabs'
 
 interface EnhancedUniversalGameCardProps {
-  game: Game;
-  league: string;
-  onOddsClick?: (bet: BetSelection) => void;
-  selectedBets?: BetSelection[];
+  game: Game
+  league: string
+  onOddsClick?: (bet: BetSelection) => void
+  selectedBets?: BetSelection[]
 }
 
 export default function EnhancedUniversalGameCard({
   game,
   league,
-  onOddsClick = () => {}
+  onOddsClick = () => {},
 }: EnhancedUniversalGameCardProps) {
-  const [activeTab, setActiveTab] = useState<MainTabType>('Main Lines');
-  const [activeSubTab, setActiveSubTab] = useState<string>('');
-  const [activeSubSubTab, setActiveSubSubTab] = useState<string>('');
-  const [databaseOdds, setDatabaseOdds] = useState<DatabaseOdds[]>([]);
-  const [isLoadingOdds, setIsLoadingOdds] = useState(true);
+  const [activeTab, setActiveTab] = useState<MainTabType>('Main Lines')
+  const [activeSubTab, setActiveSubTab] = useState<string>('')
+  const [activeSubSubTab, setActiveSubSubTab] = useState<string>('')
+  const [databaseOdds, setDatabaseOdds] = useState<DatabaseOdds[]>([])
+  const [isLoadingOdds, setIsLoadingOdds] = useState(true)
 
   // Fetch odds to determine available tabs
   useEffect(() => {
     const fetchOdds = async () => {
       try {
-        setIsLoadingOdds(true);
-        console.log('🎯 EnhancedUniversalGameCard: Starting odds fetch for game:', game.id);
-        
-        const gameWithOdds = await gamesDataService.getMLBGameWithOdds(game.id);
-        
+        setIsLoadingOdds(true)
+        console.log('🎯 EnhancedUniversalGameCard: Starting odds fetch for game:', game.id)
+
+        const gameWithOdds = await gamesDataService.getMLBGameWithOdds(game.id)
+
         console.log('🎯 EnhancedUniversalGameCard: Odds fetch result:', {
           gameId: game.id,
           hasGameData: !!gameWithOdds,
-          hasOdds: !!(gameWithOdds?.odds),
-          oddsCount: gameWithOdds?.odds?.length || 0
-        });
-        
+          hasOdds: !!gameWithOdds?.odds,
+          oddsCount: gameWithOdds?.odds?.length || 0,
+        })
+
         if (gameWithOdds && gameWithOdds.odds && gameWithOdds.odds.length > 0) {
-          console.log('✅ EnhancedUniversalGameCard: Setting odds data');
-          setDatabaseOdds(gameWithOdds.odds);
+          console.log('✅ EnhancedUniversalGameCard: Setting odds data')
+          setDatabaseOdds(gameWithOdds.odds)
         } else {
-          console.log('⚠️ EnhancedUniversalGameCard: No odds data found');
-          setDatabaseOdds([]);
+          console.log('⚠️ EnhancedUniversalGameCard: No odds data found')
+          setDatabaseOdds([])
         }
       } catch (error) {
-        console.error('❌ EnhancedUniversalGameCard: Error fetching odds for tabs:', error);
-        setDatabaseOdds([]);
+        console.error('❌ EnhancedUniversalGameCard: Error fetching odds for tabs:', error)
+        setDatabaseOdds([])
       } finally {
-        setIsLoadingOdds(false);
+        setIsLoadingOdds(false)
       }
-    };
+    }
 
     if (game.id) {
-      fetchOdds();
+      fetchOdds()
     }
-  }, [game.id]);
+  }, [game.id])
 
   // Organize odds and get available tabs
-  const organizedOdds = organizeOddsByHierarchy(databaseOdds, game.sport_key);
-  const availableTabs = getAvailableTabs(organizedOdds);
+  const organizedOdds = organizeOddsByHierarchy(databaseOdds, game.sport_key)
+  const availableTabs = getAvailableTabs(organizedOdds)
 
   // Debug logging
   console.log('🔍 Enhanced Universal Game Card Debug:', {
@@ -77,186 +77,196 @@ export default function EnhancedUniversalGameCard({
     availableMainTabs: availableTabs.mainTabs,
     organizedStructure: Object.entries(organizedOdds).map(([mainTab, subTabs]) => ({
       mainTab,
-      subTabs: Object.keys(subTabs)
-    }))
-  });
+      subTabs: Object.keys(subTabs),
+    })),
+  })
 
   // Map hierarchy tab IDs to MainTabType
   const mapToMainTabType = (hierarchyId: string): MainTabType => {
     switch (hierarchyId) {
-      case 'main': return 'Main Lines';
-      case 'player-props': return 'Player Props';
-      case 'team-props': return 'Team Props';
-      case 'game-props': return 'Game Props';
-      default: return 'Main Lines';
+      case 'main':
+        return 'Main Lines'
+      case 'player-props':
+        return 'Player Props'
+      case 'team-props':
+        return 'Team Props'
+      case 'game-props':
+        return 'Game Props'
+      default:
+        return 'Main Lines'
     }
-  };
+  }
 
   // Get the mapped main tabs for display
-  const displayMainTabs: MainTabType[] = availableTabs.mainTabs.map(mapToMainTabType);
+  const displayMainTabs: MainTabType[] = availableTabs.mainTabs.map(mapToMainTabType)
 
   // Format team names for display
   const formatTeamForDisplay = (teamName: string): string => {
     return teamName
       .replace(/^(Los Angeles|San Francisco|New York|Kansas City|Tampa Bay)/, '$1')
       .replace(/\s+(Angels|Dodgers|Giants|Yankees|Mets|Royals|Rays)/, ' $1')
-      .trim();
-  };
+      .trim()
+  }
 
   // Determine game status
-  const gameStartTime = new Date(game.commence_time);
-  const now = new Date();
-  const timeDiffHours = (now.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60);
-  
-  const isLive = timeDiffHours >= 0 && timeDiffHours <= 4;
-  const isFinal = timeDiffHours > 4;
-  const isUpcoming = timeDiffHours < 0;
+  const gameStartTime = new Date(game.commence_time)
+  const now = new Date()
+  const timeDiffHours = (now.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60)
+
+  const isLive = timeDiffHours >= 0 && timeDiffHours <= 4
+  const isFinal = timeDiffHours > 4
+  const isUpcoming = timeDiffHours < 0
 
   // Format game time
   const formatGameTime = (timeString: string): string => {
-    const date = new Date(timeString);
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
-    
+    const date = new Date(timeString)
+    const today = new Date()
+    const isToday = date.toDateString() === today.toDateString()
+
     if (isToday) {
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
-      });
+        hour12: true,
+      })
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
-      });
+        hour12: true,
+      })
     }
-  };
+  }
 
   // Get game status badge
   const getStatusBadge = () => {
     if (isLive) {
       return (
-        <div className="flex items-center space-x-1 bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm animate-pulse">
-          <CircleDot className="w-3 h-3" />
+        <div className="flex animate-pulse items-center space-x-1 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
+          <CircleDot className="h-3 w-3" />
           <span>LIVE</span>
         </div>
-      );
+      )
     }
-    
+
     if (isFinal) {
       return (
-        <div className="bg-slate-600 text-white px-3 py-1.5 rounded-full text-xs font-bold">
+        <div className="rounded-full bg-slate-600 px-3 py-1.5 text-xs font-bold text-white">
           FINAL
         </div>
-      );
+      )
     }
-    
-    return null;
-  };
+
+    return null
+  }
 
   // Tab change handlers
   const handleTabChange = (tab: MainTabType) => {
-    setActiveTab(tab);
-    setActiveSubTab('');
-    setActiveSubSubTab('');
-  };
+    setActiveTab(tab)
+    setActiveSubTab('')
+    setActiveSubSubTab('')
+  }
 
   const handleSubTabChange = (subTab: string) => {
-    setActiveSubTab(subTab);
-    setActiveSubSubTab('');
-  };
+    setActiveSubTab(subTab)
+    setActiveSubSubTab('')
+  }
 
   const handleSubSubTabChange = (subSubTab: string) => {
-    setActiveSubSubTab(subSubTab);
-  };
+    setActiveSubSubTab(subSubTab)
+  }
 
   // Get display names for tabs
   const getTabDisplayName = (tab: MainTabType): string => {
-    return tab; // MainTabType already contains display names
-  };
+    return tab // MainTabType already contains display names
+  }
 
   const getSubTabDisplayName = (subTab: string): string => {
     const displayNames: Record<string, string> = {
-      'hitters': 'Hitters',
-      'pitchers': 'Pitchers',
-      'quarterback': 'Quarterback',
+      hitters: 'Hitters',
+      pitchers: 'Pitchers',
+      quarterback: 'Quarterback',
       'running-back': 'Running Back',
-      'receiver': 'Wide Receiver',
+      receiver: 'Wide Receiver',
       'defense-kicker': 'Defense/Kicker',
-      'scoring': 'Scoring',
-      'rebounding': 'Rebounding',
-      'playmaking': 'Playmaking',
+      scoring: 'Scoring',
+      rebounding: 'Rebounding',
+      playmaking: 'Playmaking',
       'combo-props': 'Combo Props',
-      'skaters': 'Skaters',
-      'goalies': 'Goalies',
-      'forwards': 'Forwards',
-      'midfielders': 'Midfielders',
-      'defenders': 'Defenders',
-      'goalkeepers': 'Goalkeepers',
+      skaters: 'Skaters',
+      goalies: 'Goalies',
+      forwards: 'Forwards',
+      midfielders: 'Midfielders',
+      defenders: 'Defenders',
+      goalkeepers: 'Goalkeepers',
       'team-totals': 'Team Totals',
       'game-totals': 'Game Totals',
-      'all': 'All'
-    };
-    return displayNames[subTab] || subTab;
-  };
+      all: 'All',
+    }
+    return displayNames[subTab] || subTab
+  }
 
   const getSubSubTabDisplayName = (subSubTab: string): string => {
     const displayNames: Record<string, string> = {
-      'offense': 'Offense',
-      'discipline': 'Discipline', 
-      'speed': 'Speed',
-      'passing': 'Passing',
-      'rushing': 'Rushing',
-      'receiving': 'Receiving',
-      'points': 'Points',
+      offense: 'Offense',
+      discipline: 'Discipline',
+      speed: 'Speed',
+      passing: 'Passing',
+      rushing: 'Rushing',
+      receiving: 'Receiving',
+      points: 'Points',
       'field-goals': 'Field Goals',
       'three-pointers': '3-Pointers',
       'free-throws': 'Free Throws',
-      'total': 'Total',
-      'offensive': 'Offensive',
-      'defensive': 'Defensive',
-      'assists': 'Assists',
-      'defense': 'Defense',
-      'turnovers': 'Turnovers',
-      'all': 'All'
-    };
-    return displayNames[subSubTab] || subSubTab;
-  };
+      total: 'Total',
+      offensive: 'Offensive',
+      defensive: 'Defensive',
+      assists: 'Assists',
+      defense: 'Defense',
+      turnovers: 'Turnovers',
+      all: 'All',
+    }
+    return displayNames[subSubTab] || subSubTab
+  }
 
-  const homeTeam = formatTeamForDisplay(game.home_team);
-  const awayTeam = formatTeamForDisplay(game.away_team);
+  const homeTeam = formatTeamForDisplay(game.home_team)
+  const awayTeam = formatTeamForDisplay(game.away_team)
 
   // Get current subtabs and subsubtabs using hierarchy mapping
   const getHierarchyTabId = (tab: MainTabType): string => {
     switch (tab) {
-      case 'Main Lines': return 'main';
-      case 'Player Props': return 'player-props';
-      case 'Team Props': return 'team-props';
-      case 'Game Props': return 'game-props';
-      default: return 'main';
+      case 'Main Lines':
+        return 'main'
+      case 'Player Props':
+        return 'player-props'
+      case 'Team Props':
+        return 'team-props'
+      case 'Game Props':
+        return 'game-props'
+      default:
+        return 'main'
     }
-  };
-  
-  const currentSubTabs = availableTabs.getSubTabs(getHierarchyTabId(activeTab));
-  const currentSubSubTabs = availableTabs.getSubSubTabs(getHierarchyTabId(activeTab), activeSubTab);
+  }
+
+  const currentSubTabs = availableTabs.getSubTabs(getHierarchyTabId(activeTab))
+  const currentSubSubTabs = availableTabs.getSubSubTabs(getHierarchyTabId(activeTab), activeSubTab)
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:border-slate-300">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-lg">
       {/* Game Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-200 px-2 py-1 rounded-md">
+            <div className="rounded-md bg-slate-200 px-2 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
               {league}
             </div>
             {getStatusBadge()}
           </div>
-          
+
           <div className="flex items-center space-x-2 text-sm text-slate-600">
-            <Clock className="w-4 h-4" />
+            <Clock className="h-4 w-4" />
             <span className="font-medium">
               {isUpcoming ? formatGameTime(game.commence_time) : 'In Progress'}
             </span>
@@ -265,75 +275,67 @@ export default function EnhancedUniversalGameCard({
       </div>
 
       {/* Team Names */}
-      <div className="px-6 py-4 border-b border-slate-100">
+      <div className="border-b border-slate-100 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="text-base font-bold text-slate-900 tracking-tight">{awayTeam}</div>
-            <div className="text-base font-bold text-slate-900 tracking-tight">{homeTeam}</div>
+            <div className="text-base font-bold tracking-tight text-slate-900">{awayTeam}</div>
+            <div className="text-base font-bold tracking-tight text-slate-900">{homeTeam}</div>
           </div>
-          <div className="text-sm text-slate-400 font-medium">
-            @
-          </div>
+          <div className="text-sm font-medium text-slate-400">@</div>
         </div>
       </div>
 
       {/* 3-Level Hierarchical Tab Controls */}
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
+      <div className="border-b border-slate-100 bg-slate-50/30 px-6 py-4">
         {/* Level 1: Main Tabs */}
-        <div className="flex items-center bg-slate-100 rounded-2xl p-1.5 gap-1">
-          {displayMainTabs.map((tab) => (
+        <div className="flex items-center gap-1 rounded-2xl bg-slate-100 p-1.5">
+          {displayMainTabs.map(tab => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
-              className={`
-                flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200
-                ${activeTab === tab
-                  ? 'bg-white text-slate-900 shadow-md border-2 border-blue-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border-2 border-transparent'
-                }
-              `}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                activeTab === tab
+                  ? 'border-2 border-blue-200 bg-white text-slate-900 shadow-md'
+                  : 'border-2 border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              } `}
             >
               {getTabDisplayName(tab)}
             </button>
           ))}
         </div>
-        
+
         {/* Level 2: Subtabs */}
         {currentSubTabs.length > 0 && (
-          <div className="mt-4 pl-3 border-l-3 border-blue-300">
+          <div className="border-l-3 mt-4 border-blue-300 pl-3">
             <div className="flex flex-wrap gap-2">
-              {currentSubTabs.map((subTab) => (
+              {currentSubTabs.map(subTab => (
                 <button
                   key={subTab}
                   onClick={() => handleSubTabChange(subTab)}
-                  className={`
-                    px-4 py-2 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap
-                    ${activeSubTab === subTab
-                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-2 border-transparent'
-                    }
-                  `}
+                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                    activeSubTab === subTab
+                      ? 'border-2 border-blue-300 bg-blue-100 text-blue-800 shadow-sm'
+                      : 'border-2 border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  } `}
                 >
                   {getSubTabDisplayName(subTab)}
                 </button>
               ))}
             </div>
-            
+
             {/* Level 3: Sub-subtabs */}
             {currentSubSubTabs.length > 0 && (
-              <div className="mt-3 pl-4 border-l-3 border-green-300">
+              <div className="border-l-3 mt-3 border-green-300 pl-4">
                 <div className="flex flex-wrap gap-1.5">
-                  {currentSubSubTabs.map((subSubTab) => (
+                  {currentSubSubTabs.map(subSubTab => (
                     <button
                       key={subSubTab}
                       onClick={() => handleSubSubTabChange(subSubTab)}
-                      className={`
-                        px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 whitespace-nowrap
-                        ${activeSubSubTab === subSubTab
-                          ? 'bg-green-100 text-green-800 border-2 border-green-300 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-2 border-transparent'
-                        }
-                      `}
+                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                        activeSubSubTab === subSubTab
+                          ? 'border-2 border-green-300 bg-green-100 text-green-800 shadow-sm'
+                          : 'border-2 border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                      } `}
                     >
                       {getSubSubTabDisplayName(subSubTab)}
                     </button>
@@ -347,8 +349,8 @@ export default function EnhancedUniversalGameCard({
         {/* Loading indicator for tabs */}
         {isLoadingOdds && (
           <div className="mt-3 text-center">
-            <div className="inline-flex items-center space-x-2 text-slate-500 text-sm">
-              <div className="w-3 h-3 border border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+            <div className="inline-flex items-center space-x-2 text-sm text-slate-500">
+              <div className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-slate-600"></div>
               <span>Loading tabs...</span>
             </div>
           </div>
@@ -366,5 +368,5 @@ export default function EnhancedUniversalGameCard({
         />
       </div>
     </div>
-  );
+  )
 }

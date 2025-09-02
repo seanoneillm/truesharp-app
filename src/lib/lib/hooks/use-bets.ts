@@ -1,7 +1,12 @@
 // FILE: src/lib/hooks/use-bets.ts
 // Betting data hook with pagination and real-time updates
 
-import { authenticatedRequest, paginatedRequest, PaginatedResponse, supabaseDirect } from '@/lib/api/client'
+import {
+  authenticatedRequest,
+  paginatedRequest,
+  PaginatedResponse,
+  supabaseDirect,
+} from '@/lib/api/client'
 import { Bet } from '@/lib/auth/supabase'
 import { PaginationParams } from '@/lib/types'
 import { useCallback, useEffect, useState } from 'react'
@@ -41,9 +46,9 @@ export function useBets(userId?: string): UseBetsReturn {
       total: 0,
       totalPages: 0,
       hasNext: false,
-      hasPrev: false
+      hasPrev: false,
     },
-    success: true
+    success: true,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,85 +57,91 @@ export function useBets(userId?: string): UseBetsReturn {
     page: 1,
     limit: 20,
     sortBy: 'placed_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
   })
 
   // Build query with filters
-  const buildQuery = useCallback((targetUserId?: string) => {
-    let query = supabaseDirect
-      .from('bets')
-      .select('*', { count: 'exact' })
+  const buildQuery = useCallback(
+    (targetUserId?: string) => {
+      let query = supabaseDirect.from('bets').select('*', { count: 'exact' })
 
-    // Filter by user
-    if (targetUserId) {
-      query = query.eq('user_id', targetUserId)
-    } else {
-      // Will be handled by RLS policy for authenticated user
-    }
+      // Filter by user
+      if (targetUserId) {
+        query = query.eq('user_id', targetUserId)
+      } else {
+        // Will be handled by RLS policy for authenticated user
+      }
 
-    // Apply filters
-    if (filters.sports && filters.sports.length > 0) {
-      query = query.in('sport', filters.sports)
-    }
+      // Apply filters
+      if (filters.sports && filters.sports.length > 0) {
+        query = query.in('sport', filters.sports)
+      }
 
-    if (filters.betTypes && filters.betTypes.length > 0) {
-      query = query.in('bet_type', filters.betTypes)
-    }
+      if (filters.betTypes && filters.betTypes.length > 0) {
+        query = query.in('bet_type', filters.betTypes)
+      }
 
-    if (filters.status && filters.status.length > 0) {
-      query = query.in('status', filters.status)
-    }
+      if (filters.status && filters.status.length > 0) {
+        query = query.in('status', filters.status)
+      }
 
-    if (filters.dateRange?.start) {
-      query = query.gte('placed_at', filters.dateRange.start.toISOString())
-    }
+      if (filters.dateRange?.start) {
+        query = query.gte('placed_at', filters.dateRange.start.toISOString())
+      }
 
-    if (filters.dateRange?.end) {
-      query = query.lte('placed_at', filters.dateRange.end.toISOString())
-    }
+      if (filters.dateRange?.end) {
+        query = query.lte('placed_at', filters.dateRange.end.toISOString())
+      }
 
-    if (filters.search) {
-      query = query.ilike('description', `%${filters.search}%`)
-    }
+      if (filters.search) {
+        query = query.ilike('description', `%${filters.search}%`)
+      }
 
-    return query
-  }, [filters])
+      return query
+    },
+    [filters]
+  )
 
   // Fetch bets with pagination
-  const fetchBets = useCallback(async (page: number = 1, append: boolean = false) => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const fetchBets = useCallback(
+    async (page: number = 1, append: boolean = false) => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      const { data: { user } } = await supabaseDirect.auth.getUser()
-      const targetUserId = userId || user?.id
+        const {
+          data: { user },
+        } = await supabaseDirect.auth.getUser()
+        const targetUserId = userId || user?.id
 
-      if (!targetUserId && !userId) {
-        throw new Error('No user ID available')
+        if (!targetUserId && !userId) {
+          throw new Error('No user ID available')
+        }
+
+        const query = buildQuery(targetUserId)
+        const paginationOptions = {
+          ...pagination,
+          page,
+        }
+
+        const result = await paginatedRequest<Bet>(query, paginationOptions)
+
+        if (result.success) {
+          setBets(prev => ({
+            ...result,
+            data: append ? [...prev.data, ...result.data] : result.data,
+          }))
+        } else {
+          throw new Error(result.error || 'Failed to fetch bets')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch bets')
+      } finally {
+        setIsLoading(false)
       }
-
-      const query = buildQuery(targetUserId)
-      const paginationOptions = {
-        ...pagination,
-        page
-      }
-
-      const result = await paginatedRequest<Bet>(query, paginationOptions)
-
-      if (result.success) {
-        setBets(prev => ({
-          ...result,
-          data: append ? [...prev.data, ...result.data] : result.data
-        }))
-      } else {
-        throw new Error(result.error || 'Failed to fetch bets')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch bets')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userId, buildQuery, pagination])
+    },
+    [userId, buildQuery, pagination]
+  )
 
   // Load more bets (pagination)
   const loadMore = useCallback(async () => {
@@ -146,7 +157,7 @@ export function useBets(userId?: string): UseBetsReturn {
 
   // Update bet
   const updateBet = useCallback(async (betId: string, updates: Partial<Bet>): Promise<boolean> => {
-    const response = await authenticatedRequest(async (currentUserId) => {
+    const response = await authenticatedRequest(async currentUserId => {
       return await supabaseDirect
         .from('bets')
         .update(updates)
@@ -159,11 +170,11 @@ export function useBets(userId?: string): UseBetsReturn {
     if (response.success && response.data) {
       setBets(prev => ({
         ...prev,
-        data: prev.data.map(bet => 
+        data: prev.data.map(bet =>
           bet.id === betId && response.data && typeof response.data === 'object'
             ? { ...bet, ...(response.data as object) }
             : bet
-        )
+        ),
       }))
       return true
     } else {
@@ -174,7 +185,7 @@ export function useBets(userId?: string): UseBetsReturn {
 
   // Delete bet
   const deleteBet = useCallback(async (betId: string): Promise<boolean> => {
-    const response = await authenticatedRequest(async (currentUserId) => {
+    const response = await authenticatedRequest(async currentUserId => {
       return await supabaseDirect
         .from('bets')
         .delete()
@@ -190,8 +201,8 @@ export function useBets(userId?: string): UseBetsReturn {
         data: prev.data.filter(bet => bet.id !== betId),
         pagination: {
           ...prev.pagination,
-          total: prev.pagination.total - 1
-        }
+          total: prev.pagination.total - 1,
+        },
       }))
       return true
     } else {
@@ -201,40 +212,49 @@ export function useBets(userId?: string): UseBetsReturn {
   }, [])
 
   // Create bet
-  const createBet = useCallback(async (betData: Omit<Bet, 'id' | 'created_at'>): Promise<boolean> => {
-    const response = await authenticatedRequest(async (currentUserId) => {
-      return await supabaseDirect
-        .from('bets')
-        .insert({ ...betData, user_id: currentUserId })
-        .select()
-        .single()
-    })
+  const createBet = useCallback(
+    async (betData: Omit<Bet, 'id' | 'created_at'>): Promise<boolean> => {
+      const response = await authenticatedRequest(async currentUserId => {
+        return await supabaseDirect
+          .from('bets')
+          .insert({ ...betData, user_id: currentUserId })
+          .select()
+          .single()
+      })
 
-    if (response.success && response.data) {
-      setBets(prev => ({
-        ...prev,
-        data: response.data ? [response.data, ...prev.data] : prev.data,
-        pagination: {
-          ...prev.pagination,
-          total: prev.pagination.total + 1
-        }
-      }))
-      return true
-    } else {
-      setError(response.error || 'Failed to create bet')
-      return false
-    }
-  }, [])
+      if (response.success && response.data) {
+        setBets(prev => ({
+          ...prev,
+          data: response.data ? [response.data, ...prev.data] : prev.data,
+          pagination: {
+            ...prev.pagination,
+            total: prev.pagination.total + 1,
+          },
+        }))
+        return true
+      } else {
+        setError(response.error || 'Failed to create bet')
+        return false
+      }
+    },
+    []
+  )
 
   // Mark bet as public
-  const markAsPublic = useCallback(async (betId: string): Promise<boolean> => {
-    return await updateBet(betId, { is_public: true })
-  }, [updateBet])
+  const markAsPublic = useCallback(
+    async (betId: string): Promise<boolean> => {
+      return await updateBet(betId, { is_public: true })
+    },
+    [updateBet]
+  )
 
   // Mark bet as private
-  const markAsPrivate = useCallback(async (betId: string): Promise<boolean> => {
-    return await updateBet(betId, { is_public: false })
-  }, [updateBet])
+  const markAsPrivate = useCallback(
+    async (betId: string): Promise<boolean> => {
+      return await updateBet(betId, { is_public: false })
+    },
+    [updateBet]
+  )
 
   // Set filters
   const setFiltersWrapper = useCallback((newFilters: BetFilters) => {
@@ -265,24 +285,24 @@ export function useBets(userId?: string): UseBetsReturn {
             event: '*',
             schema: 'public',
             table: 'bets',
-            filter: `user_id=eq.${targetUserId}`
+            filter: `user_id=eq.${targetUserId}`,
           },
-          (payload) => {
+          payload => {
             if (payload.eventType === 'INSERT') {
               setBets(prev => ({
                 ...prev,
                 data: [payload.new as Bet, ...prev.data],
                 pagination: {
                   ...prev.pagination,
-                  total: prev.pagination.total + 1
-                }
+                  total: prev.pagination.total + 1,
+                },
               }))
             } else if (payload.eventType === 'UPDATE') {
               setBets(prev => ({
                 ...prev,
-                data: prev.data.map(bet => 
-                  bet.id === payload.new.id ? payload.new as Bet : bet
-                )
+                data: prev.data.map(bet =>
+                  bet.id === payload.new.id ? (payload.new as Bet) : bet
+                ),
               }))
             } else if (payload.eventType === 'DELETE') {
               setBets(prev => ({
@@ -290,8 +310,8 @@ export function useBets(userId?: string): UseBetsReturn {
                 data: prev.data.filter(bet => bet.id !== payload.old.id),
                 pagination: {
                   ...prev.pagination,
-                  total: prev.pagination.total - 1
-                }
+                  total: prev.pagination.total - 1,
+                },
               }))
             }
           }
@@ -303,7 +323,7 @@ export function useBets(userId?: string): UseBetsReturn {
       }
     })
 
-    let isMounted = true;
+    let isMounted = true
     supabaseDirect.auth.getUser().then(({ data: { user } }) => {
       const targetUserId = userId || user?.id
       if (!targetUserId || !isMounted) return
@@ -316,24 +336,24 @@ export function useBets(userId?: string): UseBetsReturn {
             event: '*',
             schema: 'public',
             table: 'bets',
-            filter: `user_id=eq.${targetUserId}`
+            filter: `user_id=eq.${targetUserId}`,
           },
-          (payload) => {
+          payload => {
             if (payload.eventType === 'INSERT') {
               setBets(prev => ({
                 ...prev,
                 data: [payload.new as Bet, ...prev.data],
                 pagination: {
                   ...prev.pagination,
-                  total: prev.pagination.total + 1
-                }
+                  total: prev.pagination.total + 1,
+                },
               }))
             } else if (payload.eventType === 'UPDATE') {
               setBets(prev => ({
                 ...prev,
-                data: prev.data.map(bet => 
-                  bet.id === payload.new.id ? payload.new as Bet : bet
-                )
+                data: prev.data.map(bet =>
+                  bet.id === payload.new.id ? (payload.new as Bet) : bet
+                ),
               }))
             } else if (payload.eventType === 'DELETE') {
               setBets(prev => ({
@@ -341,8 +361,8 @@ export function useBets(userId?: string): UseBetsReturn {
                 data: prev.data.filter(bet => bet.id !== payload.old.id),
                 pagination: {
                   ...prev.pagination,
-                  total: prev.pagination.total - 1
-                }
+                  total: prev.pagination.total - 1,
+                },
               }))
             }
           }
@@ -351,13 +371,13 @@ export function useBets(userId?: string): UseBetsReturn {
 
       // Cleanup
       return () => {
-        isMounted = false;
+        isMounted = false
         supabaseDirect.removeChannel(channel)
       }
     })
 
     return () => {
-      isMounted = false;
+      isMounted = false
     }
   }, [userId])
 
@@ -373,6 +393,6 @@ export function useBets(userId?: string): UseBetsReturn {
     setFilters: setFiltersWrapper,
     setPagination,
     markAsPublic,
-    markAsPrivate
+    markAsPrivate,
   }
 }

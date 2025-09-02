@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       startDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`
       const lastDay = new Date(currentYear, currentMonth, 0).getDate()
       endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDay}`
-    } else { // week
+    } else {
+      // week
       const now = new Date()
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       startDate = oneWeekAgo.toISOString().split('T')[0] || ''
@@ -63,8 +64,8 @@ export async function POST(request: Request) {
           status: bet.status,
           stake: bet.stake,
           profit: bet.profit,
-          description: bet.description
-        }
+          description: bet.description,
+        },
       }
     })
 
@@ -82,10 +83,9 @@ export async function POST(request: Request) {
         placed_at: bet.placed_at,
         status: bet.status,
         profit: bet.profit,
-        stake: bet.stake
-      }))
+        stake: bet.stake,
+      })),
     })
-
   } catch (error) {
     console.error('Direct analytics error:', error)
     return NextResponse.json({ error: 'Analytics test failed' }, { status: 500 })

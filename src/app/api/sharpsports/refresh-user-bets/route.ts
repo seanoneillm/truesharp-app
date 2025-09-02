@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { transformSharpSportsBet, normalizeSide, normalizeBetType, normalizeBetStatus, computeProfit } from '@/lib/utils/sharpsports-helpers'
+import {
+  transformSharpSportsBet,
+  normalizeSide,
+  normalizeBetType,
+  normalizeBetStatus,
+  computeProfit,
+} from '@/lib/utils/sharpsports-helpers'
 
 // Create a simple SharpSports client following the SDK pattern
 class SharpSportsClient {
@@ -14,9 +20,9 @@ class SharpSportsClient {
   async betsByBettor({ id }: { id: string }) {
     const response = await fetch(`${this.baseUrl}/bettors/${id}/betSlips`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -36,9 +42,15 @@ const supabase = createClient(
 )
 
 // Helper function to process individual bets from bet slips
-function processBetsFromSlip(betSlip: any, profileId: string, isParlay: boolean, parlayId: string | null, isFirstSlip: boolean): any[] {
+function processBetsFromSlip(
+  betSlip: any,
+  profileId: string,
+  isParlay: boolean,
+  parlayId: string | null,
+  isFirstSlip: boolean
+): any[] {
   const processedBets: any[] = []
-  
+
   if (!betSlip.bets || betSlip.bets.length === 0) {
     return processedBets
   }
@@ -51,7 +63,7 @@ function processBetsFromSlip(betSlip: any, profileId: string, isParlay: boolean,
         // Create unique external_bet_id for each leg
         id: bet.id || `${betSlip.id}-${i}`,
         betSlip: {
-          id: betSlip.id
+          id: betSlip.id,
         },
         // Bet-level data
         event: bet.event,
@@ -61,27 +73,31 @@ function processBetsFromSlip(betSlip: any, profileId: string, isParlay: boolean,
         line: bet.line,
         // For parlays: first leg gets slip odds, other legs get 0
         // For single bets: use individual bet odds or slip odds
-        oddsAmerican: isParlay ? (i === 0 ? betSlip.oddsAmerican : 0) : (bet.oddsAmerican || betSlip.oddsAmerican),
+        oddsAmerican: isParlay
+          ? i === 0
+            ? betSlip.oddsAmerican
+            : 0
+          : bet.oddsAmerican || betSlip.oddsAmerican,
         atRisk: isParlay ? (i === 0 ? betSlip.atRisk : 0) : betSlip.atRisk,
         toWin: isParlay ? (i === 0 ? betSlip.toWin : 0) : betSlip.toWin,
         status: bet.status || betSlip.status,
         timePlaced: betSlip.timePlaced,
         dateClosed: betSlip.dateClosed,
-        book: betSlip.book
+        book: betSlip.book,
       }
 
       const transformedBet = transformSharpSportsBet(combinedBet, profileId)
-      
+
       // Add parlay information
       transformedBet.is_parlay = isParlay
       transformedBet.parlay_id = parlayId // Will be null for single bets
-      
+
       processedBets.push(transformedBet)
     } catch (error) {
       console.error(`❌ Error processing bet ${bet.id}:`, error)
     }
   }
-  
+
   return processedBets
 }
 
@@ -117,9 +133,12 @@ export async function POST(request: NextRequest) {
 
     if (!profile.sharpsports_bettor_id) {
       console.error(`❌ User ${userId} has no SharpSports bettor ID`)
-      return NextResponse.json({ 
-        error: 'User has no SharpSports bettor ID. Run "Match Bettor Profiles" first.' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'User has no SharpSports bettor ID. Run "Match Bettor Profiles" first.',
+        },
+        { status: 400 }
+      )
     }
 
     // Auth with SharpSports SDK
@@ -127,10 +146,12 @@ export async function POST(request: NextRequest) {
 
     // Fetch bet slips for this bettor
     const { data: betSlips } = await sharpsports.betsByBettor({
-      id: profile.sharpsports_bettor_id
+      id: profile.sharpsports_bettor_id,
     })
 
-    console.log(`📊 Found ${betSlips?.length || 0} bet slips for bettor ${profile.sharpsports_bettor_id}`)
+    console.log(
+      `📊 Found ${betSlips?.length || 0} bet slips for bettor ${profile.sharpsports_bettor_id}`
+    )
 
     if (!betSlips || betSlips.length === 0) {
       return NextResponse.json({
@@ -142,8 +163,8 @@ export async function POST(request: NextRequest) {
           newBets: 0,
           updatedBets: 0,
           skippedBets: 0,
-          errors: 0
-        }
+          errors: 0,
+        },
       })
     }
 
@@ -153,7 +174,7 @@ export async function POST(request: NextRequest) {
       newBets: 0,
       updatedBets: 0,
       skippedBets: 0,
-      errors: 0
+      errors: 0,
     }
 
     const errors = []
@@ -167,14 +188,15 @@ export async function POST(request: NextRequest) {
     // For parlay slips, group them by parlayId or other shared identifier
     for (const parlaySlip of parlaySlips) {
       // Use parlayId if available, otherwise fall back to a combination of key fields
-      const parlayKey = parlaySlip.parlayId || 
-                       parlaySlip.groupId || 
-                       `${parlaySlip.timePlaced}-${parlaySlip.atRisk}-${parlaySlip.toWin}` // fallback grouping
-      
+      const parlayKey =
+        parlaySlip.parlayId ||
+        parlaySlip.groupId ||
+        `${parlaySlip.timePlaced}-${parlaySlip.atRisk}-${parlaySlip.toWin}` // fallback grouping
+
       if (!parlayGroups.has(parlayKey)) {
         parlayGroups.set(parlayKey, {
           id: crypto.randomUUID(),
-          slips: []
+          slips: [],
         })
       }
       parlayGroups.get(parlayKey).slips.push(parlaySlip)
@@ -185,29 +207,40 @@ export async function POST(request: NextRequest) {
       try {
         const isParlay = false
         const parlayId = null
-        
+
         await processBetsFromSlips([betSlip], userId, isParlay, parlayId)
       } catch (slipError) {
         console.error(`❌ Error processing single bet slip ${betSlip.id}:`, slipError)
         stats.errors++
-        errors.push(`Process slip ${betSlip.id}: ${slipError instanceof Error ? slipError.message : 'Unknown error'}`)
+        errors.push(
+          `Process slip ${betSlip.id}: ${slipError instanceof Error ? slipError.message : 'Unknown error'}`
+        )
       }
     }
 
     // Process parlay groups
     for (const [parlayKey, parlayGroup] of parlayGroups) {
       try {
-        console.log(`🎯 Processing parlay group ${parlayKey} with ${parlayGroup.slips.length} slips`)
+        console.log(
+          `🎯 Processing parlay group ${parlayKey} with ${parlayGroup.slips.length} slips`
+        )
         await processBetsFromSlips(parlayGroup.slips, userId, true, parlayGroup.id)
       } catch (parlayError) {
         console.error(`❌ Error processing parlay group ${parlayKey}:`, parlayError)
         stats.errors++
-        errors.push(`Process parlay ${parlayKey}: ${parlayError instanceof Error ? parlayError.message : 'Unknown error'}`)
+        errors.push(
+          `Process parlay ${parlayKey}: ${parlayError instanceof Error ? parlayError.message : 'Unknown error'}`
+        )
       }
     }
 
     // Helper function to process bets from multiple slips
-    async function processBetsFromSlips(slips: any[], userId: string, isParlay: boolean, parlayId: string | null) {
+    async function processBetsFromSlips(
+      slips: any[],
+      userId: string,
+      isParlay: boolean,
+      parlayId: string | null
+    ) {
       for (const betSlip of slips) {
         const betsFromSlip = processBetsFromSlip(betSlip, userId, isParlay, parlayId, true)
         stats.totalBets += betsFromSlip.length
@@ -230,12 +263,15 @@ export async function POST(request: NextRequest) {
                   status: transformedBet.status,
                   settled_at: transformedBet.settled_at,
                   profit: transformedBet.profit,
-                  updated_at: new Date().toISOString()
+                  updated_at: new Date().toISOString(),
                 })
                 .eq('external_bet_id', transformedBet.external_bet_id)
 
               if (updateError) {
-                console.error(`❌ Error updating bet ${transformedBet.external_bet_id}:`, updateError)
+                console.error(
+                  `❌ Error updating bet ${transformedBet.external_bet_id}:`,
+                  updateError
+                )
                 stats.errors++
                 errors.push(`Update bet ${transformedBet.external_bet_id}: ${updateError.message}`)
               } else {
@@ -269,7 +305,7 @@ export async function POST(request: NextRequest) {
                   profit: transformedBet.profit,
                   is_parlay: transformedBet.is_parlay,
                   parlay_id: transformedBet.parlay_id,
-                  created_at: new Date().toISOString()
+                  created_at: new Date().toISOString(),
                 })
                 .select()
                 .single()
@@ -287,7 +323,9 @@ export async function POST(request: NextRequest) {
           } catch (betError) {
             console.error(`❌ Error processing individual bet:`, betError)
             stats.errors++
-            errors.push(`Process bet: ${betError instanceof Error ? betError.message : 'Unknown error'}`)
+            errors.push(
+              `Process bet: ${betError instanceof Error ? betError.message : 'Unknown error'}`
+            )
           }
         }
       }
@@ -301,17 +339,16 @@ export async function POST(request: NextRequest) {
       message,
       stats,
       processedBets: processedBets.length > 0 ? processedBets : undefined,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     })
-
   } catch (error) {
     console.error('❌ Error refreshing user bets:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error
+        details: error,
       },
       { status: 500 }
     )

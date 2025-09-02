@@ -52,17 +52,15 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      
+
       {/* Dialog Content */}
-      <div className="relative z-10 w-full my-auto">
-        {children}
-      </div>
+      <div className="relative z-10 my-auto w-full">{children}</div>
     </div>
   )
 }
@@ -74,38 +72,32 @@ export function DialogTrigger({ children, asChild = false }: DialogTriggerProps)
   if (asChild && isValidElement(children)) {
     return children
   }
-  
+
   return <>{children}</>
 }
 
 export function DialogContent({ children, className = '' }: DialogContentProps) {
   return (
-    <div className={`relative bg-white rounded-xl shadow-2xl border border-slate-200 max-h-[90vh] overflow-hidden ${className}`}>
+    <div
+      className={`relative max-h-[90vh] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ${className}`}
+    >
       {children}
     </div>
   )
 }
 
 export function DialogHeader({ children }: DialogHeaderProps) {
-  return (
-    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
-      {children}
-    </div>
-  )
+  return <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-4">{children}</div>
 }
 
 export function DialogTitle({ children }: DialogTitleProps) {
   return (
-    <h2 className="text-lg font-semibold text-slate-900 flex items-center justify-between">
+    <h2 className="flex items-center justify-between text-lg font-semibold text-slate-900">
       {children}
     </h2>
   )
 }
 
 export function DialogDescription({ children }: DialogDescriptionProps) {
-  return (
-    <p className="text-sm text-slate-600 mt-2">
-      {children}
-    </p>
-  )
+  return <p className="mt-2 text-sm text-slate-600">{children}</p>
 }

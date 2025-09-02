@@ -1,13 +1,13 @@
 {
   "name": "truesharp-odds-fetcher",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "description": "Fetch and normalize odds data from Sports Game Odds API",
   "type": "module",
   "main": "main.js",
   "scripts": {
     "test": "node main.js --test --verbose",
     "fetch-mlb": "node main.js --insert --league MLB",
-    "fetch-nfl": "node main.js --insert --league NFL", 
+    "fetch-nfl": "node main.js --insert --league NFL",
     "fetch-nba": "node main.js --insert --league NBA",
     "fetch-nhl": "node main.js --insert --league NHL",
     "test-mlb": "node main.js --test --league MLB --verbose",

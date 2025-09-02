@@ -1,4 +1,4 @@
-// FILE: src/lib/hooks/index.ts  
+// FILE: src/lib/hooks/index.ts
 // REPLACE your existing hooks/index.ts with this version
 // Updated to gradually transition from mock data to real data
 
@@ -20,12 +20,12 @@ import {
 
 // Feature flags to control transition from mock to real data
 const FEATURE_FLAGS = {
-  USE_REAL_AUTH: true,        // Always use real auth
-  USE_REAL_PROFILE: true,     // Use real profile data
-  USE_REAL_BETS: true,       // Still use mock bets for now
-  USE_REAL_PICKS: true,      // Still use mock picks for now
+  USE_REAL_AUTH: true, // Always use real auth
+  USE_REAL_PROFILE: true, // Use real profile data
+  USE_REAL_BETS: true, // Still use mock bets for now
+  USE_REAL_PICKS: true, // Still use mock picks for now
   USE_REAL_SUBSCRIPTIONS: true, // Still use mock subscriptions for now
-  USE_REAL_PERFORMANCE: true,   // Still use mock performance for now
+  USE_REAL_PERFORMANCE: true, // Still use mock performance for now
 }
 
 // Export the real auth hook (no mock version needed)
@@ -33,12 +33,12 @@ const FEATURE_FLAGS = {
 export function useAuth() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  
+
   useEffect(() => {
     // Mock auth state - this should be replaced with real auth logic
     setIsLoading(false)
   }, [])
-  
+
   return {
     user,
     isLoading,
@@ -68,15 +68,18 @@ export function useUserProfile(userId?: string) {
     return () => clearTimeout(timer)
   }, [userId])
 
-  const updateProfile = useCallback(async (updates: Partial<User>) => {
-    // Mock update
-    if (profile) {
-      const updated = { ...profile, ...updates }
-      setProfile(updated)
-      return updated
-    }
-    throw new Error('No profile loaded')
-  }, [profile])
+  const updateProfile = useCallback(
+    async (updates: Partial<User>) => {
+      // Mock update
+      if (profile) {
+        const updated = { ...profile, ...updates }
+        setProfile(updated)
+        return updated
+      }
+      throw new Error('No profile loaded')
+    },
+    [profile]
+  )
 
   return {
     profile,
@@ -168,7 +171,7 @@ export function usePerformanceMetrics(filters?: FilterOptions) {
   return {
     metrics,
     isLoading,
-    refetch: () => setMetrics(mockData.performanceMetrics)
+    refetch: () => setMetrics(mockData.performanceMetrics),
   }
 }
 
@@ -216,8 +219,8 @@ export function usePicks(sellerId?: string) {
         views: 0,
         likes: 0,
         comments: 0,
-        shares: 0
-      }
+        shares: 0,
+      },
     }
 
     setPicks(prev => [newPick, ...prev])
@@ -228,7 +231,7 @@ export function usePicks(sellerId?: string) {
     picks,
     isLoading,
     createPick,
-    refetch: () => setPicks(mockData.picks)
+    refetch: () => setPicks(mockData.picks),
   }
 }
 
@@ -253,20 +256,21 @@ export function useSubscriptions() {
     fetchSubscriptions()
   }, [])
 
-  const cancelSubscription = useCallback(async (subscriptionId: string) => {
-    const updatedSubscriptions = subscriptions.map(sub =>
-      sub.id === subscriptionId
-        ? { ...sub, status: 'cancelled' as const }
-        : sub
-    )
-    setSubscriptions(updatedSubscriptions)
-  }, [subscriptions])
+  const cancelSubscription = useCallback(
+    async (subscriptionId: string) => {
+      const updatedSubscriptions = subscriptions.map(sub =>
+        sub.id === subscriptionId ? { ...sub, status: 'cancelled' as const } : sub
+      )
+      setSubscriptions(updatedSubscriptions)
+    },
+    [subscriptions]
+  )
 
   return {
     subscriptions,
     isLoading,
     cancelSubscription,
-    refetch: () => setSubscriptions(mockData.subscriptions)
+    refetch: () => setSubscriptions(mockData.subscriptions),
   }
 }
 
@@ -289,7 +293,7 @@ export function useSellers(filters?: any) {
   return {
     sellers,
     isLoading,
-    refetch: () => setSellers(mockData.sellers)
+    refetch: () => setSellers(mockData.sellers),
   }
 }
 
@@ -319,17 +323,20 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     }
   })
 
-  const setValue = useCallback((value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value
-      setStoredValue(valueToStore)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(valueToStore))
+  const setValue = useCallback(
+    (value: T | ((val: T) => T)) => {
+      try {
+        const valueToStore = value instanceof Function ? value(storedValue) : value
+        setStoredValue(valueToStore)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(key, JSON.stringify(valueToStore))
+        }
+      } catch (error) {
+        console.error(`Error setting localStorage key "${key}":`, error)
       }
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error)
-    }
-  }, [key, storedValue])
+    },
+    [key, storedValue]
+  )
 
   return [storedValue, setValue] as const
 }
@@ -370,4 +377,4 @@ export function useDashboardData() {
 }
 
 // Bet Slip Toast Hook
-export { useBetSlipToast } from './use-bet-slip-toast';
+export { useBetSlipToast } from './use-bet-slip-toast'

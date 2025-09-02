@@ -4,12 +4,22 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Pick, Seller, User } from '@/lib/types'
 import { cn, formatDate, timeAgo } from '@/lib/utils'
-import { CheckCircle, Clock, Crown, Eye, Heart, Lock, MessageCircle, Share2, Star } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  Crown,
+  Eye,
+  Heart,
+  Lock,
+  MessageCircle,
+  Share2,
+  Star,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
 interface PickCardProps {
-  pick: Pick & { 
+  pick: Pick & {
     author: User
     seller?: Seller
   }
@@ -27,19 +37,27 @@ export function PickCard({ pick }: PickCardProps) {
 
   const getTierColor = (tier: string) => {
     switch (tier) {
-      case 'premium': return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-200'
-      default: return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'premium':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'silver':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'bronze':
+        return 'bg-amber-100 text-amber-800 border-amber-200'
+      default:
+        return 'bg-blue-100 text-blue-800 border-blue-200'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'won': return 'bg-green-100 text-green-800'
-      case 'lost': return 'bg-red-100 text-red-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'won':
+        return 'bg-green-100 text-green-800'
+      case 'lost':
+        return 'bg-red-100 text-red-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
@@ -49,28 +67,24 @@ export function PickCard({ pick }: PickCardProps) {
   const isLive = gameTime > now && (gameTime.getTime() - now.getTime()) / (1000 * 60 * 60) <= 4
 
   return (
-    <Card className="p-6 hover:shadow-md transition-shadow">
+    <Card className="p-6 transition-shadow hover:shadow-md">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="mb-4 flex items-start justify-between">
         <div className="flex items-center space-x-3">
           <Link href={`/marketplace/${pick.author.username}`}>
-            <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium cursor-pointer hover:bg-blue-600 transition-colors">
+            <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-blue-500 font-medium text-white transition-colors hover:bg-blue-600">
               {pick.author.avatar}
             </div>
           </Link>
           <div>
             <div className="flex items-center space-x-2">
               <Link href={`/marketplace/${pick.author.username}`}>
-                <span className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer">
+                <span className="cursor-pointer font-medium text-gray-900 hover:text-blue-600">
                   @{pick.author.username}
                 </span>
               </Link>
-              {pick.author.isVerified && (
-                <CheckCircle className="h-4 w-4 text-blue-500" />
-              )}
-              {pick.author.sellerEnabled && (
-                <Crown className="h-4 w-4 text-yellow-500" />
-              )}
+              {pick.author.isVerified && <CheckCircle className="h-4 w-4 text-blue-500" />}
+              {pick.author.sellerEnabled && <Crown className="h-4 w-4 text-yellow-500" />}
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <span>{timeAgo(pick.postedAt)}</span>
@@ -78,7 +92,7 @@ export function PickCard({ pick }: PickCardProps) {
                 <>
                   <span>•</span>
                   <div className="flex items-center text-red-500">
-                    <Clock className="h-3 w-3 mr-1" />
+                    <Clock className="mr-1 h-3 w-3" />
                     <span className="font-medium">Live</span>
                   </div>
                 </>
@@ -86,16 +100,14 @@ export function PickCard({ pick }: PickCardProps) {
             </div>
           </div>
         </div>
-        
+
         {/* Pick Status */}
         <div className="flex items-center space-x-2">
           {pick.status !== 'pending' && (
-            <Badge className={getStatusColor(pick.status)}>
-              {pick.status}
-            </Badge>
+            <Badge className={getStatusColor(pick.status)}>{pick.status}</Badge>
           )}
           <Badge className={getTierColor(pick.tier)}>
-            {isLocked && <Lock className="h-3 w-3 mr-1" />}
+            {isLocked && <Lock className="mr-1 h-3 w-3" />}
             {pick.tier}
           </Badge>
         </div>
@@ -104,26 +116,24 @@ export function PickCard({ pick }: PickCardProps) {
       {/* Pick Content */}
       <div className="mb-4">
         {/* Sport and Game Info */}
-        <div className="flex items-center space-x-2 mb-3">
+        <div className="mb-3 flex items-center space-x-2">
           <Badge variant="secondary">{pick.sport}</Badge>
           <span className="text-sm text-gray-500">
-            {formatDate(gameTime, { 
-              weekday: 'short', 
-              month: 'short', 
+            {formatDate(gameTime, {
+              weekday: 'short',
+              month: 'short',
               day: 'numeric',
               hour: 'numeric',
-              minute: '2-digit'
+              minute: '2-digit',
             })}
           </span>
         </div>
 
         {/* Pick Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {pick.title}
-        </h3>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">{pick.title}</h3>
 
         {/* Pick Details */}
-        <div className="flex items-center space-x-4 mb-3 text-sm text-gray-600">
+        <div className="mb-3 flex items-center space-x-4 text-sm text-gray-600">
           <div className="flex items-center">
             <span>Confidence:</span>
             <div className="ml-2 flex">
@@ -131,10 +141,8 @@ export function PickCard({ pick }: PickCardProps) {
                 <Star
                   key={i}
                   className={cn(
-                    "h-4 w-4",
-                    i < pick.confidence 
-                      ? "text-yellow-400 fill-current" 
-                      : "text-gray-300"
+                    'h-4 w-4',
+                    i < pick.confidence ? 'fill-current text-yellow-400' : 'text-gray-300'
                   )}
                 />
               ))}
@@ -147,29 +155,24 @@ export function PickCard({ pick }: PickCardProps) {
         {pick.analysis && (
           <div className="mb-4">
             {isLocked ? (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                <Lock className="h-6 w-6 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-3">
-                  Subscribe to view detailed analysis
-                </p>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+                <Lock className="mx-auto mb-2 h-6 w-6 text-gray-400" />
+                <p className="mb-3 text-sm text-gray-600">Subscribe to view detailed analysis</p>
                 <Link href={`/marketplace/${pick.author.username}`}>
-                  <Button size="sm">
-                    View Subscription Options
-                  </Button>
+                  <Button size="sm">View Subscription Options</Button>
                 </Link>
               </div>
             ) : (
               <div>
-                <p className="text-gray-700 text-sm">
+                <p className="text-sm text-gray-700">
                   {showFullAnalysis || pick.analysis.length <= 150
                     ? pick.analysis
-                    : `${pick.analysis.substring(0, 150)}...`
-                  }
+                    : `${pick.analysis.substring(0, 150)}...`}
                 </p>
                 {pick.analysis.length > 150 && (
                   <button
                     onClick={() => setShowFullAnalysis(!showFullAnalysis)}
-                    className="text-blue-600 hover:text-blue-500 text-sm mt-1"
+                    className="mt-1 text-sm text-blue-600 hover:text-blue-500"
                   >
                     {showFullAnalysis ? 'Show less' : 'Read more'}
                   </button>
@@ -181,15 +184,19 @@ export function PickCard({ pick }: PickCardProps) {
 
         {/* Result */}
         {pick.result && (
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="mb-4 rounded-lg bg-gray-50 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">Result:</span>
-              <span className={cn(
-                "font-bold",
-                pick.status === 'won' ? 'text-green-600' :
-                pick.status === 'lost' ? 'text-red-600' :
-                'text-gray-600'
-              )}>
+              <span
+                className={cn(
+                  'font-bold',
+                  pick.status === 'won'
+                    ? 'text-green-600'
+                    : pick.status === 'lost'
+                      ? 'text-red-600'
+                      : 'text-gray-600'
+                )}
+              >
                 {pick.result}
               </span>
             </div>
@@ -201,15 +208,15 @@ export function PickCard({ pick }: PickCardProps) {
       <div className="flex items-center justify-between border-t border-gray-100 pt-4">
         <div className="flex items-center space-x-6 text-sm text-gray-500">
           <div className="flex items-center">
-            <Eye className="h-4 w-4 mr-1" />
+            <Eye className="mr-1 h-4 w-4" />
             {pick.engagement.views.toLocaleString()}
           </div>
           <div className="flex items-center">
-            <Heart className="h-4 w-4 mr-1" />
+            <Heart className="mr-1 h-4 w-4" />
             {likeCount}
           </div>
           <div className="flex items-center">
-            <MessageCircle className="h-4 w-4 mr-1" />
+            <MessageCircle className="mr-1 h-4 w-4" />
             {pick.engagement.comments}
           </div>
         </div>
@@ -221,11 +228,11 @@ export function PickCard({ pick }: PickCardProps) {
             size="sm"
             onClick={handleLike}
             className={cn(
-              "hover:bg-red-50 hover:text-red-600",
-              isLiked && "text-red-600 bg-red-50"
+              'hover:bg-red-50 hover:text-red-600',
+              isLiked && 'bg-red-50 text-red-600'
             )}
           >
-            <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
+            <Heart className={cn('h-4 w-4', isLiked && 'fill-current')} />
           </Button>
           <Button variant="ghost" size="sm" className="hover:bg-blue-50 hover:text-blue-600">
             <MessageCircle className="h-4 w-4" />

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       if (profileError || !profile) {
         return NextResponse.json({
           success: false,
-          error: `User not found with email: ${userEmail}`
+          error: `User not found with email: ${userEmail}`,
         })
       }
       targetUserId = profile.id
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (!targetUserId) {
       return NextResponse.json({
         success: false,
-        error: 'Either userId or userEmail must be provided'
+        error: 'Either userId or userEmail must be provided',
       })
     }
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (allBetsError) {
       return NextResponse.json({
         success: false,
-        error: `Error fetching bets: ${allBetsError.message}`
+        error: `Error fetching bets: ${allBetsError.message}`,
       })
     }
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (bets2024Error) {
       return NextResponse.json({
         success: false,
-        error: `Error fetching 2024 bets: ${bets2024Error.message}`
+        error: `Error fetching 2024 bets: ${bets2024Error.message}`,
       })
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (settledError) {
       return NextResponse.json({
         success: false,
-        error: `Error fetching settled bets: ${settledError.message}`
+        error: `Error fetching settled bets: ${settledError.message}`,
       })
     }
 
@@ -91,50 +91,54 @@ export async function POST(request: NextRequest) {
     const totalBets = allBets?.length || 0
     const total2024Bets = bets2024?.length || 0
     const settledBetsCount = settledBets?.length || 0
-    
+
     const totalProfit = settledBets?.reduce((sum, bet) => sum + (bet.profit || 0), 0) || 0
 
     // Group bets by status
-    const betsByStatus = allBets?.reduce((acc, bet) => {
-      acc[bet.status] = (acc[bet.status] || 0) + 1
-      return acc
-    }, {} as Record<string, number>) || {}
+    const betsByStatus =
+      allBets?.reduce(
+        (acc, bet) => {
+          acc[bet.status] = (acc[bet.status] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      ) || {}
 
     // Sample of recent bets
-    const recentBets = allBets?.slice(0, 5).map(bet => ({
-      id: bet.id,
-      sport: bet.sport,
-      home_team: bet.home_team,
-      away_team: bet.away_team,
-      status: bet.status,
-      profit: bet.profit,
-      placed_at: bet.placed_at,
-      stake: bet.stake
-    })) || []
+    const recentBets =
+      allBets?.slice(0, 5).map(bet => ({
+        id: bet.id,
+        sport: bet.sport,
+        home_team: bet.home_team,
+        away_team: bet.away_team,
+        status: bet.status,
+        profit: bet.profit,
+        placed_at: bet.placed_at,
+        stake: bet.stake,
+      })) || []
 
     return NextResponse.json({
       success: true,
       user: {
         id: targetUserId,
-        email: targetEmail || 'unknown'
+        email: targetEmail || 'unknown',
       },
       stats: {
         totalBets,
         total2024Bets,
         settledBetsCount,
         totalProfit,
-        betsByStatus
+        betsByStatus,
       },
       recentBets,
       sample2024Bets: bets2024?.slice(0, 3) || [],
-      sampleSettledBets: settledBets?.slice(0, 3) || []
+      sampleSettledBets: settledBets?.slice(0, 3) || [],
     })
-
   } catch (err) {
     console.error('Debug error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error during debug'
+      error: 'Unexpected error during debug',
     })
   }
 }

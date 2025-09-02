@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const { email } = await request.json()
-    
+
     console.log('Manual login test for:', email)
-    
+
     // Use service role for this test to bypass any auth issues
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,14 +15,14 @@ export async function POST(request: Request) {
 
     // First, check if user exists
     const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
-    
+
     if (userError) {
       console.error('Error listing users:', userError)
       return NextResponse.json({ error: 'Unable to check users' }, { status: 500 })
     }
 
     const user = userData.users.find(u => u.email === email)
-    
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       id: user.id,
       email: user.email,
       email_confirmed_at: user.email_confirmed_at,
-      created_at: user.created_at
+      created_at: user.created_at,
     })
 
     // Check if user has profile
@@ -66,14 +66,13 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         email_confirmed: !!user.email_confirmed_at,
-        created_at: user.created_at
+        created_at: user.created_at,
       },
       profile: profile || null,
       betCount,
       profileError: profileError?.message,
-      betsError: betsError?.message
+      betsError: betsError?.message,
     })
-
   } catch (error) {
     console.error('Manual login test error:', error)
     return NextResponse.json({ error: 'Test failed' }, { status: 500 })

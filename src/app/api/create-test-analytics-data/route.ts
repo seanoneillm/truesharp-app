@@ -27,18 +27,16 @@ export async function POST() {
 
     if (!existingProfile) {
       // Create profile if it doesn't exist
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: testUserId,
-          username: 'testuser_analytics',
-          bio: 'Test user for analytics demo',
-          email: 'analytics-test@example.com',
-          is_seller: false,
-          is_verified_seller: false,
-          pro: 'no',
-          public_profile: true
-        })
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: testUserId,
+        username: 'testuser_analytics',
+        bio: 'Test user for analytics demo',
+        email: 'analytics-test@example.com',
+        is_seller: false,
+        is_verified_seller: false,
+        pro: 'no',
+        public_profile: true,
+      })
 
       if (profileError) {
         console.error('Profile insert error:', profileError)
@@ -69,13 +67,13 @@ export async function POST() {
       existingBets: existingBets?.length || 0,
       profileExists: !!existingProfile,
       sampleBets: existingBets?.slice(0, 3) || [],
-      instructions: 'This user already has betting data. You can now test the analytics page by simulating login with this user ID.',
+      instructions:
+        'This user already has betting data. You can now test the analytics page by simulating login with this user ID.',
       loginInfo: {
         userId: testUserId,
-        note: 'Use this user ID to test the analytics functionality'
-      }
+        note: 'Use this user ID to test the analytics functionality',
+      },
     })
-
   } catch (error) {
     console.error('Test data setup error:', error)
     return NextResponse.json({ error: 'Failed to setup test data' }, { status: 500 })

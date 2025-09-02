@@ -17,7 +17,7 @@ const defaultActivities: ActivityItem[] = [
     title: 'Pick Won!',
     description: 'Lakers -4.5 vs Warriors just won',
     timestamp: '2h ago',
-    metadata: { profit: '+$91', sport: 'NBA' }
+    metadata: { profit: '+$91', sport: 'NBA' },
   },
   {
     id: '2',
@@ -25,14 +25,14 @@ const defaultActivities: ActivityItem[] = [
     title: 'New subscriber joined Premium tier',
     description: '@newbettor23 subscribed to your picks',
     timestamp: '4h ago',
-    metadata: { revenue: '+$89' }
+    metadata: { revenue: '+$89' },
   },
   {
     id: '3',
     type: 'comment',
     title: 'New comment on your NFL analysis',
     description: '@sportsfan99 commented on your Chiefs pick',
-    timestamp: '6h ago'
+    timestamp: '6h ago',
   },
   {
     id: '4',
@@ -40,8 +40,8 @@ const defaultActivities: ActivityItem[] = [
     title: '🎉 Reached 250 total bets!',
     description: 'Congratulations on this tracking milestone',
     timestamp: '1d ago',
-    metadata: { milestone: '250 bets' }
-  }
+    metadata: { milestone: '250 bets' },
+  },
 ]
 
 function getActivityIcon(type: string) {
@@ -85,20 +85,20 @@ interface ActivityFeedProps {
   showMetadata?: boolean
 }
 
-export default function ActivityFeed({ 
+export default function ActivityFeed({
   activities = defaultActivities,
-  title = "Recent Activity",
+  title = 'Recent Activity',
   maxItems = 10,
-  showMetadata = true
+  showMetadata = true,
 }: ActivityFeedProps) {
   const displayedActivities = activities.slice(0, maxItems)
 
   return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
+    <div className="rounded-lg bg-white shadow">
+      <div className="border-b border-gray-200 px-6 py-4">
         <h3 className="text-lg font-medium text-gray-900">{title}</h3>
       </div>
-      
+
       <div className="flow-root">
         <ul className="-mb-8">
           {displayedActivities.map((activity, activityIdx) => (
@@ -106,40 +106,36 @@ export default function ActivityFeed({
               <div className="relative pb-8">
                 {activityIdx !== displayedActivities.length - 1 ? (
                   <span
-                    className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                    className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200"
                     aria-hidden="true"
                   />
                 ) : null}
                 <div className="relative flex space-x-3">
                   <div>
-                    <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${getActivityColor(activity.type)}`}>
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white ${getActivityColor(activity.type)}`}
+                    >
                       {getActivityIcon(activity.type)}
                     </span>
                   </div>
                   <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.title}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {activity.description}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-sm text-gray-500">{activity.description}</p>
                       {showMetadata && activity.metadata && (
                         <div className="mt-2 flex items-center space-x-4">
                           {activity.metadata.profit && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
                               {activity.metadata.profit}
                             </span>
                           )}
                           {activity.metadata.revenue && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                               {activity.metadata.revenue}
                             </span>
                           )}
                           {activity.metadata.sport && (
-                            <span className="text-xs text-gray-500">
-                              {activity.metadata.sport}
-                            </span>
+                            <span className="text-xs text-gray-500">{activity.metadata.sport}</span>
                           )}
                         </div>
                       )}
@@ -154,10 +150,10 @@ export default function ActivityFeed({
           ))}
         </ul>
       </div>
-      
+
       {activities.length > maxItems && (
-        <div className="px-6 py-4 border-t border-gray-200">
-          <button className="text-sm text-blue-600 hover:text-blue-500 font-medium">
+        <div className="border-t border-gray-200 px-6 py-4">
+          <button className="text-sm font-medium text-blue-600 hover:text-blue-500">
             View all activity ({activities.length} total)
           </button>
         </div>

@@ -57,7 +57,7 @@ export function useSearch(): UseSearchReturn {
   const [results, setResults] = useState<SearchResults>({
     users: [],
     picks: [],
-    sellers: []
+    sellers: [],
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,46 +84,52 @@ export function useSearch(): UseSearchReturn {
     if (!searchQuery.trim()) return
 
     setRecentSearches(prev => {
-      const updated = [searchQuery, ...prev.filter(q => q !== searchQuery)]
-        .slice(0, MAX_RECENT_SEARCHES)
-      
+      const updated = [searchQuery, ...prev.filter(q => q !== searchQuery)].slice(
+        0,
+        MAX_RECENT_SEARCHES
+      )
+
       if (typeof window !== 'undefined') {
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
       }
-      
+
       return updated
     })
   }, [])
 
   // Search users
-  const searchUsers = useCallback(async (searchQuery: string): Promise<Profile[]> => {
-    try {
-      let query = supabaseDirect
-        .from('profiles')
-        .select('*')
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
-        .limit(10)
+  const searchUsers = useCallback(
+    async (searchQuery: string): Promise<Profile[]> => {
+      try {
+        let query = supabaseDirect
+          .from('profiles')
+          .select('*')
+          .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+          .limit(10)
 
-      if (filters.verified) {
-        query = query.eq('is_verified', true)
+        if (filters.verified) {
+          query = query.eq('is_verified', true)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+        return data || []
+      } catch (err) {
+        console.error('Error searching users:', err)
+        return []
       }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      return data || []
-    } catch (err) {
-      console.error('Error searching users:', err)
-      return []
-    }
-  }, [filters.verified])
+    },
+    [filters.verified]
+  )
 
   // Search picks
   const searchPicks = useCallback(async (searchQuery: string) => {
     try {
       const query = supabaseDirect
         .from('pick_posts')
-        .select(`
+        .select(
+          `
           id,
           title,
           analysis,
@@ -132,7 +138,8 @@ export function useSearch(): UseSearchReturn {
             display_name,
             is_verified
           )
-        `)
+        `
+        )
         .or(`title.ilike.%${searchQuery}%,analysis.ilike.%${searchQuery}%`)
         .limit(10)
 
@@ -148,8 +155,8 @@ export function useSearch(): UseSearchReturn {
         seller: pick.seller || {
           username: 'unknown',
           display_name: 'Unknown User',
-          is_verified: false
-        }
+          is_verified: false,
+        },
       }))
     } catch (err) {
       console.error('Error searching picks:', err)
@@ -158,11 +165,13 @@ export function useSearch(): UseSearchReturn {
   }, [])
 
   // Search sellers
-  const searchSellers = useCallback(async (searchQuery: string) => {
-    try {
-      let query = supabaseDirect
-        .from('profiles')
-        .select(`
+  const searchSellers = useCallback(
+    async (searchQuery: string) => {
+      try {
+        let query = supabaseDirect
+          .from('profiles')
+          .select(
+            `
           id,
           username,
           display_name,
@@ -174,80 +183,86 @@ export function useSearch(): UseSearchReturn {
             win_rate,
             roi
           )
-        `)
-        .eq('seller_enabled', true)
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
-        .limit(10)
+        `
+          )
+          .eq('seller_enabled', true)
+          .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+          .limit(10)
 
-      if (filters.verified) {
-        query = query.eq('is_verified', true)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      return (data || []).map(seller => ({
-        id: seller.id,
-        username: seller.username,
-        display_name: seller.display_name,
-        is_verified: seller.is_verified,
-        specialization: seller.seller_settings?.[0]?.specialization || [],
-        performance: {
-          win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
-          roi: seller.user_performance_cache?.[0]?.roi || 0
+        if (filters.verified) {
+          query = query.eq('is_verified', true)
         }
-      }))
-    } catch (err) {
-      console.error('Error searching sellers:', err)
-      return []
-    }
-  }, [filters.verified])
+
+        const { data, error } = await query
+
+        if (error) throw error
+
+        return (data || []).map(seller => ({
+          id: seller.id,
+          username: seller.username,
+          display_name: seller.display_name,
+          is_verified: seller.is_verified,
+          specialization: seller.seller_settings?.[0]?.specialization || [],
+          performance: {
+            win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
+            roi: seller.user_performance_cache?.[0]?.roi || 0,
+          },
+        }))
+      } catch (err) {
+        console.error('Error searching sellers:', err)
+        return []
+      }
+    },
+    [filters.verified]
+  )
 
   // Main search function
-  const search = useCallback(async (searchQuery: string, searchFilters?: SearchFilters) => {
-    if (!searchQuery.trim()) {
-      setResults({ users: [], picks: [], sellers: [] })
-      setQuery('')
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      setError(null)
-      setQuery(searchQuery)
-
-      if (searchFilters) {
-        setFilters(searchFilters)
+  const search = useCallback(
+    async (searchQuery: string, searchFilters?: SearchFilters) => {
+      if (!searchQuery.trim()) {
+        setResults({ users: [], picks: [], sellers: [] })
+        setQuery('')
+        return
       }
 
-      const currentFilters = searchFilters || filters
+      try {
+        setIsLoading(true)
+        setError(null)
+        setQuery(searchQuery)
 
-      let users: Profile[] = []
-      let picks: any[] = []
-      let sellers: any[] = []
+        if (searchFilters) {
+          setFilters(searchFilters)
+        }
 
-      // Search based on type filter
-      if (currentFilters.type === 'all' || currentFilters.type === 'users') {
-        users = await searchUsers(searchQuery)
+        const currentFilters = searchFilters || filters
+
+        let users: Profile[] = []
+        let picks: any[] = []
+        let sellers: any[] = []
+
+        // Search based on type filter
+        if (currentFilters.type === 'all' || currentFilters.type === 'users') {
+          users = await searchUsers(searchQuery)
+        }
+
+        if (currentFilters.type === 'all' || currentFilters.type === 'picks') {
+          picks = await searchPicks(searchQuery)
+        }
+
+        if (currentFilters.type === 'all' || currentFilters.type === 'sellers') {
+          sellers = await searchSellers(searchQuery)
+        }
+
+        setResults({ users, picks, sellers })
+        saveRecentSearch(searchQuery)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Search failed')
+      } finally {
+        setIsLoading(false)
       }
-
-      if (currentFilters.type === 'all' || currentFilters.type === 'picks') {
-        picks = await searchPicks(searchQuery)
-      }
-
-      if (currentFilters.type === 'all' || currentFilters.type === 'sellers') {
-        sellers = await searchSellers(searchQuery)
-      }
-
-      setResults({ users, picks, sellers })
-      saveRecentSearch(searchQuery)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filters, searchUsers, searchPicks, searchSellers, saveRecentSearch])
+    },
+    [filters, searchUsers, searchPicks, searchSellers, saveRecentSearch]
+  )
 
   // Clear search results
   const clearSearch = useCallback(() => {
@@ -257,13 +272,16 @@ export function useSearch(): UseSearchReturn {
   }, [])
 
   // Set filters
-  const setFiltersWrapper = useCallback((newFilters: SearchFilters) => {
-    setFilters(newFilters)
-    // Re-search with new filters if there's an active query
-    if (query) {
-      search(query, newFilters)
-    }
-  }, [query, search])
+  const setFiltersWrapper = useCallback(
+    (newFilters: SearchFilters) => {
+      setFilters(newFilters)
+      // Re-search with new filters if there's an active query
+      if (query) {
+        search(query, newFilters)
+      }
+    },
+    [query, search]
+  )
 
   // Clear recent searches
   const clearRecentSearches = useCallback(() => {
@@ -294,6 +312,6 @@ export function useSearch(): UseSearchReturn {
     clearSearch,
     setFilters: setFiltersWrapper,
     recentSearches,
-    clearRecentSearches
+    clearRecentSearches,
   }
 }

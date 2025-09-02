@@ -7,10 +7,7 @@ export async function POST(request: NextRequest) {
     const { username } = await request.json()
 
     if (!username) {
-      return NextResponse.json(
-        { error: 'Username is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Username is required' }, { status: 400 })
     }
 
     // Validate username format
@@ -59,20 +56,14 @@ export async function POST(request: NextRequest) {
     if (error && error.code !== 'PGRST116') {
       // PGRST116 is "not found" which means username is available
       console.error('Database error:', error)
-      return NextResponse.json(
-        { error: 'Failed to check username availability' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to check username availability' }, { status: 500 })
     }
 
     const available = !data
-    
+
     return NextResponse.json({ available })
   } catch (error) {
     console.error('Username check error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

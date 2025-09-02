@@ -1,8 +1,8 @@
 // Main exports for betting system
-export * from './types';
-export * from './odds-utils';
-export * from './bet-mapping';
-export * from './betting-functions';
+export * from './types'
+export * from './odds-utils'
+export * from './bet-mapping'
+export * from './betting-functions'
 
 // Re-export main functions for easy import
 export {
@@ -10,8 +10,8 @@ export {
   insertParlayBet,
   calculateParlayPayoutForUI as calculateParlayPayout,
   checkParlayStatus,
-  submitBet
-} from './betting-functions';
+  submitBet,
+} from './betting-functions'
 
 export {
   americanToDecimal,
@@ -19,5 +19,5 @@ export {
   calculateParlayOdds,
   calculateSingleBetPayout,
   calculateParlayPayout as calculateParlayPayoutInternal,
-  calculateProfit
-} from './odds-utils';
+  calculateProfit,
+} from './odds-utils'

@@ -24,16 +24,16 @@ const mockSellers: SellerSearchResult[] = [
     profilePictureUrl: null,
     isVerifiedSeller: true,
     subscriberCount: 247,
-    performanceRoi: 12.5
+    performanceRoi: 12.5,
   },
   {
-    id: '2', 
+    id: '2',
     username: 'profitpicks',
     displayName: 'Profit Picks',
     profilePictureUrl: null,
     isVerifiedSeller: true,
     subscriberCount: 189,
-    performanceRoi: 8.3
+    performanceRoi: 8.3,
   },
   {
     id: '3',
@@ -42,7 +42,7 @@ const mockSellers: SellerSearchResult[] = [
     profilePictureUrl: null,
     isVerifiedSeller: false,
     subscriberCount: 95,
-    performanceRoi: 15.7
+    performanceRoi: 15.7,
   },
   {
     id: '4',
@@ -51,7 +51,7 @@ const mockSellers: SellerSearchResult[] = [
     profilePictureUrl: null,
     isVerifiedSeller: true,
     subscriberCount: 312,
-    performanceRoi: 6.9
+    performanceRoi: 6.9,
   },
   {
     id: '5',
@@ -60,12 +60,12 @@ const mockSellers: SellerSearchResult[] = [
     profilePictureUrl: null,
     isVerifiedSeller: false,
     subscriberCount: 67,
-    performanceRoi: 22.1
-  }
+    performanceRoi: 22.1,
+  },
 ]
 
 export function searchSellers(query: string): Promise<SellerSearchResult[]> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     // Simulate API delay
     setTimeout(() => {
       if (!query.trim()) {
@@ -74,9 +74,10 @@ export function searchSellers(query: string): Promise<SellerSearchResult[]> {
       }
 
       const filtered = mockSellers
-        .filter(seller => 
-          seller.username.toLowerCase().includes(query.toLowerCase()) ||
-          seller.displayName?.toLowerCase().includes(query.toLowerCase())
+        .filter(
+          seller =>
+            seller.username.toLowerCase().includes(query.toLowerCase()) ||
+            seller.displayName?.toLowerCase().includes(query.toLowerCase())
         )
         .slice(0, 5) // Max 5 results as per spec
 

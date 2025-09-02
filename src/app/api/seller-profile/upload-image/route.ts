@@ -5,14 +5,17 @@ import { cookies } from 'next/headers'
 export async function POST(request: NextRequest) {
   try {
     console.log('Upload image endpoint called')
-    
+
     const cookieStore = await cookies()
     const supabase = await createServerClient()
-    
+
     // Get the current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     console.log('Auth check:', { user: user?.id, authError })
-    
+
     if (authError || !user) {
       console.error('Authentication failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string // 'profile' or 'banner'
-    
+
     console.log('Form data received:', { fileName: file?.name, fileSize: file?.size, type })
 
     if (!file || !file.name) {
@@ -29,7 +32,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!type || !['profile', 'banner'].includes(type)) {
-      return NextResponse.json({ error: 'Invalid image type. Must be "profile" or "banner"' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid image type. Must be "profile" or "banner"' },
+        { status: 400 }
+      )
     }
 
     // Validate file size (max 5MB)
@@ -41,24 +47,27 @@ export async function POST(request: NextRequest) {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed' },
+        { status: 400 }
+      )
     }
 
     // Generate unique filename with proper extension
     const fileExt = file.name.split('.').pop() || 'jpg'
     const timestamp = Date.now()
     const fileName = `${user.id}_${type}_${timestamp}.${fileExt}`
-    
+
     console.log('Attempting upload:', { fileName, bucket: 'seller-profiles' })
 
     // For now, let's use a placeholder approach until storage is properly configured
     // In a real app, you would upload to your storage service here
-    
+
     // Create a data URL for the image (this works for demo purposes)
     const fileBuffer = await file.arrayBuffer()
     const base64String = Buffer.from(fileBuffer).toString('base64')
     const dataUrl = `data:${file.type};base64,${base64String}`
-    
+
     // For production, you would upload to Supabase storage like this:
     /*
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -80,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const imageUrl = publicUrlData.publicUrl
     */
-    
+
     const imageUrl = dataUrl
     console.log('Using data URL for image preview')
 
@@ -89,10 +98,9 @@ export async function POST(request: NextRequest) {
       data: {
         url: imageUrl,
         path: fileName,
-        type
-      }
+        type,
+      },
     })
-
   } catch (error) {
     console.error('Error in POST /api/seller-profile/upload-image:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

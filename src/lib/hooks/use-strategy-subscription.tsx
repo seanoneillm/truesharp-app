@@ -27,8 +27,10 @@ export function useStrategySubscription() {
   const fetchSubscriptions = async () => {
     try {
       setIsLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         setSubscriptions([])
         return
@@ -55,12 +57,17 @@ export function useStrategySubscription() {
   }
 
   // Subscribe to a strategy
-  const subscribeToSeller = async (strategyId: string, frequency: 'weekly' | 'monthly' | 'yearly' = 'monthly') => {
+  const subscribeToSeller = async (
+    strategyId: string,
+    frequency: 'weekly' | 'monthly' | 'yearly' = 'monthly'
+  ) => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         throw new Error('User not authenticated')
       }
@@ -68,13 +75,13 @@ export function useStrategySubscription() {
       // Here you would integrate with Stripe to create a subscription
       // For now, we'll simulate the subscription process
       console.log(`Subscribing to strategy ${strategyId} with frequency ${frequency}`)
-      
+
       // Simulate API call to create subscription
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // Refresh subscriptions after successful subscription
       await fetchSubscriptions()
-      
+
       return { success: true }
     } catch (err: any) {
       setError(err.message)
@@ -86,18 +93,14 @@ export function useStrategySubscription() {
 
   // Check if user is subscribed to a specific strategy
   const isSubscribedToStrategy = (strategyId: string): boolean => {
-    return subscriptions.some(sub => 
-      sub.status === 'active' && 
-      sub.strategy_id === strategyId
-    )
+    return subscriptions.some(sub => sub.status === 'active' && sub.strategy_id === strategyId)
   }
 
   // Get subscription for a specific strategy
   const getSubscriptionToStrategy = (strategyId: string): Subscription | null => {
-    return subscriptions.find(sub => 
-      sub.status === 'active' && 
-      sub.strategy_id === strategyId
-    ) || null
+    return (
+      subscriptions.find(sub => sub.status === 'active' && sub.strategy_id === strategyId) || null
+    )
   }
 
   // Cancel a subscription
@@ -108,7 +111,7 @@ export function useStrategySubscription() {
 
       // Here you would call Stripe to cancel the subscription
       console.log(`Cancelling subscription ${subscriptionId}`)
-      
+
       // Update local state
       const { error } = await supabase
         .from('subscriptions')
@@ -121,7 +124,7 @@ export function useStrategySubscription() {
 
       // Refresh subscriptions
       await fetchSubscriptions()
-      
+
       return { success: true }
     } catch (err: any) {
       setError(err.message)
@@ -144,6 +147,6 @@ export function useStrategySubscription() {
     isSubscribedToStrategy,
     getSubscriptionToStrategy,
     cancelSubscription,
-    fetchSubscriptions
+    fetchSubscriptions,
   }
 }

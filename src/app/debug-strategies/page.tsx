@@ -50,26 +50,23 @@ export default function DebugStrategies() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Debug Strategies</h1>
-      
+      <h1 className="mb-4 text-2xl font-bold">Debug Strategies</h1>
+
       <div className="mb-4">
         <h2 className="text-lg font-semibold">User Info:</h2>
-        <pre className="bg-gray-100 p-2 rounded text-sm">
+        <pre className="rounded bg-gray-100 p-2 text-sm">
           {JSON.stringify({ user, loading }, null, 2)}
         </pre>
       </div>
 
-      <button 
-        onClick={runTests}
-        className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
-      >
+      <button onClick={runTests} className="mb-4 rounded bg-blue-500 px-4 py-2 text-white">
         Run Supabase Tests
       </button>
 
       {testResults && (
         <div>
           <h2 className="text-lg font-semibold">Test Results:</h2>
-          <pre className="bg-gray-100 p-2 rounded text-sm overflow-auto max-h-96">
+          <pre className="max-h-96 overflow-auto rounded bg-gray-100 p-2 text-sm">
             {JSON.stringify(testResults, null, 2)}
           </pre>
         </div>

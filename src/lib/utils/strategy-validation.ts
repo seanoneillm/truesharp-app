@@ -16,25 +16,37 @@ export function validateStrategyFilters(filters: FilterOptions): StrategyValidat
   }
 
   // Rule 2: Odds/spread/total/stake ranges must be cleared
-  if (filters.oddsRange && (filters.oddsRange.min !== undefined || filters.oddsRange.max !== undefined)) {
+  if (
+    filters.oddsRange &&
+    (filters.oddsRange.min !== undefined || filters.oddsRange.max !== undefined)
+  ) {
     if (filters.oddsRange.min !== 0 || filters.oddsRange.max !== 0) {
       errors.push('Odds ranges must be cleared for strategy creation')
     }
   }
 
-  if (filters.stakeRange && (filters.stakeRange.min !== undefined || filters.stakeRange.max !== undefined)) {
+  if (
+    filters.stakeRange &&
+    (filters.stakeRange.min !== undefined || filters.stakeRange.max !== undefined)
+  ) {
     if (filters.stakeRange.min !== 0 || filters.stakeRange.max !== 0) {
       errors.push('Stake ranges must be cleared for strategy creation')
     }
   }
 
-  if (filters.spreadRange && (filters.spreadRange.min !== undefined || filters.spreadRange.max !== undefined)) {
+  if (
+    filters.spreadRange &&
+    (filters.spreadRange.min !== undefined || filters.spreadRange.max !== undefined)
+  ) {
     if (filters.spreadRange.min !== 0 || filters.spreadRange.max !== 0) {
       errors.push('Spread ranges must be cleared for strategy creation')
     }
   }
 
-  if (filters.totalRange && (filters.totalRange.min !== undefined || filters.totalRange.max !== undefined)) {
+  if (
+    filters.totalRange &&
+    (filters.totalRange.min !== undefined || filters.totalRange.max !== undefined)
+  ) {
     if (filters.totalRange.min !== 0 || filters.totalRange.max !== 0) {
       errors.push('Total ranges must be cleared for strategy creation')
     }
@@ -48,7 +60,7 @@ export function validateStrategyFilters(filters: FilterOptions): StrategyValidat
   if (!hasAllLeagues && specificLeagues.length !== 1) {
     errors.push('Strategy must either include all leagues or exactly one specific league')
   }
-  
+
   if (hasAllLeagues && specificLeagues.length > 0) {
     errors.push('Strategy cannot have both "All" and specific leagues selected')
   }
@@ -61,7 +73,7 @@ export function validateStrategyFilters(filters: FilterOptions): StrategyValidat
   if (!hasAllBetTypes && specificBetTypes.length !== 1) {
     errors.push('Strategy must either include all bet types or exactly one specific bet type')
   }
-  
+
   if (hasAllBetTypes && specificBetTypes.length > 0) {
     errors.push('Strategy cannot have both "All" and specific bet types selected')
   }
@@ -78,13 +90,13 @@ export function validateStrategyFilters(filters: FilterOptions): StrategyValidat
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
 export function getFilterValidationMessage(filters: FilterOptions): string {
   const validation = validateStrategyFilters(filters)
-  
+
   if (validation.isValid) {
     return 'Filters are valid for strategy creation'
   }

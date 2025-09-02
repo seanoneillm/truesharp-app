@@ -1,5 +1,5 @@
 // src/app/picks/page.tsx
-"use client"
+'use client'
 
 import { PickCard } from '@/components/picks/pick-card'
 import { PickFilters } from '@/components/picks/pick-filters'
@@ -18,26 +18,24 @@ export default function PicksPage() {
     { id: 'all', label: 'All Picks', icon: Target, description: 'All available picks' },
     { id: 'live', label: 'Live', icon: Clock, description: 'Games starting soon' },
     { id: 'hot', label: 'Hot', icon: TrendingUp, description: 'Popular picks' },
-    { id: 'won', label: 'Recent Wins', icon: Trophy, description: 'Latest winning picks' }
+    { id: 'won', label: 'Recent Wins', icon: Trophy, description: 'Latest winning picks' },
   ]
 
   // Get all picks with user data
   const picksWithUsers = mockData.picks.map(pick => {
     const author = mockData.users.find(user => user.id === pick.userId)!
     const seller = mockData.sellers.find(seller => seller.userId === pick.userId)
-    return seller
-      ? { ...pick, author, seller }
-      : { ...pick, author }
+    return seller ? { ...pick, author, seller } : { ...pick, author }
   })
 
   // Filter picks
   const filteredPicks = picksWithUsers.filter(pick => {
     // Sport filter
     if (selectedSport !== 'all' && pick.sport !== selectedSport) return false
-    
+
     // Tier filter
     if (selectedTier !== 'all' && pick.tier !== selectedTier) return false
-    
+
     // Status filter
     switch (activeFilter) {
       case 'live':
@@ -55,13 +53,13 @@ export default function PicksPage() {
   })
 
   // Sort picks by posted date (newest first)
-  const sortedPicks = filteredPicks.sort((a, b) => 
-    new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
+  const sortedPicks = filteredPicks.sort(
+    (a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
   )
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -69,11 +67,8 @@ export default function PicksPage() {
               <h1 className="text-2xl font-bold text-gray-900">Picks Feed</h1>
               <p className="text-gray-600">Latest picks from verified bettors</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
               Filters
             </Button>
           </div>
@@ -81,18 +76,18 @@ export default function PicksPage() {
 
         {/* Filter Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-            {filterOptions.map((filter) => (
+          <div className="flex w-fit space-x-1 rounded-lg bg-gray-100 p-1">
+            {filterOptions.map(filter => (
               <button
                 key={filter.id}
                 onClick={() => setActiveFilter(filter.id)}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                   activeFilter === filter.id
                     ? 'bg-white text-gray-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <filter.icon className="h-4 w-4 mr-2" />
+                <filter.icon className="mr-2 h-4 w-4" />
                 {filter.label}
               </button>
             ))}
@@ -121,27 +116,23 @@ export default function PicksPage() {
 
         {/* Picks Grid */}
         {sortedPicks.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="max-w-md mx-auto">
-              <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="py-12 text-center">
+            <div className="mx-auto max-w-md">
+              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
                 <Target className="h-12 w-12 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No picks found</h3>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">No picks found</h3>
               <p className="text-gray-500">
-                {activeFilter === 'live' 
-                  ? "No live games starting soon."
-                  : "Try adjusting your filters to see more picks."
-                }
+                {activeFilter === 'live'
+                  ? 'No live games starting soon.'
+                  : 'Try adjusting your filters to see more picks.'}
               </p>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {sortedPicks.map((pick) => (
-              <PickCard 
-                key={pick.id} 
-                pick={pick}
-              />
+            {sortedPicks.map(pick => (
+              <PickCard key={pick.id} pick={pick} />
             ))}
           </div>
         )}

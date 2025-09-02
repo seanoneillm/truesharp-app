@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
         email: email,
         password: password,
         email_confirm: true,
-        user_metadata: {}
+        user_metadata: {},
       })
 
       console.log('Admin createUser result:', { userData, userError })
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
           success: false,
           method: 'admin_createUser',
           error: userError.message,
-          details: userError
+          details: userError,
         })
       }
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             is_verified_seller: false,
             pro: 'no',
             profile_picture_url: null,
-            public_profile: false
+            public_profile: false,
           })
           .select()
 
@@ -57,30 +57,25 @@ export async function POST(request: NextRequest) {
           method: 'admin_createUser_with_manual_profile',
           user: userData.user,
           profile: profileData,
-          profileError: profileError?.message
+          profileError: profileError?.message,
         })
       }
-
     } catch (adminError) {
       console.error('Admin createUser failed:', adminError)
       return NextResponse.json({
         success: false,
         method: 'admin_createUser',
         error: 'Admin createUser failed',
-        details: adminError
+        details: adminError,
       })
     }
 
     return NextResponse.json({
       success: false,
-      error: 'No user created'
+      error: 'No user created',
     })
-
   } catch (error) {
     console.error('Test signup error:', error)
-    return NextResponse.json(
-      { error: 'Test signup failed', details: error },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Test signup failed', details: error }, { status: 500 })
   }
 }

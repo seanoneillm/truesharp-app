@@ -5,15 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      email, 
-      password, 
-      confirmPassword,
-      username,
-      displayName,
-      termsAccepted,
-      ageVerified 
-    } = await request.json()
+    const { email, password, confirmPassword, username, displayName, termsAccepted, ageVerified } =
+      await request.json()
 
     // Validate required fields
     if (!email || !password || !username) {
@@ -25,10 +18,7 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
     // Validate password strength
@@ -41,26 +31,23 @@ export async function POST(request: NextRequest) {
 
     // Validate password confirmation
     if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: 'Passwords do not match' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
     }
 
     // Validate username format
     if (!isValidUsername(username)) {
       return NextResponse.json(
-        { error: 'Username must be 3-20 characters and contain only letters, numbers, and underscores' },
+        {
+          error:
+            'Username must be 3-20 characters and contain only letters, numbers, and underscores',
+        },
         { status: 400 }
       )
     }
 
     // Validate terms acceptance
     if (!termsAccepted) {
-      return NextResponse.json(
-        { error: 'You must accept the terms of service' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'You must accept the terms of service' }, { status: 400 })
     }
 
     // Validate age verification
@@ -83,17 +70,11 @@ export async function POST(request: NextRequest) {
 
     if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
       console.error('Username check error:', usernameCheckError)
-      return NextResponse.json(
-        { error: 'Database error checking username' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Database error checking username' }, { status: 500 })
     }
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Username is already taken' },
-        { status: 409 }
-      )
+      return NextResponse.json({ error: 'Username is already taken' }, { status: 409 })
     }
 
     // Try with normal anon client signup first
@@ -103,26 +84,26 @@ export async function POST(request: NextRequest) {
     )
 
     console.log('Attempting normal signup with anon client...')
-    
+
     // Try normal signup first
     const { data: authData, error: authError } = await anonSupabase.auth.signUp({
       email: email,
       password: password,
       options: {
         data: {
-          username: username
+          username: username,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
-      }
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      },
     })
-    
+
     console.log('Normal signup response:', { data: authData, error: authError })
 
     if (authError) {
       console.error('Signup auth error:', authError)
-      
+
       let errorMessage = 'Signup failed'
-      
+
       switch (authError.message) {
         case 'User already registered':
           errorMessage = 'An account with this email already exists'
@@ -140,52 +121,44 @@ export async function POST(request: NextRequest) {
           errorMessage = authError.message
       }
 
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: errorMessage }, { status: 400 })
     }
 
     if (!authData.user) {
-      return NextResponse.json(
-        { error: 'Signup failed - no user created' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Signup failed - no user created' }, { status: 400 })
     }
 
     // Create profile directly using service role (no trigger dependency)
     console.log('Creating profile for user:', authData.user.id)
-    
+
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    
-    const { error: profileError } = await serviceSupabase
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
-        username: username.toLowerCase(),
-        email: email
-        // Let other fields use their defaults
-      })
+
+    const { error: profileError } = await serviceSupabase.from('profiles').insert({
+      id: authData.user.id,
+      username: username.toLowerCase(),
+      email: email,
+      // Let other fields use their defaults
+    })
 
     if (profileError) {
       console.error('Profile creation error:', profileError)
-      
+
       // Clean up the auth user if profile creation fails
       try {
         await serviceSupabase.auth.admin.deleteUser(authData.user.id)
       } catch (cleanupError) {
         console.error('Cleanup error:', cleanupError)
       }
-      
+
       return NextResponse.json(
         { error: 'Database error creating user profile: ' + profileError.message },
         { status: 500 }
       )
     }
-    
+
     console.log('✅ Profile created successfully')
 
     // Signup event logging removed for now - user_events table doesn't exist yet
@@ -197,24 +170,20 @@ export async function POST(request: NextRequest) {
         email: authData.user.email,
         username: username.toLowerCase(),
         displayName: displayName || username,
-        emailConfirmed: authData.user.email_confirmed_at ? true : false
+        emailConfirmed: authData.user.email_confirmed_at ? true : false,
       },
-      message: authData.user.email_confirmed_at 
-        ? 'Account created successfully' 
-        : 'Account created! Please check your email to verify your account.'
+      message: authData.user.email_confirmed_at
+        ? 'Account created successfully'
+        : 'Account created! Please check your email to verify your account.',
     }
 
-    return NextResponse.json(responseData, { 
-      status: 201
+    return NextResponse.json(responseData, {
+      status: 201,
     })
-
   } catch (error) {
     console.error('Signup API error:', error)
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

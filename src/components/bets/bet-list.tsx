@@ -34,7 +34,7 @@ const mockBets: Bet[] = [
     sportsbook: 'DraftKings',
     betType: 'spread',
     actualPayout: '+$91',
-    isPublic: true
+    isPublic: true,
   },
   {
     id: '2',
@@ -47,7 +47,7 @@ const mockBets: Bet[] = [
     game: 'KC @ BUF',
     sportsbook: 'FanDuel',
     betType: 'moneyline',
-    potentialPayout: '+$75'
+    potentialPayout: '+$75',
   },
   {
     id: '3',
@@ -61,7 +61,7 @@ const mockBets: Bet[] = [
     game: 'NYY @ BOS',
     sportsbook: 'BetMGM',
     betType: 'total',
-    actualPayout: '-$75'
+    actualPayout: '-$75',
   },
   {
     id: '4',
@@ -76,8 +76,8 @@ const mockBets: Bet[] = [
     sportsbook: 'Caesars',
     betType: 'spread',
     actualPayout: '+$72',
-    isPublic: true
-  }
+    isPublic: true,
+  },
 ]
 
 interface BetListProps {
@@ -91,11 +91,11 @@ interface BetListProps {
 
 export default function BetList({
   bets = mockBets,
-  title = "All Bets",
+  title = 'All Bets',
   showFilters = true,
   showViewToggle = true,
   defaultView = 'grid',
-  itemsPerPage = 12
+  itemsPerPage = 12,
 }: BetListProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(defaultView)
   const [sortBy, setSortBy] = useState('date')
@@ -132,7 +132,7 @@ export default function BetList({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-medium text-gray-900">{title}</h2>
           <p className="text-sm text-gray-600">
@@ -145,8 +145,8 @@ export default function BetList({
               {/* Status Filter */}
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1"
+                onChange={e => setFilterStatus(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1 text-sm"
               >
                 <option value="all">All Status</option>
                 <option value="won">Won</option>
@@ -158,20 +158,22 @@ export default function BetList({
               {/* Sport Filter */}
               <select
                 value={filterSport}
-                onChange={(e) => setFilterSport(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1"
+                onChange={e => setFilterSport(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1 text-sm"
               >
                 <option value="all">All Sports</option>
                 {uniqueSports.map(sport => (
-                  <option key={sport} value={sport}>{sport}</option>
+                  <option key={sport} value={sport}>
+                    {sport}
+                  </option>
                 ))}
               </select>
 
               {/* Sort */}
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1"
+                onChange={e => setSortBy(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1 text-sm"
               >
                 <option value="date">Sort by Date</option>
                 <option value="profit">Sort by Profit</option>
@@ -181,7 +183,7 @@ export default function BetList({
           )}
 
           {showViewToggle && (
-            <div className="flex items-center border border-gray-300 rounded-md">
+            <div className="flex items-center rounded-md border border-gray-300">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
@@ -201,9 +203,9 @@ export default function BetList({
 
       {/* Bets Display */}
       {paginatedBets.length === 0 ? (
-        <div className="text-center py-12">
-          <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No bets found</h3>
+        <div className="py-12 text-center">
+          <Filter className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+          <h3 className="mb-2 text-lg font-medium text-gray-900">No bets found</h3>
           <p className="text-gray-600">
             Try adjusting your filters or check back later for new bets.
           </p>
@@ -211,8 +213,8 @@ export default function BetList({
       ) : (
         <>
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedBets.map((bet) => (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedBets.map(bet => (
                 <BetCard
                   key={bet.id}
                   {...bet}
@@ -224,7 +226,7 @@ export default function BetList({
             </div>
           ) : (
             <div className="space-y-4">
-              {paginatedBets.map((bet) => (
+              {paginatedBets.map(bet => (
                 <div key={bet.id} className="w-full">
                   <BetCard
                     {...bet}
@@ -241,35 +243,37 @@ export default function BetList({
           {totalPages > 1 && (
             <div className="mt-8 flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredBets.length)} of {filteredBets.length} results
+                Showing {startIndex + 1} to{' '}
+                {Math.min(startIndex + itemsPerPage, filteredBets.length)} of {filteredBets.length}{' '}
+                results
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
-                
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    className={`rounded-md px-3 py-2 text-sm font-medium ${
                       currentPage === page
-                        ? 'text-blue-600 bg-blue-50 border border-blue-200'
-                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                        ? 'border border-blue-200 bg-blue-50 text-blue-600'
+                        : 'border border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                     }`}
                   >
                     {page}
                   </button>
                 ))}
-                
+
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>

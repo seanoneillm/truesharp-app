@@ -1,14 +1,18 @@
 import { createServerClient } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
-import { calculateLeaderboardScore, isStrategyEligible, type StrategyLeaderboardData } from '@/lib/marketplace/ranking'
+import {
+  calculateLeaderboardScore,
+  isStrategyEligible,
+  type StrategyLeaderboardData,
+} from '@/lib/marketplace/ranking'
 
 export async function POST() {
   try {
     const supabase = await createServerClient()
-    
+
     // First, ensure the leaderboard_score column exists
-    console.log('Adding leaderboard_score column if it doesn\'t exist...')
-    
+    console.log("Adding leaderboard_score column if it doesn't exist...")
+
     try {
       const { error: columnError } = await supabase.rpc('exec_sql', {
         sql_text: `
@@ -17,7 +21,7 @@ export async function POST() {
           
           CREATE INDEX IF NOT EXISTS idx_strategy_leaderboard_score_desc 
           ON public.strategy_leaderboard USING btree (leaderboard_score DESC);
-        `
+        `,
       })
 
       if (columnError) {
@@ -26,7 +30,7 @@ export async function POST() {
     } catch (err) {
       console.log('Could not execute SQL directly, continuing...')
     }
-    
+
     // Get existing leaderboard data
     const { data: leaderboardData, error: leaderboardError } = await supabase
       .from('strategy_leaderboard')
@@ -78,7 +82,7 @@ export async function POST() {
           subscription_price_yearly: strategy.subscription_price_yearly,
           created_at: strategy.created_at || new Date().toISOString(),
           updated_at: strategy.updated_at || new Date().toISOString(),
-          last_calculated_at: strategy.last_calculated_at || new Date().toISOString()
+          last_calculated_at: strategy.last_calculated_at || new Date().toISOString(),
         })
 
         // Check eligibility
@@ -110,7 +114,7 @@ export async function POST() {
           subscription_price_yearly: strategy.subscription_price_yearly,
           created_at: strategy.created_at || new Date().toISOString(),
           updated_at: strategy.updated_at || new Date().toISOString(),
-          last_calculated_at: strategy.last_calculated_at || new Date().toISOString()
+          last_calculated_at: strategy.last_calculated_at || new Date().toISOString(),
         })
 
         // Update the strategy with the calculated score
@@ -119,7 +123,7 @@ export async function POST() {
           .update({
             leaderboard_score: score,
             is_eligible: eligible,
-            last_calculated_at: new Date().toISOString()
+            last_calculated_at: new Date().toISOString(),
           })
           .eq('id', strategy.id)
 
@@ -132,7 +136,6 @@ export async function POST() {
             console.log(`Updated ${updatedCount} strategies...`)
           }
         }
-
       } catch (error) {
         console.error(`Error processing strategy ${strategy.strategy_name}:`, error)
         errorCount++
@@ -148,7 +151,7 @@ export async function POST() {
 
     if (!fetchScoredError && scoredStrategies) {
       const eligibleStrategies = scoredStrategies.filter(s => s.is_eligible)
-      
+
       for (let i = 0; i < eligibleStrategies.length; i++) {
         const { error: rankError } = await supabase
           .from('strategy_leaderboard')
@@ -168,16 +171,18 @@ export async function POST() {
         totalStrategies: leaderboardData.length,
         updatedStrategies: updatedCount,
         errorCount: errorCount,
-        eligibleStrategies: scoredStrategies?.filter(s => s.is_eligible).length || 0
-      }
+        eligibleStrategies: scoredStrategies?.filter(s => s.is_eligible).length || 0,
+      },
     })
-
   } catch (error) {
     console.error('Leaderboard population error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to populate leaderboard',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Failed to populate leaderboard',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -185,7 +190,7 @@ export async function POST() {
 export async function GET() {
   try {
     const supabase = createClient()
-    
+
     const { data: leaderboardStats, error } = await supabase
       .from('strategy_leaderboard')
       .select('id, is_eligible, verification_status, overall_rank, last_calculated_at')
@@ -198,16 +203,16 @@ export async function GET() {
     const stats = {
       totalEntries: leaderboardStats?.length || 0,
       eligibleEntries: leaderboardStats?.filter(s => s.is_eligible).length || 0,
-      verifiedEntries: leaderboardStats?.filter(s => s.verification_status === 'verified').length || 0,
-      lastCalculated: leaderboardStats?.[0]?.last_calculated_at || null
+      verifiedEntries:
+        leaderboardStats?.filter(s => s.verification_status === 'verified').length || 0,
+      lastCalculated: leaderboardStats?.[0]?.last_calculated_at || null,
     }
 
     return NextResponse.json({
       success: true,
       stats,
-      topStrategies: leaderboardStats?.filter(s => s.is_eligible).slice(0, 10) || []
+      topStrategies: leaderboardStats?.filter(s => s.is_eligible).slice(0, 10) || [],
     })
-
   } catch (error) {
     console.error('Leaderboard status error:', error)
     return NextResponse.json({ error: 'Failed to get leaderboard status' }, { status: 500 })

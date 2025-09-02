@@ -5,7 +5,20 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
-import { BarChart3, TrendingUp, TrendingDown, Target, Trophy, Activity, PieChart, LineChart, Calendar, Star, Award, Zap } from 'lucide-react'
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Trophy,
+  Activity,
+  PieChart,
+  LineChart,
+  Calendar,
+  Star,
+  Award,
+  Zap,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface StrategyAnalytics {
@@ -32,11 +45,14 @@ interface PerformanceMetrics {
   totalWinnings: number
   bestPerformingStrategy: StrategyAnalytics | null
   worstPerformingStrategy: StrategyAnalytics | null
-  sportBreakdown: Record<string, {
-    bets: number
-    roi: number
-    win_rate: number
-  }>
+  sportBreakdown: Record<
+    string,
+    {
+      bets: number
+      roi: number
+      win_rate: number
+    }
+  >
   monthlyTrends: Array<{
     month: string
     bets: number
@@ -56,7 +72,7 @@ export function AnalyticsTab() {
     bestPerformingStrategy: null,
     worstPerformingStrategy: null,
     sportBreakdown: {},
-    monthlyTrends: []
+    monthlyTrends: [],
   })
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<'roi' | 'win_rate' | 'total_bets' | 'subscribers'>('roi')
@@ -71,7 +87,8 @@ export function AnalyticsTab() {
       // Get analytics data from strategy_leaderboard
       const { data: leaderboardData, error: leaderboardError } = await supabase
         .from('strategy_leaderboard')
-        .select(`
+        .select(
+          `
           strategy_id,
           strategy_name,
           total_bets,
@@ -85,7 +102,8 @@ export function AnalyticsTab() {
           verification_status,
           start_date,
           last_calculated_at
-        `)
+        `
+        )
         .eq('user_id', user.id)
         .order('roi_percentage', { ascending: false })
 
@@ -97,13 +115,15 @@ export function AnalyticsTab() {
       // Get subscriber counts for each strategy
       const { data: subscriptionCounts, error: subscriptionError } = await supabase
         .from('subscriptions')
-        .select(`
+        .select(
+          `
           strategy_id,
           status,
           strategies!inner (
             user_id
           )
-        `)
+        `
+        )
         .eq('strategies.user_id', user.id)
         .eq('status', 'active')
 
@@ -117,7 +137,7 @@ export function AnalyticsTab() {
       const processedStrategies: StrategyAnalytics[] = (leaderboardData || []).map(strategy => ({
         ...strategy,
         win_rate: strategy.win_rate * 100, // Convert to percentage
-        subscriber_count: subscriberCountMap.get(strategy.strategy_id) || 0
+        subscriber_count: subscriberCountMap.get(strategy.strategy_id) || 0,
       }))
 
       setStrategies(processedStrategies)
@@ -125,22 +145,31 @@ export function AnalyticsTab() {
       // Calculate overall metrics
       const totalBets = processedStrategies.reduce((sum, s) => sum + s.total_bets, 0)
       const totalWinningBets = processedStrategies.reduce((sum, s) => sum + s.winning_bets, 0)
-      const weightedROI = processedStrategies.reduce((sum, s) => sum + (s.roi_percentage * s.total_bets), 0)
-      
+      const weightedROI = processedStrategies.reduce(
+        (sum, s) => sum + s.roi_percentage * s.total_bets,
+        0
+      )
+
       const overallROI = totalBets > 0 ? weightedROI / totalBets : 0
       const overallWinRate = totalBets > 0 ? (totalWinningBets / totalBets) * 100 : 0
 
       // Find best and worst performing strategies
-      const monetizedStrategies = processedStrategies.filter(s => s.is_monetized && s.total_bets >= 10)
-      const bestPerforming = monetizedStrategies.length > 0 ? 
-        monetizedStrategies.reduce((best, current) => 
-          current.roi_percentage > best.roi_percentage ? current : best
-        ) : null
+      const monetizedStrategies = processedStrategies.filter(
+        s => s.is_monetized && s.total_bets >= 10
+      )
+      const bestPerforming =
+        monetizedStrategies.length > 0
+          ? monetizedStrategies.reduce((best, current) =>
+              current.roi_percentage > best.roi_percentage ? current : best
+            )
+          : null
 
-      const worstPerforming = monetizedStrategies.length > 1 ?
-        monetizedStrategies.reduce((worst, current) =>
-          current.roi_percentage < worst.roi_percentage ? current : worst
-        ) : null
+      const worstPerforming =
+        monetizedStrategies.length > 1
+          ? monetizedStrategies.reduce((worst, current) =>
+              current.roi_percentage < worst.roi_percentage ? current : worst
+            )
+          : null
 
       // Calculate sport breakdown
       const sportBreakdown: Record<string, { bets: number; roi: number; win_rate: number }> = {}
@@ -170,12 +199,12 @@ export function AnalyticsTab() {
         const date = new Date()
         date.setMonth(date.getMonth() - (5 - i))
         const variation = (Math.random() - 0.5) * 10 + 1
-        
+
         return {
           month: date.toLocaleDateString('en-US', { month: 'short' }),
           bets: Math.floor((totalBets / 6) * variation),
           roi: overallROI * variation,
-          win_rate: overallWinRate * (0.8 + Math.random() * 0.4)
+          win_rate: overallWinRate * (0.8 + Math.random() * 0.4),
         }
       })
 
@@ -187,9 +216,8 @@ export function AnalyticsTab() {
         bestPerformingStrategy: bestPerforming,
         worstPerformingStrategy: worstPerforming,
         sportBreakdown,
-        monthlyTrends
+        monthlyTrends,
       })
-
     } catch (error) {
       console.error('Error loading analytics:', error)
     } finally {
@@ -229,22 +257,22 @@ export function AnalyticsTab() {
   const getVerificationBadge = (status: string) => {
     switch (status) {
       case 'verified':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Verified</Badge>
+        return <Badge className="border-blue-200 bg-blue-100 text-blue-800">Verified</Badge>
       case 'premium':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Premium</Badge>
+        return <Badge className="border-purple-200 bg-purple-100 text-purple-800">Premium</Badge>
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Unverified</Badge>
+        return <Badge className="border-gray-200 bg-gray-100 text-gray-800">Unverified</Badge>
     }
   }
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Card key={i} className="p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            <Card key={i} className="animate-pulse p-6">
+              <div className="mb-4 h-4 w-3/4 rounded bg-gray-200"></div>
+              <div className="h-8 w-1/2 rounded bg-gray-200"></div>
             </Card>
           ))}
         </div>
@@ -255,113 +283,141 @@ export function AnalyticsTab() {
   return (
     <div className="space-y-6">
       {/* Performance Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-700">Overall ROI</p>
-              <p className={`text-3xl font-bold mt-1 ${getPerformanceColor(metrics.overallROI)}`}>
+              <p className={`mt-1 text-3xl font-bold ${getPerformanceColor(metrics.overallROI)}`}>
                 {formatPercentage(metrics.overallROI)}
               </p>
               <p className="text-xs text-green-600">Across all strategies</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-xl">
+            <div className="rounded-xl bg-green-100 p-2">
               <TrendingUp className="h-6 w-6 text-green-600" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-700">Win Rate</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">{metrics.overallWinRate.toFixed(1)}%</p>
-              <p className="text-xs text-blue-600">{metrics.totalWinnings} of {metrics.totalBets} bets</p>
+              <p className="mt-1 text-3xl font-bold text-blue-900">
+                {metrics.overallWinRate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-blue-600">
+                {metrics.totalWinnings} of {metrics.totalBets} bets
+              </p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-xl">
+            <div className="rounded-xl bg-blue-100 p-2">
               <Target className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+        <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-purple-700">Total Bets</p>
-              <p className="text-3xl font-bold text-purple-900 mt-1">{metrics.totalBets.toLocaleString()}</p>
+              <p className="mt-1 text-3xl font-bold text-purple-900">
+                {metrics.totalBets.toLocaleString()}
+              </p>
               <p className="text-xs text-purple-600">Across {strategies.length} strategies</p>
             </div>
-            <div className="p-2 bg-purple-100 rounded-xl">
+            <div className="rounded-xl bg-purple-100 p-2">
               <Activity className="h-6 w-6 text-purple-600" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-orange-700">Active Strategies</p>
-              <p className="text-3xl font-bold text-orange-900 mt-1">{strategies.filter(s => s.is_monetized).length}</p>
+              <p className="mt-1 text-3xl font-bold text-orange-900">
+                {strategies.filter(s => s.is_monetized).length}
+              </p>
               <p className="text-xs text-orange-600">of {strategies.length} total</p>
             </div>
-            <div className="p-2 bg-orange-100 rounded-xl">
+            <div className="rounded-xl bg-orange-100 p-2">
               <Trophy className="h-6 w-6 text-orange-600" />
             </div>
           </div>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Top Performers */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Award className="h-5 w-5 mr-2" />
+          <h3 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
+            <Award className="mr-2 h-5 w-5" />
             Top Performers
           </h3>
           <div className="space-y-4">
             {metrics.bestPerformingStrategy && (
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-4">
+                <div className="mb-2 flex items-center justify-between">
                   <h4 className="font-semibold text-green-900">Best Strategy</h4>
                   <Trophy className="h-5 w-5 text-green-600" />
                 </div>
-                <p className="font-medium text-gray-900">{metrics.bestPerformingStrategy.strategy_name}</p>
-                <div className="flex items-center space-x-4 mt-2 text-sm">
-                  <span className="text-green-700">ROI: {formatPercentage(metrics.bestPerformingStrategy.roi_percentage)}</span>
-                  <span className="text-blue-700">Win Rate: {metrics.bestPerformingStrategy.win_rate.toFixed(1)}%</span>
-                  <span className="text-purple-700">{metrics.bestPerformingStrategy.total_bets} bets</span>
+                <p className="font-medium text-gray-900">
+                  {metrics.bestPerformingStrategy.strategy_name}
+                </p>
+                <div className="mt-2 flex items-center space-x-4 text-sm">
+                  <span className="text-green-700">
+                    ROI: {formatPercentage(metrics.bestPerformingStrategy.roi_percentage)}
+                  </span>
+                  <span className="text-blue-700">
+                    Win Rate: {metrics.bestPerformingStrategy.win_rate.toFixed(1)}%
+                  </span>
+                  <span className="text-purple-700">
+                    {metrics.bestPerformingStrategy.total_bets} bets
+                  </span>
                 </div>
               </div>
             )}
 
-            {metrics.worstPerformingStrategy && metrics.worstPerformingStrategy !== metrics.bestPerformingStrategy && (
-              <div className="p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg border border-red-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-red-900">Needs Improvement</h4>
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+            {metrics.worstPerformingStrategy &&
+              metrics.worstPerformingStrategy !== metrics.bestPerformingStrategy && (
+                <div className="rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-pink-50 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="font-semibold text-red-900">Needs Improvement</h4>
+                    <TrendingDown className="h-5 w-5 text-red-600" />
+                  </div>
+                  <p className="font-medium text-gray-900">
+                    {metrics.worstPerformingStrategy.strategy_name}
+                  </p>
+                  <div className="mt-2 flex items-center space-x-4 text-sm">
+                    <span className="text-red-700">
+                      ROI: {formatPercentage(metrics.worstPerformingStrategy.roi_percentage)}
+                    </span>
+                    <span className="text-blue-700">
+                      Win Rate: {metrics.worstPerformingStrategy.win_rate.toFixed(1)}%
+                    </span>
+                    <span className="text-purple-700">
+                      {metrics.worstPerformingStrategy.total_bets} bets
+                    </span>
+                  </div>
                 </div>
-                <p className="font-medium text-gray-900">{metrics.worstPerformingStrategy.strategy_name}</p>
-                <div className="flex items-center space-x-4 mt-2 text-sm">
-                  <span className="text-red-700">ROI: {formatPercentage(metrics.worstPerformingStrategy.roi_percentage)}</span>
-                  <span className="text-blue-700">Win Rate: {metrics.worstPerformingStrategy.win_rate.toFixed(1)}%</span>
-                  <span className="text-purple-700">{metrics.worstPerformingStrategy.total_bets} bets</span>
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </Card>
 
         {/* Sport Breakdown */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <PieChart className="h-5 w-5 mr-2" />
+          <h3 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
+            <PieChart className="mr-2 h-5 w-5" />
             Performance by Sport
           </h3>
           <div className="space-y-3">
             {Object.entries(metrics.sportBreakdown).map(([sport, data]) => (
-              <div key={sport} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={sport}
+                className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+              >
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+                  <div className="mr-3 h-3 w-3 rounded-full bg-blue-500"></div>
                   <span className="font-medium">{sport}</span>
                 </div>
                 <div className="text-right text-sm">
@@ -373,7 +429,7 @@ export function AnalyticsTab() {
               </div>
             ))}
             {Object.keys(metrics.sportBreakdown).length === 0 && (
-              <p className="text-gray-500 text-center py-4">No sport data available</p>
+              <p className="py-4 text-center text-gray-500">No sport data available</p>
             )}
           </div>
         </Card>
@@ -381,9 +437,9 @@ export function AnalyticsTab() {
 
       {/* Strategy Performance Table */}
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <BarChart3 className="h-5 w-5 mr-2" />
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center text-lg font-semibold text-gray-900">
+            <BarChart3 className="mr-2 h-5 w-5" />
             Strategy Performance
           </h3>
           <div className="flex items-center space-x-2">
@@ -392,8 +448,8 @@ export function AnalyticsTab() {
               { key: 'roi', label: 'ROI' },
               { key: 'win_rate', label: 'Win Rate' },
               { key: 'total_bets', label: 'Total Bets' },
-              { key: 'subscribers', label: 'Subscribers' }
-            ].map((sort) => (
+              { key: 'subscribers', label: 'Subscribers' },
+            ].map(sort => (
               <Button
                 key={sort.key}
                 variant={sortBy === sort.key ? 'default' : 'outline'}
@@ -407,30 +463,34 @@ export function AnalyticsTab() {
         </div>
 
         <div className="space-y-3">
-          {sortedStrategies.map((strategy) => (
-            <div key={strategy.strategy_id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
+          {sortedStrategies.map(strategy => (
+            <div
+              key={strategy.strategy_id}
+              className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-sm"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500 font-semibold text-white">
                     {strategy.strategy_name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="flex items-center space-x-2 mb-1">
+                    <div className="mb-1 flex items-center space-x-2">
                       <h4 className="font-semibold text-gray-900">{strategy.strategy_name}</h4>
                       {getVerificationBadge(strategy.verification_status)}
                       {strategy.is_monetized && (
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
-                          <Zap className="h-3 w-3 mr-1" />
+                        <Badge className="border-green-200 bg-green-100 text-green-800">
+                          <Zap className="mr-1 h-3 w-3" />
                           Monetized
                         </Badge>
                       )}
                     </div>
                     <p className="text-sm text-gray-600">
-                      {strategy.primary_sport || 'Multi-sport'} • {strategy.subscriber_count} subscribers
+                      {strategy.primary_sport || 'Multi-sport'} • {strategy.subscriber_count}{' '}
+                      subscribers
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-6">
                   <div className="text-right">
                     <p className="text-sm text-gray-600">ROI</p>
@@ -448,7 +508,7 @@ export function AnalyticsTab() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">W-L-P</p>
-                    <p className="font-bold text-gray-900 text-sm">
+                    <p className="text-sm font-bold text-gray-900">
                       {strategy.winning_bets}-{strategy.losing_bets}-{strategy.push_bets}
                     </p>
                   </div>
@@ -459,10 +519,12 @@ export function AnalyticsTab() {
         </div>
 
         {strategies.length === 0 && (
-          <div className="text-center py-12">
-            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No analytics data</h3>
-            <p className="text-gray-600">Create strategies and place bets to see your performance analytics</p>
+          <div className="py-12 text-center">
+            <BarChart3 className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+            <h3 className="mb-2 text-lg font-medium text-gray-900">No analytics data</h3>
+            <p className="text-gray-600">
+              Create strategies and place bets to see your performance analytics
+            </p>
           </div>
         )}
       </Card>

@@ -28,7 +28,12 @@ export default function DashboardPage() {
 
   // Debug logging
   useEffect(() => {
-    console.log('🏠 Dashboard - Current user:', user?.id || 'No user', 'Email:', user?.email || 'No email')
+    console.log(
+      '🏠 Dashboard - Current user:',
+      user?.id || 'No user',
+      'Email:',
+      user?.email || 'No email'
+    )
   }, [user])
 
   useEffect(() => {
@@ -67,18 +72,18 @@ export default function DashboardPage() {
       <ProtectedRoute>
         <DashboardLayout>
           <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
               <div className="animate-pulse">
-                <div className="h-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl mb-8"></div>
+                <div className="mb-8 h-32 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl"></div>
-                    <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl"></div>
+                    <div className="h-64 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                    <div className="h-64 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
                   </div>
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl"></div>
-                    <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl"></div>
-                    <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl"></div>
+                    <div className="h-64 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                    <div className="h-64 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                    <div className="h-64 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300"></div>
                   </div>
                 </div>
               </div>
@@ -93,8 +98,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <DashboardLayout>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             {/* Welcome Section */}
             <div className="mb-8">
               <WelcomeSection profile={profile} />
@@ -102,7 +106,6 @@ export default function DashboardPage() {
 
             {/* Main Dashboard Grid - Better Organization */}
             <div className="space-y-6">
-              
               {/* Top Row - Two Column Grid */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <TodaysBets />

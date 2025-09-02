@@ -3,26 +3,15 @@ import { cn } from '@/lib/utils'
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'animate-pulse rounded-md bg-muted',
-          className
-        )}
-        {...props}
-      />
-    )
-  }
-)
+const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />
+})
 Skeleton.displayName = 'Skeleton'
 
 // Preset skeleton components for common use cases
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => {
   return (
-    <div className={cn('space-y-3 p-6 border rounded-lg', className)}>
+    <div className={cn('space-y-3 rounded-lg border p-6', className)}>
       <Skeleton className="h-4 w-3/4" />
       <Skeleton className="h-4 w-1/2" />
       <Skeleton className="h-20 w-full" />
@@ -34,15 +23,15 @@ export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) =>
   )
 }
 
-export const SkeletonTable: React.FC<{ 
+export const SkeletonTable: React.FC<{
   rows?: number
   columns?: number
-  className?: string 
+  className?: string
 }> = ({ rows = 5, columns = 4, className }) => {
   return (
     <div className={cn('space-y-2', className)}>
       {/* Header */}
-      <div className="flex space-x-4 p-4 border-b">
+      <div className="flex space-x-4 border-b p-4">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} className="h-4 flex-1" />
         ))}
@@ -62,11 +51,11 @@ export const SkeletonTable: React.FC<{
 export const SkeletonChart: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={cn('space-y-4', className)}>
-      <div className="flex items-end space-x-2 h-40">
+      <div className="flex h-40 items-end space-x-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton 
-            key={i} 
-            className="flex-1 rounded-sm" 
+          <Skeleton
+            key={i}
+            className="flex-1 rounded-sm"
             style={{ height: `${Math.random() * 80 + 20}%` }}
           />
         ))}
@@ -80,9 +69,9 @@ export const SkeletonChart: React.FC<{ className?: string }> = ({ className }) =
   )
 }
 
-export const SkeletonAvatar: React.FC<{ 
+export const SkeletonAvatar: React.FC<{
   size?: 'sm' | 'default' | 'lg'
-  className?: string 
+  className?: string
 }> = ({ size = 'default', className }) => {
   const sizes = {
     sm: 'h-8 w-8',
@@ -90,31 +79,17 @@ export const SkeletonAvatar: React.FC<{
     lg: 'h-12 w-12',
   }
 
-  return (
-    <Skeleton 
-      className={cn(
-        'rounded-full',
-        sizes[size],
-        className
-      )} 
-    />
-  )
+  return <Skeleton className={cn('rounded-full', sizes[size], className)} />
 }
 
-export const SkeletonText: React.FC<{ 
+export const SkeletonText: React.FC<{
   lines?: number
-  className?: string 
+  className?: string
 }> = ({ lines = 3, className }) => {
   return (
     <div className={cn('space-y-2', className)}>
       {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton 
-          key={i} 
-          className={cn(
-            'h-4',
-            i === lines - 1 ? 'w-3/4' : 'w-full'
-          )} 
-        />
+        <Skeleton key={i} className={cn('h-4', i === lines - 1 ? 'w-3/4' : 'w-full')} />
       ))}
     </div>
   )
@@ -125,7 +100,7 @@ export const SkeletonStats: React.FC<{ className?: string }> = ({ className }) =
   return (
     <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4', className)}>
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="p-6 border rounded-lg space-y-3">
+        <div key={i} className="space-y-3 rounded-lg border p-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-6 w-6 rounded" />
             <Skeleton className="h-4 w-16" />
@@ -141,7 +116,7 @@ export const SkeletonStats: React.FC<{ className?: string }> = ({ className }) =
 // Marketplace-specific skeleton
 export const SkeletonSellerCard: React.FC<{ className?: string }> = ({ className }) => {
   return (
-    <div className={cn('p-6 border rounded-lg space-y-4', className)}>
+    <div className={cn('space-y-4 rounded-lg border p-6', className)}>
       <div className="flex items-center space-x-3">
         <SkeletonAvatar />
         <div className="space-y-2">
@@ -150,17 +125,17 @@ export const SkeletonSellerCard: React.FC<{ className?: string }> = ({ className
         </div>
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <div className="text-center space-y-1">
-          <Skeleton className="h-6 w-12 mx-auto" />
-          <Skeleton className="h-3 w-8 mx-auto" />
+        <div className="space-y-1 text-center">
+          <Skeleton className="mx-auto h-6 w-12" />
+          <Skeleton className="mx-auto h-3 w-8" />
         </div>
-        <div className="text-center space-y-1">
-          <Skeleton className="h-6 w-12 mx-auto" />
-          <Skeleton className="h-3 w-8 mx-auto" />
+        <div className="space-y-1 text-center">
+          <Skeleton className="mx-auto h-6 w-12" />
+          <Skeleton className="mx-auto h-3 w-8" />
         </div>
-        <div className="text-center space-y-1">
-          <Skeleton className="h-6 w-12 mx-auto" />
-          <Skeleton className="h-3 w-8 mx-auto" />
+        <div className="space-y-1 text-center">
+          <Skeleton className="mx-auto h-6 w-12" />
+          <Skeleton className="mx-auto h-3 w-8" />
         </div>
       </div>
       <SkeletonText lines={2} />

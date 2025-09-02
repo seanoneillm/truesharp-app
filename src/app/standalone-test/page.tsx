@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 async function testStandaloneAuth() {
   try {
     console.log('🧪 Standalone auth test...')
-    
+
     // Direct client creation
     const supabase = createClient(
       'https://trsogafrxpptszxydycn.supabase.co',
@@ -18,12 +18,11 @@ async function testStandaloneAuth() {
     // Test authentication with literal values
     const response = await supabase.auth.signInWithPassword({
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
     })
 
     console.log('🧪 Auth response:', response)
     return response
-
   } catch (error) {
     console.error('🧪 Standalone auth error:', error)
     throw error
@@ -54,20 +53,20 @@ export default function StandaloneTestPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Standalone Auth Test</h1>
+    <div className="mx-auto max-w-4xl p-8">
+      <h1 className="mb-4 text-2xl font-bold">Standalone Auth Test</h1>
       <p className="mb-4 text-gray-600">
         This test uses a standalone function without React hooks or state.
       </p>
-      
+
       <button
         onClick={handleTest}
-        className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600"
+        className="rounded-lg bg-orange-500 px-6 py-3 text-white hover:bg-orange-600"
       >
         Test Standalone Auth
       </button>
 
-      <div id="output" className="mt-6 p-4 bg-gray-50 border rounded-lg min-h-[100px]">
+      <div id="output" className="mt-6 min-h-[100px] rounded-lg border bg-gray-50 p-4">
         Results will appear here...
       </div>
     </div>

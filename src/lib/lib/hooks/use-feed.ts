@@ -1,7 +1,12 @@
 // FILE: src/lib/hooks/use-feed.ts
 // Social feed data hook for posts and activities
 
-import { authenticatedRequest, paginatedRequest, PaginatedResponse, supabaseDirect } from '@/lib/api/client'
+import {
+  authenticatedRequest,
+  paginatedRequest,
+  PaginatedResponse,
+  supabaseDirect,
+} from '@/lib/api/client'
 import { PaginationParams } from '@/lib/types'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -44,7 +49,11 @@ interface UseFeedReturn {
   posts: PaginatedResponse<FeedPost>
   isLoading: boolean
   error: string | null
-  createPost: (content: string, postType?: 'text' | 'celebration', metadata?: any) => Promise<boolean>
+  createPost: (
+    content: string,
+    postType?: 'text' | 'celebration',
+    metadata?: any
+  ) => Promise<boolean>
   deletePost: (postId: string) => Promise<boolean>
   likePost: (postId: string) => Promise<boolean>
   unlikePost: (postId: string) => Promise<boolean>
@@ -64,31 +73,30 @@ export function useFeed(): UseFeedReturn {
       total: 0,
       totalPages: 0,
       hasNext: false,
-      hasPrev: false
+      hasPrev: false,
     },
-    success: true
+    success: true,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<FeedFilters>({
-    filter: 'all'
+    filter: 'all',
   })
   const [pagination, setPaginationState] = useState<PaginationParams>({
     page: 1,
     limit: 20,
     sortBy: 'created_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
   })
 
   // Build query with filters
   const buildQuery = useCallback(async () => {
     // Note: This is a simplified implementation
     // In a real app, you'd have a posts table with proper relationships
-    
+
     // For now, we'll use pick_posts as the feed source
-    let query = supabaseDirect
-      .from('pick_posts')
-      .select(`
+    let query = supabaseDirect.from('pick_posts').select(
+      `
         *,
         seller:profiles!seller_id (
           username,
@@ -96,7 +104,9 @@ export function useFeed(): UseFeedReturn {
           avatar_url,
           is_verified
         )
-      `, { count: 'exact' })
+      `,
+      { count: 'exact' }
+    )
 
     // Apply filters based on feed type
     if (filters.filter === 'following') {
@@ -127,100 +137,105 @@ export function useFeed(): UseFeedReturn {
   }, [filters])
 
   // Fetch posts with pagination
-  const fetchPosts = useCallback(async (page: number = 1, append: boolean = false) => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const fetchPosts = useCallback(
+    async (page: number = 1, append: boolean = false) => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      const query = await buildQuery()
-      const paginationOptions = {
-        ...pagination,
-        page
+        const query = await buildQuery()
+        const paginationOptions = {
+          ...pagination,
+          page,
+        }
+
+        const result = await paginatedRequest<any>(query, paginationOptions)
+
+        if (result.success) {
+          // Transform pick_posts to feed posts
+          const transformedData: FeedPost[] = result.data.map(pick => ({
+            id: pick.id,
+            user_id: pick.seller_id,
+            content: pick.analysis || pick.title,
+            post_type: 'pick' as const,
+            pick_id: pick.id,
+            metadata: {
+              confidence: pick.confidence,
+              tier: pick.tier,
+            },
+            created_at: pick.posted_at,
+            user: pick.seller || {
+              username: 'unknown',
+              display_name: 'Unknown User',
+              avatar_url: null,
+              is_verified: false,
+            },
+            pick: {
+              title: pick.title,
+              sport: 'NFL', // TODO: Get from bet relation
+              confidence: pick.confidence,
+              tier: pick.tier,
+              status: 'pending', // TODO: Get from bet relation
+            },
+            engagement: {
+              likes: 0, // TODO: Implement likes system
+              comments: 0, // TODO: Implement comments system
+              shares: 0, // TODO: Implement shares system
+              is_liked: false,
+            },
+          }))
+
+          setPosts(prev => ({
+            ...result,
+            data: append ? [...prev.data, ...transformedData] : transformedData,
+          }))
+        } else {
+          throw new Error(result.error || 'Failed to fetch posts')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch feed')
+      } finally {
+        setIsLoading(false)
       }
-
-      const result = await paginatedRequest<any>(query, paginationOptions)
-
-      if (result.success) {
-        // Transform pick_posts to feed posts
-        const transformedData: FeedPost[] = result.data.map(pick => ({
-          id: pick.id,
-          user_id: pick.seller_id,
-          content: pick.analysis || pick.title,
-          post_type: 'pick' as const,
-          pick_id: pick.id,
-          metadata: {
-            confidence: pick.confidence,
-            tier: pick.tier
-          },
-          created_at: pick.posted_at,
-          user: pick.seller || {
-            username: 'unknown',
-            display_name: 'Unknown User',
-            avatar_url: null,
-            is_verified: false
-          },
-          pick: {
-            title: pick.title,
-            sport: 'NFL', // TODO: Get from bet relation
-            confidence: pick.confidence,
-            tier: pick.tier,
-            status: 'pending' // TODO: Get from bet relation
-          },
-          engagement: {
-            likes: 0, // TODO: Implement likes system
-            comments: 0, // TODO: Implement comments system
-            shares: 0, // TODO: Implement shares system
-            is_liked: false
-          }
-        }))
-
-        setPosts(prev => ({
-          ...result,
-          data: append ? [...prev.data, ...transformedData] : transformedData
-        }))
-      } else {
-        throw new Error(result.error || 'Failed to fetch posts')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch feed')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [buildQuery, pagination])
+    },
+    [buildQuery, pagination]
+  )
 
   // Create post
-  const createPost = useCallback(async (
-    content: string, 
-    postType: 'text' | 'celebration' = 'text', 
-    metadata?: any
-  ): Promise<boolean> => {
-    // For now, we'll create posts as pick_posts with special handling
-    // In a real implementation, you'd have a dedicated posts table
-    
-    type InsertedPickPost = {
-      id: string
-      seller_id: string
-      posted_at: string
-      seller?: {
-        username: string
-        display_name: string
-        avatar_url: string | null
-        is_verified: boolean
-      }
-    }
+  const createPost = useCallback(
+    async (
+      content: string,
+      postType: 'text' | 'celebration' = 'text',
+      metadata?: any
+    ): Promise<boolean> => {
+      // For now, we'll create posts as pick_posts with special handling
+      // In a real implementation, you'd have a dedicated posts table
 
-    const response = await authenticatedRequest(async (currentUserId) => {
-      return await supabaseDirect
-        .from('pick_posts')
-        .insert({
-          seller_id: currentUserId,
-          title: content.substring(0, 100), // Truncate for title
-          analysis: content,
-          confidence: 3, // Default confidence for text posts
-          tier: 'free', // Text posts are always free
-          is_premium: false
-        })
-        .select(`
+      type InsertedPickPost = {
+        id: string
+        seller_id: string
+        posted_at: string
+        seller?: {
+          username: string
+          display_name: string
+          avatar_url: string | null
+          is_verified: boolean
+        }
+      }
+
+      const response = await authenticatedRequest(async currentUserId => {
+        return await supabaseDirect
+          .from('pick_posts')
+          .insert({
+            seller_id: currentUserId,
+            title: content.substring(0, 100), // Truncate for title
+            analysis: content,
+            confidence: 3, // Default confidence for text posts
+            tier: 'free', // Text posts are always free
+            is_premium: false,
+          })
+          .select(
+            `
           *,
           seller:profiles!seller_id (
             username,
@@ -228,51 +243,54 @@ export function useFeed(): UseFeedReturn {
             avatar_url,
             is_verified
           )
-        `)
-        .single<InsertedPickPost>()
-    })
+        `
+          )
+          .single<InsertedPickPost>()
+      })
 
-    if (response.success && response.data) {
-      const newPost: FeedPost = {
-        id: response.data.id,
-        user_id: response.data.seller_id,
-        content: content,
-        post_type: postType,
-        metadata,
-        created_at: response.data.posted_at,
-        user: response.data.seller || {
-          username: 'unknown',
-          display_name: 'Unknown User',
-          avatar_url: null,
-          is_verified: false
-        },
-        pick: null,
-        engagement: {
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          is_liked: false
+      if (response.success && response.data) {
+        const newPost: FeedPost = {
+          id: response.data.id,
+          user_id: response.data.seller_id,
+          content: content,
+          post_type: postType,
+          metadata,
+          created_at: response.data.posted_at,
+          user: response.data.seller || {
+            username: 'unknown',
+            display_name: 'Unknown User',
+            avatar_url: null,
+            is_verified: false,
+          },
+          pick: null,
+          engagement: {
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            is_liked: false,
+          },
         }
+
+        setPosts(prev => ({
+          ...prev,
+          data: [newPost, ...prev.data],
+          pagination: {
+            ...prev.pagination,
+            total: prev.pagination.total + 1,
+          },
+        }))
+        return true
+      } else {
+        setError(response.error || 'Failed to create post')
+        return false
       }
-
-      setPosts(prev => ({
-        ...prev,
-        data: [newPost, ...prev.data],
-        pagination: {
-          ...prev.pagination,
-          total: prev.pagination.total + 1
-        }
-      }))
-      return true
-    } else {
-      setError(response.error || 'Failed to create post')
-      return false
-    }
-  }, [])
+    },
+    []
+  )
 
   // Delete post
   const deletePost = useCallback(async (postId: string): Promise<boolean> => {
-    const response = await authenticatedRequest(async (currentUserId) => {
+    const response = await authenticatedRequest(async currentUserId => {
       return await supabaseDirect
         .from('pick_posts')
         .delete()
@@ -288,8 +306,8 @@ export function useFeed(): UseFeedReturn {
         data: prev.data.filter(post => post.id !== postId),
         pagination: {
           ...prev.pagination,
-          total: prev.pagination.total - 1
-        }
+          total: prev.pagination.total - 1,
+        },
       }))
       return true
     } else {
@@ -304,18 +322,18 @@ export function useFeed(): UseFeedReturn {
     // For now, just update local state
     setPosts(prev => ({
       ...prev,
-      data: prev.data.map(post => 
-        post.id === postId 
+      data: prev.data.map(post =>
+        post.id === postId
           ? {
               ...post,
               engagement: {
                 ...post.engagement,
                 likes: post.engagement.likes + 1,
-                is_liked: true
-              }
+                is_liked: true,
+              },
             }
           : post
-      )
+      ),
     }))
     return true
   }, [])
@@ -326,18 +344,18 @@ export function useFeed(): UseFeedReturn {
     // For now, just update local state
     setPosts(prev => ({
       ...prev,
-      data: prev.data.map(post => 
-        post.id === postId 
+      data: prev.data.map(post =>
+        post.id === postId
           ? {
               ...post,
               engagement: {
                 ...post.engagement,
                 likes: Math.max(0, post.engagement.likes - 1),
-                is_liked: false
-              }
+                is_liked: false,
+              },
             }
           : post
-      )
+      ),
     }))
     return true
   }, [])
@@ -348,17 +366,17 @@ export function useFeed(): UseFeedReturn {
     // For now, just update local state
     setPosts(prev => ({
       ...prev,
-      data: prev.data.map(post => 
-        post.id === postId 
+      data: prev.data.map(post =>
+        post.id === postId
           ? {
               ...post,
               engagement: {
                 ...post.engagement,
-                shares: post.engagement.shares + 1
-              }
+                shares: post.engagement.shares + 1,
+              },
             }
           : post
-      )
+      ),
     }))
     return true
   }, [])
@@ -402,6 +420,6 @@ export function useFeed(): UseFeedReturn {
     setFilters: setFiltersWrapper,
     setPagination,
     loadMore,
-    refresh
+    refresh,
   }
 }

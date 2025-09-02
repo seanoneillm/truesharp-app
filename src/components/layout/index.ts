@@ -7,13 +7,13 @@ export { default as Footer } from './footer'
 export { default as MobileNav, MobileHeader } from './mobile-nav'
 export { default as Breadcrumbs, breadcrumbConfigs } from './breadcrumbs'
 export { default as AppShell } from './app-shell'
-export { 
-  default as AuthGuard, 
-  SellerGuard, 
-  AdminGuard, 
-  RouteGuard, 
+export {
+  default as AuthGuard,
+  SellerGuard,
+  AdminGuard,
+  RouteGuard,
   withAuth,
-  usePermissions 
+  usePermissions,
 } from './auth-guard'
 
 // Layout component types
@@ -56,16 +56,27 @@ export const layoutUtils = {
       sell: 'Sell Picks',
       settings: 'Settings',
     }
-    
+
     if (segments.length === 0) return 'TrueSharp'
     const firstSegment = segments[0]
-    const title = firstSegment && routeLabels[firstSegment] ? routeLabels[firstSegment] : firstSegment || 'TrueSharp'
+    const title =
+      firstSegment && routeLabels[firstSegment]
+        ? routeLabels[firstSegment]
+        : firstSegment || 'TrueSharp'
     return `${title} | TrueSharp`
   },
 
   // Check if page should show app shell
   shouldShowAppShell: (pathname: string): boolean => {
-    const appPages = ['/dashboard', '/analytics', '/marketplace', '/subscriptions', '/sell', '/settings', '/profile']
+    const appPages = [
+      '/dashboard',
+      '/analytics',
+      '/marketplace',
+      '/subscriptions',
+      '/sell',
+      '/settings',
+      '/profile',
+    ]
     return appPages.some(page => pathname.startsWith(page))
   },
 
@@ -73,5 +84,5 @@ export const layoutUtils = {
   shouldShowMarketingHeader: (pathname: string): boolean => {
     const marketingPages = ['/', '/about', '/help', '/faq', '/legal', '/contact']
     return marketingPages.some(page => pathname === page || pathname.startsWith(page))
-  }
+  },
 }

@@ -15,7 +15,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   children,
   className,
   align = 'start',
-  side = 'bottom'
+  side = 'bottom',
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
@@ -69,9 +69,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)}>
-        {trigger}
-      </div>
+      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
       {isOpen && (
         <div
           className={cn(
@@ -101,7 +99,7 @@ const DropdownItem: React.FC<{
         'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
         disabled
           ? 'pointer-events-none opacity-50'
-          : 'focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer',
+          : 'cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
         className
       )}
       onClick={disabled ? undefined : onClick}
@@ -120,11 +118,7 @@ const DropdownLabel: React.FC<{
   children: React.ReactNode
   className?: string
 }> = ({ children, className }) => {
-  return (
-    <div className={cn('px-2 py-1.5 text-sm font-semibold', className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn('px-2 py-1.5 text-sm font-semibold', className)}>{children}</div>
 }
 
 // Select Dropdown Component
@@ -149,7 +143,7 @@ const Select: React.FC<SelectProps> = ({
   placeholder = 'Select an option...',
   options,
   className,
-  disabled
+  disabled,
 }) => {
   const selectedOption = options.find(option => option.value === value)
 
@@ -168,7 +162,7 @@ const Select: React.FC<SelectProps> = ({
 
   return (
     <Dropdown trigger={trigger}>
-      {options.map((option) => (
+      {options.map(option => (
         <DropdownItem
           key={option.value}
           onClick={() => onValueChange?.(option.value)}
@@ -195,19 +189,19 @@ export const UserMenu: React.FC<{
   onLogoutClick?: () => void
 }> = ({ user, onProfileClick, onSettingsClick, onLogoutClick }) => {
   const trigger = (
-    <button className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent">
-      <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+    <button className="flex items-center space-x-2 rounded-md p-2 hover:bg-accent">
+      <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium">
         {user.avatar ? (
           <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-full" />
         ) : (
           user.name.charAt(0).toUpperCase()
         )}
       </div>
-      <div className="hidden lg:block text-left">
+      <div className="hidden text-left lg:block">
         <div className="text-sm font-medium">{user.name}</div>
         <div className="text-xs text-muted-foreground">{user.email}</div>
       </div>
-      <ChevronDown className="h-4 w-4 hidden lg:block" />
+      <ChevronDown className="hidden h-4 w-4 lg:block" />
     </button>
   )
 
@@ -215,24 +209,12 @@ export const UserMenu: React.FC<{
     <Dropdown trigger={trigger} align="end">
       <DropdownLabel>My Account</DropdownLabel>
       <DropdownSeparator />
-      <DropdownItem onClick={onProfileClick}>
-        Profile
-      </DropdownItem>
-      <DropdownItem onClick={onSettingsClick}>
-        Settings
-      </DropdownItem>
+      <DropdownItem onClick={onProfileClick}>Profile</DropdownItem>
+      <DropdownItem onClick={onSettingsClick}>Settings</DropdownItem>
       <DropdownSeparator />
-      <DropdownItem onClick={onLogoutClick}>
-        Log out
-      </DropdownItem>
+      <DropdownItem onClick={onLogoutClick}>Log out</DropdownItem>
     </Dropdown>
   )
 }
 
-export {
-  Dropdown,
-  DropdownItem,
-  DropdownSeparator,
-  DropdownLabel,
-  Select,
-}
+export { Dropdown, DropdownItem, DropdownSeparator, DropdownLabel, Select }

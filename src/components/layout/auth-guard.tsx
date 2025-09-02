@@ -14,12 +14,12 @@ interface AuthGuardProps {
   redirectTo?: string
 }
 
-export default function AuthGuard({ 
-  children, 
-  requireAuth = true, 
-  requireSeller = false, 
+export default function AuthGuard({
+  children,
+  requireAuth = true,
+  requireSeller = false,
   requireAdmin = false,
-  redirectTo 
+  redirectTo,
 }: AuthGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -31,9 +31,18 @@ export default function AuthGuard({
 
     const checkAuth = () => {
       // Public routes that don't require authentication
-      const publicRoutes = ['/', '/login', '/signup', '/help', '/faq', '/legal', '/about', '/contact']
-      const isPublicRoute = publicRoutes.some(route => 
-        pathname === route || pathname.startsWith('/legal/')
+      const publicRoutes = [
+        '/',
+        '/login',
+        '/signup',
+        '/help',
+        '/faq',
+        '/legal',
+        '/about',
+        '/contact',
+      ]
+      const isPublicRoute = publicRoutes.some(
+        route => pathname === route || pathname.startsWith('/legal/')
       )
 
       // If route doesn't require auth, allow access
@@ -56,7 +65,8 @@ export default function AuthGuard({
       }
 
       // Check admin permissions - you may need to add a role field to your profile
-      if (requireAdmin && profile?.verification_status !== 'verified') { // Adjust this condition based on your admin logic
+      if (requireAdmin && profile?.verification_status !== 'verified') {
+        // Adjust this condition based on your admin logic
         router.push('/dashboard?error=admin-access-required')
         return
       }
@@ -66,14 +76,24 @@ export default function AuthGuard({
     }
 
     checkAuth()
-  }, [user, profile, isLoading, pathname, router, requireAuth, requireSeller, requireAdmin, redirectTo])
+  }, [
+    user,
+    profile,
+    isLoading,
+    pathname,
+    router,
+    requireAuth,
+    requireSeller,
+    requireAdmin,
+    redirectTo,
+  ])
 
   // Show loading spinner while checking authentication
   if (isLoading || isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Spinner className="h-8 w-8 text-blue-600 mx-auto mb-4" />
+          <Spinner className="mx-auto mb-4 h-8 w-8 text-blue-600" />
           <p className="text-sm text-gray-500">Loading...</p>
         </div>
       </div>
@@ -85,52 +105,42 @@ export default function AuthGuard({
 
 // Specific auth guard components for different access levels
 export function SellerGuard({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard requireSeller>
-      {children}
-    </AuthGuard>
-  )
+  return <AuthGuard requireSeller>{children}</AuthGuard>
 }
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard requireAdmin>
-      {children}
-    </AuthGuard>
-  )
+  return <AuthGuard requireAdmin>{children}</AuthGuard>
 }
 
 // Route-based auth guard that can be used in layouts
 export function RouteGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  
+
   // Define route-specific requirements
   const getRouteRequirements = (path: string) => {
     if (path.startsWith('/admin')) {
       return { requireAuth: true, requireAdmin: true }
     }
-    
+
     if (path.startsWith('/sell')) {
       return { requireAuth: true, requireSeller: true }
     }
-    
-    if (path.startsWith('/dashboard') || 
-        path.startsWith('/analytics') || 
-        path.startsWith('/subscriptions') || 
-        path.startsWith('/settings')) {
+
+    if (
+      path.startsWith('/dashboard') ||
+      path.startsWith('/analytics') ||
+      path.startsWith('/subscriptions') ||
+      path.startsWith('/settings')
+    ) {
       return { requireAuth: true }
     }
-    
+
     return { requireAuth: false }
   }
 
   const requirements = getRouteRequirements(pathname)
 
-  return (
-    <AuthGuard {...requirements}>
-      {children}
-    </AuthGuard>
-  )
+  return <AuthGuard {...requirements}>{children}</AuthGuard>
 }
 
 // HOC for protecting page components
@@ -144,7 +154,7 @@ export function withAuth<P extends object>(
 ) {
   return function AuthenticatedComponent(props: P) {
     return (
-      <AuthGuard 
+      <AuthGuard
         requireSeller={options.requireSeller}
         requireAdmin={options.requireAdmin}
         redirectTo={options.redirectTo}
@@ -158,7 +168,7 @@ export function withAuth<P extends object>(
 // Hook for checking permissions in components
 export function usePermissions() {
   const { user, profile } = useAuth()
-  
+
   return {
     canSell: profile?.seller_enabled || false,
     isAdmin: profile?.verification_status === 'verified', // Adjust based on your admin logic

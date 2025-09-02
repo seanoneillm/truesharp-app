@@ -77,7 +77,7 @@ export const mockBets: Bet[] = [
     gameDate: new Date('2024-12-20T22:00:00'),
     teams: {
       home: 'Golden State Warriors',
-      away: 'Los Angeles Lakers'
+      away: 'Los Angeles Lakers',
     },
     isPublic: true,
     createdAt: new Date('2024-12-20T20:00:00'),
@@ -99,7 +99,7 @@ export const mockBets: Bet[] = [
     gameDate: new Date('2024-12-22T20:25:00'),
     teams: {
       home: 'Buffalo Bills',
-      away: 'Kansas City Chiefs'
+      away: 'Kansas City Chiefs',
     },
     isPublic: true,
     createdAt: new Date('2024-12-21T14:00:00'),
@@ -123,7 +123,7 @@ export const mockBets: Bet[] = [
     gameDate: new Date('2024-12-19T19:10:00'),
     teams: {
       home: 'Boston Red Sox',
-      away: 'New York Yankees'
+      away: 'New York Yankees',
     },
     isPublic: true,
     createdAt: new Date('2024-12-19T19:00:00'),
@@ -139,7 +139,8 @@ export const mockPicks: Pick[] = [
     sport: 'NBA',
     title: 'Lakers -4.5 vs Warriors',
     description: 'Point spread bet on Lakers to cover',
-    analysis: 'Lakers have been dominant at home this season, covering 8 of last 10. Warriors dealing with key injuries to Curry and Thompson.',
+    analysis:
+      'Lakers have been dominant at home this season, covering 8 of last 10. Warriors dealing with key injuries to Curry and Thompson.',
     confidence: 4,
     odds: '-110',
     tier: 'premium',
@@ -152,8 +153,8 @@ export const mockPicks: Pick[] = [
       views: 234,
       likes: 45,
       comments: 12,
-      shares: 8
-    }
+      shares: 8,
+    },
   },
   {
     id: '2',
@@ -162,7 +163,8 @@ export const mockPicks: Pick[] = [
     sport: 'NFL',
     title: 'Chiefs ML vs Bills',
     description: 'Moneyline bet on Chiefs to win',
-    analysis: 'Chiefs are undefeated at home in playoffs. Bills struggling with road performance in cold weather conditions.',
+    analysis:
+      'Chiefs are undefeated at home in playoffs. Bills struggling with road performance in cold weather conditions.',
     confidence: 5,
     odds: '+150',
     tier: 'premium',
@@ -174,8 +176,8 @@ export const mockPicks: Pick[] = [
       views: 567,
       likes: 89,
       comments: 23,
-      shares: 15
-    }
+      shares: 15,
+    },
   },
   {
     id: '3',
@@ -184,7 +186,8 @@ export const mockPicks: Pick[] = [
     sport: 'MLB',
     title: 'Over 8.5 Runs - Yankees vs Red Sox',
     description: 'Total runs over bet',
-    analysis: 'Weather conditions favorable for offense. Both bullpens have struggled recently with ERA over 4.50.',
+    analysis:
+      'Weather conditions favorable for offense. Both bullpens have struggled recently with ERA over 4.50.',
     confidence: 3,
     odds: '-105',
     tier: 'silver',
@@ -197,8 +200,8 @@ export const mockPicks: Pick[] = [
       views: 189,
       likes: 23,
       comments: 8,
-      shares: 3
-    }
+      shares: 3,
+    },
   },
 ]
 
@@ -212,7 +215,7 @@ export const mockSellers: Seller[] = [
     pricing: {
       bronze: 29,
       silver: 49,
-      premium: 89
+      premium: 89,
     },
     stats: {
       totalPicks: 487,
@@ -220,15 +223,15 @@ export const mockSellers: Seller[] = [
       roi: 34.2,
       subscribers: 2847,
       rating: 4.9,
-      totalRevenue: 124750
+      totalRevenue: 124750,
     },
     verificationBadges: ['Top Performer', 'Verified Pro', 'Hot Streak'],
     commissionRate: 0.15,
     payoutSettings: {
       method: 'bank',
       schedule: 'weekly',
-      email: 'mike@example.com'
-    }
+      email: 'mike@example.com',
+    },
   },
   {
     userId: '2',
@@ -238,7 +241,7 @@ export const mockSellers: Seller[] = [
     pricing: {
       bronze: 19,
       silver: 39,
-      premium: 69
+      premium: 69,
     },
     stats: {
       totalPicks: 892,
@@ -246,15 +249,15 @@ export const mockSellers: Seller[] = [
       roi: 28.7,
       subscribers: 1654,
       rating: 4.8,
-      totalRevenue: 67890
+      totalRevenue: 67890,
     },
     verificationBadges: ['MLB Expert', 'Analytics Pro'],
     commissionRate: 0.15,
     payoutSettings: {
       method: 'paypal',
       schedule: 'biweekly',
-      email: 'sarah@example.com'
-    }
+      email: 'sarah@example.com',
+    },
   },
   {
     userId: '3',
@@ -264,7 +267,7 @@ export const mockSellers: Seller[] = [
     pricing: {
       bronze: 25,
       silver: 45,
-      premium: 75
+      premium: 75,
     },
     stats: {
       totalPicks: 156,
@@ -272,15 +275,15 @@ export const mockSellers: Seller[] = [
       roi: 41.8,
       subscribers: 892,
       rating: 4.9,
-      totalRevenue: 23450
+      totalRevenue: 23450,
     },
     verificationBadges: ['Rising Star', 'Hot Streak', 'New Talent'],
     commissionRate: 0.15,
     payoutSettings: {
       method: 'stripe',
       schedule: 'monthly',
-      email: 'tony@example.com'
-    }
+      email: 'tony@example.com',
+    },
   },
 ]
 
@@ -336,8 +339,8 @@ export const mockPerformanceMetrics: PerformanceMetrics = {
   closingLineValue: 2.3,
   streaks: {
     current: { type: 'win', count: 8 },
-    longest: { type: 'win', count: 12 }
-  }
+    longest: { type: 'win', count: 12 },
+  },
 }
 
 // Mock Connected Sportsbooks
@@ -350,7 +353,7 @@ export const mockConnectedSportsbooks = [
     lastSync: new Date('2024-12-21T10:02:00'),
     totalBetsTracked: 124,
     connectionDate: new Date('2024-11-15'),
-    credentialsEncrypted: 'encrypted_data_123'
+    credentialsEncrypted: 'encrypted_data_123',
   },
   {
     id: '2',
@@ -360,7 +363,7 @@ export const mockConnectedSportsbooks = [
     lastSync: new Date('2024-12-21T09:58:00'),
     totalBetsTracked: 89,
     connectionDate: new Date('2024-12-01'),
-    credentialsEncrypted: 'encrypted_data_456'
+    credentialsEncrypted: 'encrypted_data_456',
   },
   {
     id: '3',
@@ -371,8 +374,8 @@ export const mockConnectedSportsbooks = [
     totalBetsTracked: 56,
     connectionDate: new Date('2024-10-20'),
     error: 'Authentication failed. Please reconnect.',
-    credentialsEncrypted: 'encrypted_data_789'
-  }
+    credentialsEncrypted: 'encrypted_data_789',
+  },
 ]
 
 // Mock Analytics Data
@@ -402,7 +405,7 @@ export const mockAnalyticsData = {
     { period: 'Last Week', roi: 8.3, winRate: 62.1, trend: 'up' as const },
     { period: '2 Weeks Ago', roi: 15.7, winRate: 71.4, trend: 'up' as const },
     { period: '3 Weeks Ago', roi: -2.1, winRate: 48.6, trend: 'down' as const },
-  ]
+  ],
 }
 
 // Mock Notification Data
@@ -413,7 +416,7 @@ export const mockNotifications = [
     title: 'Pick Won!',
     message: 'Your Lakers -4.5 pick just won. Great call!',
     autoClose: true,
-    duration: 5000
+    duration: 5000,
   },
   {
     id: '2',
@@ -421,15 +424,15 @@ export const mockNotifications = [
     title: 'New Subscriber',
     message: '@newbettor23 just subscribed to your Premium tier',
     autoClose: true,
-    duration: 5000
+    duration: 5000,
   },
   {
     id: '3',
     type: 'warning' as const,
     title: 'Sportsbook Sync Issue',
     message: 'BetMGM connection failed. Please reconnect.',
-    autoClose: false
-  }
+    autoClose: false,
+  },
 ]
 
 // Mock Billing History
@@ -438,25 +441,25 @@ export const mockBillingHistory = [
     id: '1',
     date: '2024-12-15',
     description: '@sharpbettor - Premium Tier',
-    amount: 89.00,
+    amount: 89.0,
     status: 'paid' as const,
-    invoice: 'INV-2024-001'
+    invoice: 'INV-2024-001',
   },
   {
     id: '2',
     date: '2024-12-08',
     description: '@mlbmaster - Silver Tier',
-    amount: 39.00,
+    amount: 39.0,
     status: 'paid' as const,
-    invoice: 'INV-2024-002'
+    invoice: 'INV-2024-002',
   },
   {
     id: '3',
     date: '2024-11-15',
     description: '@sharpbettor - Premium Tier',
-    amount: 89.00,
+    amount: 89.0,
     status: 'paid' as const,
-    invoice: 'INV-2024-003'
+    invoice: 'INV-2024-003',
   },
 ]
 

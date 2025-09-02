@@ -13,7 +13,9 @@
 ## 🚀 Pre-Deployment Steps
 
 ### 1. Repository Structure
+
 Ensure your `truesharp-landing` repository has this structure:
+
 ```
 truesharp-landing/
 ├── app/                    ✓
@@ -25,12 +27,15 @@ truesharp-landing/
 ```
 
 ### 2. Environment Variables
+
 Set this in your Vercel dashboard:
+
 ```
 BREVO_API_KEY=your_actual_brevo_api_key_here
 ```
 
 ### 3. Vercel Settings
+
 - Framework Preset: **Next.js** (should auto-detect)
 - Build Command: `npm run build` (default)
 - Output Directory: `.next` (default)
@@ -44,6 +49,7 @@ BREVO_API_KEY=your_actual_brevo_api_key_here
    - Check "Build & Development Settings"
 
 2. **Verify File Structure**:
+
    ```bash
    ls -la public/
    # Should show: favicon.ico, favicon.svg, robots.txt, sitemap.xml, .gitkeep
@@ -56,6 +62,7 @@ BREVO_API_KEY=your_actual_brevo_api_key_here
 ## 🎯 Expected Result
 
 After pushing these changes, Vercel should:
+
 - ✅ Detect this as a Next.js project
 - ✅ Find the `public` directory
 - ✅ Build successfully

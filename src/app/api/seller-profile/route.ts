@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Decode the username to handle URL encoding issues
     const username = decodeURIComponent(rawUsername)
-    
+
     console.log('Looking for seller profile with username:', username)
 
     const supabase = await createServerClientFromRequest(request)
@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     // Try both username and email fields since the username might be stored in email field
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select(`
+      .select(
+        `
         id,
         username,
         email,
@@ -44,12 +45,13 @@ export async function GET(request: NextRequest) {
           banner_img,
           updated_at
         )
-      `)
+      `
+      )
       .or(`username.eq.${username},email.eq.${username}`)
       .single()
 
     console.log('Profile query result:', { profile, profileError })
-    
+
     if (profile?.seller_profiles) {
       console.log('Seller profiles data:', profile.seller_profiles)
     }
@@ -61,7 +63,8 @@ export async function GET(request: NextRequest) {
     // Get strategies for this seller
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategy_leaderboard')
-      .select(`
+      .select(
+        `
         id,
         strategy_id,
         user_id,
@@ -82,7 +85,8 @@ export async function GET(request: NextRequest) {
         subscription_price_yearly,
         created_at,
         updated_at
-      `)
+      `
+      )
       .eq('user_id', profile.id)
       .eq('is_monetized', true)
       .order('overall_rank', { ascending: true, nullsLast: true })
@@ -104,9 +108,9 @@ export async function GET(request: NextRequest) {
       profile_img: sellerProfileData?.profile_img || profile.profile_picture_url || null,
       // Use seller_profiles banner_img (profiles table doesn't have this field)
       banner_img: sellerProfileData?.banner_img || null,
-      strategies: strategies || []
+      strategies: strategies || [],
     }
-    
+
     console.log('Final seller profile data:', {
       bio: sellerProfile.bio,
       profiles_bio: profile.bio,
@@ -117,14 +121,13 @@ export async function GET(request: NextRequest) {
       banner_img: sellerProfile.banner_img,
       seller_profiles_banner_img: sellerProfileData?.banner_img,
       seller_profiles_count: profile.seller_profiles?.length || 0,
-      has_seller_profile_record: !!sellerProfileData
+      has_seller_profile_record: !!sellerProfileData,
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      data: sellerProfile 
+      data: sellerProfile,
     })
-
   } catch (error) {
     console.error('Error in GET /api/seller-profile:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -136,11 +139,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/seller-profile called')
     const supabase = await createServerClientFromRequest(request)
-    
+
     // Get the current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     console.log('POST - Auth check:', { user: user?.id, authError })
-    
+
     if (authError || !user) {
       console.error('POST - Authentication failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -148,23 +154,23 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { bio, profile_img, banner_img } = body
-    
-    console.log('POST - Body received:', { 
-      bio: bio ? `${bio.substring(0, 50)}...` : null, 
-      profile_img: profile_img ? `${profile_img.substring(0, 50)}...` : null, 
-      banner_img: banner_img ? `${banner_img.substring(0, 50)}...` : null 
+
+    console.log('POST - Body received:', {
+      bio: bio ? `${bio.substring(0, 50)}...` : null,
+      profile_img: profile_img ? `${profile_img.substring(0, 50)}...` : null,
+      banner_img: banner_img ? `${banner_img.substring(0, 50)}...` : null,
     })
     console.log('POST - Auth user ID:', user.id)
-    
+
     // First, get the profiles record to ensure we have the right user_id
     const { data: profileRecord, error: profileError } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .single()
-      
+
     console.log('POST - Profile lookup:', { profileRecord, profileError })
-    
+
     if (profileError || !profileRecord) {
       console.error('POST - Profile not found for user:', user.id)
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
@@ -172,18 +178,21 @@ export async function POST(request: NextRequest) {
 
     // Upsert seller profile using the correct user_id
     console.log('POST - About to upsert seller profile with user_id:', profileRecord.id)
-    
+
     const { data, error } = await supabase
       .from('seller_profiles')
-      .upsert({
-        user_id: profileRecord.id,
-        bio: bio || null,
-        profile_img: profile_img || null,
-        banner_img: banner_img || null,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
+      .upsert(
+        {
+          user_id: profileRecord.id,
+          bio: bio || null,
+          profile_img: profile_img || null,
+          banner_img: banner_img || null,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id',
+        }
+      )
       .select()
       .single()
 
@@ -191,14 +200,13 @@ export async function POST(request: NextRequest) {
       console.error('POST - Error upserting seller profile:', error)
       return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
     }
-    
+
     console.log('POST - Successfully upserted seller profile:', data)
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      data 
+      data,
     })
-
   } catch (error) {
     console.error('Error in POST /api/seller-profile:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

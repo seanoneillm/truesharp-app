@@ -7,7 +7,7 @@ import {
   type ROIOverTimeData,
   type PerformanceByLeagueData,
   type WinRateVsExpectedData,
-  type MonthlyPerformanceData
+  type MonthlyPerformanceData,
 } from '@/lib/analytics/enhanced-analytics'
 
 // Keep all your existing interfaces exactly the same
@@ -17,7 +17,16 @@ export interface Bet {
   external_bet_id?: string
   sport: string
   league: string
-  bet_type: 'spread' | 'moneyline' | 'total' | 'player_prop' | 'game_prop' | 'first_half' | 'quarter' | 'period' | 'parlay'
+  bet_type:
+    | 'spread'
+    | 'moneyline'
+    | 'total'
+    | 'player_prop'
+    | 'game_prop'
+    | 'first_half'
+    | 'quarter'
+    | 'period'
+    | 'parlay'
   bet_description: string
   odds: number
   stake: number
@@ -179,7 +188,7 @@ const defaultFilters: AnalyticsFilters = {
   minStake: null,
   maxStake: null,
   results: ['won', 'lost'],
-  timeframe: '30d'
+  timeframe: '30d',
 }
 
 export function useAnalytics(user: User | null = null, isPro: boolean = false) {
@@ -187,152 +196,183 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<AnalyticsFilters>(defaultFilters)
-  
+
   // Use useRef to store the latest filters without causing re-renders
   const latestFiltersRef = useRef<AnalyticsFilters>(defaultFilters)
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   // Update the ref whenever filters change
   useEffect(() => {
     latestFiltersRef.current = filters
   }, [filters])
 
-  const fetchAnalytics = useCallback(async (forceFetch = false) => {
-    console.log('🔍 fetchAnalytics called with user:', user?.id, 'forceFetch:', forceFetch)
-    if (!user) {
-      console.log('No user provided to fetchAnalytics')
-      setLoading(false)
-      setAnalyticsData(null)
-      setError(null)
-      return
-    }
-
-    // Clear any pending fetch
-    if (fetchTimeoutRef.current) {
-      clearTimeout(fetchTimeoutRef.current)
-    }
-
-    // Debounce the fetch unless forced
-    if (!forceFetch) {
-      fetchTimeoutRef.current = setTimeout(() => fetchAnalytics(true), 300)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      console.log('Fetching analytics for user:', user.id)
-
-      const currentFilters = latestFiltersRef.current
-
-      // Convert filters to enhanced analytics format
-      const enhancedFilters: EnhancedFilters = {
-        ...(currentFilters.sports.length > 0 && { leagues: currentFilters.sports }), // Map sports to leagues for now
-        ...(currentFilters.leagues.length > 0 && { leagues: currentFilters.leagues }),
-        ...(currentFilters.betTypes.length > 0 && { bet_types: currentFilters.betTypes }),
-        ...(currentFilters.sportsbooks.length > 0 && { sportsbooks: currentFilters.sportsbooks }),
-        ...(currentFilters.minOdds !== null && currentFilters.minOdds !== undefined && { odds_min: currentFilters.minOdds }),
-        ...(currentFilters.maxOdds !== null && currentFilters.maxOdds !== undefined && { odds_max: currentFilters.maxOdds }),
-        ...(currentFilters.minStake !== null && currentFilters.minStake !== undefined && { stake_min: currentFilters.minStake }),
-        ...(currentFilters.maxStake !== null && currentFilters.maxStake !== undefined && { stake_max: currentFilters.maxStake }),
-        ...(currentFilters.dateRange.start && { date_from: currentFilters.dateRange.start }),
-        ...(currentFilters.dateRange.end && { date_to: currentFilters.dateRange.end }),
-        ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay }),
-        ...(currentFilters.side && { side: currentFilters.side })
+  const fetchAnalytics = useCallback(
+    async (forceFetch = false) => {
+      console.log('🔍 fetchAnalytics called with user:', user?.id, 'forceFetch:', forceFetch)
+      if (!user) {
+        console.log('No user provided to fetchAnalytics')
+        setLoading(false)
+        setAnalyticsData(null)
+        setError(null)
+        return
       }
 
-      // Fetch both old and enhanced analytics data in parallel
-      console.log('🔍 About to fetch enhanced analytics for user:', user.id)
-      const [legacyResponse, enhancedData] = await Promise.all([
-        // Legacy API call
-        fetch(`/api/analytics?${new URLSearchParams({
-          userId: user.id,
-          timeframe: currentFilters.timeframe,
-          ...(currentFilters.sports.length > 0 && { sport: currentFilters.sports.join(',') }),
-          ...(currentFilters.leagues.length > 0 && { league: currentFilters.leagues.join(',') }),
-          ...(currentFilters.betTypes.length > 0 && { bet_type: currentFilters.betTypes.join(',') }),
-          ...(currentFilters.results.length > 0 && currentFilters.results.length < 5 && { status: currentFilters.results.join(',') }),
-          ...(currentFilters.isParlay !== null && currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay.toString() }),
+      // Clear any pending fetch
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current)
+      }
+
+      // Debounce the fetch unless forced
+      if (!forceFetch) {
+        fetchTimeoutRef.current = setTimeout(() => fetchAnalytics(true), 300)
+        return
+      }
+
+      try {
+        setLoading(true)
+        setError(null)
+
+        console.log('Fetching analytics for user:', user.id)
+
+        const currentFilters = latestFiltersRef.current
+
+        // Convert filters to enhanced analytics format
+        const enhancedFilters: EnhancedFilters = {
+          ...(currentFilters.sports.length > 0 && { leagues: currentFilters.sports }), // Map sports to leagues for now
+          ...(currentFilters.leagues.length > 0 && { leagues: currentFilters.leagues }),
+          ...(currentFilters.betTypes.length > 0 && { bet_types: currentFilters.betTypes }),
+          ...(currentFilters.sportsbooks.length > 0 && { sportsbooks: currentFilters.sportsbooks }),
+          ...(currentFilters.minOdds !== null &&
+            currentFilters.minOdds !== undefined && { odds_min: currentFilters.minOdds }),
+          ...(currentFilters.maxOdds !== null &&
+            currentFilters.maxOdds !== undefined && { odds_max: currentFilters.maxOdds }),
+          ...(currentFilters.minStake !== null &&
+            currentFilters.minStake !== undefined && { stake_min: currentFilters.minStake }),
+          ...(currentFilters.maxStake !== null &&
+            currentFilters.maxStake !== undefined && { stake_max: currentFilters.maxStake }),
+          ...(currentFilters.dateRange.start && { date_from: currentFilters.dateRange.start }),
+          ...(currentFilters.dateRange.end && { date_to: currentFilters.dateRange.end }),
+          ...(currentFilters.isParlay !== null &&
+            currentFilters.isParlay !== undefined && { is_parlay: currentFilters.isParlay }),
           ...(currentFilters.side && { side: currentFilters.side }),
-          ...(currentFilters.oddsType && { odds_type: currentFilters.oddsType }),
-          ...(currentFilters.minOdds !== null && currentFilters.minOdds !== undefined && { min_odds: currentFilters.minOdds.toString() }),
-          ...(currentFilters.maxOdds !== null && currentFilters.maxOdds !== undefined && { max_odds: currentFilters.maxOdds.toString() }),
-          ...(currentFilters.minStake !== null && currentFilters.minStake !== undefined && { min_stake: currentFilters.minStake.toString() }),
-          ...(currentFilters.maxStake !== null && currentFilters.maxStake !== undefined && { max_stake: currentFilters.maxStake.toString() }),
-          ...(currentFilters.dateRange.start && { start_date: currentFilters.dateRange.start }),
-          ...(currentFilters.dateRange.end && { end_date: currentFilters.dateRange.end })
-        })}`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        }),
-        // Enhanced analytics functions
-        (async () => {
-          try {
-            console.log('🔍 Calling fetchEnhancedAnalytics with:', user.id, enhancedFilters)
-            const result = await fetchEnhancedAnalytics(user.id, enhancedFilters)
-            console.log('✅ fetchEnhancedAnalytics completed:', result)
-            return result
-          } catch (error) {
-            console.error('🚨 fetchEnhancedAnalytics failed:', error)
-            return {
-              roiOverTime: [],
-              performanceByLeague: [],
-              winRateVsExpected: [],
-              monthlyPerformance: []
-            }
-          }
-        })()
-      ])
-      
-      if (!legacyResponse.ok) {
-        // Handle authentication errors specifically
-        if (legacyResponse.status === 401) {
-          console.log('Analytics API returned 401 - authentication failed')
-          setAnalyticsData(null)
-          setError('Authentication required. Please log in again.')
-          setLoading(false)
-          return
         }
-        throw new Error(`API error: ${legacyResponse.status}`)
-      }
 
-      const legacyResult = await legacyResponse.json()
-      
-      if (legacyResult.error) {
-        throw new Error(legacyResult.error)
-      }
+        // Fetch both old and enhanced analytics data in parallel
+        console.log('🔍 About to fetch enhanced analytics for user:', user.id)
+        const [legacyResponse, enhancedData] = await Promise.all([
+          // Legacy API call
+          fetch(
+            `/api/analytics?${new URLSearchParams({
+              userId: user.id,
+              timeframe: currentFilters.timeframe,
+              ...(currentFilters.sports.length > 0 && { sport: currentFilters.sports.join(',') }),
+              ...(currentFilters.leagues.length > 0 && {
+                league: currentFilters.leagues.join(','),
+              }),
+              ...(currentFilters.betTypes.length > 0 && {
+                bet_type: currentFilters.betTypes.join(','),
+              }),
+              ...(currentFilters.results.length > 0 &&
+                currentFilters.results.length < 5 && { status: currentFilters.results.join(',') }),
+              ...(currentFilters.isParlay !== null &&
+                currentFilters.isParlay !== undefined && {
+                  is_parlay: currentFilters.isParlay.toString(),
+                }),
+              ...(currentFilters.side && { side: currentFilters.side }),
+              ...(currentFilters.oddsType && { odds_type: currentFilters.oddsType }),
+              ...(currentFilters.minOdds !== null &&
+                currentFilters.minOdds !== undefined && {
+                  min_odds: currentFilters.minOdds.toString(),
+                }),
+              ...(currentFilters.maxOdds !== null &&
+                currentFilters.maxOdds !== undefined && {
+                  max_odds: currentFilters.maxOdds.toString(),
+                }),
+              ...(currentFilters.minStake !== null &&
+                currentFilters.minStake !== undefined && {
+                  min_stake: currentFilters.minStake.toString(),
+                }),
+              ...(currentFilters.maxStake !== null &&
+                currentFilters.maxStake !== undefined && {
+                  max_stake: currentFilters.maxStake.toString(),
+                }),
+              ...(currentFilters.dateRange.start && { start_date: currentFilters.dateRange.start }),
+              ...(currentFilters.dateRange.end && { end_date: currentFilters.dateRange.end }),
+            })}`,
+            {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+            }
+          ),
+          // Enhanced analytics functions
+          (async () => {
+            try {
+              console.log('🔍 Calling fetchEnhancedAnalytics with:', user.id, enhancedFilters)
+              const result = await fetchEnhancedAnalytics(user.id, enhancedFilters)
+              console.log('✅ fetchEnhancedAnalytics completed:', result)
+              return result
+            } catch (error) {
+              console.error('🚨 fetchEnhancedAnalytics failed:', error)
+              return {
+                roiOverTime: [],
+                performanceByLeague: [],
+                winRateVsExpected: [],
+                monthlyPerformance: [],
+              }
+            }
+          })(),
+        ])
 
-      console.log('Successfully fetched legacy analytics:', legacyResult.data)
-      console.log('Successfully fetched enhanced analytics:', enhancedData)
-      
-      // Combine legacy and enhanced data
-      const data: AnalyticsData = {
-        metrics: legacyResult.data.metrics,
-        sportBreakdown: legacyResult.data.sportBreakdown || [],
-        betTypeBreakdown: legacyResult.data.betTypeBreakdown || [],
-        sideBreakdown: legacyResult.data.sideBreakdown || [],
-        lineMovementData: legacyResult.data.lineMovementData || [],
-        monthlyData: legacyResult.data.monthlyData || [],
-        dailyProfitData: legacyResult.data.dailyProfitData || [],
-        recentBets: legacyResult.data.recentBets || [],
-        topPerformingSports: legacyResult.data.topPerformingSports || [],
-        // Enhanced analytics data
-        roiOverTime: enhancedData.roiOverTime || [],
-        leagueBreakdown: enhancedData.performanceByLeague || [],
-        winRateVsExpected: enhancedData.winRateVsExpected || [],
-        monthlyPerformance: enhancedData.monthlyPerformance || [],
-        bets: legacyResult.data.recentBets || []
+        if (!legacyResponse.ok) {
+          // Handle authentication errors specifically
+          if (legacyResponse.status === 401) {
+            console.log('Analytics API returned 401 - authentication failed')
+            setAnalyticsData(null)
+            setError('Authentication required. Please log in again.')
+            setLoading(false)
+            return
+          }
+          throw new Error(`API error: ${legacyResponse.status}`)
+        }
+
+        const legacyResult = await legacyResponse.json()
+
+        if (legacyResult.error) {
+          throw new Error(legacyResult.error)
+        }
+
+        console.log('Successfully fetched legacy analytics:', legacyResult.data)
+        console.log('Successfully fetched enhanced analytics:', enhancedData)
+
+        // Combine legacy and enhanced data
+        const data: AnalyticsData = {
+          metrics: legacyResult.data.metrics,
+          sportBreakdown: legacyResult.data.sportBreakdown || [],
+          betTypeBreakdown: legacyResult.data.betTypeBreakdown || [],
+          sideBreakdown: legacyResult.data.sideBreakdown || [],
+          lineMovementData: legacyResult.data.lineMovementData || [],
+          monthlyData: legacyResult.data.monthlyData || [],
+          dailyProfitData: legacyResult.data.dailyProfitData || [],
+          recentBets: legacyResult.data.recentBets || [],
+          topPerformingSports: legacyResult.data.topPerformingSports || [],
+          // Enhanced analytics data
+          roiOverTime: enhancedData.roiOverTime || [],
+          leagueBreakdown: enhancedData.performanceByLeague || [],
+          winRateVsExpected: enhancedData.winRateVsExpected || [],
+          monthlyPerformance: enhancedData.monthlyPerformance || [],
+          bets: legacyResult.data.recentBets || [],
+        }
+
+        setAnalyticsData(data)
+      } catch (err) {
+        console.error('Error in fetchAnalytics:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      } finally {
+        setLoading(false)
       }
-      
-      setAnalyticsData(data)
-    } catch (err) {
-      console.error('Error in fetchAnalytics:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }, [user])
+    },
+    [user]
+  )
 
   // Initial fetch only when user changes
   useEffect(() => {
@@ -366,7 +406,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
       variance: 0,
       straightBetsCount: 0,
       parlayBetsCount: 0,
-      voidBetsCount: 0
+      voidBetsCount: 0,
     },
     sportBreakdown: [],
     betTypeBreakdown: [],
@@ -381,7 +421,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
     leagueBreakdown: [],
     winRateVsExpected: [],
     monthlyPerformance: [],
-    bets: []
+    bets: [],
   }
 
   const updateFilters = (newFilters: Partial<AnalyticsFilters>) => {
@@ -395,6 +435,6 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
     filters,
     updateFilters,
     totalBets: analyticsData?.metrics.totalBets || 0,
-    filteredBetsCount: analyticsData?.metrics.totalBets || 0
+    filteredBetsCount: analyticsData?.metrics.totalBets || 0,
   }
 }

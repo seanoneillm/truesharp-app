@@ -76,7 +76,9 @@
 body {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-feature-settings:
+    'rlig' 1,
+    'calt' 1;
 }
 
 /* TrueSharp specific styles */
@@ -103,19 +105,19 @@ body {
 
 /* Status-specific utility classes */
 .status-won {
-  @apply bg-green-100 text-green-800 border-green-200;
+  @apply border-green-200 bg-green-100 text-green-800;
 }
 
 .status-lost {
-  @apply bg-red-100 text-red-800 border-red-200;
+  @apply border-red-200 bg-red-100 text-red-800;
 }
 
 .status-pending {
-  @apply bg-yellow-100 text-yellow-800 border-yellow-200;
+  @apply border-yellow-200 bg-yellow-100 text-yellow-800;
 }
 
 .status-void {
-  @apply bg-gray-100 text-gray-800 border-gray-200;
+  @apply border-gray-200 bg-gray-100 text-gray-800;
 }
 
 /* Custom scrollbar */
@@ -188,7 +190,7 @@ body {
 
 /* Loading states */
 .skeleton {
-  @apply animate-pulse bg-muted rounded;
+  @apply animate-pulse rounded bg-muted;
 }
 
 /* Chart and visualization styles */

@@ -92,23 +92,13 @@ export const SUBSCRIPTION_TIERS = {
     name: 'free',
     displayName: 'Free',
     price: 0,
-    features: [
-      'Basic bet tracking',
-      'Simple analytics',
-      'Public picks access',
-      'Mobile app',
-    ],
+    features: ['Basic bet tracking', 'Simple analytics', 'Public picks access', 'Mobile app'],
   },
   BRONZE: {
     name: 'bronze',
     displayName: 'Bronze',
     priceRange: [10, 25],
-    features: [
-      'All free features',
-      'Bronze tier picks',
-      'Basic analysis',
-      'Email notifications',
-    ],
+    features: ['All free features', 'Bronze tier picks', 'Basic analysis', 'Email notifications'],
   },
   SILVER: {
     name: 'silver',
@@ -305,7 +295,7 @@ export const SELLER_TIERS = {
 export const PLATFORM_FEES = {
   commission: 0.15, // 15% commission on subscription revenue
   processing: 0.029, // 2.9% payment processing fee
-  fixed: 0.30, // $0.30 fixed fee per transaction
+  fixed: 0.3, // $0.30 fixed fee per transaction
   withdrawal: {
     bank: 0,
     paypal: 0.02,

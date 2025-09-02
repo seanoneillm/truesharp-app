@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     // Calculate date range based on timeframe
     let dateFilter = ''
     const now = new Date()
-    
+
     switch (timeframe) {
       case '7d':
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -45,10 +45,7 @@ export async function GET(request: Request) {
     }
 
     // Build the query
-    let query = supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
+    let query = supabase.from('bets').select('*').eq('user_id', userId)
 
     if (timeframe !== 'all') {
       query = query.gte('placed_at', dateFilter)
@@ -81,21 +78,24 @@ export async function GET(request: Request) {
     const avgBetSize = totalBets > 0 ? totalStake / totalBets : 0
 
     // Sport breakdown
-    const sportGroups = bets.reduce((acc, bet) => {
-      const sport = bet.sport || 'Unknown'
-      if (!acc[sport]) {
-        acc[sport] = { bets: [], totalStake: 0, totalProfit: 0 }
-      }
-      acc[sport].bets.push(bet)
-      acc[sport].totalStake += bet.stake || 0
-      acc[sport].totalProfit += bet.profit || 0
-      return acc
-    }, {} as Record<string, { bets: unknown[], totalStake: number, totalProfit: number }>)
+    const sportGroups = bets.reduce(
+      (acc, bet) => {
+        const sport = bet.sport || 'Unknown'
+        if (!acc[sport]) {
+          acc[sport] = { bets: [], totalStake: 0, totalProfit: 0 }
+        }
+        acc[sport].bets.push(bet)
+        acc[sport].totalStake += bet.stake || 0
+        acc[sport].totalProfit += bet.profit || 0
+        return acc
+      },
+      {} as Record<string, { bets: unknown[]; totalStake: number; totalProfit: number }>
+    )
 
     const sportBreakdown = Object.entries(sportGroups).map(([sport, data]) => {
       const wonCount = data.bets.filter((bet: any) => bet.status === 'won').length
       const lostCount = data.bets.filter((bet: any) => bet.status === 'lost').length
-      const sportWinRate = (wonCount + lostCount) > 0 ? (wonCount / (wonCount + lostCount)) * 100 : 0
+      const sportWinRate = wonCount + lostCount > 0 ? (wonCount / (wonCount + lostCount)) * 100 : 0
       const sportROI = data.totalStake > 0 ? (data.totalProfit / data.totalStake) * 100 : 0
 
       return {
@@ -103,27 +103,30 @@ export async function GET(request: Request) {
         totalBets: data.bets.length,
         winRate: sportWinRate,
         roi: sportROI,
-        netProfit: data.totalProfit
+        netProfit: data.totalProfit,
       }
     })
 
     // Profit data for chart (group by date)
     const profitByDate = bets
       .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime())
-      .reduce((acc, bet) => {
-        const date = new Date(bet.placed_at).toISOString().split('T')[0]
-        if (date && !acc[date]) {
-          acc[date] = 0
-        }
-        if (date) {
-          acc[date] += bet.profit || 0
-        }
-        return acc
-      }, {} as Record<string, number>)
+      .reduce(
+        (acc, bet) => {
+          const date = new Date(bet.placed_at).toISOString().split('T')[0]
+          if (date && !acc[date]) {
+            acc[date] = 0
+          }
+          if (date) {
+            acc[date] += bet.profit || 0
+          }
+          return acc
+        },
+        {} as Record<string, number>
+      )
 
     const profitData = Object.entries(profitByDate).map(([date, profit]) => ({
       date,
-      profit
+      profit,
     }))
 
     // Recent form (last 20 bets)
@@ -134,7 +137,7 @@ export async function GET(request: Request) {
         date: bet.placed_at,
         result: bet.status,
         sport: bet.sport,
-        roi: bet.stake > 0 ? ((bet.profit || 0) / bet.stake) * 100 : 0
+        roi: bet.stake > 0 ? ((bet.profit || 0) / bet.stake) * 100 : 0,
       }))
 
     const analytics = {
@@ -144,11 +147,11 @@ export async function GET(request: Request) {
         roi: Math.round(roi * 100) / 100,
         netProfit: Math.round(totalProfit * 100) / 100,
         avgBetSize: Math.round(avgBetSize * 100) / 100,
-        totalStake: Math.round(totalStake * 100) / 100
+        totalStake: Math.round(totalStake * 100) / 100,
       },
       sportBreakdown,
       profitData,
-      recentForm
+      recentForm,
     }
 
     return NextResponse.json({
@@ -158,10 +161,9 @@ export async function GET(request: Request) {
         userId,
         timeframe,
         dateFilter,
-        totalBetsFound: bets.length
-      }
+        totalBetsFound: bets.length,
+      },
     })
-
   } catch (error) {
     console.error('Analytics error:', error)
     return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 })

@@ -1,35 +1,35 @@
-'use client';
+'use client'
 
-import { BetSelection, Game } from '@/lib/types/games';
-import { Clock } from 'lucide-react';
-import { useState } from 'react';
-import HierarchicalTabs, { MainTabType } from './tabs/hierarchical-tabs';
-import MarketContent from './markets/market-content';
+import { BetSelection, Game } from '@/lib/types/games'
+import { Clock } from 'lucide-react'
+import { useState } from 'react'
+import HierarchicalTabs, { MainTabType } from './tabs/hierarchical-tabs'
+import MarketContent from './markets/market-content'
 
 interface GameCardProps {
-  game: Game;
-  league: string;
-  onOddsClick: (bet: BetSelection) => void;
+  game: Game
+  league: string
+  onOddsClick: (bet: BetSelection) => void
 }
 
 export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
-  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('main');
-  const [activeSubTab, setActiveSubTab] = useState<string>('');
+  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('main')
+  const [activeSubTab, setActiveSubTab] = useState<string>('')
 
   const formatGameTime = (commenceTime: string): string => {
-    const date = new Date(commenceTime);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const gameDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
-    const isToday = gameDate.getTime() === today.getTime();
-    
+    const date = new Date(commenceTime)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const gameDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+    const isToday = gameDate.getTime() === today.getTime()
+
     if (isToday) {
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-      });
+      })
     } else {
       return date.toLocaleDateString('en-US', {
         month: 'short',
@@ -37,25 +37,25 @@ export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-      });
+      })
     }
-  };
+  }
 
   const getGameStatus = () => {
-    const gameStartTime = new Date(game.commence_time);
-    const now = new Date();
-    const timeDiffHours = (now.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60);
-    
-    if (timeDiffHours >= 0 && timeDiffHours <= 4) {
-      return { status: 'live', label: 'LIVE' };
-    } else if (timeDiffHours > 4) {
-      return { status: 'final', label: 'FINAL' };
-    } else {
-      return { status: 'scheduled', label: formatGameTime(game.commence_time) };
-    }
-  };
+    const gameStartTime = new Date(game.commence_time)
+    const now = new Date()
+    const timeDiffHours = (now.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60)
 
-  const gameStatus = getGameStatus();
+    if (timeDiffHours >= 0 && timeDiffHours <= 4) {
+      return { status: 'live', label: 'LIVE' }
+    } else if (timeDiffHours > 4) {
+      return { status: 'final', label: 'FINAL' }
+    } else {
+      return { status: 'scheduled', label: formatGameTime(game.commence_time) }
+    }
+  }
+
+  const gameStatus = getGameStatus()
 
   // Extract odds data for main lines
   const extractMainLinesOdds = () => {
@@ -63,74 +63,87 @@ export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
       return {
         moneylineOdds: undefined,
         spreadOdds: undefined,
-        totalOdds: undefined
-      };
+        totalOdds: undefined,
+      }
     }
 
     // Get the first bookmaker's odds (in production, you'd want to compare and get best odds)
-    const bookmaker = game.bookmakers[0];
-    
-    let moneylineOdds, spreadOdds, totalOdds;
+    const bookmaker = game.bookmakers[0]
+
+    let moneylineOdds, spreadOdds, totalOdds
 
     bookmaker.markets.forEach(market => {
       if (market.key === 'h2h') {
         moneylineOdds = {
-          home: market.outcomes.find(o => o.name === game.home_team) 
-            ? { price: market.outcomes.find(o => o.name === game.home_team)!.price, sportsbook: bookmaker.title }
+          home: market.outcomes.find(o => o.name === game.home_team)
+            ? {
+                price: market.outcomes.find(o => o.name === game.home_team)!.price,
+                sportsbook: bookmaker.title,
+              }
             : undefined,
           away: market.outcomes.find(o => o.name === game.away_team)
-            ? { price: market.outcomes.find(o => o.name === game.away_team)!.price, sportsbook: bookmaker.title }
-            : undefined
-        };
+            ? {
+                price: market.outcomes.find(o => o.name === game.away_team)!.price,
+                sportsbook: bookmaker.title,
+              }
+            : undefined,
+        }
       } else if (market.key === 'spreads') {
         spreadOdds = {
           home: market.outcomes.find(o => o.name === game.home_team)
-            ? { 
-                price: market.outcomes.find(o => o.name === game.home_team)!.price, 
+            ? {
+                price: market.outcomes.find(o => o.name === game.home_team)!.price,
                 point: market.outcomes.find(o => o.name === game.home_team)!.point || 0,
-                sportsbook: bookmaker.title 
+                sportsbook: bookmaker.title,
               }
             : undefined,
           away: market.outcomes.find(o => o.name === game.away_team)
-            ? { 
-                price: market.outcomes.find(o => o.name === game.away_team)!.price, 
+            ? {
+                price: market.outcomes.find(o => o.name === game.away_team)!.price,
                 point: market.outcomes.find(o => o.name === game.away_team)!.point || 0,
-                sportsbook: bookmaker.title 
+                sportsbook: bookmaker.title,
               }
-            : undefined
-        };
+            : undefined,
+        }
       } else if (market.key === 'totals') {
-        const overOutcome = market.outcomes.find(o => o.name === 'Over');
-        const underOutcome = market.outcomes.find(o => o.name === 'Under');
-        
+        const overOutcome = market.outcomes.find(o => o.name === 'Over')
+        const underOutcome = market.outcomes.find(o => o.name === 'Under')
+
         totalOdds = {
-          over: overOutcome 
-            ? { price: overOutcome.price, point: overOutcome.point || 0, sportsbook: bookmaker.title }
+          over: overOutcome
+            ? {
+                price: overOutcome.price,
+                point: overOutcome.point || 0,
+                sportsbook: bookmaker.title,
+              }
             : undefined,
           under: underOutcome
-            ? { price: underOutcome.price, point: underOutcome.point || 0, sportsbook: bookmaker.title }
-            : undefined
-        };
+            ? {
+                price: underOutcome.price,
+                point: underOutcome.point || 0,
+                sportsbook: bookmaker.title,
+              }
+            : undefined,
+        }
       }
-    });
+    })
 
-    return { moneylineOdds, spreadOdds, totalOdds };
-  };
+    return { moneylineOdds, spreadOdds, totalOdds }
+  }
 
-  const { moneylineOdds, spreadOdds, totalOdds } = extractMainLinesOdds();
-
+  const { moneylineOdds, spreadOdds, totalOdds } = extractMainLinesOdds()
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md">
       {/* Compact Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 border-b border-slate-100">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
         <div className="flex items-center space-x-3">
-          <span className="text-xs font-semibold uppercase tracking-wide px-2 py-1 bg-blue-600 text-white rounded">
+          <span className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white">
             {league}
           </span>
           {gameStatus.status === 'live' && (
             <div className="flex items-center space-x-1 text-xs font-medium text-red-600">
-              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></div>
               <span>LIVE</span>
             </div>
           )}
@@ -138,10 +151,10 @@ export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
             <span className="text-xs font-medium text-slate-500">FINAL</span>
           )}
         </div>
-        
+
         {gameStatus.status === 'scheduled' && (
           <div className="flex items-center space-x-1 text-xs text-slate-600">
-            <Clock className="w-3 h-3" />
+            <Clock className="h-3 w-3" />
             <span>{gameStatus.label}</span>
           </div>
         )}
@@ -151,23 +164,23 @@ export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
       <div className="p-3 sm:p-4">
         <div className="space-y-3 sm:space-y-4">
           {/* Teams Section - Responsive Layout */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="flex items-center justify-between py-1.5 px-2 bg-slate-50/50 rounded">
-              <div className="font-medium text-slate-900 truncate text-sm sm:text-base">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded bg-slate-50/50 px-2 py-1.5">
+              <div className="truncate text-sm font-medium text-slate-900 sm:text-base">
                 @ {game.away_team}
               </div>
-              <span className="text-xs text-slate-500 font-medium">AWAY</span>
+              <span className="text-xs font-medium text-slate-500">AWAY</span>
             </div>
-            <div className="flex items-center justify-between py-1.5 px-2 bg-blue-50/50 rounded">
-              <div className="font-medium text-slate-900 truncate text-sm sm:text-base">
+            <div className="flex items-center justify-between rounded bg-blue-50/50 px-2 py-1.5">
+              <div className="truncate text-sm font-medium text-slate-900 sm:text-base">
                 {game.home_team}
               </div>
-              <span className="text-xs text-blue-600 font-medium">HOME</span>
+              <span className="text-xs font-medium text-blue-600">HOME</span>
             </div>
           </div>
 
           {/* Hierarchical Tabs */}
-          <div className="mt-3 -mx-3 sm:-mx-4">
+          <div className="-mx-3 mt-3 sm:-mx-4">
             <HierarchicalTabs
               sportKey={game.sport_key}
               activeMainTab={activeMainTab}
@@ -195,7 +208,6 @@ export default function GameCard({ game, league, onOddsClick }: GameCardProps) {
           </div>
         </div>
       </div>
-
     </div>
-  );
+  )
 }

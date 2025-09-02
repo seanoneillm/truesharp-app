@@ -4,8 +4,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -23,22 +26,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to expected format
-    const transformedStrategies = strategies?.map(strategy => ({
-      id: strategy.id,
-      name: strategy.name,
-      description: strategy.description || '',
-      primary_sport: strategy.sport,
-      bet_type: strategy.bet_type,
-      total_bets: 0, // Simplified - no stats for now
-      win_rate: 0,
-      roi_percentage: 0,
-      is_monetized: strategy.monetized || false,
-      verification_status: 'unverified',
-      start_date: strategy.created_at
-    })) || []
+    const transformedStrategies =
+      strategies?.map(strategy => ({
+        id: strategy.id,
+        name: strategy.name,
+        description: strategy.description || '',
+        primary_sport: strategy.sport,
+        bet_type: strategy.bet_type,
+        total_bets: 0, // Simplified - no stats for now
+        win_rate: 0,
+        roi_percentage: 0,
+        is_monetized: strategy.monetized || false,
+        verification_status: 'unverified',
+        start_date: strategy.created_at,
+      })) || []
 
     return NextResponse.json({
-      strategies: transformedStrategies
+      strategies: transformedStrategies,
     })
   } catch (error) {
     console.error('API error:', error)

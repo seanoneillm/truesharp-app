@@ -6,10 +6,7 @@ export async function GET() {
     const supabase = await createServiceRoleClient()
 
     // Get the bets table schema by attempting to select with empty where clause
-    const { data, error } = await supabase
-      .from('bets')
-      .select('*')
-      .limit(0)
+    const { data, error } = await supabase.from('bets').select('*').limit(0)
 
     if (error) {
       // Try to get schema info from error message
@@ -30,14 +27,13 @@ export async function GET() {
       schema: data,
       sampleData: sampleData,
       error: error?.message,
-      sampleError: sampleError?.message
+      sampleError: sampleError?.message,
     })
-
   } catch (error) {
     console.error('Debug schema error:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

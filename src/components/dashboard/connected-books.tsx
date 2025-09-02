@@ -14,20 +14,20 @@ const defaultSportsbooks: ConnectedSportsbook[] = [
     name: 'DraftKings',
     status: 'connected',
     lastSync: '2 min ago',
-    betsTracked: 124
+    betsTracked: 124,
   },
   {
     name: 'FanDuel',
     status: 'connected',
     lastSync: '5 min ago',
-    betsTracked: 89
+    betsTracked: 89,
   },
   {
     name: 'BetMGM',
     status: 'error',
     lastSync: '2 hours ago',
-    betsTracked: 56
-  }
+    betsTracked: 56,
+  },
 ]
 
 function getStatusIcon(status: string) {
@@ -78,20 +78,22 @@ interface ConnectedBooksProps {
   showAddButton?: boolean
 }
 
-export default function ConnectedBooks({ 
+export default function ConnectedBooks({
   sportsbooks = defaultSportsbooks,
-  title = "Connected Sportsbooks",
-  showAddButton = true
+  title = 'Connected Sportsbooks',
+  showAddButton = true,
 }: ConnectedBooksProps) {
   return (
     <div>
-      <h2 className="text-lg font-medium text-gray-900 mb-4">{title}</h2>
-      <div className="bg-white shadow rounded-lg p-6">
+      <h2 className="mb-4 text-lg font-medium text-gray-900">{title}</h2>
+      <div className="rounded-lg bg-white p-6 shadow">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {sportsbooks.map((book) => (
+          {sportsbooks.map(book => (
             <div key={book.name} className="flex items-center">
               <div className="flex-shrink-0">
-                <div className={`h-8 w-8 rounded flex items-center justify-center ${getStatusColor(book.status)}`}>
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded ${getStatusColor(book.status)}`}
+                >
                   {getStatusIcon(book.status)}
                 </div>
               </div>
@@ -101,29 +103,25 @@ export default function ConnectedBooks({
                   {getStatusText(book)}
                 </p>
                 {book.betsTracked && book.status === 'connected' && (
-                  <p className="text-xs text-gray-500">
-                    {book.betsTracked} bets tracked
-                  </p>
+                  <p className="text-xs text-gray-500">{book.betsTracked} bets tracked</p>
                 )}
               </div>
             </div>
           ))}
-          
+
           {showAddButton && (
             <Link
               href="/settings/sportsbooks"
-              className="flex items-center p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+              className="flex items-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:border-gray-400"
             >
               <Plus className="h-5 w-5 text-gray-400" />
-              <span className="ml-2 text-sm font-medium text-gray-500">
-                Add sportsbook
-              </span>
+              <span className="ml-2 text-sm font-medium text-gray-500">Add sportsbook</span>
             </Link>
           )}
         </div>
-        
+
         {/* Summary */}
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="mt-6 border-t border-gray-200 pt-6">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-lg font-semibold text-gray-900">

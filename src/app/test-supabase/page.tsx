@@ -10,10 +10,10 @@ export default function SupabaseTestPage() {
   const testSupabaseConnection = async () => {
     setLoading(true)
     setResult('')
-    
+
     try {
       console.log('🧪 Testing Supabase connection...')
-      
+
       // Create client with direct env vars
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +22,10 @@ export default function SupabaseTestPage() {
 
       console.log('🧪 Supabase client created')
       console.log('🧪 URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-      console.log('🧪 Key (first 20 chars):', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20))
+      console.log(
+        '🧪 Key (first 20 chars):',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20)
+      )
 
       // Test 1: Check if client exists
       if (!supabase) {
@@ -32,7 +35,7 @@ export default function SupabaseTestPage() {
 
       // Test 2: Try to get session (should work even without auth)
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      
+
       if (sessionError) {
         console.error('🧪 Session error:', sessionError)
         setResult(`❌ Session error: ${sessionError.message}`)
@@ -44,17 +47,17 @@ export default function SupabaseTestPage() {
       // Test 3: Try to sign in with clearly string values
       const testEmail = 'test@example.com'
       const testPassword = 'testpassword123'
-      
+
       console.log('🧪 Attempting sign in with:', {
         email: testEmail,
         emailType: typeof testEmail,
         password: '[REDACTED]',
-        passwordType: typeof testPassword
+        passwordType: typeof testPassword,
       })
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: testEmail,
-        password: testPassword
+        password: testPassword,
       })
 
       if (authError) {
@@ -64,7 +67,6 @@ export default function SupabaseTestPage() {
         console.log('🧪 Auth successful:', authData)
         setResult('✅ Auth successful (this should not happen with fake credentials)')
       }
-
     } catch (error) {
       console.error('🧪 Catch error:', error)
       setResult(`❌ Catch error: ${error}`)
@@ -74,26 +76,31 @@ export default function SupabaseTestPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Supabase Connection Test</h1>
-      
-      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-        <h2 className="font-semibold mb-2">Environment Check:</h2>
-        <p><strong>URL:</strong> {process.env.NEXT_PUBLIC_SUPABASE_URL || '❌ Missing'}</p>
-        <p><strong>Key:</strong> {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Present' : '❌ Missing'}</p>
+    <div className="mx-auto max-w-2xl p-8">
+      <h1 className="mb-4 text-2xl font-bold">Supabase Connection Test</h1>
+
+      <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-4">
+        <h2 className="mb-2 font-semibold">Environment Check:</h2>
+        <p>
+          <strong>URL:</strong> {process.env.NEXT_PUBLIC_SUPABASE_URL || '❌ Missing'}
+        </p>
+        <p>
+          <strong>Key:</strong>{' '}
+          {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Present' : '❌ Missing'}
+        </p>
       </div>
 
       <button
         onClick={testSupabaseConnection}
         disabled={loading}
-        className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+        className="rounded-lg bg-blue-500 px-6 py-3 text-white hover:bg-blue-600 disabled:opacity-50"
       >
         {loading ? 'Testing...' : 'Test Supabase Connection'}
       </button>
 
       {result && (
-        <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
-          <h3 className="font-semibold mb-2">Result:</h3>
+        <div className="mt-6 rounded-lg border bg-gray-50 p-4">
+          <h3 className="mb-2 font-semibold">Result:</h3>
           <pre className="whitespace-pre-wrap text-sm">{result}</pre>
         </div>
       )}

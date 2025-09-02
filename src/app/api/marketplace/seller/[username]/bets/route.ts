@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
@@ -26,7 +26,8 @@ export async function GET(
     // Fetch recent bets for this seller
     const { data: bets, error: betsError } = await supabase
       .from('bets')
-      .select(`
+      .select(
+        `
         id,
         sport,
         bet_type,
@@ -37,7 +38,8 @@ export async function GET(
         profit,
         placed_at,
         game_date
-      `)
+      `
+      )
       .eq('user_id', profile.id)
       .order('placed_at', { ascending: false })
       .limit(limit)
@@ -48,9 +50,8 @@ export async function GET(
     }
 
     return NextResponse.json({
-      data: bets || []
+      data: bets || [],
     })
-
   } catch (error) {
     console.error('Seller bets API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

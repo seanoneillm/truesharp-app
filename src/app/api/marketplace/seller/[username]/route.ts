@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
@@ -12,14 +12,16 @@ export async function GET(
     // Fetch seller profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select(`
+      .select(
+        `
         id,
         username,
         profile_picture_url,
         is_verified_seller,
         bio,
         created_at
-      `)
+      `
+      )
       .eq('username', username)
       .eq('is_seller', true)
       .single()
@@ -36,7 +38,8 @@ export async function GET(
     // Fetch strategies for this seller separately
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategies')
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
@@ -48,7 +51,8 @@ export async function GET(
         pricing_monthly,
         pricing_yearly,
         created_at
-      `)
+      `
+      )
       .eq('user_id', profile.id)
       .eq('monetized', true)
 
@@ -59,10 +63,9 @@ export async function GET(
     return NextResponse.json({
       data: {
         ...profile,
-        strategies: strategies || []
-      }
+        strategies: strategies || [],
+      },
     })
-
   } catch (error) {
     console.error('Seller profile API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

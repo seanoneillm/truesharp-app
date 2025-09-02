@@ -6,7 +6,7 @@ export default function DirectJSTestPage() {
   const handleDirectTest = async () => {
     try {
       console.log('🧪 Direct JS test starting...')
-      
+
       // Create client
       const supabase = createClient(
         'https://trsogafrxpptszxydycn.supabase.co',
@@ -16,16 +16,15 @@ export default function DirectJSTestPage() {
       // Completely literal string values
       const result = await supabase.auth.signInWithPassword({
         email: 'test@example.com',
-        password: 'password123'
+        password: 'password123',
       })
 
       console.log('🧪 Direct result:', result)
-      
+
       const resultDiv = document.getElementById('result')
       if (resultDiv) {
         resultDiv.textContent = result.error ? `Error: ${result.error.message}` : 'Success!'
       }
-
     } catch (error) {
       console.error('🧪 Direct error:', error)
       const resultDiv = document.getElementById('result')
@@ -36,20 +35,18 @@ export default function DirectJSTestPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Direct JS Test</h1>
-      <p className="mb-4 text-gray-600">
-        This test uses plain JavaScript with literal values.
-      </p>
-      
+    <div className="mx-auto max-w-2xl p-8">
+      <h1 className="mb-4 text-2xl font-bold">Direct JS Test</h1>
+      <p className="mb-4 text-gray-600">This test uses plain JavaScript with literal values.</p>
+
       <button
         onClick={handleDirectTest}
-        className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
+        className="rounded-lg bg-green-500 px-6 py-3 text-white hover:bg-green-600"
       >
         Test Direct JS
       </button>
 
-      <div id="result" className="mt-6 p-4 bg-gray-50 border rounded-lg min-h-[50px]">
+      <div id="result" className="mt-6 min-h-[50px] rounded-lg border bg-gray-50 p-4">
         Results will appear here...
       </div>
     </div>

@@ -23,32 +23,30 @@ export default function Sidebar({ className }: SidebarProps) {
   // Prevent hydration mismatch by rendering consistent layout until mounted
   if (!isMounted) {
     return (
-      <div 
+      <div
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out w-64",
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white transition-all duration-300 ease-in-out',
           className
         )}
       >
         {/* Header with Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
-          <Link href="/dashboard" className="flex items-center min-w-0">
-            <TrueSharpShield className="h-8 w-8 text-blue-600 shrink-0" />
-            <span className="ml-2 text-xl font-bold text-gray-900 truncate">
-              TrueSharp
-            </span>
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
+          <Link href="/dashboard" className="flex min-w-0 items-center">
+            <TrueSharpShield className="h-8 w-8 shrink-0 text-blue-600" />
+            <span className="ml-2 truncate text-xl font-bold text-gray-900">TrueSharp</span>
           </Link>
           {/* Static button for SSR - no onClick handler */}
-          <div className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+          <div className="rounded-md p-1.5 transition-colors hover:bg-gray-100">
             <X className="h-5 w-5 text-gray-600" />
           </div>
         </div>
-        
+
         {/* Navigation Content */}
-        <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-          <nav className="flex-1 px-2 py-4 overflow-y-auto">
+        <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+          <nav className="flex-1 overflow-y-auto px-2 py-4">
             <NavigationItems isCollapsed={false} />
           </nav>
-          <div className="p-4 border-t border-gray-200">
+          <div className="border-t border-gray-200 p-4">
             <ProCTA />
           </div>
         </div>
@@ -57,33 +55,29 @@ export default function Sidebar({ className }: SidebarProps) {
   }
 
   return (
-    <div 
+    <div
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-16" : "w-64",
+        'fixed left-0 top-0 z-40 h-screen border-r border-gray-200 bg-white transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-16' : 'w-64',
         className
       )}
     >
       {/* Header with Logo and Toggle */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
-        <Link href="/dashboard" className="flex items-center min-w-0">
-          <TrueSharpShield className="h-8 w-8 text-blue-600 shrink-0" />
+      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
+        <Link href="/dashboard" className="flex min-w-0 items-center">
+          <TrueSharpShield className="h-8 w-8 shrink-0 text-blue-600" />
           {isMounted && !isCollapsed && (
-            <span className="ml-2 text-xl font-bold text-gray-900 truncate">
-              TrueSharp
-            </span>
+            <span className="ml-2 truncate text-xl font-bold text-gray-900">TrueSharp</span>
           )}
           {!isMounted && (
-            <span className="ml-2 text-xl font-bold text-gray-900 truncate">
-              TrueSharp
-            </span>
+            <span className="ml-2 truncate text-xl font-bold text-gray-900">TrueSharp</span>
           )}
         </Link>
-        
+
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="rounded-md p-1.5 transition-colors hover:bg-gray-100"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? (
             <Menu className="h-5 w-5 text-gray-600" />
@@ -94,14 +88,14 @@ export default function Sidebar({ className }: SidebarProps) {
       </div>
 
       {/* Navigation Content */}
-      <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-        <nav className="flex-1 px-2 py-4 overflow-y-auto">
+      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+        <nav className="flex-1 overflow-y-auto px-2 py-4">
           <NavigationItems isCollapsed={isCollapsed} />
         </nav>
 
         {/* Pro CTA - Only show when not collapsed */}
         {!isCollapsed && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="border-t border-gray-200 p-4">
             <ProCTA />
           </div>
         )}

@@ -2,18 +2,13 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { ChevronUp, ChevronDown, MoreHorizontal } from 'lucide-react'
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn('w-full caption-bottom text-sm', className)}
-      {...props}
-    />
-  </div>
-))
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <div className="relative w-full overflow-auto">
+      <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
+    </div>
+  )
+)
 Table.displayName = 'Table'
 
 const TableHeader = React.forwardRef<
@@ -28,11 +23,7 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <tbody
-    ref={ref}
-    className={cn('[&_tr:last-child]:border-0', className)}
-    {...props}
-  />
+  <tbody ref={ref} className={cn('[&_tr:last-child]:border-0', className)} {...props} />
 ))
 TableBody.displayName = 'TableBody'
 
@@ -42,10 +33,7 @@ const TableFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tfoot
     ref={ref}
-    className={cn(
-      'border-t bg-muted/50 font-medium [&>tr]:last:border-b-0',
-      className
-    )}
+    className={cn('border-t bg-muted/50 font-medium [&>tr]:last:border-b-0', className)}
     {...props}
   />
 ))
@@ -91,17 +79,17 @@ const TableHead = React.forwardRef<
       <span>{children}</span>
       {sortable && (
         <div className="flex flex-col">
-          <ChevronUp 
+          <ChevronUp
             className={cn(
               'h-3 w-3',
               sortDirection === 'asc' ? 'text-foreground' : 'text-muted-foreground'
-            )} 
+            )}
           />
-          <ChevronDown 
+          <ChevronDown
             className={cn(
-              'h-3 w-3 -mt-1',
+              '-mt-1 h-3 w-3',
               sortDirection === 'desc' ? 'text-foreground' : 'text-muted-foreground'
-            )} 
+            )}
           />
         </div>
       )}
@@ -126,11 +114,7 @@ const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
   React.HTMLAttributes<HTMLTableCaptionElement>
 >(({ className, ...props }, ref) => (
-  <caption
-    ref={ref}
-    className={cn('mt-4 text-sm text-muted-foreground', className)}
-    {...props}
-  />
+  <caption ref={ref} className={cn('mt-4 text-sm text-muted-foreground', className)} {...props} />
 ))
 TableCaption.displayName = 'TableCaption'
 
@@ -156,7 +140,7 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   className,
   emptyMessage = 'No data available',
-  onRowClick
+  onRowClick,
 }: DataTableProps<T>) {
   const [sortColumn, setSortColumn] = React.useState<keyof T | null>(null)
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc')
@@ -186,7 +170,7 @@ export function DataTable<T extends Record<string, any>>({
 
   if (data.length === 0) {
     return (
-      <div className="text-center py-8">
+      <div className="py-8 text-center">
         <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     )
@@ -196,7 +180,7 @@ export function DataTable<T extends Record<string, any>>({
     <Table className={className}>
       <TableHeader>
         <TableRow>
-          {columns.map((column) => (
+          {columns.map(column => (
             <TableHead
               key={String(column.key)}
               sortable={column.sortable}
@@ -211,12 +195,8 @@ export function DataTable<T extends Record<string, any>>({
       </TableHeader>
       <TableBody>
         {sortedData.map((row, index) => (
-          <TableRow
-            key={index}
-            clickable={!!onRowClick}
-            onClick={() => onRowClick?.(row)}
-          >
-            {columns.map((column) => (
+          <TableRow key={index} clickable={!!onRowClick} onClick={() => onRowClick?.(row)}>
+            {columns.map(column => (
               <TableCell key={String(column.key)} className={column.className}>
                 {column.render
                   ? column.render(row[column.key], row)
@@ -244,26 +224,26 @@ export const TableActions: React.FC<{
   return (
     <div className="relative">
       <button
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation()
           setIsOpen(!isOpen)
         }}
-        className="p-2 hover:bg-muted rounded-md"
+        className="rounded-md p-2 hover:bg-muted"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-8 z-50 min-w-[150px] bg-popover border rounded-md shadow-lg p-1">
+        <div className="absolute right-0 top-8 z-50 min-w-[150px] rounded-md border bg-popover p-1 shadow-lg">
           {actions.map((action, index) => (
             <button
               key={index}
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation()
                 action.onClick()
                 setIsOpen(false)
               }}
               className={cn(
-                'w-full flex items-center px-2 py-1.5 text-sm rounded-sm hover:bg-accent',
+                'flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
                 action.variant === 'destructive' && 'text-destructive hover:bg-destructive/10'
               )}
             >
@@ -277,13 +257,4 @@ export const TableActions: React.FC<{
   )
 }
 
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
-}
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption }

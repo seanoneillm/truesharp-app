@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -14,7 +17,8 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('posts')
-      .select(`
+      .select(
+        `
         *,
         profiles!inner(
           id,
@@ -22,7 +26,8 @@ export async function GET(request: NextRequest) {
           profile_picture_url,
           is_verified_seller
         )
-      `)
+      `
+      )
       .order('created_at', { ascending: false })
 
     // Apply filters
@@ -34,14 +39,15 @@ export async function GET(request: NextRequest) {
         .eq('subscriber_id', user.id)
         .eq('status', 'active')
 
-      const subscribedSellerIds = subscriptions?.map((s: { seller_id: string }) => s.seller_id) || []
+      const subscribedSellerIds =
+        subscriptions?.map((s: { seller_id: string }) => s.seller_id) || []
       if (subscribedSellerIds.length > 0) {
         query = query.in('user_id', subscribedSellerIds)
       } else {
         // If not subscribed to anyone, return empty results
         return NextResponse.json({
           data: [],
-          pagination: { page, limit, total: 0, totalPages: 0 }
+          pagination: { page, limit, total: 0, totalPages: 0 },
         })
       }
     }
@@ -63,8 +69,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
-      }
+        totalPages: Math.ceil((count || 0) / limit),
+      },
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -74,7 +80,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -89,7 +98,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (content.length > 500) {
-      return NextResponse.json({ error: 'Content must be less than 500 characters' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Content must be less than 500 characters' },
+        { status: 400 }
+      )
     }
 
     // Create the post
@@ -100,9 +112,10 @@ export async function POST(request: NextRequest) {
         content: content.trim(),
         image_url: image_url || null,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .select(`
+      .select(
+        `
         *,
         profiles!inner(
           id,
@@ -110,7 +123,8 @@ export async function POST(request: NextRequest) {
           profile_picture_url,
           is_verified_seller
         )
-      `)
+      `
+      )
       .single()
 
     if (error) {

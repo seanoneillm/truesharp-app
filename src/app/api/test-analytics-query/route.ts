@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
     if (profileError || !profile) {
       return NextResponse.json({
         success: false,
-        error: `User not found with email: ${userEmail}`
+        error: `User not found with email: ${userEmail}`,
       })
     }
 
     // Simulate the exact same date logic as the analytics component
     let startDate: Date
     let endDate: Date
-    
+
     if (period === 'year') {
       // For year view, show data for the entire selected year
       startDate = new Date(year, 0, 1) // January 1st of selected year
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     } else {
       // For week/month, use current date logic but within the selected year
       const now = new Date()
-      
+
       switch (period) {
         case 'week':
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (betsError) {
       return NextResponse.json({
         success: false,
-        error: `Error fetching bets: ${betsError.message}`
+        error: `Error fetching bets: ${betsError.message}`,
       })
     }
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       success: true,
       user: {
         id: profile.id,
-        email: profile.email
+        email: profile.email,
       },
       testQuery: {
         period,
@@ -94,21 +94,20 @@ export async function POST(request: NextRequest) {
         endDate: endDate.toISOString(),
         resultCount: bets?.length || 0,
         firstBet: bets?.[0] || null,
-        lastBet: bets?.[bets.length - 1] || null
+        lastBet: bets?.[bets.length - 1] || null,
       },
       all2024Data: {
         count: all2024Bets?.length || 0,
         firstBet: all2024Bets?.[0] || null,
         lastBet: all2024Bets?.[all2024Bets.length - 1] || null,
-        sampleBets: all2024Bets?.slice(0, 3) || []
-      }
+        sampleBets: all2024Bets?.slice(0, 3) || [],
+      },
     })
-
   } catch (err) {
     console.error('Test query error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error during test'
+      error: 'Unexpected error during test',
     })
   }
 }

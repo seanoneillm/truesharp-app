@@ -113,7 +113,7 @@ const defaultFilters: AnalyticsFilters = {
   minStake: null,
   maxStake: null,
   results: ['won', 'lost'],
-  timeframe: '30d'
+  timeframe: '30d',
 }
 
 export function useAnalytics(user: User | null = null, isPro: boolean = false) {
@@ -121,7 +121,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<AnalyticsFilters>(defaultFilters)
-  
+
   const supabase = createBrowserClient()
 
   useEffect(() => {
@@ -141,8 +141,11 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
         console.log('Fetching bets for user:', user.id)
 
         // Test authentication first
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-        
+        const {
+          data: { user: currentUser },
+          error: userError,
+        } = await supabase.auth.getUser()
+
         if (userError || !currentUser) {
           throw new Error('Authentication failed')
         }
@@ -152,7 +155,8 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
         // Fetch bets with proper Supabase syntax
         const { data, error: fetchError } = await supabase
           .from('bets')
-          .select(`
+          .select(
+            `
             id,
             user_id,
             sport,
@@ -170,7 +174,8 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
             sportsbook,
             clv,
             created_at
-          `)
+          `
+          )
           .eq('user_id', user.id)
           .order('placed_at', { ascending: false })
 
@@ -179,18 +184,18 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
             message: fetchError.message,
             details: fetchError.details,
             hint: fetchError.hint,
-            code: fetchError.code
+            code: fetchError.code,
           })
           throw new Error(`Database error: ${fetchError.message}`)
         }
 
         console.log('Successfully fetched', data?.length || 0, 'bets')
-        
+
         // Log a sample bet to check data structure
         if (data && data.length > 0) {
           console.log('Sample bet data:', data[0])
         }
-        
+
         setBets(data || [])
       } catch (err) {
         console.error('Error in fetchBets:', err)
@@ -241,36 +246,36 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
       if (filters.sports.length > 0 && !filters.sports.includes(bet.sport)) {
         return false
       }
-      
+
       if (filters.betTypes.length > 0 && !filters.betTypes.includes(bet.bet_type)) {
         return false
       }
-      
+
       if (filters.dateRange.start && new Date(bet.placed_at) < new Date(filters.dateRange.start)) {
         return false
       }
       if (filters.dateRange.end && new Date(bet.placed_at) > new Date(filters.dateRange.end)) {
         return false
       }
-      
+
       if (filters.sportsbooks.length > 0 && !filters.sportsbooks.includes(bet.sportsbook)) {
         return false
       }
-      
+
       if (filters.minOdds !== null && bet.odds < filters.minOdds) {
         return false
       }
       if (filters.maxOdds !== null && bet.odds > filters.maxOdds) {
         return false
       }
-      
+
       if (filters.minStake !== null && bet.stake < filters.minStake) {
         return false
       }
       if (filters.maxStake !== null && bet.stake > filters.maxStake) {
         return false
       }
-      
+
       if (filters.results.length > 0 && !filters.results.includes(bet.status)) {
         return false
       }
@@ -282,7 +287,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
   // Calculate analytics data
   const analyticsData = useMemo((): AnalyticsData => {
     console.log('Calculating analytics for', filteredBets.length, 'filtered bets')
-    
+
     if (!filteredBets.length) {
       return {
         metrics: {
@@ -299,46 +304,51 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
           streakType: 'none',
           avgClv: null,
           profitableSports: 0,
-          variance: 0
+          variance: 0,
         },
         sportBreakdown: [],
         betTypeBreakdown: [],
         monthlyData: [],
         dailyProfitData: [],
         recentBets: [],
-        topPerformingSports: []
+        topPerformingSports: [],
       }
     }
 
     const settledBets = filteredBets.filter(bet => bet.status === 'won' || bet.status === 'lost')
     const wonBets = settledBets.filter(bet => bet.status === 'won')
-    
+
     console.log('Settled bets:', settledBets.length, 'Won bets:', wonBets.length)
-    
+
     const totalStaked = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
     const totalProfit = settledBets.reduce((sum, bet) => sum + (bet.profit_loss || 0), 0)
-    
+
     const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0
     const roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0
-    
-    const avgOdds = settledBets.length > 0 ? settledBets.reduce((sum, bet) => sum + bet.odds, 0) / settledBets.length : 0
+
+    const avgOdds =
+      settledBets.length > 0
+        ? settledBets.reduce((sum, bet) => sum + bet.odds, 0) / settledBets.length
+        : 0
     const avgStake = settledBets.length > 0 ? totalStaked / settledBets.length : 0
-    
+
     // Calculate biggest win/loss
     const profits = settledBets.map(bet => bet.profit_loss || 0)
     const biggestWin = Math.max(...profits, 0)
     const biggestLoss = Math.abs(Math.min(...profits, 0))
-    
+
     // Calculate current streak
     let currentStreak = 0
     let streakType: 'win' | 'loss' | 'none' = 'none'
-    
+
     if (settledBets.length > 0) {
-      const sortedBets = [...settledBets].sort((a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime())
+      const sortedBets = [...settledBets].sort(
+        (a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
+      )
       const latestResult = sortedBets[0]?.status
       if (latestResult) {
         streakType = latestResult === 'won' ? 'win' : 'loss'
-        
+
         for (const bet of sortedBets) {
           if (bet.status === latestResult) {
             currentStreak++
@@ -350,24 +360,33 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
     }
 
     // Calculate average CLV
-    const avgClv = isPro && settledBets.length > 0 ? 
-      settledBets
-        .filter(bet => bet.clv !== null)
-        .reduce((sum, bet) => sum + (bet.clv || 0), 0) / settledBets.filter(bet => bet.clv !== null).length || null
-      : null
+    const avgClv =
+      isPro && settledBets.length > 0
+        ? settledBets
+            .filter(bet => bet.clv !== null)
+            .reduce((sum, bet) => sum + (bet.clv || 0), 0) /
+            settledBets.filter(bet => bet.clv !== null).length || null
+        : null
 
     // Calculate variance
     const avgProfit = settledBets.length > 0 ? totalProfit / settledBets.length : 0
-    const variance = settledBets.length > 0 ? 
-      settledBets.reduce((sum, bet) => sum + Math.pow((bet.profit_loss || 0) - avgProfit, 2), 0) / settledBets.length
-      : 0
+    const variance =
+      settledBets.length > 0
+        ? settledBets.reduce(
+            (sum, bet) => sum + Math.pow((bet.profit_loss || 0) - avgProfit, 2),
+            0
+          ) / settledBets.length
+        : 0
 
     // Sport breakdown
-    const sportStats = new Map<string, {
-      bets: Bet[]
-      profit: number
-      staked: number
-    }>()
+    const sportStats = new Map<
+      string,
+      {
+        bets: Bet[]
+        profit: number
+        staked: number
+      }
+    >()
 
     settledBets.forEach(bet => {
       if (!sportStats.has(bet.sport)) {
@@ -379,26 +398,33 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
       stats.staked += bet.stake
     })
 
-    const sportBreakdown: SportBreakdown[] = Array.from(sportStats.entries()).map(([sport, stats]) => {
-      const wonCount = stats.bets.filter(bet => bet.status === 'won').length
-      const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
-      const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
-      const avgOdds = stats.bets.length > 0 ? stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length : 0
+    const sportBreakdown: SportBreakdown[] = Array.from(sportStats.entries())
+      .map(([sport, stats]) => {
+        const wonCount = stats.bets.filter(bet => bet.status === 'won').length
+        const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
+        const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
+        const avgOdds =
+          stats.bets.length > 0
+            ? stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length
+            : 0
 
-      return {
-        sport,
-        bets: stats.bets.length,
-        winRate,
-        profit: stats.profit,
-        roi,
-        avgOdds,
-        totalStaked: stats.staked,
-        clv: isPro ? stats.bets
-          .filter(bet => bet.clv !== null)
-          .reduce((sum, bet) => sum + (bet.clv || 0), 0) / stats.bets.filter(bet => bet.clv !== null).length || undefined
-          : undefined
-      }
-    }).sort((a, b) => b.profit - a.profit)
+        return {
+          sport,
+          bets: stats.bets.length,
+          winRate,
+          profit: stats.profit,
+          roi,
+          avgOdds,
+          totalStaked: stats.staked,
+          clv: isPro
+            ? stats.bets
+                .filter(bet => bet.clv !== null)
+                .reduce((sum, bet) => sum + (bet.clv || 0), 0) /
+                stats.bets.filter(bet => bet.clv !== null).length || undefined
+            : undefined,
+        }
+      })
+      .sort((a, b) => b.profit - a.profit)
 
     // Create simple daily profit data
     const dailyStats = new Map<string, number>()
@@ -419,7 +445,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
           date,
           profit,
           cumulativeProfit,
-          bets: dayBets
+          bets: dayBets,
         }
       })
 
@@ -440,7 +466,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
         streakType,
         avgClv,
         profitableSports: sportBreakdown.filter(sport => sport.profit > 0).length,
-        variance
+        variance,
       },
       sportBreakdown,
       betTypeBreakdown: [],
@@ -450,7 +476,7 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
       topPerformingSports: sportBreakdown
         .filter(sport => sport.bets >= 5)
         .sort((a, b) => b.roi - a.roi)
-        .slice(0, isPro ? 10 : 3)
+        .slice(0, isPro ? 10 : 3),
     }
   }, [filteredBets, isPro])
 
@@ -465,6 +491,6 @@ export function useAnalytics(user: User | null = null, isPro: boolean = false) {
     filters,
     updateFilters,
     totalBets: bets.length,
-    filteredBetsCount: filteredBets.length
+    filteredBetsCount: filteredBets.length,
   }
 }

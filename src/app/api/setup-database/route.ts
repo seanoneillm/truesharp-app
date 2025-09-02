@@ -115,20 +115,19 @@ export async function POST() {
       console.error('Error creating performance cache infrastructure:', error)
       return NextResponse.json({
         success: false,
-        error: error.message
+        error: error.message,
       })
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Performance cache infrastructure created successfully'
+      message: 'Performance cache infrastructure created successfully',
     })
-
   } catch (err) {
     console.error('Unexpected error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error creating infrastructure'
+      error: 'Unexpected error creating infrastructure',
     })
   }
 }

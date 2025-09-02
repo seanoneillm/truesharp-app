@@ -8,17 +8,11 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
     if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
     const { supabase } = createRouteHandlerSupabaseClient(request)
@@ -37,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Reset password error:', error)
-      
+
       // Handle specific errors
       switch (error.message) {
         case 'Email rate limit exceeded':
@@ -46,10 +40,7 @@ export async function POST(request: NextRequest) {
             { status: 429 }
           )
         case 'Invalid email':
-          return NextResponse.json(
-            { error: 'Invalid email address' },
-            { status: 400 }
-          )
+          return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
         default:
           // For security, we might want to always return success
           // even if the email doesn't exist
@@ -60,20 +51,19 @@ export async function POST(request: NextRequest) {
     // Log password reset attempt
     if (existingUser) {
       try {
-        await supabase
-          .from('user_events')
-          .insert([
-            {
-              user_id: existingUser.id,
-              event_type: 'password_reset_requested',
-              timestamp: new Date().toISOString(),
-              ip_address: request.headers.get('x-forwarded-for') || 
-                         request.headers.get('x-real-ip') || 
-                         'unknown',
-              user_agent: request.headers.get('user-agent') || 'unknown',
-              metadata: { email }
-            }
-          ])
+        await supabase.from('user_events').insert([
+          {
+            user_id: existingUser.id,
+            event_type: 'password_reset_requested',
+            timestamp: new Date().toISOString(),
+            ip_address:
+              request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip') ||
+              'unknown',
+            user_agent: request.headers.get('user-agent') || 'unknown',
+            metadata: { email },
+          },
+        ])
       } catch (eventError) {
         console.error('Event logging error:', eventError)
       }
@@ -82,16 +72,12 @@ export async function POST(request: NextRequest) {
     // Always return success for security (don't reveal if email exists)
     return NextResponse.json({
       message: 'If an account with that email exists, you will receive a password reset link.',
-      success: true
+      success: true,
     })
-
   } catch (error) {
     console.error('Reset password API error:', error)
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

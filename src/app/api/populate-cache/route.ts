@@ -57,23 +57,21 @@ export async function POST() {
         totalProfit,
         totalStake,
         winRate,
-        roi
+        roi,
       })
 
       // Insert or update the cache
-      const { error: cacheError } = await supabase
-        .from('user_performance_cache')
-        .upsert({
-          user_id: userId,
-          total_bets: totalBets,
-          won_bets: wonBets,
-          lost_bets: lostBets,
-          total_profit: totalProfit,
-          total_stake: totalStake,
-          win_rate: winRate,
-          roi: roi,
-          updated_at: new Date().toISOString()
-        })
+      const { error: cacheError } = await supabase.from('user_performance_cache').upsert({
+        user_id: userId,
+        total_bets: totalBets,
+        won_bets: wonBets,
+        lost_bets: lostBets,
+        total_profit: totalProfit,
+        total_stake: totalStake,
+        win_rate: winRate,
+        roi: roi,
+        updated_at: new Date().toISOString(),
+      })
 
       if (cacheError) {
         console.error('Error updating cache for user:', userId, cacheError)
@@ -84,11 +82,11 @@ export async function POST() {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'User performance cache populated successfully',
       results,
-      totalUsers: uniqueUserIds.length
+      totalUsers: uniqueUserIds.length,
     })
   } catch (error) {
     console.error('Error:', error)

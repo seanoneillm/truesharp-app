@@ -1,9 +1,14 @@
-import { FilterFunction, SavedFilter } from './filter-types';
+import { FilterFunction, SavedFilter } from './filter-types'
 
-const savedFilters: Record<string, SavedFilter> = {};
+const savedFilters: Record<string, SavedFilter> = {}
 
-export function saveFilter(id: string, name: string, filters: FilterFunction[], description?: string): void {
-  const now = new Date();
+export function saveFilter(
+  id: string,
+  name: string,
+  filters: FilterFunction[],
+  description?: string
+): void {
+  const now = new Date()
   savedFilters[id] = {
     id,
     name,
@@ -11,21 +16,21 @@ export function saveFilter(id: string, name: string, filters: FilterFunction[], 
     createdAt: now,
     updatedAt: now,
     filters,
-  };
+  }
 }
 
 export function loadFilter(id: string): SavedFilter | undefined {
-  return savedFilters[id];
+  return savedFilters[id]
 }
 
 export function deleteFilter(id: string): boolean {
   if (savedFilters[id]) {
-    delete savedFilters[id];
-    return true;
+    delete savedFilters[id]
+    return true
   }
-  return false;
+  return false
 }
 
 export function listSavedFilters(): SavedFilter[] {
-  return Object.values(savedFilters);
+  return Object.values(savedFilters)
 }

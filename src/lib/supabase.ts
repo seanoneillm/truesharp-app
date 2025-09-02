@@ -12,9 +12,9 @@ export function createClient() {
 export async function createServerClient() {
   const { createServerClient: createSSRClient } = await import('@supabase/ssr')
   const { cookies } = await import('next/headers')
-  
+
   const cookieStore = await cookies()
-  
+
   return createSSRClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -42,11 +42,11 @@ export async function createServerClient() {
 // Alternative server client for API routes with explicit request
 export async function createServerClientFromRequest(request: Request) {
   const { createServerClient: createSSRClient } = await import('@supabase/ssr')
-  
+
   // Extract cookies from request headers
   const cookieHeader = request.headers.get('cookie') || ''
   const cookies = new Map<string, string>()
-  
+
   // Parse cookie header
   if (cookieHeader) {
     cookieHeader.split(';').forEach(cookie => {
@@ -56,7 +56,7 @@ export async function createServerClientFromRequest(request: Request) {
       }
     })
   }
-  
+
   return createSSRClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -76,15 +76,15 @@ export async function createServerClientFromRequest(request: Request) {
 // Service role client for admin operations (bypasses RLS)
 export async function createServiceRoleClient() {
   const { createClient } = await import('@supabase/supabase-js')
-  
+
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     }
   )
 }
@@ -573,60 +573,60 @@ export type Database = {
           status: string
           started_at: string
           expires_at: string | null
-                    stripe_subscription_id: string | null
-                    created_at: string
-                  }
-                  Insert: {
-                    id?: string
-                    subscriber_id: string
-                    seller_id: string
-                    tier: string
-                    price: number
-                    status: string
-                    started_at: string
-                    expires_at?: string | null
-                    stripe_subscription_id?: string | null
-                    created_at?: string
-                  }
-                  Update: {
-                    id?: string
-                    subscriber_id?: string
-                    seller_id?: string
-                    tier?: string
-                    price?: number
-                    status?: string
-                    started_at?: string
-                    expires_at?: string | null
-                    stripe_subscription_id?: string | null
-                    created_at?: string
-                  }
-                }
-              posts: {
-                Row: {
-                  id: string
-                  user_id: string
-                  content: string
-                  image_url: string | null
-                  created_at: string
-                  updated_at: string
-                }
-                Insert: {
-                  id?: string
-                  user_id: string
-                  content: string
-                  image_url?: string | null
-                  created_at?: string
-                  updated_at?: string
-                }
-                Update: {
-                  id?: string
-                  user_id?: string
-                  content?: string
-                  image_url?: string | null
-                  created_at?: string
-                  updated_at?: string
-                }
-              }
-            }
-          }
+          stripe_subscription_id: string | null
+          created_at: string
         }
+        Insert: {
+          id?: string
+          subscriber_id: string
+          seller_id: string
+          tier: string
+          price: number
+          status: string
+          started_at: string
+          expires_at?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          subscriber_id?: string
+          seller_id?: string
+          tier?: string
+          price?: number
+          status?: string
+          started_at?: string
+          expires_at?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+        }
+      }
+      posts: {
+        Row: {
+          id: string
+          user_id: string
+          content: string
+          image_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          content: string
+          image_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          content?: string
+          image_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+    }
+  }
+}

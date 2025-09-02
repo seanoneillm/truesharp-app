@@ -16,20 +16,19 @@ export async function GET() {
       console.error('Error fetching recent bets:', error)
       return NextResponse.json({
         success: false,
-        error: error.message
+        error: error.message,
       })
     }
 
     return NextResponse.json({
       success: true,
-      recentBets: recentBets || []
+      recentBets: recentBets || [],
     })
-
   } catch (error) {
     console.error('Debug recent bets error:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

@@ -29,24 +29,25 @@ const Tabs: React.FC<TabsProps> = ({
   value: controlledValue,
   onValueChange,
   children,
-  className
+  className,
 }) => {
   const [internalValue, setInternalValue] = React.useState(defaultValue || '')
-  
+
   const value = controlledValue !== undefined ? controlledValue : internalValue
-  
-  const handleValueChange = React.useCallback((newValue: string) => {
-    if (controlledValue === undefined) {
-      setInternalValue(newValue)
-    }
-    onValueChange?.(newValue)
-  }, [controlledValue, onValueChange])
+
+  const handleValueChange = React.useCallback(
+    (newValue: string) => {
+      if (controlledValue === undefined) {
+        setInternalValue(newValue)
+      }
+      onValueChange?.(newValue)
+    },
+    [controlledValue, onValueChange]
+  )
 
   return (
     <TabsContext.Provider value={{ value, onValueChange: handleValueChange }}>
-      <div className={cn('w-full', className)}>
-        {children}
-      </div>
+      <div className={cn('w-full', className)}>{children}</div>
     </TabsContext.Provider>
   )
 }
@@ -80,9 +81,7 @@ const TabsTrigger: React.FC<{
     <button
       className={cn(
         'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-        isActive
-          ? 'bg-background text-foreground shadow-sm'
-          : 'hover:bg-background/50',
+        isActive ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50',
         className
       )}
       onClick={() => onValueChange?.(triggerValue)}
@@ -100,7 +99,7 @@ const TabsContent: React.FC<{
   className?: string
 }> = ({ value: contentValue, children, className }) => {
   const { value } = useTabsContext()
-  
+
   if (value !== contentValue) {
     return null
   }
@@ -132,16 +131,16 @@ const NavTabs: React.FC<{
   return (
     <div className={cn('border-b border-gray-200', className)}>
       <nav className="-mb-px flex space-x-8">
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => !tab.disabled && onTabChange(tab.id)}
             className={cn(
-              'py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
+              'whitespace-nowrap border-b-2 px-1 py-2 text-sm font-medium',
               activeTab === tab.id
                 ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              tab.disabled && 'opacity-50 cursor-not-allowed'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+              tab.disabled && 'cursor-not-allowed opacity-50'
             )}
             disabled={tab.disabled}
           >
@@ -149,10 +148,8 @@ const NavTabs: React.FC<{
             {tab.count !== undefined && (
               <span
                 className={cn(
-                  'ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                  activeTab === tab.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-gray-100 text-gray-900'
+                  'ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  activeTab === tab.id ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-900'
                 )}
               >
                 {tab.count}
@@ -177,23 +174,19 @@ const PillTabs: React.FC<{
   className?: string
 }> = ({ tabs, activeTab, onTabChange, className }) => {
   return (
-    <div className={cn('flex space-x-1 p-1 bg-gray-100 rounded-lg', className)}>
-      {tabs.map((tab) => (
+    <div className={cn('flex space-x-1 rounded-lg bg-gray-100 p-1', className)}>
+      {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={cn(
-            'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all',
+            'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all',
             activeTab === tab.id
               ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
           )}
         >
-          {tab.icon && (
-            <span className="mr-2 h-4 w-4">
-              {tab.icon}
-            </span>
-          )}
+          {tab.icon && <span className="mr-2 h-4 w-4">{tab.icon}</span>}
           {tab.label}
         </button>
       ))}
@@ -201,11 +194,4 @@ const PillTabs: React.FC<{
   )
 }
 
-export {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  NavTabs,
-  PillTabs,
-}
+export { Tabs, TabsList, TabsTrigger, TabsContent, NavTabs, PillTabs }

@@ -25,14 +25,14 @@ class ApiCache {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl: ttl || this.defaultTTL
+      ttl: ttl || this.defaultTTL,
     })
   }
 
   // Get cache entry
   get<T>(key: string): T | null {
     const entry = this.cache.get(key) as CacheEntry<T> | undefined
-    
+
     if (!entry) {
       return null
     }
@@ -68,7 +68,7 @@ class ApiCache {
   getStats() {
     return {
       size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      keys: Array.from(this.cache.keys()),
     }
   }
 }
@@ -86,7 +86,7 @@ export function withCache<T extends any[], R>(
   } = {}
 ) {
   return async (...args: T): Promise<R> => {
-    const key = options.keyGenerator 
+    const key = options.keyGenerator
       ? options.keyGenerator(...args)
       : `${fn.name}:${JSON.stringify(args)}`
 
@@ -98,10 +98,10 @@ export function withCache<T extends any[], R>(
 
     // If not in cache, execute function
     const result = await fn(...args)
-    
+
     // Store in cache
     apiCache.set(key, result, options.ttl)
-    
+
     return result
   }
 }
@@ -115,9 +115,12 @@ export const CacheKeys = {
   USER_FOLLOWING: (userId: string) => `user_following:${userId}`,
 
   // Betting related
-  USER_BETS: (userId: string, filters?: any) => `user_bets:${userId}:${JSON.stringify(filters || {})}`,
-  BET_STATS: (userId: string, filters?: any) => `bet_stats:${userId}:${JSON.stringify(filters || {})}`,
-  PERFORMANCE_METRICS: (userId: string, filters?: any) => `performance:${userId}:${JSON.stringify(filters || {})}`,
+  USER_BETS: (userId: string, filters?: any) =>
+    `user_bets:${userId}:${JSON.stringify(filters || {})}`,
+  BET_STATS: (userId: string, filters?: any) =>
+    `bet_stats:${userId}:${JSON.stringify(filters || {})}`,
+  PERFORMANCE_METRICS: (userId: string, filters?: any) =>
+    `performance:${userId}:${JSON.stringify(filters || {})}`,
 
   // Marketplace related
   MARKETPLACE_SELLERS: (filters?: any) => `marketplace_sellers:${JSON.stringify(filters || {})}`,
@@ -126,7 +129,8 @@ export const CacheKeys = {
   SELLER_PICKS: (sellerId: string) => `seller_picks:${sellerId}`,
 
   // Social related
-  SOCIAL_FEED: (userId: string, filters?: any) => `social_feed:${userId}:${JSON.stringify(filters || {})}`,
+  SOCIAL_FEED: (userId: string, filters?: any) =>
+    `social_feed:${userId}:${JSON.stringify(filters || {})}`,
   POST_COMMENTS: (postId: string) => `post_comments:${postId}`,
   TRENDING_HASHTAGS: () => 'trending_hashtags',
 
@@ -135,9 +139,12 @@ export const CacheKeys = {
   SUBSCRIPTION_PICKS: (userId: string) => `subscription_picks:${userId}`,
 
   // Analytics
-  SPORT_BREAKDOWN: (userId: string, filters?: any) => `sport_breakdown:${userId}:${JSON.stringify(filters || {})}`,
-  PROFIT_OVER_TIME: (userId: string, filters?: any) => `profit_over_time:${userId}:${JSON.stringify(filters || {})}`,
-  ADVANCED_ANALYTICS: (userId: string, filters?: any) => `advanced_analytics:${userId}:${JSON.stringify(filters || {})}`
+  SPORT_BREAKDOWN: (userId: string, filters?: any) =>
+    `sport_breakdown:${userId}:${JSON.stringify(filters || {})}`,
+  PROFIT_OVER_TIME: (userId: string, filters?: any) =>
+    `profit_over_time:${userId}:${JSON.stringify(filters || {})}`,
+  ADVANCED_ANALYTICS: (userId: string, filters?: any) =>
+    `advanced_analytics:${userId}:${JSON.stringify(filters || {})}`,
 }
 
 // Cache invalidation groups
@@ -148,7 +155,7 @@ export const CacheInvalidation = {
       CacheKeys.USER_PROFILE(userId),
       CacheKeys.USER_STATS(userId),
       CacheKeys.USER_FOLLOWERS(userId),
-      CacheKeys.USER_FOLLOWING(userId)
+      CacheKeys.USER_FOLLOWING(userId),
     ]
     patterns.forEach(pattern => apiCache.delete(pattern))
   },
@@ -158,23 +165,21 @@ export const CacheInvalidation = {
     // Clear all bet-related cache for user
     const stats = apiCache.getStats()
     stats.keys
-      .filter(key => 
-        key.includes(`user_bets:${userId}`) ||
-        key.includes(`bet_stats:${userId}`) ||
-        key.includes(`performance:${userId}`) ||
-        key.includes(`sport_breakdown:${userId}`) ||
-        key.includes(`profit_over_time:${userId}`) ||
-        key.includes(`advanced_analytics:${userId}`)
+      .filter(
+        key =>
+          key.includes(`user_bets:${userId}`) ||
+          key.includes(`bet_stats:${userId}`) ||
+          key.includes(`performance:${userId}`) ||
+          key.includes(`sport_breakdown:${userId}`) ||
+          key.includes(`profit_over_time:${userId}`) ||
+          key.includes(`advanced_analytics:${userId}`)
       )
       .forEach(key => apiCache.delete(key))
   },
 
   // Invalidate seller caches when seller data changes
   invalidateSeller: (sellerId: string, username?: string) => {
-    const patterns = [
-      CacheKeys.SELLER_STATS(sellerId),
-      CacheKeys.SELLER_PICKS(sellerId)
-    ]
+    const patterns = [CacheKeys.SELLER_STATS(sellerId), CacheKeys.SELLER_PICKS(sellerId)]
     if (username) {
       patterns.push(CacheKeys.SELLER_PROFILE(username))
     }
@@ -191,26 +196,20 @@ export const CacheInvalidation = {
   invalidateSocialFeed: (userId?: string) => {
     const stats = apiCache.getStats()
     stats.keys
-      .filter(key => 
-        key.includes('social_feed') ||
-        key.includes('trending_hashtags')
-      )
+      .filter(key => key.includes('social_feed') || key.includes('trending_hashtags'))
       .forEach(key => apiCache.delete(key))
   },
 
   // Invalidate subscription caches when subscription changes
   invalidateSubscriptions: (userId: string) => {
-    const patterns = [
-      CacheKeys.USER_SUBSCRIPTIONS(userId),
-      CacheKeys.SUBSCRIPTION_PICKS(userId)
-    ]
+    const patterns = [CacheKeys.USER_SUBSCRIPTIONS(userId), CacheKeys.SUBSCRIPTION_PICKS(userId)]
     patterns.forEach(pattern => apiCache.delete(pattern))
   },
 
   // Clear all cache (nuclear option)
   clearAll: () => {
     apiCache.clear()
-  }
+  },
 }
 
 // Cache configurations for different data types
@@ -231,15 +230,18 @@ export const CacheConfigs = {
   REFERENCE_DATA: { ttl: 60 * 60 * 1000 }, // 1 hour
 
   // Analytics - medium TTL since computation is expensive
-  ANALYTICS_DATA: { ttl: 20 * 60 * 1000 } // 20 minutes
+  ANALYTICS_DATA: { ttl: 20 * 60 * 1000 }, // 20 minutes
 }
 
 // Background cache cleanup
 if (typeof window !== 'undefined') {
   // Clean up expired cache entries every 5 minutes
-  setInterval(() => {
-    apiCache.cleanup()
-  }, 5 * 60 * 1000)
+  setInterval(
+    () => {
+      apiCache.cleanup()
+    },
+    5 * 60 * 1000
+  )
 }
 
 // Cache debugging helpers
@@ -258,7 +260,7 @@ export const CacheDebug = {
     const stats = apiCache.getStats()
     console.log('Clearing cache. Current stats:', stats)
     apiCache.clear()
-  }
+  },
 }
 
 // Export cache instance and utilities

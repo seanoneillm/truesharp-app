@@ -13,9 +13,9 @@ class SharpSportsClient {
   async bettorList() {
     const response = await fetch(`${this.baseUrl}/bettors`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -29,9 +29,9 @@ class SharpSportsClient {
   async bettoraccountsList() {
     const response = await fetch(`${this.baseUrl}/bettorAccounts`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'No bettors found',
         bettors: [],
-        accounts: []
+        accounts: [],
       })
     }
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       totalAccounts: 0,
       accountsSaved: 0,
       accountsSkipped: 0,
-      errors: 0
+      errors: 0,
     }
 
     const processedAccounts = []
@@ -100,11 +100,14 @@ export async function POST(request: NextRequest) {
       stats.totalAccounts = allAccounts.length
     } catch (accountsError) {
       console.error('❌ Error fetching bettor accounts:', accountsError)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch bettor accounts',
-        details: accountsError instanceof Error ? accountsError.message : 'Unknown error'
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch bettor accounts',
+          details: accountsError instanceof Error ? accountsError.message : 'Unknown error',
+        },
+        { status: 500 }
+      )
     }
 
     if (!allAccounts || allAccounts.length === 0) {
@@ -118,8 +121,8 @@ export async function POST(request: NextRequest) {
         })),
         stats: {
           ...stats,
-          bettorsWithoutAccounts: stats.totalBettors
-        }
+          bettorsWithoutAccounts: stats.totalBettors,
+        },
       })
     }
 
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
           paused: account.paused,
           balance: account.balance,
           latest_refresh_time: new Date().toISOString(),
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         }
 
         // Check if account already exists
@@ -163,7 +166,7 @@ export async function POST(request: NextRequest) {
               verified: accountData.verified,
               access: accountData.access,
               paused: accountData.paused,
-              latest_refresh_time: accountData.latest_refresh_time
+              latest_refresh_time: accountData.latest_refresh_time,
             })
             .eq('sharpsports_account_id', account.id)
 
@@ -193,11 +196,12 @@ export async function POST(request: NextRequest) {
             stats.accountsSaved++
           }
         }
-
       } catch (accountError) {
         console.error(`❌ Error processing account ${account.id}:`, accountError)
         stats.errors++
-        errors.push(`Process account ${account.id}: ${accountError instanceof Error ? accountError.message : 'Unknown error'}`)
+        errors.push(
+          `Process account ${account.id}: ${accountError instanceof Error ? accountError.message : 'Unknown error'}`
+        )
       }
     }
 
@@ -213,17 +217,16 @@ export async function POST(request: NextRequest) {
         created: bettor.created,
       })),
       stats,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     })
-
   } catch (error) {
     console.error('❌ Error fetching bettors and accounts:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error
+        details: error,
       },
       { status: 500 }
     )

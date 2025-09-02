@@ -40,7 +40,10 @@ interface ProcessedBets {
 
 export default function TodaysBets() {
   const { user } = useAuth()
-  const [processedBets, setProcessedBets] = useState<ProcessedBets>({ straight_bets: [], parlay_groups: [] })
+  const [processedBets, setProcessedBets] = useState<ProcessedBets>({
+    straight_bets: [],
+    parlay_groups: [],
+  })
   const [loading, setLoading] = useState(true)
   const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set())
 
@@ -53,7 +56,7 @@ export default function TodaysBets() {
 
       try {
         const supabase = createClient()
-        
+
         // Get today's date in EST timezone
         const today = new Date()
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -68,7 +71,7 @@ export default function TodaysBets() {
           .order('placed_at', { ascending: false })
 
         if (error) {
-          console.error('Error fetching today\'s bets:', error)
+          console.error("Error fetching today's bets:", error)
         } else {
           const rawBets: DatabaseBet[] = data || []
           const processed = processBets(rawBets)
@@ -110,7 +113,7 @@ export default function TodaysBets() {
       const pendingLegs = legs.filter(leg => leg.status === 'pending').length
 
       let parlayStatus: 'pending' | 'won' | 'lost' | 'void' = 'pending'
-      
+
       if (lostLegs > 0) {
         parlayStatus = 'lost'
       } else if (voidLegs === legs.length) {
@@ -124,33 +127,37 @@ export default function TodaysBets() {
       // Find the leg with actual stake/payout values (should be non-zero)
       // In parlays, typically only one leg has the stake/payout, others are 0
       let legWithStake = legs.find(leg => leg.stake > 0 && leg.potential_payout > 0)
-      
+
       // Fallback: if no leg has both values, find one with just stake > 0
       if (!legWithStake) {
         legWithStake = legs.find(leg => leg.stake > 0)
       }
-      
+
       // Final fallback: use first leg
       if (!legWithStake) {
         legWithStake = legs[0]
       }
-      
+
       const totalStake = legWithStake?.stake || 0
       const totalPotentialPayout = legWithStake?.potential_payout || 0
 
       parlayGroups.push({
         parlay_id: parlayId,
-        legs: legs.sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime()),
+        legs: legs.sort(
+          (a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime()
+        ),
         total_stake: totalStake,
         total_potential_payout: totalPotentialPayout,
         status: parlayStatus,
-        placed_at: legs[0]?.placed_at || ''
+        placed_at: legs[0]?.placed_at || '',
       })
     })
 
     return {
       straight_bets: straightBets,
-      parlay_groups: parlayGroups.sort((a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime())
+      parlay_groups: parlayGroups.sort(
+        (a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
+      ),
     }
   }
 
@@ -196,11 +203,11 @@ export default function TodaysBets() {
     if (bet.status === 'pending') {
       return `$${bet.potential_payout.toFixed(2)}`
     }
-    
+
     if (bet.status === 'won' && bet.profit) {
       return `+$${bet.profit.toFixed(2)}`
     }
-    
+
     if (bet.status === 'lost') {
       return `-$${bet.stake.toFixed(2)}`
     }
@@ -208,7 +215,7 @@ export default function TodaysBets() {
     if (bet.status === 'void') {
       return `$0.00`
     }
-    
+
     return `$${bet.stake.toFixed(2)}`
   }
 
@@ -216,12 +223,12 @@ export default function TodaysBets() {
     if (parlay.status === 'pending') {
       return `$${parlay.total_potential_payout.toFixed(2)}`
     }
-    
+
     if (parlay.status === 'won') {
       const profit = parlay.total_potential_payout - parlay.total_stake
       return `+$${profit.toFixed(2)}`
     }
-    
+
     if (parlay.status === 'lost') {
       return `-$${parlay.total_stake.toFixed(2)}`
     }
@@ -229,13 +236,13 @@ export default function TodaysBets() {
     if (parlay.status === 'void') {
       return `$0.00`
     }
-    
+
     return `$${parlay.total_stake.toFixed(2)}`
   }
 
   const formatBetDescription = (bet: DatabaseBet) => {
     let description = bet.bet_description
-    
+
     if (bet.line_value !== null && bet.line_value !== undefined) {
       if (bet.bet_type === 'spread') {
         description += ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}`
@@ -243,7 +250,7 @@ export default function TodaysBets() {
         description += ` ${bet.line_value}`
       }
     }
-    
+
     return description
   }
 
@@ -251,11 +258,11 @@ export default function TodaysBets() {
 
   if (loading) {
     return (
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Today&apos;s Bets</h2>
+      <div className="rounded-lg bg-white p-6 shadow">
+        <h2 className="mb-4 text-lg font-medium text-gray-900">Today&apos;s Bets</h2>
         <div className="animate-pulse space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-16 rounded bg-gray-200"></div>
           ))}
         </div>
       </div>
@@ -263,10 +270,10 @@ export default function TodaysBets() {
   }
 
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-xl">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
+          <div className="rounded-lg bg-blue-100 p-2">
             <Calendar className="h-5 w-5 text-blue-600" />
           </div>
           <div>
@@ -281,19 +288,20 @@ export default function TodaysBets() {
       </div>
 
       {totalBetsCount === 0 ? (
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <div className="relative mb-6">
-            <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-cyan-100">
               <Calendar className="h-10 w-10 text-blue-600" />
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No bets placed today</h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-            Ready to make some winning picks? Browse today&apos;s games and start building your strategy.
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">No bets placed today</h3>
+          <p className="mx-auto mb-6 max-w-sm text-gray-500">
+            Ready to make some winning picks? Browse today&apos;s games and start building your
+            strategy.
           </p>
           <Link
             href="/games"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl"
           >
             View Today&apos;s Games
           </Link>
@@ -301,106 +309,117 @@ export default function TodaysBets() {
       ) : (
         <div className="space-y-4">
           {/* Render Straight Bets */}
-          {processedBets.straight_bets.map((bet) => (
+          {processedBets.straight_bets.map(bet => (
             <div
               key={bet.id}
-              className="relative bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all duration-200"
+              className="relative rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 transition-all duration-200 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0 mt-1">
-                    {getStatusIcon(bet.status)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                <div className="flex flex-1 items-start space-x-4">
+                  <div className="mt-1 flex-shrink-0">{getStatusIcon(bet.status)}</div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="mb-1 text-sm font-semibold text-gray-900">
                       {formatBetDescription(bet)}
                     </h4>
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <div className="mb-2 flex items-center space-x-3">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                         {bet.sport}
                       </span>
-                      <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
                         {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
                       </span>
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600">
                         {bet.bet_type.charAt(0).toUpperCase() + bet.bet_type.slice(1)}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {bet.home_team} vs {bet.away_team} • {new Date(bet.placed_at).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                      {bet.home_team} vs {bet.away_team} •{' '}
+                      {new Date(bet.placed_at).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </div>
                   </div>
                 </div>
-                
-                <div className="text-right ml-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(bet.status)} mb-2`}>
+
+                <div className="ml-4 text-right">
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(bet.status)} mb-2`}
+                  >
                     {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
                   </span>
-                  <div className={`text-lg font-bold ${
-                    bet.status === 'won' ? 'text-green-600' :
-                    bet.status === 'lost' ? 'text-red-600' :
-                    bet.status === 'void' ? 'text-yellow-600' :
-                    'text-gray-900'
-                  }`}>
-                    {bet.status === 'pending' ? 
-                      `+$${(bet.potential_payout - bet.stake).toFixed(2)}` : 
-                      getProfitDisplay(bet)
-                    }
+                  <div
+                    className={`text-lg font-bold ${
+                      bet.status === 'won'
+                        ? 'text-green-600'
+                        : bet.status === 'lost'
+                          ? 'text-red-600'
+                          : bet.status === 'void'
+                            ? 'text-yellow-600'
+                            : 'text-gray-900'
+                    }`}
+                  >
+                    {bet.status === 'pending'
+                      ? `+$${(bet.potential_payout - bet.stake).toFixed(2)}`
+                      : getProfitDisplay(bet)}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Stake: ${bet.stake.toFixed(2)}
-                  </div>
+                  <div className="text-xs text-gray-500">Stake: ${bet.stake.toFixed(2)}</div>
                 </div>
               </div>
-              
-              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${
-                bet.status === 'won' ? 'bg-green-500' :
-                bet.status === 'lost' ? 'bg-red-500' :
-                bet.status === 'void' ? 'bg-yellow-500' :
-                'bg-blue-500'
-              }`}></div>
+
+              <div
+                className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
+                  bet.status === 'won'
+                    ? 'bg-green-500'
+                    : bet.status === 'lost'
+                      ? 'bg-red-500'
+                      : bet.status === 'void'
+                        ? 'bg-yellow-500'
+                        : 'bg-blue-500'
+                }`}
+              ></div>
             </div>
           ))}
 
           {/* Render Parlay Groups */}
-          {processedBets.parlay_groups.map((parlay) => {
+          {processedBets.parlay_groups.map(parlay => {
             const isExpanded = expandedParlays.has(parlay.parlay_id)
             return (
               <div
                 key={parlay.parlay_id}
-                className="relative bg-gradient-to-r from-purple-50 to-white rounded-xl border border-purple-200 overflow-hidden"
+                className="relative overflow-hidden rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-white"
               >
                 {/* Parlay Header */}
-                <div 
-                  className="p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
+                <div
+                  className="cursor-pointer p-4 transition-all duration-200 hover:shadow-md"
                   onClick={() => toggleParlayExpanded(parlay.parlay_id)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4 flex-1">
-                      <div className="flex-shrink-0 mt-1">
-                        {getStatusIcon(parlay.status)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex flex-1 items-start space-x-4">
+                      <div className="mt-1 flex-shrink-0">{getStatusIcon(parlay.status)}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex items-center space-x-3">
                           <h4 className="text-sm font-semibold text-gray-900">
                             {parlay.legs.length}-Leg Parlay
                           </h4>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
                             PARLAY
                           </span>
-                          {isExpanded ? 
-                            <ChevronUp className="h-4 w-4 text-gray-400" /> : 
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4 text-gray-400" />
+                          ) : (
                             <ChevronDown className="h-4 w-4 text-gray-400" />
-                          }
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500 mb-1">
-                          {parlay.legs.map(leg => leg.sport).filter((sport, index, arr) => arr.indexOf(sport) === index).join(', ')} • 
-                          Placed at {new Date(parlay.placed_at).toLocaleTimeString('en-US', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
+                        <div className="mb-1 text-xs text-gray-500">
+                          {parlay.legs
+                            .map(leg => leg.sport)
+                            .filter((sport, index, arr) => arr.indexOf(sport) === index)
+                            .join(', ')}{' '}
+                          • Placed at{' '}
+                          {new Date(parlay.placed_at).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
                           })}
                         </div>
                         <div className="text-xs text-gray-400">
@@ -408,21 +427,27 @@ export default function TodaysBets() {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="text-right ml-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(parlay.status)} mb-2`}>
+
+                    <div className="ml-4 text-right">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(parlay.status)} mb-2`}
+                      >
                         {parlay.status.charAt(0).toUpperCase() + parlay.status.slice(1)}
                       </span>
-                      <div className={`text-lg font-bold ${
-                        parlay.status === 'won' ? 'text-green-600' :
-                        parlay.status === 'lost' ? 'text-red-600' :
-                        parlay.status === 'void' ? 'text-yellow-600' :
-                        'text-gray-900'
-                      }`}>
-                        {parlay.status === 'pending' ? 
-                          `+$${(parlay.total_potential_payout - parlay.total_stake).toFixed(2)}` : 
-                          getParlayProfitDisplay(parlay)
-                        }
+                      <div
+                        className={`text-lg font-bold ${
+                          parlay.status === 'won'
+                            ? 'text-green-600'
+                            : parlay.status === 'lost'
+                              ? 'text-red-600'
+                              : parlay.status === 'void'
+                                ? 'text-yellow-600'
+                                : 'text-gray-900'
+                        }`}
+                      >
+                        {parlay.status === 'pending'
+                          ? `+$${(parlay.total_potential_payout - parlay.total_stake).toFixed(2)}`
+                          : getParlayProfitDisplay(parlay)}
                       </div>
                       <div className="text-xs text-gray-500">
                         Stake: ${parlay.total_stake.toFixed(2)}
@@ -433,42 +458,48 @@ export default function TodaysBets() {
 
                 {/* Parlay Legs (Expandable) */}
                 {isExpanded && (
-                  <div className="bg-purple-50/50 border-t border-purple-100">
+                  <div className="border-t border-purple-100 bg-purple-50/50">
                     {parlay.legs.map((leg, index) => (
-                      <div key={leg.id} className="px-4 py-3 border-b border-purple-100 last:border-b-0">
+                      <div
+                        key={leg.id}
+                        className="border-b border-purple-100 px-4 py-3 last:border-b-0"
+                      >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex flex-1 items-center space-x-3">
                             <div className="flex-shrink-0">
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs font-medium">
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-600">
                                 {index + 1}
                               </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900 mb-1">
+                            <div className="min-w-0 flex-1">
+                              <div className="mb-1 text-sm font-medium text-gray-900">
                                 {leg.home_team} vs {leg.away_team}
                               </div>
                               <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                <span className="font-medium text-gray-700">{leg.bet_description}</span>
+                                <span className="font-medium text-gray-700">
+                                  {leg.bet_description}
+                                </span>
                                 {leg.line_value !== null && leg.line_value !== undefined && (
                                   <>
                                     <span>•</span>
-                                    <span className="text-gray-600 font-medium">
-                                      {leg.bet_type === 'spread' ? 
-                                        `${leg.line_value > 0 ? '+' : ''}${leg.line_value}` :
-                                        leg.line_value
-                                      }
+                                    <span className="font-medium text-gray-600">
+                                      {leg.bet_type === 'spread'
+                                        ? `${leg.line_value > 0 ? '+' : ''}${leg.line_value}`
+                                        : leg.line_value}
                                     </span>
                                   </>
                                 )}
                                 <span>•</span>
-                                <span className="text-gray-600 font-medium">
+                                <span className="font-medium text-gray-600">
                                   {leg.odds > 0 ? `+${leg.odds}` : leg.odds}
                                 </span>
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getStatusColor(leg.status)}`}>
+                            <span
+                              className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ${getStatusColor(leg.status)}`}
+                            >
                               {leg.status.charAt(0).toUpperCase() + leg.status.slice(1)}
                             </span>
                             {getStatusIcon(leg.status)}
@@ -479,18 +510,23 @@ export default function TodaysBets() {
                   </div>
                 )}
 
-                <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${
-                  parlay.status === 'won' ? 'bg-green-500' :
-                  parlay.status === 'lost' ? 'bg-red-500' :
-                  parlay.status === 'void' ? 'bg-yellow-500' :
-                  'bg-purple-500'
-                }`}></div>
+                <div
+                  className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
+                    parlay.status === 'won'
+                      ? 'bg-green-500'
+                      : parlay.status === 'lost'
+                        ? 'bg-red-500'
+                        : parlay.status === 'void'
+                          ? 'bg-yellow-500'
+                          : 'bg-purple-500'
+                  }`}
+                ></div>
               </div>
             )
           })}
-          
+
           {totalBetsCount > 3 && (
-            <div className="text-center pt-4">
+            <div className="pt-4 text-center">
               <Link
                 href="/analytics"
                 className="text-sm font-medium text-blue-600 hover:text-blue-500"

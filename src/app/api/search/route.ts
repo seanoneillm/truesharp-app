@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'sellers') {
       const { data: sellers, error: sellersError } = await supabase
         .from('seller_settings')
-        .select(`
+        .select(
+          `
           *,
           profiles!inner(
             id,
@@ -41,7 +42,8 @@ export async function GET(request: NextRequest) {
             avatar_url,
             is_verified
           )
-        `)
+        `
+        )
         .eq('is_selling_enabled', true)
         .or(`profiles.username.ilike.%${query}%,profiles.display_name.ilike.%${query}%`)
         .limit(limit)
@@ -55,7 +57,8 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'picks') {
       const { data: picks, error: picksError } = await supabase
         .from('pick_posts')
-        .select(`
+        .select(
+          `
           *,
           profiles!inner(
             id,
@@ -71,7 +74,8 @@ export async function GET(request: NextRequest) {
             odds,
             status
           )
-        `)
+        `
+        )
         .eq('tier', 'free') // Only search free picks
         .or(`title.ilike.%${query}%,analysis.ilike.%${query}%,bets.description.ilike.%${query}%`)
         .limit(limit)

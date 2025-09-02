@@ -8,8 +8,8 @@ export async function GET() {
     // Current user's strategy IDs from logs
     const strategyIds = [
       'e09dd1be-d68b-4fcc-a391-a186d68f6dab',
-      '8bff6189-e315-4864-9318-f99307c7019d', 
-      'c867d015-75fa-4563-b695-b6756376aa3d'
+      '8bff6189-e315-4864-9318-f99307c7019d',
+      'c867d015-75fa-4563-b695-b6756376aa3d',
     ]
 
     const nowISO = new Date().toISOString()
@@ -18,7 +18,8 @@ export async function GET() {
     // Step 1: Check strategy_bets entries for these strategies
     const { data: allStrategyBets, error: allError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets (
@@ -27,7 +28,8 @@ export async function GET() {
           status,
           game_date
         )
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
 
     console.log('1. All strategy_bets entries:', allStrategyBets)
@@ -35,7 +37,8 @@ export async function GET() {
     // Step 2: Test the exact query used in getOpenBetsForStrategies
     const { data: strategyBetsWithFilter, error: filterError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets!inner (
@@ -55,7 +58,8 @@ export async function GET() {
           game_date,
           sportsbook
         )
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
       .eq('bets.status', 'pending')
       .gt('bets.game_date', nowISO)
@@ -66,7 +70,8 @@ export async function GET() {
     // Step 3: Test without the time filter to isolate the issue
     const { data: strategyBetsNoTime, error: noTimeError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets!inner (
@@ -75,7 +80,8 @@ export async function GET() {
           status,
           game_date
         )
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
       .eq('bets.status', 'pending')
 
@@ -85,7 +91,8 @@ export async function GET() {
     // Step 4: Test just the time filter separately
     const { data: strategyBetsOnlyTime, error: onlyTimeError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets!inner (
@@ -94,7 +101,8 @@ export async function GET() {
           status,
           game_date
         )
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
       .gt('bets.game_date', nowISO)
 
@@ -114,22 +122,21 @@ export async function GET() {
           allEntries: allStrategyBets,
           withFilters: strategyBetsWithFilter,
           noTimeFilter: strategyBetsNoTime,
-          onlyTimeFilter: strategyBetsOnlyTime
+          onlyTimeFilter: strategyBetsOnlyTime,
         },
         errors: {
           allError: allError?.message,
           filterError: filterError?.message,
           noTimeError: noTimeError?.message,
-          onlyTimeError: onlyTimeError?.message
-        }
-      }
+          onlyTimeError: onlyTimeError?.message,
+        },
+      },
     })
-
   } catch (error) {
     console.error('Debug strategy bets query error:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

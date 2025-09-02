@@ -1,12 +1,14 @@
 # TrueSharp Odds Fetcher
 
-A comprehensive Node.js system to fetch, normalize, and insert odds data from the Sports Game Odds API into Supabase.
+A comprehensive Node.js system to fetch, normalize, and insert odds data from the Sports Game Odds
+API into Supabase.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 1. **Environment Variables**: Ensure your `.env.local` file contains:
+
    ```bash
    NEXT_PUBLIC_ODDS_API_KEY=your_api_key
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -60,6 +62,7 @@ Sports Game Odds API → Fetch → Normalize → Insert/Log → Supabase
 ## 🎯 Features
 
 ### API Fetching
+
 - ✅ Full pagination support (handles cursor-based pagination)
 - ✅ Exponential backoff retry logic
 - ✅ Rate limiting handling
@@ -67,18 +70,21 @@ Sports Game Odds API → Fetch → Normalize → Insert/Log → Supabase
 - ✅ Configurable date ranges
 
 ### Data Normalization
+
 - ✅ Converts API format to database schema
 - ✅ Handles null values properly
 - ✅ Maps team names and IDs consistently
 - ✅ Tracks oddID entries (max 2 per oddID)
 
 ### Database Operations
+
 - ✅ Upsert logic for games (prevents duplicates)
 - ✅ Smart odds insertion (first entry kept, second overwritten)
 - ✅ Transaction-like batch operations
 - ✅ Database connection testing
 
 ### Modes
+
 - ✅ **Test Mode**: Safe logging-only mode for verification
 - ✅ **Insert Mode**: Production mode that saves to database
 - ✅ **Verbose Mode**: Detailed logging and sample data display
@@ -114,7 +120,7 @@ npm run test
 
 # Production fetch for different leagues
 npm run fetch-mlb
-npm run fetch-nfl  
+npm run fetch-nfl
 npm run fetch-nba
 npm run fetch-nhl
 ```
@@ -122,10 +128,11 @@ npm run fetch-nhl
 ## 🗃️ Database Schema
 
 ### Games Table
+
 ```sql
 sport TEXT           -- 'baseball', 'football', etc.
 home_team TEXT       -- team_key format (lowercase_underscore)
-away_team TEXT       -- team_key format (lowercase_underscore)  
+away_team TEXT       -- team_key format (lowercase_underscore)
 home_team_name TEXT  -- full team name
 away_team_name TEXT  -- full team name
 game_time TIMESTAMPTZ-- game start time
@@ -137,6 +144,7 @@ league VARCHAR(50)   -- 'MLB', 'NFL', etc.
 ```
 
 ### Odds Table
+
 ```sql
 game_id              -- foreign key to games.id
 odd_id               -- Sports Game Odds oddID
@@ -154,16 +162,19 @@ raw_data             -- full API response for debugging
 ## 🔧 Configuration
 
 ### Supported Leagues
+
 - **MLB** - Major League Baseball
-- **NFL** - National Football League  
+- **NFL** - National Football League
 - **NBA** - National Basketball Association
 - **NHL** - National Hockey League
 
 ### Date Format
+
 - Use ISO date format: `YYYY-MM-DD`
 - Example: `2025-08-14`
 
 ### Environment Variables
+
 ```bash
 # Required
 NEXT_PUBLIC_ODDS_API_KEY=your_sportsgameodds_api_key
@@ -177,17 +188,20 @@ NODE_ENV=development
 ## 🚦 Error Handling
 
 ### API Errors
+
 - **Rate Limiting**: Automatic retry with exponential backoff
 - **Network Issues**: Multiple retry attempts
 - **Server Errors**: Graceful degradation
 - **Invalid Responses**: Skip and continue processing
 
 ### Database Errors
+
 - **Connection Issues**: Early detection and clear error messages
 - **Constraint Violations**: Logged but processing continues
 - **Transaction Failures**: Atomic rollback
 
 ### Data Validation
+
 - **Missing Fields**: Default values or null handling
 - **Invalid Dates**: Fallback to current timestamp
 - **Malformed Data**: Skip invalid entries, log warnings
@@ -195,6 +209,7 @@ NODE_ENV=development
 ## 📊 Output Examples
 
 ### Test Mode Output
+
 ```
 🎯 Starting odds fetching process...
 📅 League: MLB, Period: 2025-08-14 to 2025-08-15
@@ -220,6 +235,7 @@ NODE_ENV=development
 ```
 
 ### Insert Mode Output
+
 ```
 🎯 Starting odds fetching process...
 🔧 Mode: INSERT (will save to database)
@@ -246,22 +262,24 @@ NODE_ENV=development
 ## 🛠️ Maintenance
 
 ### Cleanup Old Data
+
 The system includes a cleanup function to remove old data:
 
 ```javascript
-import { SupabaseClient } from './database-client.js';
+import { SupabaseClient } from './database-client.js'
 
-const dbClient = new SupabaseClient();
+const dbClient = new SupabaseClient()
 // Remove data older than 30 days
-await dbClient.cleanupOldData(30);
+await dbClient.cleanupOldData(30)
 ```
 
 ### Monitor Database Size
+
 Check recent insertions:
 
 ```javascript
-const recentGames = await dbClient.getRecentGames(10);
-const recentOdds = await dbClient.getRecentOdds(20);
+const recentGames = await dbClient.getRecentGames(10)
+const recentOdds = await dbClient.getRecentOdds(20)
 ```
 
 ## 🐛 Troubleshooting
@@ -288,6 +306,7 @@ const recentOdds = await dbClient.getRecentOdds(20);
    - Check API plan limits
 
 ### Debug Mode
+
 Run with verbose logging to see detailed information:
 
 ```bash
@@ -297,11 +316,13 @@ node main.js --test --verbose --league MLB
 ## 📈 Performance
 
 ### Benchmarks
+
 - **8 MLB games**: ~3.6 seconds (test mode)
 - **5,076 odds entries**: Processed in same timeframe
 - **Database insertion**: Additional ~2-3 seconds
 
 ### Optimization Tips
+
 - Use test mode first to validate data
 - Run during off-peak hours for better API response
 - Consider rate limiting for large date ranges
@@ -317,6 +338,7 @@ This odds fetcher integrates seamlessly with the existing TrueSharp codebase:
 - **API Integration**: Can be triggered from existing API routes
 
 ### Automated Execution
+
 Consider setting up cron jobs or scheduled functions to run this automatically:
 
 ```bash

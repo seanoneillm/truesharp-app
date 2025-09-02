@@ -45,23 +45,26 @@ export interface BillingManagementOptions {
 
 export class SubscriptionBillingManager {
   private apiBaseUrl: string
-  
+
   constructor(apiBaseUrl: string = '/api') {
     this.apiBaseUrl = apiBaseUrl
   }
 
   async getBillingHistory(
-    userId: string, 
-    page: number = 1, 
+    userId: string,
+    page: number = 1,
     limit: number = 20
   ): Promise<BillingHistory> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/billing/history?page=${page}&limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await fetch(
+        `${this.apiBaseUrl}/billing/history?page=${page}&limit=${limit}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Failed to fetch billing history')
@@ -129,7 +132,7 @@ export class SubscriptionBillingManager {
       const response = await fetch(`${this.apiBaseUrl}/billing/invoice/${invoiceId}/download`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/pdf',
+          Accept: 'application/pdf',
         },
       })
 
@@ -146,12 +149,15 @@ export class SubscriptionBillingManager {
 
   async getUpcomingInvoice(subscriptionId: string): Promise<InvoiceData | null> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/billing/upcoming-invoice?subscription_id=${subscriptionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await fetch(
+        `${this.apiBaseUrl}/billing/upcoming-invoice?subscription_id=${subscriptionId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -210,14 +216,14 @@ export function calculateProrationAmount(
 } {
   const dailyCurrentRate = currentPrice / totalDaysInPeriod
   const dailyNewRate = newPrice / totalDaysInPeriod
-  
+
   const remainingCurrentValue = dailyCurrentRate * daysRemaining
   const remainingNewValue = dailyNewRate * daysRemaining
-  
+
   const prorationAmount = remainingNewValue - remainingCurrentValue
   const immediateCharge = Math.max(0, prorationAmount)
   const nextPeriodAmount = newPrice
-  
+
   let description = ''
   if (prorationAmount > 0) {
     description = `You'll be charged $${immediateCharge.toFixed(2)} today for the upgrade, then $${nextPeriodAmount.toFixed(2)} on your next billing cycle.`
@@ -226,12 +232,12 @@ export function calculateProrationAmount(
   } else {
     description = `No immediate charge. Your next bill will be $${nextPeriodAmount.toFixed(2)}.`
   }
-  
+
   return {
     prorationAmount,
     immediateCharge,
     nextPeriodAmount,
-    description
+    description,
   }
 }
 
@@ -248,8 +254,10 @@ export function calculateRefundAmount(
   totalDays: number
 } {
   const msPerDay = 24 * 60 * 60 * 1000
-  const daysUsed = Math.ceil((cancellationDate.getTime() - subscriptionStartDate.getTime()) / msPerDay)
-  
+  const daysUsed = Math.ceil(
+    (cancellationDate.getTime() - subscriptionStartDate.getTime()) / msPerDay
+  )
+
   let totalDays: number
   switch (frequency) {
     case 'weekly':
@@ -264,12 +272,12 @@ export function calculateRefundAmount(
     default:
       totalDays = 30
   }
-  
+
   // Refund policy: Full refund within 3 days, prorated refund within first week
   let refundAmount = 0
   let isEligible = false
   let reason = ''
-  
+
   if (daysUsed <= 3) {
     // Full refund within 3 days
     refundAmount = subscriptionPrice
@@ -280,17 +288,19 @@ export function calculateRefundAmount(
     const usagePercentage = daysUsed / totalDays
     refundAmount = subscriptionPrice * (1 - usagePercentage)
     isEligible = refundAmount > 0
-    reason = isEligible ? 'Prorated refund eligible - cancelled within first week' : 'No refund - usage period exceeded'
+    reason = isEligible
+      ? 'Prorated refund eligible - cancelled within first week'
+      : 'No refund - usage period exceeded'
   } else {
     reason = 'No refund available - outside refund window'
   }
-  
+
   return {
     refundAmount: Math.max(0, refundAmount),
     isEligible,
     reason,
     daysUsed,
-    totalDays
+    totalDays,
   }
 }
 
@@ -301,13 +311,13 @@ export function formatBillingPeriod(
 ): string {
   const start = new Date(periodStart * 1000)
   const end = new Date(periodEnd * 1000)
-  
+
   const formatOptions: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
-    year: start.getFullYear() !== end.getFullYear() ? 'numeric' : undefined
+    year: start.getFullYear() !== end.getFullYear() ? 'numeric' : undefined,
   }
-  
+
   if (frequency === 'weekly') {
     return `${start.toLocaleDateString('en-US', formatOptions)} - ${end.toLocaleDateString('en-US', formatOptions)}`
   } else if (frequency === 'monthly') {
@@ -323,12 +333,12 @@ export function getNextBillingDate(
   isCancelled: boolean = false
 ): Date | null {
   if (isCancelled) return null
-  
+
   const currentEnd = new Date(currentPeriodEnd)
-  
+
   switch (frequency) {
     case 'weekly':
-      return new Date(currentEnd.getTime() + (7 * 24 * 60 * 60 * 1000))
+      return new Date(currentEnd.getTime() + 7 * 24 * 60 * 60 * 1000)
     case 'monthly':
       const nextMonth = new Date(currentEnd)
       nextMonth.setMonth(nextMonth.getMonth() + 1)
@@ -353,23 +363,20 @@ export function calculateAnnualSavings(
   const annualMonthlyEquivalent = monthlyPrice * 12
   const savings = annualMonthlyEquivalent - yearlyPrice
   const savingsPercentage = (savings / annualMonthlyEquivalent) * 100
-  
+
   return {
     savings,
     savingsPercentage,
-    description: `Save $${savings.toFixed(2)} (${savingsPercentage.toFixed(0)}%) with annual billing`
+    description: `Save $${savings.toFixed(2)} (${savingsPercentage.toFixed(0)}%) with annual billing`,
   }
 }
 
-export async function handleInvoiceDownload(
-  invoiceId: string,
-  filename?: string
-): Promise<void> {
+export async function handleInvoiceDownload(invoiceId: string, filename?: string): Promise<void> {
   const billingManager = new SubscriptionBillingManager()
-  
+
   try {
     const blob = await billingManager.downloadInvoice(invoiceId)
-    
+
     // Create download link
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -377,7 +384,7 @@ export async function handleInvoiceDownload(
     link.download = filename || `invoice-${invoiceId}.pdf`
     document.body.appendChild(link)
     link.click()
-    
+
     // Cleanup
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
@@ -402,25 +409,27 @@ export function validateSubscriptionModification(
   const type = newPrice > currentPrice ? 'upgrade' : newPrice < currentPrice ? 'downgrade' : 'same'
   const restrictions: string[] = []
   const recommendations: string[] = []
-  
+
   if (!isValid) {
     restrictions.push('Cannot modify to the same tier')
   }
-  
+
   if (type === 'downgrade') {
     restrictions.push('Downgrades take effect at the next billing cycle')
-    recommendations.push('Consider waiting until near your billing date to minimize unused benefits')
+    recommendations.push(
+      'Consider waiting until near your billing date to minimize unused benefits'
+    )
   }
-  
+
   if (type === 'upgrade') {
     recommendations.push('Upgrades take effect immediately with prorated billing')
-    recommendations.push('You\'ll have immediate access to all new features')
+    recommendations.push("You'll have immediate access to all new features")
   }
-  
+
   return {
     isValid,
     type,
     restrictions,
-    recommendations
+    recommendations,
   }
 }

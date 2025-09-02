@@ -43,42 +43,56 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userIdParam = searchParams.get('userId')
-    
+
     console.log('Analytics API - userId parameter:', userIdParam?.substring(0, 8) + '...')
-    
+
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    console.log('Analytics API - session user:', user?.id?.substring(0, 8) + '...', 'auth error:', authError?.message)
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    console.log(
+      'Analytics API - session user:',
+      user?.id?.substring(0, 8) + '...',
+      'auth error:',
+      authError?.message
+    )
+
     // Use userId from parameter if session auth fails (like bet submission)
     let finalUserId = user?.id
     let querySupabase = supabase
-    
+
     if ((authError || !user) && userIdParam) {
       console.log('Session auth failed, validating userId parameter with service role')
-      
+
       // Validate the userId parameter with service role
       const adminSupabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       )
-      
-      const { data: userData, error: userError } = await adminSupabase.auth.admin.getUserById(userIdParam)
-      
+
+      const { data: userData, error: userError } =
+        await adminSupabase.auth.admin.getUserById(userIdParam)
+
       if (userData?.user && !userError) {
         finalUserId = userIdParam
         querySupabase = adminSupabase // Use service role for querying
-        console.log('Successfully validated userId parameter with service role - using admin client for queries')
+        console.log(
+          'Successfully validated userId parameter with service role - using admin client for queries'
+        )
       } else {
         console.log('Failed to validate userId parameter:', userError?.message)
-        return NextResponse.json({ error: 'Unauthorized - invalid user parameter' }, { status: 401 })
+        return NextResponse.json(
+          { error: 'Unauthorized - invalid user parameter' },
+          { status: 401 }
+        )
       }
     } else if (authError || !user) {
       console.log('No authentication available')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     console.log('Using final user ID:', finalUserId?.substring(0, 8) + '...')
 
     const timeframe = searchParams.get('timeframe') || '30d'
@@ -100,7 +114,7 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     let startDate: Date
     let endDate: Date | null = null
-    
+
     // If custom start date is provided, use it instead of timeframe
     if (startDateParam) {
       startDate = new Date(startDateParam)
@@ -134,25 +148,28 @@ export async function GET(request: NextRequest) {
       .eq('user_id', finalUserId)
       .eq('is_copy_bet', false)
       .gte('placed_at', startDate.toISOString())
-    
+
     // Add end date filter if provided
     if (endDate) {
       query = query.lte('placed_at', endDate.toISOString())
     }
-    
+
     const { data: allBets, error } = await query.order('placed_at', { ascending: false })
-    
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     let bets = (allBets ?? []) as Bet[]
-    
+
     // Apply post-query filtering while preserving parlay integrity
     if (sport) {
       // Handle multiple sports - convert to case-insensitive array
-      const sportsList = sport.split(',').map(s => s.trim().toLowerCase()).filter(s => s)
-      
+      const sportsList = sport
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s)
+
       // For parlays: include if ANY leg matches ANY of the sport filters
       // For straight bets: include if the bet matches ANY of the sport filters
       bets = bets.filter(bet => {
@@ -166,11 +183,14 @@ export async function GET(request: NextRequest) {
         }
       })
     }
-    
+
     if (league) {
       // Handle multiple leagues - convert to case-insensitive array
-      const leaguesList = league.split(',').map(l => l.trim().toLowerCase()).filter(l => l)
-      
+      const leaguesList = league
+        .split(',')
+        .map(l => l.trim().toLowerCase())
+        .filter(l => l)
+
       // For parlays: include if ANY leg matches ANY of the league filters
       // For straight bets: include if the bet matches ANY of the league filters
       bets = bets.filter(bet => {
@@ -184,52 +204,64 @@ export async function GET(request: NextRequest) {
         }
       })
     }
-    
+
     if (betType) {
       // Handle multiple bet types
-      const betTypesList = betType.split(',').map(bt => bt.trim().toLowerCase()).filter(bt => bt)
+      const betTypesList = betType
+        .split(',')
+        .map(bt => bt.trim().toLowerCase())
+        .filter(bt => bt)
       bets = bets.filter(bet => betTypesList.includes(bet.bet_type.toLowerCase()))
     }
-    
+
     if (status && status !== 'all') {
-      const statusList = status.split(',').map(s => s.trim().toLowerCase()).filter(s => s !== '')
+      const statusList = status
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s !== '')
       if (statusList.length > 0) {
         bets = bets.filter(bet => statusList.includes(bet.status.toLowerCase()))
       }
     }
-    
+
     if (isParlay) {
       bets = bets.filter(bet => bet.is_parlay === (isParlay === 'true'))
     }
-    
+
     if (side) {
-      const sidesList = side.split(',').map(s => s.trim().toLowerCase()).filter(s => s)
+      const sidesList = side
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s)
       bets = bets.filter(bet => bet.side && sidesList.includes(bet.side.toLowerCase()))
     }
-    
+
     if (minStake) {
       bets = bets.filter(bet => bet.stake >= parseFloat(minStake))
     }
-    
+
     if (maxStake) {
       bets = bets.filter(bet => bet.stake <= parseFloat(maxStake))
     }
-    
+
     if (minOdds) {
       bets = bets.filter(bet => bet.odds >= parseInt(minOdds))
     }
-    
+
     if (maxOdds) {
       bets = bets.filter(bet => bet.odds <= parseInt(maxOdds))
     }
-    
+
     // Apply underdog/favorite filter based on odds
     if (oddsType) {
-      const oddsTypesList = oddsType.split(',').map(ot => ot.trim().toLowerCase()).filter(ot => ot)
+      const oddsTypesList = oddsType
+        .split(',')
+        .map(ot => ot.trim().toLowerCase())
+        .filter(ot => ot)
       bets = bets.filter(bet => {
         const isFavorite = bet.odds < 0
         const isUnderdog = bet.odds > 0
-        
+
         return oddsTypesList.some(type => {
           if (type === 'favorite') return isFavorite
           if (type === 'underdog') return isUnderdog
@@ -237,17 +269,20 @@ export async function GET(request: NextRequest) {
         })
       })
     }
-    
+
     console.log(`Found ${bets.length} bets for user ${finalUserId?.substring(0, 8)}...`)
     if (bets.length > 0) {
-      console.log('Sample bets:', bets.slice(0, 3).map(b => ({ 
-        id: b.id.substring(0, 8) + '...', 
-        sport: b.sport, 
-        status: b.status, 
-        stake: b.stake,
-        placed_at: b.placed_at,
-        is_copy_bet: b.is_copy_bet
-      })))
+      console.log(
+        'Sample bets:',
+        bets.slice(0, 3).map(b => ({
+          id: b.id.substring(0, 8) + '...',
+          sport: b.sport,
+          status: b.status,
+          stake: b.stake,
+          placed_at: b.placed_at,
+          is_copy_bet: b.is_copy_bet,
+        }))
+      )
     }
 
     // Calculate analytics using proper profit handling
@@ -255,13 +290,13 @@ export async function GET(request: NextRequest) {
     const settledBets = bets.filter(bet => ['won', 'lost', 'void'].includes(bet.status))
     const wonBets = bets.filter(bet => bet.status === 'won')
     const voidBets = bets.filter(bet => bet.status === 'void')
-    
+
     const totalStake = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
-    
+
     // Enhanced profit calculation
     const netProfit = settledBets.reduce((sum, bet) => {
       if (bet.status === 'void') return sum // Void bets don't affect profit
-      
+
       let profit = bet.profit
       if (profit === null || profit === undefined) {
         if (bet.status === 'won') {
@@ -274,33 +309,36 @@ export async function GET(request: NextRequest) {
       }
       return sum + profit
     }, 0)
-    
-    const winRate = settledBets.filter(b => b.status !== 'void').length > 0 ? 
-      (wonBets.length / settledBets.filter(b => b.status !== 'void').length) * 100 : 0
+
+    const winRate =
+      settledBets.filter(b => b.status !== 'void').length > 0
+        ? (wonBets.length / settledBets.filter(b => b.status !== 'void').length) * 100
+        : 0
     const roi = totalStake > 0 ? (netProfit / totalStake) * 100 : 0
     const avgBetSize = totalBets > 0 ? totalStake / totalBets : 0
-    
+
     // Calculate Expected Value and CLV
     let totalClv = 0
     let clvCount = 0
     const expectedValue = settledBets.reduce((sum, bet) => {
       if (bet.status === 'void') return sum
-      
+
       // Calculate CLV if line_value is available
       if (bet.line_value !== null && bet.line_value !== undefined) {
         const clv = ((bet.line_value - bet.odds) / bet.odds) * 100
         totalClv += clv
         clvCount++
       }
-      
+
       // Calculate EV based on implied probability
-      const impliedProb = bet.odds > 0 ? 100 / (bet.odds + 100) : Math.abs(bet.odds) / (Math.abs(bet.odds) + 100)
-      const ev = (bet.potential_payout * impliedProb) - bet.stake
+      const impliedProb =
+        bet.odds > 0 ? 100 / (bet.odds + 100) : Math.abs(bet.odds) / (Math.abs(bet.odds) + 100)
+      const ev = bet.potential_payout * impliedProb - bet.stake
       return sum + ev
     }, 0)
-    
+
     const avgClv = clvCount > 0 ? totalClv / clvCount : null
-    
+
     // Separate straight bets and parlays
     const straightBets = settledBets.filter(bet => !bet.is_parlay)
     const parlayBets = settledBets.filter(bet => bet.is_parlay)
@@ -312,134 +350,149 @@ export async function GET(request: NextRequest) {
       stake: number
       profit: number
     }
-    
-    const convertBreakdownToStats = (breakdown: Record<string, BreakdownStats>, keyName: string) => {
+
+    const convertBreakdownToStats = (
+      breakdown: Record<string, BreakdownStats>,
+      keyName: string
+    ) => {
       return Object.entries(breakdown).map(([key, stats]) => ({
         [keyName]: key,
         bets: stats.bets,
         winRate: stats.bets > 0 ? (stats.won / stats.bets) * 100 : 0,
         roi: stats.stake > 0 ? (stats.profit / stats.stake) * 100 : 0,
-        profit: stats.profit
+        profit: stats.profit,
       }))
     }
-    
+
     // Sport breakdown
-    const sportBreakdown = bets.reduce((acc, bet) => {
-      if (!acc[bet.sport]) {
-        acc[bet.sport] = { bets: 0, won: 0, stake: 0, profit: 0 }
-      }
-      const stats = acc[bet.sport]!
-      stats.bets += 1
-      stats.stake += bet.stake
-      
-      let betProfit = bet.profit
-      if (betProfit === null || betProfit === undefined) {
-        if (bet.status === 'won') {
-          betProfit = bet.potential_payout - bet.stake
-        } else if (bet.status === 'lost') {
-          betProfit = -bet.stake
-        } else {
-          betProfit = 0
+    const sportBreakdown = bets.reduce(
+      (acc, bet) => {
+        if (!acc[bet.sport]) {
+          acc[bet.sport] = { bets: 0, won: 0, stake: 0, profit: 0 }
         }
-      }
-      stats.profit += betProfit
-      
-      if (bet.status === 'won') {
-        stats.won += 1
-      }
-      return acc
-    }, {} as Record<string, BreakdownStats>)
-    
+        const stats = acc[bet.sport]!
+        stats.bets += 1
+        stats.stake += bet.stake
+
+        let betProfit = bet.profit
+        if (betProfit === null || betProfit === undefined) {
+          if (bet.status === 'won') {
+            betProfit = bet.potential_payout - bet.stake
+          } else if (bet.status === 'lost') {
+            betProfit = -bet.stake
+          } else {
+            betProfit = 0
+          }
+        }
+        stats.profit += betProfit
+
+        if (bet.status === 'won') {
+          stats.won += 1
+        }
+        return acc
+      },
+      {} as Record<string, BreakdownStats>
+    )
+
     // Bet type breakdown
-    const betTypeBreakdown = bets.reduce((acc, bet) => {
-      const betTypeKey = bet.bet_type || 'Unknown'
-      if (!acc[betTypeKey]) {
-        acc[betTypeKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
-      }
-      const stats = acc[betTypeKey]!
-      stats.bets += 1
-      stats.stake += bet.stake
-      
-      let betProfit = bet.profit
-      if (betProfit === null || betProfit === undefined) {
-        if (bet.status === 'won') {
-          betProfit = bet.potential_payout - bet.stake
-        } else if (bet.status === 'lost') {
-          betProfit = -bet.stake
-        } else {
-          betProfit = 0
+    const betTypeBreakdown = bets.reduce(
+      (acc, bet) => {
+        const betTypeKey = bet.bet_type || 'Unknown'
+        if (!acc[betTypeKey]) {
+          acc[betTypeKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
         }
-      }
-      stats.profit += betProfit
-      
-      if (bet.status === 'won') {
-        stats.won += 1
-      }
-      return acc
-    }, {} as Record<string, BreakdownStats>)
-    
+        const stats = acc[betTypeKey]!
+        stats.bets += 1
+        stats.stake += bet.stake
+
+        let betProfit = bet.profit
+        if (betProfit === null || betProfit === undefined) {
+          if (bet.status === 'won') {
+            betProfit = bet.potential_payout - bet.stake
+          } else if (bet.status === 'lost') {
+            betProfit = -bet.stake
+          } else {
+            betProfit = 0
+          }
+        }
+        stats.profit += betProfit
+
+        if (bet.status === 'won') {
+          stats.won += 1
+        }
+        return acc
+      },
+      {} as Record<string, BreakdownStats>
+    )
+
     // Prop type breakdown
-    const propTypeBreakdown = bets.reduce((acc, bet) => {
-      const propTypeKey = bet.prop_type || 'Standard'
-      if (!acc[propTypeKey]) {
-        acc[propTypeKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
-      }
-      const stats = acc[propTypeKey]
-      stats.bets += 1
-      stats.stake += bet.stake
-      
-      let betProfit = bet.profit
-      if (betProfit === null || betProfit === undefined) {
-        if (bet.status === 'won') {
-          betProfit = bet.potential_payout - bet.stake
-        } else if (bet.status === 'lost') {
-          betProfit = -bet.stake
-        } else {
-          betProfit = 0
+    const propTypeBreakdown = bets.reduce(
+      (acc, bet) => {
+        const propTypeKey = bet.prop_type || 'Standard'
+        if (!acc[propTypeKey]) {
+          acc[propTypeKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
         }
-      }
-      stats.profit += betProfit
-      
-      if (bet.status === 'won') {
-        stats.won += 1
-      }
-      return acc
-    }, {} as Record<string, BreakdownStats>)
-    
+        const stats = acc[propTypeKey]
+        stats.bets += 1
+        stats.stake += bet.stake
+
+        let betProfit = bet.profit
+        if (betProfit === null || betProfit === undefined) {
+          if (bet.status === 'won') {
+            betProfit = bet.potential_payout - bet.stake
+          } else if (bet.status === 'lost') {
+            betProfit = -bet.stake
+          } else {
+            betProfit = 0
+          }
+        }
+        stats.profit += betProfit
+
+        if (bet.status === 'won') {
+          stats.won += 1
+        }
+        return acc
+      },
+      {} as Record<string, BreakdownStats>
+    )
+
     // Side breakdown
-    const sideBreakdown = bets.reduce((acc, bet) => {
-      const sideKey = bet.side || 'N/A'
-      if (!acc[sideKey]) {
-        acc[sideKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
-      }
-      const stats = acc[sideKey]
-      stats.bets += 1
-      stats.stake += bet.stake
-      
-      let betProfit = bet.profit
-      if (betProfit === null || betProfit === undefined) {
-        if (bet.status === 'won') {
-          betProfit = bet.potential_payout - bet.stake
-        } else if (bet.status === 'lost') {
-          betProfit = -bet.stake
-        } else {
-          betProfit = 0
+    const sideBreakdown = bets.reduce(
+      (acc, bet) => {
+        const sideKey = bet.side || 'N/A'
+        if (!acc[sideKey]) {
+          acc[sideKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
         }
-      }
-      stats.profit += betProfit
-      
-      if (bet.status === 'won') {
-        stats.won += 1
-      }
-      return acc
-    }, {} as Record<string, BreakdownStats>)
+        const stats = acc[sideKey]
+        stats.bets += 1
+        stats.stake += bet.stake
+
+        let betProfit = bet.profit
+        if (betProfit === null || betProfit === undefined) {
+          if (bet.status === 'won') {
+            betProfit = bet.potential_payout - bet.stake
+          } else if (bet.status === 'lost') {
+            betProfit = -bet.stake
+          } else {
+            betProfit = 0
+          }
+        }
+        stats.profit += betProfit
+
+        if (bet.status === 'won') {
+          stats.won += 1
+        }
+        return acc
+      },
+      {} as Record<string, BreakdownStats>
+    )
 
     // Convert to arrays with calculated metrics
     const sportStats = convertBreakdownToStats(sportBreakdown, 'sport')
     const betTypeStats = convertBreakdownToStats(betTypeBreakdown, 'betType')
     const propTypeStats = convertBreakdownToStats(propTypeBreakdown, 'propType')
     const sideStats = convertBreakdownToStats(sideBreakdown, 'side')
-    
+
     // Line movement analysis
     const lineMovementData = bets
       .filter(bet => bet.line_value !== null && bet.line_value !== undefined)
@@ -452,7 +505,13 @@ export async function GET(request: NextRequest) {
           lineValue: bet.line_value!,
           sport: bet.sport,
           betType: bet.bet_type,
-          profit: bet.profit || (bet.status === 'won' ? bet.potential_payout - bet.stake : bet.status === 'lost' ? -bet.stake : 0)
+          profit:
+            bet.profit ||
+            (bet.status === 'won'
+              ? bet.potential_payout - bet.stake
+              : bet.status === 'lost'
+                ? -bet.stake
+                : 0),
         }
       })
       .sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
@@ -461,24 +520,28 @@ export async function GET(request: NextRequest) {
     function groupBetsForDisplay(rawBets: Bet[], allBetsForParlays: Bet[]) {
       const groupedBets: Array<Record<string, unknown>> = []
       const processedParlayIds = new Set<string>()
-      
+
       for (const bet of rawBets) {
         if (bet.is_parlay && bet.parlay_id) {
           // Skip if we've already processed this parlay
           if (processedParlayIds.has(bet.parlay_id)) {
             continue
           }
-          
+
           // Find all legs of this parlay from the complete unfiltered dataset
           const parlayLegs = allBetsForParlays.filter(b => b.parlay_id === bet.parlay_id)
-          
+
           // Find the leg with stake/payout data (usually the first, but check for non-zero values)
-          const mainLeg = parlayLegs.find(leg => leg.stake > 0 && leg.potential_payout > 0) || parlayLegs[0]
-          
+          const mainLeg =
+            parlayLegs.find(leg => leg.stake > 0 && leg.potential_payout > 0) || parlayLegs[0]
+
           // Create parlay object with enhanced description
           const uniqueSports = [...new Set(parlayLegs.map(leg => leg.sport))].sort()
-          const sportsList = uniqueSports.length > 3 ? `${uniqueSports.slice(0, 3).join(', ')}...` : uniqueSports.join(', ')
-          
+          const sportsList =
+            uniqueSports.length > 3
+              ? `${uniqueSports.slice(0, 3).join(', ')}...`
+              : uniqueSports.join(', ')
+
           const parlayBet = {
             id: bet.parlay_id,
             user_id: bet.user_id,
@@ -513,13 +576,12 @@ export async function GET(request: NextRequest) {
               home_team: leg.home_team,
               away_team: leg.away_team,
               side: leg.side,
-              status: leg.status
-            }))
+              status: leg.status,
+            })),
           }
-          
+
           groupedBets.push(parlayBet)
           processedParlayIds.add(bet.parlay_id)
-          
         } else {
           // Regular straight bet
           groupedBets.push({
@@ -548,17 +610,20 @@ export async function GET(request: NextRequest) {
             game_id: bet.game_id,
             side: bet.side,
             parlay_id: bet.parlay_id,
-            is_parlay: bet.is_parlay
+            is_parlay: bet.is_parlay,
           })
         }
       }
-      
+
       // Sort by placed_at date (most recent first) and return first 20
       return groupedBets
-        .sort((a, b) => new Date(b.placed_at as string).getTime() - new Date(a.placed_at as string).getTime())
+        .sort(
+          (a, b) =>
+            new Date(b.placed_at as string).getTime() - new Date(a.placed_at as string).getTime()
+        )
         .slice(0, 20)
     }
-      
+
     // Calculate running profit for chart
     let runningProfit = 0
     const chartData = settledBets
@@ -577,7 +642,7 @@ export async function GET(request: NextRequest) {
         runningProfit += betProfit
         return {
           date: bet.placed_at.split('T')[0] || '',
-          profit: runningProfit
+          profit: runningProfit,
         }
       })
 
@@ -590,20 +655,28 @@ export async function GET(request: NextRequest) {
         totalStaked: Math.round(totalStake * 100) / 100,
         avgOdds: bets.length > 0 ? bets.reduce((sum, bet) => sum + bet.odds, 0) / bets.length : 0,
         avgStake: Math.round(avgBetSize * 100) / 100,
-        biggestWin: Math.max(...settledBets.map(bet => {
-          let profit = bet.profit
-          if (profit === null || profit === undefined) {
-            profit = bet.status === 'won' ? bet.potential_payout - bet.stake : 0
-          }
-          return profit
-        }), 0),
-        biggestLoss: Math.abs(Math.min(...settledBets.map(bet => {
-          let profit = bet.profit
-          if (profit === null || profit === undefined) {
-            profit = bet.status === 'lost' ? -bet.stake : 0
-          }
-          return profit
-        }), 0)),
+        biggestWin: Math.max(
+          ...settledBets.map(bet => {
+            let profit = bet.profit
+            if (profit === null || profit === undefined) {
+              profit = bet.status === 'won' ? bet.potential_payout - bet.stake : 0
+            }
+            return profit
+          }),
+          0
+        ),
+        biggestLoss: Math.abs(
+          Math.min(
+            ...settledBets.map(bet => {
+              let profit = bet.profit
+              if (profit === null || profit === undefined) {
+                profit = bet.status === 'lost' ? -bet.stake : 0
+              }
+              return profit
+            }),
+            0
+          )
+        ),
         currentStreak: 0, // TODO: Calculate streak
         streakType: 'none' as const,
         avgClv: avgClv !== null ? Math.round(avgClv * 100) / 100 : null,
@@ -612,7 +685,7 @@ export async function GET(request: NextRequest) {
         variance: 0, // TODO: Calculate variance
         straightBetsCount: straightBets.length,
         parlayBetsCount: parlayBets.length,
-        voidBetsCount: voidBets.length
+        voidBetsCount: voidBets.length,
       },
       sportBreakdown: sportStats || [],
       betTypeBreakdown: betTypeStats || [],
@@ -623,11 +696,11 @@ export async function GET(request: NextRequest) {
         date: item.date,
         profit: index > 0 ? item.profit - (chartData[index - 1]?.profit || 0) : item.profit,
         cumulativeProfit: item.profit,
-        bets: 1
+        bets: 1,
       })),
       monthlyData: [],
       recentBets: groupBetsForDisplay(bets.slice(0, 30), allBets), // Get more raw bets to account for parlay grouping
-      topPerformingSports: sportStats.slice(0, 5)
+      topPerformingSports: sportStats.slice(0, 5),
     }
 
     return NextResponse.json({ data: analytics })

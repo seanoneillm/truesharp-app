@@ -21,9 +21,9 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
         'Basic picks and analysis',
         'Weekly performance reports',
         'Community access',
-        'Email notifications'
+        'Email notifications',
       ],
-      popular: false
+      popular: false,
     },
     {
       name: 'Silver',
@@ -35,9 +35,9 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
         'Detailed pick analysis',
         'Early access to picks',
         'SMS notifications',
-        'Monthly strategy calls'
+        'Monthly strategy calls',
       ],
-      popular: true
+      popular: true,
     },
     {
       name: 'Premium',
@@ -50,10 +50,10 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
         'Direct message access',
         'Custom analysis requests',
         'Priority support',
-        'Exclusive content'
+        'Exclusive content',
       ],
-      popular: false
-    }
+      popular: false,
+    },
   ]
 
   return (
@@ -66,28 +66,28 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {tiers.map((tier) => (
-          <Card 
+        {tiers.map(tier => (
+          <Card
             key={tier.name}
             className={`relative p-6 ${tier.popular ? 'ring-2 ring-blue-500' : ''}`}
           >
             {tier.popular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white font-medium px-3 py-1">
-                  Most Popular
-                </Badge>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
+                <Badge className="bg-blue-500 px-3 py-1 font-medium text-white">Most Popular</Badge>
               </div>
             )}
 
             <div className="text-center">
               {/* Icon */}
-              <div className={`mx-auto h-16 w-16 rounded-full bg-gradient-to-r ${tier.color} flex items-center justify-center mb-4`}>
+              <div
+                className={`mx-auto h-16 w-16 rounded-full bg-gradient-to-r ${tier.color} mb-4 flex items-center justify-center`}
+              >
                 <tier.icon className="h-8 w-8 text-white" />
               </div>
 
               {/* Tier Name */}
               <h3 className="text-xl font-bold text-gray-900">{tier.name}</h3>
-              
+
               {/* Price */}
               <div className="mt-4">
                 <span className="text-4xl font-bold text-gray-900">
@@ -98,55 +98,55 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
 
               {/* Features */}
               <ul className="mt-6 space-y-3">
-                {tier.features.map((feature) => (
+                {tier.features.map(feature => (
                   <li key={feature} className="flex items-center text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                    <CheckCircle className="mr-2 h-4 w-4 flex-shrink-0 text-green-500" />
                     <span className="text-gray-600">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               {/* CTA Button */}
-              <Button 
-                className={`w-full mt-8 ${
-                  tier.popular 
-                    ? 'bg-blue-600 hover:bg-blue-700' 
-                    : 'bg-gray-900 hover:bg-gray-800'
+              <Button
+                className={`mt-8 w-full ${
+                  tier.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-900 hover:bg-gray-800'
                 }`}
               >
                 Subscribe to {tier.name}
               </Button>
 
               {/* Trial Info */}
-              <p className="mt-3 text-xs text-gray-500">
-                7-day free trial • Cancel anytime
-              </p>
+              <p className="mt-3 text-xs text-gray-500">7-day free trial • Cancel anytime</p>
             </div>
           </Card>
         ))}
       </div>
 
       {/* Additional Info */}
-      <Card className="p-6 bg-gray-50">
+      <Card className="bg-gray-50 p-6">
         <div className="text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="mb-2 text-lg font-medium text-gray-900">
             What makes this seller special?
           </h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mt-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+              <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
               <span className="text-sm text-gray-600">100% Verified Performance</span>
             </div>
             <div className="flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-              <span className="text-sm text-gray-600">{seller.stats.totalPicks}+ Tracked Picks</span>
+              <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+              <span className="text-sm text-gray-600">
+                {seller.stats.totalPicks}+ Tracked Picks
+              </span>
             </div>
             <div className="flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-              <span className="text-sm text-gray-600">{/* You can add a stat or description here if needed */}</span>
+              <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+              <span className="text-sm text-gray-600">
+                {/* You can add a stat or description here if needed */}
+              </span>
             </div>
             <div className="flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+              <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
               <span className="text-sm text-gray-600">{seller.stats.rating}/5 Star Rating</span>
             </div>
           </div>
@@ -155,11 +155,9 @@ export function SubscriptionTiers({ seller }: SubscriptionTiersProps) {
 
       {/* Money Back Guarantee */}
       <div className="text-center">
-        <div className="inline-flex items-center px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-          <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-          <span className="text-sm font-medium text-green-800">
-            30-day money-back guarantee
-          </span>
+        <div className="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-4 py-2">
+          <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+          <span className="text-sm font-medium text-green-800">30-day money-back guarantee</span>
         </div>
         <p className="mt-2 text-xs text-gray-500">
           Not satisfied? Get a full refund within 30 days, no questions asked.

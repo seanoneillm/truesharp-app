@@ -66,39 +66,42 @@ export function calculateMetrics(bets: Bet[], isPro: boolean = false): Calculate
       streakType: 'none',
       avgClv: null,
       profitableSports: 0,
-      variance: 0
+      variance: 0,
     }
   }
 
   const settledBets = bets.filter(bet => bet.result === 'won' || bet.result === 'lost')
   const wonBets = settledBets.filter(bet => bet.result === 'won')
-  
+
   const totalBets = settledBets.length
   const winRate = totalBets > 0 ? (wonBets.length / totalBets) * 100 : 0
-  
+
   const totalStaked = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
   const totalProfit = settledBets.reduce((sum, bet) => sum + (bet.profit_loss || 0), 0)
   const roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0
-  
-  const avgOdds = totalBets > 0 ? settledBets.reduce((sum, bet) => sum + bet.odds, 0) / totalBets : 0
+
+  const avgOdds =
+    totalBets > 0 ? settledBets.reduce((sum, bet) => sum + bet.odds, 0) / totalBets : 0
   const avgStake = totalBets > 0 ? totalStaked / totalBets : 0
-  
+
   // Calculate biggest win/loss
   const profits = settledBets.map(bet => bet.profit_loss || 0)
   const biggestWin = Math.max(...profits, 0)
   const biggestLoss = Math.abs(Math.min(...profits, 0))
-  
+
   // Calculate current streak
   const { streak, streakType } = calculateCurrentStreak(settledBets)
-  
+
   // Calculate average CLV (Pro only)
   const avgClv = isPro ? calculateAverageClv(settledBets) : null
-  
+
   // Calculate variance
   const avgProfit = totalBets > 0 ? totalProfit / totalBets : 0
-  const variance = totalBets > 0 ? 
-    settledBets.reduce((sum, bet) => sum + Math.pow((bet.profit_loss || 0) - avgProfit, 2), 0) / totalBets
-    : 0
+  const variance =
+    totalBets > 0
+      ? settledBets.reduce((sum, bet) => sum + Math.pow((bet.profit_loss || 0) - avgProfit, 2), 0) /
+        totalBets
+      : 0
 
   // Calculate profitable sports count
   const sportStats = calculateSportBreakdown(settledBets, isPro)
@@ -118,14 +121,17 @@ export function calculateMetrics(bets: Bet[], isPro: boolean = false): Calculate
     streakType,
     avgClv,
     profitableSports,
-    variance
+    variance,
   }
 }
 
 /**
  * Calculate current win/loss streak
  */
-export function calculateCurrentStreak(bets: Bet[]): { streak: number, streakType: 'win' | 'loss' | 'none' } {
+export function calculateCurrentStreak(bets: Bet[]): {
+  streak: number
+  streakType: 'win' | 'loss' | 'none'
+} {
   if (!bets.length) {
     return { streak: 0, streakType: 'none' }
   }
@@ -140,7 +146,7 @@ export function calculateCurrentStreak(bets: Bet[]): { streak: number, streakTyp
 
   const latestResult = settledBets[0].result
   const streakType: 'win' | 'loss' = latestResult === 'won' ? 'win' : 'loss'
-  
+
   let streak = 0
   for (const bet of settledBets) {
     if (bet.result === latestResult) {
@@ -157,11 +163,14 @@ export function calculateCurrentStreak(bets: Bet[]): { streak: number, streakTyp
  * Calculate sport-by-sport performance breakdown
  */
 export function calculateSportBreakdown(bets: Bet[], isPro: boolean = false): SportPerformance[] {
-  const sportStats = new Map<string, {
-    bets: Bet[]
-    profit: number
-    staked: number
-  }>()
+  const sportStats = new Map<
+    string,
+    {
+      bets: Bet[]
+      profit: number
+      staked: number
+    }
+  >()
 
   bets.forEach(bet => {
     if (!sportStats.has(bet.sport)) {
@@ -173,37 +182,44 @@ export function calculateSportBreakdown(bets: Bet[], isPro: boolean = false): Sp
     stats.staked += bet.stake
   })
 
-  return Array.from(sportStats.entries()).map(([sport, stats]) => {
-    const wonCount = stats.bets.filter(bet => bet.result === 'won').length
-    const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
-    const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
-    const avgOdds = stats.bets.length > 0 ? 
-      stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length : 0
-    
-    const clv = isPro ? calculateAverageClvForBets(stats.bets) : undefined
+  return Array.from(sportStats.entries())
+    .map(([sport, stats]) => {
+      const wonCount = stats.bets.filter(bet => bet.result === 'won').length
+      const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
+      const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
+      const avgOdds =
+        stats.bets.length > 0
+          ? stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length
+          : 0
 
-    return {
-      sport,
-      bets: stats.bets.length,
-      winRate,
-      profit: stats.profit,
-      roi,
-      avgOdds,
-      totalStaked: stats.staked,
-      clv
-    }
-  }).sort((a, b) => b.profit - a.profit)
+      const clv = isPro ? calculateAverageClvForBets(stats.bets) : undefined
+
+      return {
+        sport,
+        bets: stats.bets.length,
+        winRate,
+        profit: stats.profit,
+        roi,
+        avgOdds,
+        totalStaked: stats.staked,
+        clv,
+      }
+    })
+    .sort((a, b) => b.profit - a.profit)
 }
 
 /**
  * Calculate bet type performance breakdown
  */
 export function calculateBetTypeBreakdown(bets: Bet[]): BetTypePerformance[] {
-  const betTypeStats = new Map<string, {
-    bets: Bet[]
-    profit: number
-    staked: number
-  }>()
+  const betTypeStats = new Map<
+    string,
+    {
+      bets: Bet[]
+      profit: number
+      staked: number
+    }
+  >()
 
   bets.forEach(bet => {
     if (!betTypeStats.has(bet.bet_type)) {
@@ -215,43 +231,53 @@ export function calculateBetTypeBreakdown(bets: Bet[]): BetTypePerformance[] {
     stats.staked += bet.stake
   })
 
-  return Array.from(betTypeStats.entries()).map(([betType, stats]) => {
-    const wonCount = stats.bets.filter(bet => bet.result === 'won').length
-    const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
-    const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
-    const avgOdds = stats.bets.length > 0 ? 
-      stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length : 0
+  return Array.from(betTypeStats.entries())
+    .map(([betType, stats]) => {
+      const wonCount = stats.bets.filter(bet => bet.result === 'won').length
+      const winRate = stats.bets.length > 0 ? (wonCount / stats.bets.length) * 100 : 0
+      const roi = stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0
+      const avgOdds =
+        stats.bets.length > 0
+          ? stats.bets.reduce((sum, bet) => sum + bet.odds, 0) / stats.bets.length
+          : 0
 
-    return {
-      betType,
-      bets: stats.bets.length,
-      winRate,
-      profit: stats.profit,
-      roi,
-      avgOdds
-    }
-  }).sort((a, b) => b.roi - a.roi)
+      return {
+        betType,
+        bets: stats.bets.length,
+        winRate,
+        profit: stats.profit,
+        roi,
+        avgOdds,
+      }
+    })
+    .sort((a, b) => b.roi - a.roi)
 }
 
 /**
  * Calculate performance by month
  */
-export function calculateMonthlyBreakdown(bets: Bet[], maxMonths: number = 12): PerformanceByTimeframe[] {
-  const monthlyStats = new Map<string, {
-    bets: number
-    profit: number
-    staked: number
-    won: number
-  }>()
+export function calculateMonthlyBreakdown(
+  bets: Bet[],
+  maxMonths: number = 12
+): PerformanceByTimeframe[] {
+  const monthlyStats = new Map<
+    string,
+    {
+      bets: number
+      profit: number
+      staked: number
+      won: number
+    }
+  >()
 
   bets.forEach(bet => {
     const date = new Date(bet.placed_at)
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    
+
     if (!monthlyStats.has(monthKey)) {
       monthlyStats.set(monthKey, { bets: 0, profit: 0, staked: 0, won: 0 })
     }
-    
+
     const stats = monthlyStats.get(monthKey)!
     stats.bets++
     stats.profit += bet.profit_loss || 0
@@ -268,7 +294,7 @@ export function calculateMonthlyBreakdown(bets: Bet[], maxMonths: number = 12): 
       profit: stats.profit,
       winRate: stats.bets > 0 ? (stats.won / stats.bets) * 100 : 0,
       roi: stats.staked > 0 ? (stats.profit / stats.staked) * 100 : 0,
-      totalStaked: stats.staked
+      totalStaked: stats.staked,
     }))
 }
 
@@ -299,7 +325,7 @@ export function calculateDailyProfitData(bets: Bet[]): Array<{
       date,
       profit,
       cumulativeProfit,
-      bets: dayBets
+      bets: dayBets,
     }
   })
 }
@@ -309,7 +335,7 @@ export function calculateDailyProfitData(bets: Bet[]): Array<{
  */
 export function calculateAverageClv(bets: Bet[]): number | null {
   const betsWithClv = bets.filter(bet => bet.clv !== null && bet.clv !== undefined)
-  
+
   if (betsWithClv.length === 0) {
     return null
   }
@@ -335,20 +361,20 @@ export function calculateKellyCriterion(
   bankroll: number
 ): number {
   // Convert American odds to decimal
-  const decimalOdds = odds > 0 ? (odds / 100) + 1 : (100 / Math.abs(odds)) + 1
-  
+  const decimalOdds = odds > 0 ? odds / 100 + 1 : 100 / Math.abs(odds) + 1
+
   // Kelly formula: f = (bp - q) / b
   // where f = fraction of bankroll to bet
   // b = odds received on the wager (decimal odds - 1)
   // p = probability of winning
   // q = probability of losing (1 - p)
-  
+
   const b = decimalOdds - 1
   const p = winProbability / 100
   const q = 1 - p
-  
+
   const kellyFraction = (b * p - q) / b
-  
+
   // Return recommended bet size (never more than 25% of bankroll for safety)
   return Math.max(0, Math.min(kellyFraction * bankroll, bankroll * 0.25))
 }
@@ -358,7 +384,7 @@ export function calculateKellyCriterion(
  */
 export function calculateSharpeRatio(bets: Bet[]): number {
   const settledBets = bets.filter(bet => bet.result === 'won' || bet.result === 'lost')
-  
+
   if (settledBets.length < 2) return 0
 
   const returns = settledBets.map(bet => {
@@ -368,7 +394,8 @@ export function calculateSharpeRatio(bets: Bet[]): number {
   })
 
   const avgReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length
-  const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / (returns.length - 1)
+  const variance =
+    returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / (returns.length - 1)
   const stdDev = Math.sqrt(variance)
 
   return stdDev > 0 ? avgReturn / stdDev : 0
@@ -390,34 +417,36 @@ export function calculateOddsRangeBreakdown(bets: Bet[]): Array<{
     { min: -125, max: -101, label: 'Slight Favorites (-125 to -101)' },
     { min: 100, max: 149, label: 'Slight Underdogs (+100 to +149)' },
     { min: 150, max: 199, label: 'Underdogs (+150 to +199)' },
-    { min: 200, max: 999, label: 'Heavy Underdogs (+200+)' }
+    { min: 200, max: 999, label: 'Heavy Underdogs (+200+)' },
   ]
 
-  return ranges.map(range => {
-    const rangeBets = bets.filter(bet => {
-      return bet.odds >= range.min && bet.odds <= range.max
+  return ranges
+    .map(range => {
+      const rangeBets = bets.filter(bet => {
+        return bet.odds >= range.min && bet.odds <= range.max
+      })
+
+      const settledBets = rangeBets.filter(bet => bet.result === 'won' || bet.result === 'lost')
+      const wonBets = settledBets.filter(bet => bet.result === 'won')
+      const profit = settledBets.reduce((sum, bet) => sum + (bet.profit_loss || 0), 0)
+      const staked = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
+
+      return {
+        range: range.label,
+        bets: settledBets.length,
+        winRate: settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0,
+        profit,
+        roi: staked > 0 ? (profit / staked) * 100 : 0,
+      }
     })
-
-    const settledBets = rangeBets.filter(bet => bet.result === 'won' || bet.result === 'lost')
-    const wonBets = settledBets.filter(bet => bet.result === 'won')
-    const profit = settledBets.reduce((sum, bet) => sum + (bet.profit_loss || 0), 0)
-    const staked = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
-
-    return {
-      range: range.label,
-      bets: settledBets.length,
-      winRate: settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0,
-      profit,
-      roi: staked > 0 ? (profit / staked) * 100 : 0
-    }
-  }).filter(range => range.bets > 0)
+    .filter(range => range.bets > 0)
 }
 
 /**
  * Calculate bankroll growth over time
  */
 export function calculateBankrollGrowth(
-  bets: Bet[], 
+  bets: Bet[],
   initialBankroll: number
 ): Array<{
   date: string
@@ -438,7 +467,7 @@ export function calculateBankrollGrowth(
     bankrollHistory.push({
       date: bet.placed_at.split('T')[0],
       bankroll: currentBankroll,
-      roi
+      roi,
     })
   })
 

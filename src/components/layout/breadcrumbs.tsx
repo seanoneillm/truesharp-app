@@ -63,13 +63,13 @@ function generateBreadcrumbsFromPath(pathname: string): BreadcrumbItem[] {
   let currentPath = ''
   segments.forEach((segment, index) => {
     currentPath += `/${segment}`
-    
+
     // Skip dashboard since we already added it
     if (segment === 'dashboard') return
-    
+
     const label = routeLabels[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
     const isLast = index === segments.length - 1
-    
+
     breadcrumbs.push({
       label,
       href: currentPath,
@@ -82,14 +82,14 @@ function generateBreadcrumbsFromPath(pathname: string): BreadcrumbItem[] {
 
 export default function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   const pathname = usePathname()
-  
+
   // Use provided items or generate from current path
   const breadcrumbItems = items || generateBreadcrumbsFromPath(pathname)
-  
+
   // Don't show breadcrumbs on auth pages or home page
   if (
-    pathname === '/' || 
-    pathname === '/login' || 
+    pathname === '/' ||
+    pathname === '/login' ||
     pathname === '/signup' ||
     breadcrumbItems.length <= 1
   ) {
@@ -97,20 +97,14 @@ export default function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   }
 
   return (
-    <nav 
-      className={cn("flex", className)} 
-      aria-label="Breadcrumb"
-    >
+    <nav className={cn('flex', className)} aria-label="Breadcrumb">
       <ol className="inline-flex items-center space-x-1 md:space-x-3">
         {breadcrumbItems.map((item, index) => (
           <li key={item.href} className="inline-flex items-center">
             {index > 0 && (
-              <ChevronRight 
-                className="w-4 h-4 mx-1 text-gray-400" 
-                aria-hidden="true" 
-              />
+              <ChevronRight className="mx-1 h-4 w-4 text-gray-400" aria-hidden="true" />
             )}
-            
+
             {item.current ? (
               <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2" aria-current="page">
                 {item.label}
@@ -118,10 +112,10 @@ export default function Breadcrumbs({ items, className }: BreadcrumbsProps) {
             ) : (
               <Link
                 href={item.href}
-                className="inline-flex items-center ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2 transition-colors"
+                className="ml-1 inline-flex items-center text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 md:ml-2"
               >
                 {index === 0 && breadcrumbItems[0]?.label === 'Dashboard' && (
-                  <Home className="w-4 h-4 mr-1" />
+                  <Home className="mr-1 h-4 w-4" />
                 )}
                 {item.label}
               </Link>
@@ -140,24 +134,24 @@ export const breadcrumbConfigs = {
     { label: 'Analytics', href: '/analytics' },
     { label: 'Advanced Analytics', href: '/analytics/advanced', current: true },
   ],
-  
+
   sellerDashboard: [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Seller Dashboard', href: '/sell', current: true },
   ],
-  
+
   createPick: [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Sell Picks', href: '/sell' },
     { label: 'Create Pick', href: '/sell/picks/create', current: true },
   ],
-  
+
   userProfile: (username: string) => [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Marketplace', href: '/marketplace' },
     { label: `@${username}`, href: `/profile/${username}`, current: true },
   ],
-  
+
   subscriptionBilling: [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Subscriptions', href: '/subscriptions' },

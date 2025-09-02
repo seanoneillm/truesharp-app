@@ -2,40 +2,40 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  BarChart, 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
   Bar,
   PieChart,
   Pie,
   Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
 } from 'recharts'
-import { 
-  Trash2, 
-  Loader2, 
-  BarChart3, 
-  LineChart as LineChartIcon, 
+import {
+  Trash2,
+  Loader2,
+  BarChart3,
+  LineChart as LineChartIcon,
   PieChart as PieChartIcon,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react'
 import type { ChartConfig } from '@/lib/types/custom-charts'
-import { 
-  fetchCustomChartData, 
-  formatCurrency, 
-  formatPercentage, 
+import {
+  fetchCustomChartData,
+  formatCurrency,
+  formatPercentage,
   getValueColor,
-  type CustomChartData 
+  type CustomChartData,
 } from '@/lib/analytics/custom-charts'
 
 interface CustomChartRendererProps {
@@ -74,7 +74,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
     try {
       setLoading(true)
       setError(null)
-      
+
       const chartData = await fetchCustomChartData(userId, config)
       setData(chartData)
     } catch (err) {
@@ -105,7 +105,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
     switch (config.yAxis) {
       case 'profit':
       case 'stake':
-        return `$${Math.abs(value) >= 1000 ? (value/1000).toFixed(1) + 'k' : value.toFixed(0)}`
+        return `$${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + 'k' : value.toFixed(0)}`
       case 'win_rate':
       case 'roi':
         return `${value.toFixed(0)}%`
@@ -123,9 +123,9 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
   const renderChart = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-80">
+        <div className="flex h-80 items-center justify-center">
           <div className="flex items-center space-x-2 text-gray-500">
-            <Loader2 className="w-6 h-6 animate-spin" />
+            <Loader2 className="h-6 w-6 animate-spin" />
             <span>Loading chart data...</span>
           </div>
         </div>
@@ -134,17 +134,12 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
     if (error) {
       return (
-        <div className="flex items-center justify-center h-80">
+        <div className="flex h-80 items-center justify-center">
           <div className="text-center text-gray-500">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <AlertCircle className="mx-auto mb-2 h-12 w-12 opacity-50" />
             <p className="font-medium">Error loading chart</p>
             <p className="text-sm">{error}</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-              onClick={fetchData}
-            >
+            <Button variant="outline" size="sm" className="mt-2" onClick={fetchData}>
               Retry
             </Button>
           </div>
@@ -154,9 +149,9 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center h-80">
+        <div className="flex h-80 items-center justify-center">
           <div className="text-center text-gray-500">
-            <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <BarChart3 className="mx-auto mb-2 h-12 w-12 opacity-50" />
             <p className="font-medium">No data available</p>
             <p className="text-sm">Try adjusting your filters or date range</p>
           </div>
@@ -166,7 +161,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
     const chartProps = {
       data,
-      margin: { top: 20, right: 30, left: 20, bottom: 20 }
+      margin: { top: 20, right: 30, left: 20, bottom: 20 },
     }
 
     switch (config.chartType) {
@@ -174,13 +169,13 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
         return (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart {...chartProps}>
-              <CartesianGrid 
-                strokeDasharray="2 2" 
-                stroke="#e2e8f0" 
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="#e2e8f0"
                 horizontal={true}
                 vertical={false}
               />
-              <XAxis 
+              <XAxis
                 dataKey={config.xAxis}
                 tick={{ fontSize: 11, fill: '#64748b' }}
                 tickLine={false}
@@ -189,24 +184,24 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
                 textAnchor={config.xAxis === 'placed_at' ? 'middle' : 'end'}
                 height={config.xAxis === 'placed_at' ? 30 : 60}
               />
-              <YAxis 
+              <YAxis
                 tick={{ fontSize: 11, fill: '#64748b' }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={formatYAxisTick}
               />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
                   border: 'none',
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '13px'
+                  fontSize: '13px',
                 }}
                 formatter={formatTooltipValue}
               />
-              <Line 
-                type="monotone" 
+              <Line
+                type="monotone"
                 dataKey={config.yAxis}
                 stroke={getChartColor()}
                 strokeWidth={3}
@@ -221,13 +216,13 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
         return (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart {...chartProps}>
-              <CartesianGrid 
-                strokeDasharray="2 2" 
-                stroke="#e2e8f0" 
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="#e2e8f0"
                 horizontal={true}
                 vertical={false}
               />
-              <XAxis 
+              <XAxis
                 dataKey={config.xAxis}
                 tick={{ fontSize: 11, fill: '#64748b' }}
                 tickLine={false}
@@ -236,27 +231,23 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
                 textAnchor="end"
                 height={60}
               />
-              <YAxis 
+              <YAxis
                 tick={{ fontSize: 11, fill: '#64748b' }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={formatYAxisTick}
               />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
                   border: 'none',
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '13px'
+                  fontSize: '13px',
                 }}
                 formatter={formatTooltipValue}
               />
-              <Bar 
-                dataKey={config.yAxis}
-                fill={getChartColor()}
-                radius={[4, 4, 0, 0]}
-              />
+              <Bar dataKey={config.yAxis} fill={getChartColor()} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )
@@ -276,19 +267,16 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
                 nameKey={config.xAxis}
               >
                 {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={CHART_COLORS[index % CHART_COLORS.length]} 
-                  />
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
                   border: 'none',
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '13px'
+                  fontSize: '13px',
                 }}
                 formatter={formatTooltipValue}
               />
@@ -304,23 +292,27 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
 
   const getFilterSummary = () => {
     const filters = []
-    
+
     if (config.filters.leagues && config.filters.leagues.length > 0) {
-      filters.push(`${config.filters.leagues.length} league${config.filters.leagues.length !== 1 ? 's' : ''}`)
+      filters.push(
+        `${config.filters.leagues.length} league${config.filters.leagues.length !== 1 ? 's' : ''}`
+      )
     }
-    
+
     if (config.filters.status && config.filters.status.length > 0) {
       filters.push(config.filters.status.join(', '))
     }
-    
+
     if (config.filters.bet_types && config.filters.bet_types.length > 0) {
-      filters.push(`${config.filters.bet_types.length} bet type${config.filters.bet_types.length !== 1 ? 's' : ''}`)
+      filters.push(
+        `${config.filters.bet_types.length} bet type${config.filters.bet_types.length !== 1 ? 's' : ''}`
+      )
     }
-    
+
     if (config.filters.date_range?.start || config.filters.date_range?.end) {
       filters.push('date filtered')
     }
-    
+
     return filters
   }
 
@@ -333,16 +325,16 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+      <Card className="border-0 bg-gradient-to-br from-white to-slate-50 shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <ChartIcon className="w-5 h-5 text-blue-600" />
+              <div className="rounded-lg bg-blue-100 p-2">
+                <ChartIcon className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{config.title}</h3>
-                <div className="flex items-center space-x-2 mt-1">
+                <div className="mt-1 flex items-center space-x-2">
                   {getFilterSummary().length > 0 && (
                     <>
                       {getFilterSummary().map((filter, index) => (
@@ -364,15 +356,13 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
               variant="ghost"
               size="sm"
               onClick={() => onDelete(config.id)}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              className="text-red-500 hover:bg-red-50 hover:text-red-600"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {renderChart()}
-        </CardContent>
+        <CardContent>{renderChart()}</CardContent>
       </Card>
     </motion.div>
   )

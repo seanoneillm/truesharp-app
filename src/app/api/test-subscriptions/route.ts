@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    
+
     // Get current user from auth header (for testing)
     const authHeader = request.headers.get('Authorization')
     if (!authHeader) {
@@ -16,10 +16,11 @@ export async function POST(request: NextRequest) {
     }
 
     // For testing, get the seller's strategies
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    )
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+
     if (userError || !user) {
       return NextResponse.json({ error: 'Invalid user' }, { status: 401 })
     }
@@ -41,18 +42,18 @@ export async function POST(request: NextRequest) {
 
     // Create test subscriptions for each strategy
     const testSubscriptions = []
-    
+
     for (let i = 0; i < strategies.length; i++) {
       const strategy = strategies[i]
-      
+
       // Create 1-3 subscribers per strategy
       const subscriberCount = Math.floor(Math.random() * 3) + 1
-      
+
       for (let j = 0; j < subscriberCount; j++) {
         // Determine price based on strategy pricing
         let price = 25 // default
         let frequency = 'monthly'
-        
+
         if (strategy.pricing_monthly) {
           price = strategy.pricing_monthly
           frequency = 'monthly'
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
           frequency: frequency,
           price: price,
           current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
         })
       }
     }
@@ -87,12 +88,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Test subscriptions created',
       subscriptions: insertedSubs,
-      strategies: strategies
+      strategies: strategies,
     })
-
   } catch (error) {
     console.error('Error creating test subscriptions:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -101,16 +101,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Use service role client  
+    // Use service role client
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    
+
     // Get all subscriptions for debugging
     const { data: subscriptions, error } = await supabase
       .from('subscriptions')
-      .select(`
+      .select(
+        `
         id,
         strategy_id,
         seller_id,
@@ -118,7 +119,8 @@ export async function GET() {
         price,
         status,
         strategies(name, pricing_monthly, pricing_weekly, pricing_yearly)
-      `)
+      `
+      )
       .eq('status', 'active')
 
     if (error) {
@@ -126,7 +128,6 @@ export async function GET() {
     }
 
     return NextResponse.json({ subscriptions })
-
   } catch (error) {
     console.error('Error fetching subscriptions:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

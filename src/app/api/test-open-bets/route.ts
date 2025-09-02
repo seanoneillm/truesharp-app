@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { getSellerStrategiesWithOpenBets, getSubscriberStrategiesWithOpenBets } from '@/lib/queries/open-bets'
+import {
+  getSellerStrategiesWithOpenBets,
+  getSubscriberStrategiesWithOpenBets,
+} from '@/lib/queries/open-bets'
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,25 +27,28 @@ export async function GET(request: NextRequest) {
     if (testType === 'seller') {
       console.log('Testing seller strategies with open bets for user:', userId)
       result = await getSellerStrategiesWithOpenBets(userId, serviceSupabase)
-      
+
       summary = {
         totalStrategies: result.length,
         strategiesWithOpenBets: result.filter(s => s.open_bets_count > 0).length,
         totalOpenBets: result.reduce((sum, s) => sum + (s.open_bets_count || 0), 0),
-        totalPotentialProfit: result.reduce((sum, s) => sum + (s.total_potential_profit || 0), 0)
+        totalPotentialProfit: result.reduce((sum, s) => sum + (s.total_potential_profit || 0), 0),
       }
     } else if (testType === 'subscriber') {
       console.log('Testing subscriber strategies with open bets for user:', userId)
       result = await getSubscriberStrategiesWithOpenBets(userId, serviceSupabase)
-      
+
       summary = {
         totalSubscriptions: result.length,
         subscriptionsWithOpenBets: result.filter(s => s.open_bets_count > 0).length,
         totalOpenBets: result.reduce((sum, s) => sum + (s.open_bets_count || 0), 0),
-        totalPotentialProfit: result.reduce((sum, s) => sum + (s.total_potential_profit || 0), 0)
+        totalPotentialProfit: result.reduce((sum, s) => sum + (s.total_potential_profit || 0), 0),
       }
     } else {
-      return NextResponse.json({ error: 'type parameter must be "seller" or "subscriber"' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'type parameter must be "seller" or "subscriber"' },
+        { status: 400 }
+      )
     }
 
     // Also test the raw database structure
@@ -82,31 +88,33 @@ export async function GET(request: NextRequest) {
           odds: bet.odds,
           stake: bet.stake,
           potential_payout: bet.potential_payout,
-          game_date: bet.game_date
-        }))
+          game_date: bet.game_date,
+        })),
       })),
       rawDatabaseSample: {
         strategies: {
           data: strategies,
-          error: strategiesError?.message
+          error: strategiesError?.message,
         },
         bets: {
           data: bets,
-          error: betsError?.message
+          error: betsError?.message,
         },
         subscriptions: {
           data: subscriptions,
-          error: subscriptionsError?.message
-        }
-      }
+          error: subscriptionsError?.message,
+        },
+      },
     })
-
   } catch (error) {
     console.error('API error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
     )
 
     let strategy
-    
+
     if (strategyId) {
       // Use existing strategy
       const { data: existingStrategy, error: strategyFetchError } = await serviceSupabase
@@ -134,11 +142,14 @@ export async function POST(request: NextRequest) {
         .eq('id', strategyId)
         .eq('user_id', userId) // Security check
         .single()
-      
+
       if (strategyFetchError || !existingStrategy) {
-        return NextResponse.json({ error: 'Strategy not found or access denied', details: strategyFetchError?.message }, { status: 404 })
+        return NextResponse.json(
+          { error: 'Strategy not found or access denied', details: strategyFetchError?.message },
+          { status: 404 }
+        )
       }
-      
+
       strategy = existingStrategy
     } else {
       // Create a new test strategy
@@ -153,15 +164,18 @@ export async function POST(request: NextRequest) {
           performance_roi: 15.5,
           performance_win_rate: 65.0,
           performance_total_bets: 100,
-          filter_config: { betTypes: ['spread'], sports: ['NFL'] }
+          filter_config: { betTypes: ['spread'], sports: ['NFL'] },
         })
         .select()
         .single()
 
       if (strategyError) {
-        return NextResponse.json({ error: 'Failed to create test strategy', details: strategyError.message }, { status: 500 })
+        return NextResponse.json(
+          { error: 'Failed to create test strategy', details: strategyError.message },
+          { status: 500 }
+        )
       }
-      
+
       strategy = newStrategy
     }
 
@@ -181,7 +195,7 @@ export async function POST(request: NextRequest) {
         potential_payout: 190.91,
         status: 'pending',
         game_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-        sportsbook: 'DraftKings'
+        sportsbook: 'DraftKings',
       },
       {
         user_id: userId,
@@ -197,8 +211,8 @@ export async function POST(request: NextRequest) {
         potential_payout: 97.62,
         status: 'pending',
         game_date: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // Day after tomorrow
-        sportsbook: 'FanDuel'
-      }
+        sportsbook: 'FanDuel',
+      },
     ]
 
     const { data: bets, error: betsError } = await serviceSupabase
@@ -207,13 +221,16 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (betsError) {
-      return NextResponse.json({ error: 'Failed to create test bets', details: betsError.message }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Failed to create test bets', details: betsError.message },
+        { status: 500 }
+      )
     }
 
     // Create strategy_bets to link bets to strategy
     const strategyBets = bets.map(bet => ({
       strategy_id: strategy.id,
-      bet_id: bet.id
+      bet_id: bet.id,
     }))
 
     const { error: strategyBetsError } = await serviceSupabase
@@ -230,16 +247,18 @@ export async function POST(request: NextRequest) {
       testData: {
         strategy: strategy,
         bets: bets,
-        strategyBets: strategyBets.length
+        strategyBets: strategyBets.length,
       },
-      testUrl: `/api/test-open-bets?userId=${userId}&type=seller`
+      testUrl: `/api/test-open-bets?userId=${userId}&type=seller`,
     })
-
   } catch (error) {
     console.error('API error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

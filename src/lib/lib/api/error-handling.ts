@@ -11,13 +11,13 @@ export enum ErrorTypes {
   NETWORK_ERROR = 'NETWORK_ERROR',
   SUBSCRIPTION_REQUIRED = 'SUBSCRIPTION_REQUIRED',
   INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
-  DUPLICATE_ENTRY = 'DUPLICATE_ENTRY'
+  DUPLICATE_ENTRY = 'DUPLICATE_ENTRY',
 }
 
 // Error message mapping
 export const ErrorMessages = {
   [ErrorTypes.AUTHENTICATION]: 'Please log in to continue',
-  [ErrorTypes.AUTHORIZATION]: 'You don\'t have permission to perform this action',
+  [ErrorTypes.AUTHORIZATION]: "You don't have permission to perform this action",
   [ErrorTypes.VALIDATION]: 'Please check your input and try again',
   [ErrorTypes.NOT_FOUND]: 'The requested resource was not found',
   [ErrorTypes.RATE_LIMIT]: 'Too many requests. Please try again later',
@@ -25,7 +25,7 @@ export const ErrorMessages = {
   [ErrorTypes.NETWORK_ERROR]: 'Network error. Please check your connection',
   [ErrorTypes.SUBSCRIPTION_REQUIRED]: 'This feature requires an active subscription',
   [ErrorTypes.INSUFFICIENT_FUNDS]: 'Insufficient funds for this transaction',
-  [ErrorTypes.DUPLICATE_ENTRY]: 'This entry already exists'
+  [ErrorTypes.DUPLICATE_ENTRY]: 'This entry already exists',
 }
 
 // Enhanced API Error class
@@ -69,7 +69,7 @@ export function classifyError(error: any): EnhancedApiError {
           error.message,
           'The requested item was not found'
         )
-      
+
       case 'PGRST301': // JWT expired
       case '401':
         return new EnhancedApiError(
@@ -77,42 +77,42 @@ export function classifyError(error: any): EnhancedApiError {
           error.message,
           'Your session has expired. Please log in again'
         )
-      
+
       case '403':
         return new EnhancedApiError(
           ErrorTypes.AUTHORIZATION,
           error.message,
-          'You don\'t have permission to perform this action'
+          "You don't have permission to perform this action"
         )
-      
+
       case '409':
         return new EnhancedApiError(
           ErrorTypes.DUPLICATE_ENTRY,
           error.message,
           'This item already exists'
         )
-      
+
       case '429':
         return new EnhancedApiError(
           ErrorTypes.RATE_LIMIT,
           error.message,
           'Too many requests. Please wait a moment and try again'
         )
-      
+
       case '23505': // Unique constraint violation
         return new EnhancedApiError(
           ErrorTypes.DUPLICATE_ENTRY,
           error.message,
           'This item already exists'
         )
-      
+
       case '23503': // Foreign key violation
         return new EnhancedApiError(
           ErrorTypes.VALIDATION,
           error.message,
           'Invalid reference. Please check your input'
         )
-      
+
       case '23514': // Check constraint violation
         return new EnhancedApiError(
           ErrorTypes.VALIDATION,
@@ -131,35 +131,35 @@ export function classifyError(error: any): EnhancedApiError {
           error.message || 'Bad request',
           'Please check your input and try again'
         )
-      
+
       case 401:
         return new EnhancedApiError(
           ErrorTypes.AUTHENTICATION,
           error.message || 'Unauthorized',
           'Please log in to continue'
         )
-      
+
       case 403:
         return new EnhancedApiError(
           ErrorTypes.AUTHORIZATION,
           error.message || 'Forbidden',
-          'You don\'t have permission to perform this action'
+          "You don't have permission to perform this action"
         )
-      
+
       case 404:
         return new EnhancedApiError(
           ErrorTypes.NOT_FOUND,
           error.message || 'Not found',
           'The requested item was not found'
         )
-      
+
       case 429:
         return new EnhancedApiError(
           ErrorTypes.RATE_LIMIT,
           error.message || 'Too many requests',
           'Too many requests. Please try again later'
         )
-      
+
       case 500:
       case 502:
       case 503:
@@ -181,7 +181,7 @@ export function classifyError(error: any): EnhancedApiError {
         'This feature requires an active subscription'
       )
     }
-    
+
     if (error.message.includes('insufficient funds')) {
       return new EnhancedApiError(
         ErrorTypes.INSUFFICIENT_FUNDS,
@@ -189,7 +189,7 @@ export function classifyError(error: any): EnhancedApiError {
         'Insufficient funds for this transaction'
       )
     }
-    
+
     if (error.message.includes('already exists')) {
       return new EnhancedApiError(
         ErrorTypes.DUPLICATE_ENTRY,
@@ -219,11 +219,7 @@ const defaultRetryConfig: RetryConfig = {
   maxRetries: 3,
   baseDelay: 1000, // 1 second
   maxDelay: 10000, // 10 seconds
-  retryableErrors: [
-    ErrorTypes.NETWORK_ERROR,
-    ErrorTypes.SERVER_ERROR,
-    ErrorTypes.RATE_LIMIT
-  ]
+  retryableErrors: [ErrorTypes.NETWORK_ERROR, ErrorTypes.SERVER_ERROR, ErrorTypes.RATE_LIMIT],
 }
 
 // Exponential backoff delay calculation
@@ -280,7 +276,11 @@ export interface ValidationError {
   code?: string | undefined
 }
 
-export function createValidationError(field: string, message: string, code?: string): ValidationError {
+export function createValidationError(
+  field: string,
+  message: string,
+  code?: string
+): ValidationError {
   return { field, message, code }
 }
 
@@ -288,9 +288,11 @@ export function formatValidationErrors(errors: ValidationError[]): string {
   if (errors.length === 1) {
     return errors[0]?.message ?? 'Unknown validation error'
   }
-  
-  return 'Please correct the following errors:\n' + 
+
+  return (
+    'Please correct the following errors:\n' +
     errors.map(error => `• ${error.field}: ${error.message}`).join('\n')
+  )
 }
 
 // Error reporting helper (for analytics/monitoring)
@@ -304,14 +306,14 @@ export function reportError(error: EnhancedApiError, context?: Record<string, an
     code: error.code,
     context,
     stack: error.stack,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   })
-  
+
   // Could also send to analytics service
   if (typeof window !== 'undefined' && (window as any).gtag) {
-    (window as any).gtag('event', 'exception', {
+    ;(window as any).gtag('event', 'exception', {
       description: error.type,
-      fatal: false
+      fatal: false,
     })
   }
 }
@@ -352,5 +354,5 @@ export const ErrorHandlers = {
       )
     }
     return classifiedError
-  }
+  },
 }

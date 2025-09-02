@@ -36,7 +36,8 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
     // Fetch user's strategies
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategies')
-      .select(`
+      .select(
+        `
         id,
         name,
         monetized,
@@ -44,7 +45,8 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
         pricing_monthly,
         pricing_yearly,
         subscriber_count
-      `)
+      `
+      )
       .eq('user_id', userId)
 
     if (strategiesError) {
@@ -68,8 +70,9 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
 
     // Calculate revenue by strategy
     const revenueByStrategy: StrategyRevenue[] = monetizedStrategies.map(strategy => {
-      const strategySubscriptions = subscriptions?.filter(sub => sub.strategy_id === strategy.id) || []
-      
+      const strategySubscriptions =
+        subscriptions?.filter(sub => sub.strategy_id === strategy.id) || []
+
       let monthlyRevenue = 0
       strategySubscriptions.forEach(sub => {
         switch (sub.frequency) {
@@ -93,13 +96,16 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
         pricing: {
           weekly: strategy.pricing_weekly,
           monthly: strategy.pricing_monthly,
-          yearly: strategy.pricing_yearly
-        }
+          yearly: strategy.pricing_yearly,
+        },
       }
     })
 
     // Calculate totals
-    const totalMonthlyRevenue = revenueByStrategy.reduce((sum, strategy) => sum + strategy.monthlyRevenue, 0)
+    const totalMonthlyRevenue = revenueByStrategy.reduce(
+      (sum, strategy) => sum + strategy.monthlyRevenue,
+      0
+    )
     const totalSubscribers = subscriptions?.length || 0
 
     // Calculate all-time earnings (for now, we'll estimate based on subscription history)
@@ -116,12 +122,15 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
         // Estimate earnings based on how long subscription has been active
         const createdDate = new Date(sub.created_at)
         const now = new Date()
-        const monthsActive = Math.max(1, (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30))
-        
+        const monthsActive = Math.max(
+          1,
+          (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        )
+
         let monthlyPrice = sub.price
         if (sub.frequency === 'weekly') monthlyPrice *= 4.33
         if (sub.frequency === 'yearly') monthlyPrice /= 12
-        
+
         allTimeEarnings += monthlyPrice * monthsActive
       })
     }
@@ -137,17 +146,19 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
       allTimeEarnings: netAllTimeEarnings,
       revenueByStrategy: revenueByStrategy.map(strategy => ({
         ...strategy,
-        monthlyRevenue: strategy.monthlyRevenue * 0.82 // Apply fees
-      }))
+        monthlyRevenue: strategy.monthlyRevenue * 0.82, // Apply fees
+      })),
     }
-
   } catch (error) {
     console.error('Error calculating seller revenue:', error)
     return getEmptyRevenueData()
   }
 }
 
-export function convertToMonthlyPrice(price: number, frequency: 'weekly' | 'monthly' | 'yearly'): number {
+export function convertToMonthlyPrice(
+  price: number,
+  frequency: 'weekly' | 'monthly' | 'yearly'
+): number {
   switch (frequency) {
     case 'weekly':
       return price * 4.33
@@ -165,7 +176,7 @@ export function formatCurrency(amount: number): string {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -178,7 +189,7 @@ export function calculateProjectedRevenue(
   return {
     weekly: (pricing.weekly || 0) * estimatedSubscribers * fees,
     monthly: (pricing.monthly || 0) * estimatedSubscribers * fees,
-    yearly: ((pricing.yearly || 0) / 12) * estimatedSubscribers * fees
+    yearly: ((pricing.yearly || 0) / 12) * estimatedSubscribers * fees,
   }
 }
 
@@ -188,6 +199,6 @@ function getEmptyRevenueData(): RevenueData {
     totalSubscribers: 0,
     monetizedStrategies: 0,
     allTimeEarnings: 0,
-    revenueByStrategy: []
+    revenueByStrategy: [],
   }
 }

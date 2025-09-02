@@ -13,8 +13,11 @@ export class SessionManager {
 
   async getCurrentUser(): Promise<SessionUser | null> {
     try {
-      const { data: { user }, error } = await this.supabase.auth.getUser()
-      
+      const {
+        data: { user },
+        error,
+      } = await this.supabase.auth.getUser()
+
       if (error || !user) {
         return null
       }
@@ -31,7 +34,7 @@ export class SessionManager {
         email: user.email || '',
         username: profile?.username,
         displayName: user.user_metadata?.display_name || profile?.username || user.email,
-        profilePicture: profile?.profile_picture_url
+        profilePicture: profile?.profile_picture_url,
       }
     } catch (error) {
       console.error('Error getting current user:', error)

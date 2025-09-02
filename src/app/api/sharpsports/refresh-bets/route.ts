@@ -13,9 +13,9 @@ class SharpSportsClient {
   async betsByBettor({ id }: { id: string }) {
     const response = await fetch(`${this.baseUrl}/bettors/${id}/betSlips`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'No bets found for this bettor',
-        stats: { total: 0, saved: 0, skipped: 0, errors: 0 }
+        stats: { total: 0, saved: 0, skipped: 0, errors: 0 },
       })
     }
 
@@ -73,16 +73,16 @@ export async function POST(request: NextRequest) {
       total: 0,
       saved: 0,
       skipped: 0,
-      errors: 0
+      errors: 0,
     }
-    
+
     const processedBets = []
     const errors = []
 
     // Process each betSlip (following your existing pattern)
     for (const betSlip of betSlips) {
       const { bets } = betSlip
-      
+
       if (!bets || bets.length === 0) {
         continue
       }
@@ -94,9 +94,7 @@ export async function POST(request: NextRequest) {
       for (const bet of bets) {
         try {
           // Create external_bet_id (same logic as sync function)
-          const external_bet_id = parlayId 
-            ? `${betSlip.id}-${bet.id}` 
-            : bet.id || betSlip.id
+          const external_bet_id = parlayId ? `${betSlip.id}-${bet.id}` : bet.id || betSlip.id
 
           // Map bet data (using your existing helper functions)
           const mappedBet = {
@@ -122,7 +120,7 @@ export async function POST(request: NextRequest) {
             profit: calculateProfit(bet.status, bet.atRisk, bet.toWin),
             parlay_id: parlayId,
             is_parlay: parlayId !== null,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           }
 
           // Check if bet already exists
@@ -134,16 +132,17 @@ export async function POST(request: NextRequest) {
 
           if (existingBet) {
             // Update if status or profit changed
-            if (existingBet.status !== mappedBet.status || 
-                existingBet.profit !== mappedBet.profit) {
-              
+            if (
+              existingBet.status !== mappedBet.status ||
+              existingBet.profit !== mappedBet.profit
+            ) {
               const { error: updateError } = await supabase
                 .from('bets')
                 .update({
                   status: mappedBet.status,
                   profit: mappedBet.profit,
                   settled_at: mappedBet.settled_at,
-                  updated_at: mappedBet.updated_at
+                  updated_at: mappedBet.updated_at,
                 })
                 .eq('external_bet_id', external_bet_id)
 
@@ -161,9 +160,9 @@ export async function POST(request: NextRequest) {
             // Insert new bet
             const { data: newBet, error: insertError } = await supabase
               .from('bets')
-              .upsert(mappedBet, { 
+              .upsert(mappedBet, {
                 onConflict: 'external_bet_id',
-                ignoreDuplicates: false 
+                ignoreDuplicates: false,
               })
               .select()
               .single()
@@ -177,7 +176,6 @@ export async function POST(request: NextRequest) {
               stats.saved++
             }
           }
-
         } catch (betError) {
           console.error(`❌ Error processing bet:`, betError)
           stats.errors++
@@ -191,17 +189,16 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `Processed ${stats.total} bets: ${stats.saved} saved/updated, ${stats.skipped} skipped, ${stats.errors} errors`,
       stats,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     })
-
   } catch (error) {
     console.error('❌ Error refreshing bets:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error
+        details: error,
       },
       { status: 500 }
     )
@@ -211,40 +208,50 @@ export async function POST(request: NextRequest) {
 // Helper functions (same as in your sync route)
 function mapProposition(proposition: string): string {
   switch (proposition?.toLowerCase()) {
-    case 'spread': return 'spread'
-    case 'total': return 'total'
-    case 'moneyline': return 'moneyline'
-    default: return 'player_prop'
+    case 'spread':
+      return 'spread'
+    case 'total':
+      return 'total'
+    case 'moneyline':
+      return 'moneyline'
+    default:
+      return 'player_prop'
   }
 }
 
 function mapStatus(status: string): string {
   switch (status?.toLowerCase()) {
-    case 'pending': return 'pending'
-    case 'won': return 'won'
-    case 'lost': return 'lost'
-    case 'cancelled': return 'cancelled'
-    case 'void': return 'void'
-    default: return 'pending'
+    case 'pending':
+      return 'pending'
+    case 'won':
+      return 'won'
+    case 'lost':
+      return 'lost'
+    case 'cancelled':
+      return 'cancelled'
+    case 'void':
+      return 'void'
+    default:
+      return 'pending'
   }
 }
 
 function mapSide(position: string): string | null {
   if (!position) return null
-  
+
   const pos = position.toLowerCase()
   if (pos.includes('over')) return 'over'
   if (pos.includes('under')) return 'under'
   if (pos.includes('home')) return 'home'
   if (pos.includes('away')) return 'away'
-  
+
   return null
 }
 
 function calculateProfit(status: string, atRisk: string, toWin: string): number | null {
   const stake = parseFloat(atRisk) || 0
   const winAmount = parseFloat(toWin) || 0
-  
+
   switch (status?.toLowerCase()) {
     case 'won':
       return winAmount

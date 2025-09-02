@@ -1,16 +1,20 @@
-'use client';
+'use client'
 
-import { BetSelection, Game } from '@/lib/types/games';
-import EnhancedDatabaseGameCard from '../enhanced-database-game-card';
-import GameCard from '../game-card';
+import { BetSelection, Game } from '@/lib/types/games'
+import EnhancedDatabaseGameCard from '../enhanced-database-game-card'
+import GameCard from '../game-card'
 
 interface NFLGameCardProps {
-  game: Game;
-  onOddsClick: (bet: BetSelection) => void;
-  useDatabaseOdds?: boolean;
+  game: Game
+  onOddsClick: (bet: BetSelection) => void
+  useDatabaseOdds?: boolean
 }
 
-export default function NFLGameCard({ game, onOddsClick, useDatabaseOdds = false }: NFLGameCardProps) {
+export default function NFLGameCard({
+  game,
+  onOddsClick,
+  useDatabaseOdds = false,
+}: NFLGameCardProps) {
   if (useDatabaseOdds) {
     return (
       <EnhancedDatabaseGameCard
@@ -19,14 +23,8 @@ export default function NFLGameCard({ game, onOddsClick, useDatabaseOdds = false
         onOddsClick={onOddsClick}
         useDatabaseOdds={true}
       />
-    );
+    )
   }
 
-  return (
-    <GameCard
-      game={game}
-      league="NFL"
-      onOddsClick={onOddsClick}
-    />
-  );
+  return <GameCard game={game} league="NFL" onOddsClick={onOddsClick} />
 }

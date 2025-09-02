@@ -1,9 +1,9 @@
 // src/components/analytics/filters/advanced-filter-panel.tsx
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
 import {
   Calendar,
   DollarSign,
@@ -15,59 +15,59 @@ import {
   TrendingUp,
   Trophy,
   Users,
-  X
-} from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+  X,
+} from 'lucide-react'
+import React, { useEffect, useState } from 'react'
 
 export interface FilterState {
   // Sport & League Filters
-  sports: string[];
-  leagues: string[];
-  seasons: string[];
-  divisions: string[];
-  
+  sports: string[]
+  leagues: string[]
+  seasons: string[]
+  divisions: string[]
+
   // Temporal Filters
-  dateRange: { start: Date | null; end: Date | null };
-  daysOfWeek: string[];
-  timeOfDay: string[];
-  seasonType: string[];
-  
+  dateRange: { start: Date | null; end: Date | null }
+  daysOfWeek: string[]
+  timeOfDay: string[]
+  seasonType: string[]
+
   // Team & Matchup Filters
-  teams: string[];
-  homeAway: string[];
-  conferences: string[];
-  rivalries: boolean;
-  
+  teams: string[]
+  homeAway: string[]
+  conferences: string[]
+  rivalries: boolean
+
   // Bet Type Filters
-  betTypes: string[];
-  spreadRanges: { min: number; max: number };
-  totalsRanges: { min: number; max: number };
-  moneylineRanges: { min: number; max: number };
-  
+  betTypes: string[]
+  spreadRanges: { min: number; max: number }
+  totalsRanges: { min: number; max: number }
+  moneylineRanges: { min: number; max: number }
+
   // Performance Filters
-  odds: { min: number; max: number };
-  stakes: { min: number; max: number };
-  winRates: { min: number; max: number };
-  roiRanges: { min: number; max: number };
-  
+  odds: { min: number; max: number }
+  stakes: { min: number; max: number }
+  winRates: { min: number; max: number }
+  roiRanges: { min: number; max: number }
+
   // Situational Filters
-  weather: string[];
-  restDays: string[];
-  broadcast: string[];
-  injuries: boolean;
-  
+  weather: string[]
+  restDays: string[]
+  broadcast: string[]
+  injuries: boolean
+
   // Sportsbook Filters
-  sportsbooks: string[];
-  lineMovement: string[];
-  clvStatus: string[];
+  sportsbooks: string[]
+  lineMovement: string[]
+  clvStatus: string[]
 }
 
 interface AdvancedFilterPanelProps {
-  isPro: boolean;
-  onFiltersChange: (filters: FilterState) => void;
-  savedFilters: Array<{ id: string; name: string; filters: FilterState }>;
-  onSaveFilter: (name: string, filters: FilterState) => void;
-  onLoadFilter: (filters: FilterState) => void;
+  isPro: boolean
+  onFiltersChange: (filters: FilterState) => void
+  savedFilters: Array<{ id: string; name: string; filters: FilterState }>
+  onSaveFilter: (name: string, filters: FilterState) => void
+  onLoadFilter: (filters: FilterState) => void
 }
 // ...existing imports...
 
@@ -82,7 +82,7 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
   onFiltersChange,
   savedFilters,
   onSaveFilter,
-  onLoadFilter
+  onLoadFilter,
 }) => {
   const [filters, setFilters] = useState<FilterState>({
     sports: [],
@@ -111,59 +111,87 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
     injuries: false,
     sportsbooks: [],
     lineMovement: [],
-    clvStatus: []
-  });
+    clvStatus: [],
+  })
 
-  const [activeSection, setActiveSection] = useState<string>('sports');
-  const [saveFilterName, setSaveFilterName] = useState('');
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>('sports')
+  const [saveFilterName, setSaveFilterName] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
 
   const sportsOptions = [
-    'NFL', 'NBA', 'MLB', 'NHL', 'NCAA Football', 'NCAA Basketball',
-    'Soccer', 'Tennis', 'Golf', 'MMA', 'Boxing', 'Formula 1'
-  ];
+    'NFL',
+    'NBA',
+    'MLB',
+    'NHL',
+    'NCAA Football',
+    'NCAA Basketball',
+    'Soccer',
+    'Tennis',
+    'Golf',
+    'MMA',
+    'Boxing',
+    'Formula 1',
+  ]
 
   const betTypeOptions = [
-    'Spread', 'Moneyline', 'Total', 'Player Props', 'Game Props',
-    'First Half', 'Live Betting', 'Futures', 'Parlays'
-  ];
+    'Spread',
+    'Moneyline',
+    'Total',
+    'Player Props',
+    'Game Props',
+    'First Half',
+    'Live Betting',
+    'Futures',
+    'Parlays',
+  ]
 
   const daysOfWeekOptions = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 
-    'Friday', 'Saturday', 'Sunday'
-  ];
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ]
 
   const sportsbookOptions = [
-    'DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'ESPN BET',
-    'BetRivers', 'Fanatics', 'PointsBet'
-  ];
+    'DraftKings',
+    'FanDuel',
+    'BetMGM',
+    'Caesars',
+    'ESPN BET',
+    'BetRivers',
+    'Fanatics',
+    'PointsBet',
+  ]
 
   useEffect(() => {
-    onFiltersChange(filters);
-  }, [filters, onFiltersChange]);
+    onFiltersChange(filters)
+  }, [filters, onFiltersChange])
 
   const updateFilter = (key: string, value: any) => {
     setFilters(prev => ({
       ...prev,
-      [key]: value
-    }));
-  };
+      [key]: value,
+    }))
+  }
 
   const toggleArrayValue = (key: string, value: string) => {
     setFilters(prev => {
-      const arr = prev[key as keyof FilterState];
+      const arr = prev[key as keyof FilterState]
       if (Array.isArray(arr)) {
         return {
           ...prev,
           [key]: arr.includes(value)
             ? arr.filter((item: string) => item !== value)
-            : [...arr, value]
-        };
+            : [...arr, value],
+        }
       }
       // If not an array, just return previous state (or handle error as needed)
-      return prev;
-    });
-  };
+      return prev
+    })
+  }
 
   const resetFilters = () => {
     setFilters({
@@ -193,44 +221,44 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       injuries: false,
       sportsbooks: [],
       lineMovement: [],
-      clvStatus: []
-    });
-  };
+      clvStatus: [],
+    })
+  }
 
   const getActiveFilterCount = () => {
-    let count = 0;
-    if (filters.sports.length > 0) count++;
-    if (filters.betTypes.length > 0) count++;
-    if (filters.dateRange.start || filters.dateRange.end) count++;
-    if (filters.teams.length > 0) count++;
-    if (filters.sportsbooks.length > 0) count++;
+    let count = 0
+    if (filters.sports.length > 0) count++
+    if (filters.betTypes.length > 0) count++
+    if (filters.dateRange.start || filters.dateRange.end) count++
+    if (filters.teams.length > 0) count++
+    if (filters.sportsbooks.length > 0) count++
     // Add more conditions as needed
-    return count;
-  };
+    return count
+  }
 
   const handleSaveFilter = () => {
     if (saveFilterName.trim()) {
-      onSaveFilter(saveFilterName.trim(), filters);
-      setSaveFilterName('');
-      setShowSaveDialog(false);
+      onSaveFilter(saveFilterName.trim(), filters)
+      setSaveFilterName('')
+      setShowSaveDialog(false)
     }
-  };
+  }
 
   if (!isPro) {
     return (
       <Card className="p-6">
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Filter className="w-8 h-8 text-blue-600" />
+        <div className="py-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+            <Filter className="h-8 w-8 text-blue-600" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">Advanced Filtering</h3>
-          <p className="text-muted-foreground mb-4">
+          <h3 className="mb-2 text-lg font-semibold">Advanced Filtering</h3>
+          <p className="mb-4 text-muted-foreground">
             Unlock unlimited multi-dimensional filtering with Pro
           </p>
           <Button>Upgrade to Pro</Button>
         </div>
       </Card>
-    );
+    )
   }
 
   const filterSections = [
@@ -240,27 +268,27 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
     { id: 'betting', label: 'Bet Types', icon: Target },
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'situational', label: 'Situational', icon: MapPin },
-    { id: 'sportsbooks', label: 'Sportsbooks', icon: DollarSign }
-  ];
+    { id: 'sportsbooks', label: 'Sportsbooks', icon: DollarSign },
+  ]
 
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Filter className="w-5 h-5" />
+          <Filter className="h-5 w-5" />
           <h3 className="text-lg font-semibold">Advanced Filters</h3>
           {getActiveFilterCount() > 0 && (
             <Badge variant="default">{getActiveFilterCount()} active</Badge>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowSaveDialog(true)}>
-            <Save className="w-4 h-4 mr-1" />
+            <Save className="mr-1 h-4 w-4" />
             Save
           </Button>
           <Button variant="outline" size="sm" onClick={resetFilters}>
-            <RotateCcw className="w-4 h-4 mr-1" />
+            <RotateCcw className="mr-1 h-4 w-4" />
             Reset
           </Button>
         </div>
@@ -269,9 +297,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {/* Saved Filters */}
       {savedFilters.length > 0 && (
         <div className="mb-6">
-          <p className="text-sm font-medium mb-2">Saved Filters</p>
+          <p className="mb-2 text-sm font-medium">Saved Filters</p>
           <div className="flex flex-wrap gap-2">
-            {savedFilters.map((saved) => (
+            {savedFilters.map(saved => (
               <Button
                 key={saved.id}
                 variant="outline"
@@ -287,9 +315,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       )}
 
       {/* Filter Section Navigation */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {filterSections.map((section) => {
-          const Icon = section.icon;
+      <div className="mb-6 flex flex-wrap gap-2">
+        {filterSections.map(section => {
+          const Icon = section.icon
           return (
             <Button
               key={section.id}
@@ -298,10 +326,10 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
               onClick={() => setActiveSection(section.id)}
               className="flex items-center gap-2"
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="h-4 w-4" />
               {section.label}
             </Button>
-          );
+          )
         })}
       </div>
 
@@ -311,9 +339,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'sports' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Sports</p>
+            <p className="mb-2 font-medium">Sports</p>
             <div className="flex flex-wrap gap-2">
-              {sportsOptions.map((sport) => (
+              {sportsOptions.map(sport => (
                 <Button
                   key={sport}
                   variant={filters.sports.includes(sport) ? 'default' : 'outline'}
@@ -321,16 +349,16 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
                   onClick={() => toggleArrayValue('sports', sport)}
                 >
                   {sport}
-                  {filters.sports.includes(sport) && <X className="w-3 h-3 ml-2" />}
+                  {filters.sports.includes(sport) && <X className="ml-2 h-3 w-3" />}
                 </Button>
               ))}
             </div>
           </div>
 
           <div>
-            <p className="font-medium mb-2">Season Type</p>
+            <p className="mb-2 font-medium">Season Type</p>
             <div className="flex flex-wrap gap-2">
-              {['Regular Season', 'Playoffs', 'Preseason', 'Tournament'].map((type) => (
+              {['Regular Season', 'Playoffs', 'Preseason', 'Tournament'].map(type => (
                 <Button
                   key={type}
                   variant={filters.seasonType.includes(type) ? 'default' : 'outline'}
@@ -349,33 +377,37 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'temporal' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Date Range</p>
+            <p className="mb-2 font-medium">Date Range</p>
             <div className="flex gap-2">
               <Input
                 type="date"
                 value={filters.dateRange.start?.toISOString().split('T')[0] || ''}
-                onChange={(e) => updateFilter('dateRange', {
-                  ...filters.dateRange,
-                  start: e.target.value ? new Date(e.target.value) : null
-                })}
+                onChange={e =>
+                  updateFilter('dateRange', {
+                    ...filters.dateRange,
+                    start: e.target.value ? new Date(e.target.value) : null,
+                  })
+                }
                 className="flex-1"
               />
               <Input
                 type="date"
                 value={filters.dateRange.end?.toISOString().split('T')[0] || ''}
-                onChange={(e) => updateFilter('dateRange', {
-                  ...filters.dateRange,
-                  end: e.target.value ? new Date(e.target.value) : null
-                })}
+                onChange={e =>
+                  updateFilter('dateRange', {
+                    ...filters.dateRange,
+                    end: e.target.value ? new Date(e.target.value) : null,
+                  })
+                }
                 className="flex-1"
               />
             </div>
           </div>
 
           <div>
-            <p className="font-medium mb-2">Days of Week</p>
+            <p className="mb-2 font-medium">Days of Week</p>
             <div className="flex flex-wrap gap-2">
-              {daysOfWeekOptions.map((day) => (
+              {daysOfWeekOptions.map(day => (
                 <Button
                   key={day}
                   variant={filters.daysOfWeek.includes(day) ? 'default' : 'outline'}
@@ -389,18 +421,20 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
           </div>
 
           <div>
-            <p className="font-medium mb-2">Time of Day</p>
+            <p className="mb-2 font-medium">Time of Day</p>
             <div className="flex flex-wrap gap-2">
-              {['Morning (6-12)', 'Afternoon (12-18)', 'Evening (18-24)', 'Late Night (0-6)'].map((time) => (
-                <Button
-                  key={time}
-                  variant={filters.timeOfDay.includes(time) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => toggleArrayValue('timeOfDay', time)}
-                >
-                  {time}
-                </Button>
-              ))}
+              {['Morning (6-12)', 'Afternoon (12-18)', 'Evening (18-24)', 'Late Night (0-6)'].map(
+                time => (
+                  <Button
+                    key={time}
+                    variant={filters.timeOfDay.includes(time) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleArrayValue('timeOfDay', time)}
+                  >
+                    {time}
+                  </Button>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -410,9 +444,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'teams' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Home/Away</p>
+            <p className="mb-2 font-medium">Home/Away</p>
             <div className="flex gap-2">
-              {['Home', 'Away', 'Neutral'].map((location) => (
+              {['Home', 'Away', 'Neutral'].map(location => (
                 <Button
                   key={location}
                   variant={filters.homeAway.includes(location) ? 'default' : 'outline'}
@@ -426,11 +460,8 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
           </div>
 
           <div>
-            <p className="font-medium mb-2">Team Search</p>
-            <Input
-              placeholder="Search teams..."
-              className="mb-2"
-            />
+            <p className="mb-2 font-medium">Team Search</p>
+            <Input placeholder="Search teams..." className="mb-2" />
             <div className="max-h-32 overflow-y-auto">
               {/* Team selection would be populated based on selected sports */}
               <p className="text-sm text-muted-foreground">Select sports first to see teams</p>
@@ -442,7 +473,7 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
               type="checkbox"
               id="rivalries"
               checked={filters.rivalries}
-              onChange={(e) => updateFilter('rivalries', e.target.checked)}
+              onChange={e => updateFilter('rivalries', e.target.checked)}
             />
             <label htmlFor="rivalries" className="text-sm font-medium">
               Rivalry Games Only
@@ -455,9 +486,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'betting' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Bet Types</p>
+            <p className="mb-2 font-medium">Bet Types</p>
             <div className="flex flex-wrap gap-2">
-              {betTypeOptions.map((type) => (
+              {betTypeOptions.map(type => (
                 <Button
                   key={type}
                   variant={filters.betTypes.includes(type) ? 'default' : 'outline'}
@@ -465,7 +496,7 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
                   onClick={() => toggleArrayValue('betTypes', type)}
                 >
                   {type}
-                  {filters.betTypes.includes(type) && <X className="w-3 h-3 ml-2" />}
+                  {filters.betTypes.includes(type) && <X className="ml-2 h-3 w-3" />}
                 </Button>
               ))}
             </div>
@@ -473,49 +504,57 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="font-medium mb-2">Spread Range</p>
+              <p className="mb-2 font-medium">Spread Range</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.spreadRanges.min}
-                  onChange={(e) => updateFilter('spreadRanges', {
-                    ...filters.spreadRanges,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('spreadRanges', {
+                      ...filters.spreadRanges,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.spreadRanges.max}
-                  onChange={(e) => updateFilter('spreadRanges', {
-                    ...filters.spreadRanges,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('spreadRanges', {
+                      ...filters.spreadRanges,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
 
             <div>
-              <p className="font-medium mb-2">Total Range</p>
+              <p className="mb-2 font-medium">Total Range</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.totalsRanges.min}
-                  onChange={(e) => updateFilter('totalsRanges', {
-                    ...filters.totalsRanges,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('totalsRanges', {
+                      ...filters.totalsRanges,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.totalsRanges.max}
-                  onChange={(e) => updateFilter('totalsRanges', {
-                    ...filters.totalsRanges,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('totalsRanges', {
+                      ...filters.totalsRanges,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
@@ -528,49 +567,57 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="font-medium mb-2">Odds Range</p>
+              <p className="mb-2 font-medium">Odds Range</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.odds.min}
-                  onChange={(e) => updateFilter('odds', {
-                    ...filters.odds,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('odds', {
+                      ...filters.odds,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.odds.max}
-                  onChange={(e) => updateFilter('odds', {
-                    ...filters.odds,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('odds', {
+                      ...filters.odds,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
 
             <div>
-              <p className="font-medium mb-2">Stake Range ($)</p>
+              <p className="mb-2 font-medium">Stake Range ($)</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.stakes.min}
-                  onChange={(e) => updateFilter('stakes', {
-                    ...filters.stakes,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('stakes', {
+                      ...filters.stakes,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.stakes.max}
-                  onChange={(e) => updateFilter('stakes', {
-                    ...filters.stakes,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('stakes', {
+                      ...filters.stakes,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
@@ -578,49 +625,57 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="font-medium mb-2">Win Rate Range (%)</p>
+              <p className="mb-2 font-medium">Win Rate Range (%)</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.winRates.min}
-                  onChange={(e) => updateFilter('winRates', {
-                    ...filters.winRates,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('winRates', {
+                      ...filters.winRates,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.winRates.max}
-                  onChange={(e) => updateFilter('winRates', {
-                    ...filters.winRates,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('winRates', {
+                      ...filters.winRates,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
 
             <div>
-              <p className="font-medium mb-2">ROI Range (%)</p>
+              <p className="mb-2 font-medium">ROI Range (%)</p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   placeholder="Min"
                   value={filters.roiRanges.min}
-                  onChange={(e) => updateFilter('roiRanges', {
-                    ...filters.roiRanges,
-                    min: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('roiRanges', {
+                      ...filters.roiRanges,
+                      min: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   type="number"
                   placeholder="Max"
                   value={filters.roiRanges.max}
-                  onChange={(e) => updateFilter('roiRanges', {
-                    ...filters.roiRanges,
-                    max: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    updateFilter('roiRanges', {
+                      ...filters.roiRanges,
+                      max: Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
@@ -632,9 +687,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'situational' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Weather Conditions</p>
+            <p className="mb-2 font-medium">Weather Conditions</p>
             <div className="flex flex-wrap gap-2">
-              {['Clear', 'Rain', 'Snow', 'Wind', 'Dome/Indoor'].map((weather) => (
+              {['Clear', 'Rain', 'Snow', 'Wind', 'Dome/Indoor'].map(weather => (
                 <Button
                   key={weather}
                   variant={filters.weather.includes(weather) ? 'default' : 'outline'}
@@ -648,9 +703,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
           </div>
 
           <div>
-            <p className="font-medium mb-2">Rest Days</p>
+            <p className="mb-2 font-medium">Rest Days</p>
             <div className="flex flex-wrap gap-2">
-              {['0 Days', '1 Day', '2-3 Days', '4+ Days', 'Back-to-Back'].map((rest) => (
+              {['0 Days', '1 Day', '2-3 Days', '4+ Days', 'Back-to-Back'].map(rest => (
                 <Button
                   key={rest}
                   variant={filters.restDays.includes(rest) ? 'default' : 'outline'}
@@ -664,9 +719,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
           </div>
 
           <div>
-            <p className="font-medium mb-2">Broadcast Coverage</p>
+            <p className="mb-2 font-medium">Broadcast Coverage</p>
             <div className="flex flex-wrap gap-2">
-              {['National TV', 'Local TV', 'Streaming', 'No Coverage'].map((broadcast) => (
+              {['National TV', 'Local TV', 'Streaming', 'No Coverage'].map(broadcast => (
                 <Button
                   key={broadcast}
                   variant={filters.broadcast.includes(broadcast) ? 'default' : 'outline'}
@@ -684,7 +739,7 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
               type="checkbox"
               id="injuries"
               checked={filters.injuries}
-              onChange={(e) => updateFilter('injuries', e.target.checked)}
+              onChange={e => updateFilter('injuries', e.target.checked)}
             />
             <label htmlFor="injuries" className="text-sm font-medium">
               Key Injuries Present
@@ -697,9 +752,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
       {activeSection === 'sportsbooks' && (
         <div className="space-y-4">
           <div>
-            <p className="font-medium mb-2">Sportsbooks</p>
+            <p className="mb-2 font-medium">Sportsbooks</p>
             <div className="flex flex-wrap gap-2">
-              {sportsbookOptions.map((book) => (
+              {sportsbookOptions.map(book => (
                 <Button
                   key={book}
                   variant={filters.sportsbooks.includes(book) ? 'default' : 'outline'}
@@ -707,16 +762,22 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
                   onClick={() => toggleArrayValue('sportsbooks', book)}
                 >
                   {book}
-                  {filters.sportsbooks.includes(book) && <X className="w-3 h-3 ml-2" />}
+                  {filters.sportsbooks.includes(book) && <X className="ml-2 h-3 w-3" />}
                 </Button>
               ))}
             </div>
           </div>
 
           <div>
-            <p className="font-medium mb-2">Line Movement</p>
+            <p className="mb-2 font-medium">Line Movement</p>
             <div className="flex flex-wrap gap-2">
-              {['Moved For', 'Moved Against', 'No Movement', 'Steam Move', 'Reverse Line Movement'].map((movement) => (
+              {[
+                'Moved For',
+                'Moved Against',
+                'No Movement',
+                'Steam Move',
+                'Reverse Line Movement',
+              ].map(movement => (
                 <Button
                   key={movement}
                   variant={filters.lineMovement.includes(movement) ? 'default' : 'outline'}
@@ -730,9 +791,9 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
           </div>
 
           <div>
-            <p className="font-medium mb-2">CLV Status</p>
+            <p className="mb-2 font-medium">CLV Status</p>
             <div className="flex flex-wrap gap-2">
-              {['CLV Positive', 'CLV Negative', 'CLV Neutral'].map((clv) => (
+              {['CLV Positive', 'CLV Negative', 'CLV Neutral'].map(clv => (
                 <Button
                   key={clv}
                   variant={filters.clvStatus.includes(clv) ? 'default' : 'outline'}
@@ -749,26 +810,24 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
 
       {/* Save Filter Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Save Filter</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <Card className="w-96 p-6">
+            <h3 className="mb-4 text-lg font-semibold">Save Filter</h3>
             <Input
               placeholder="Filter name"
               value={saveFilterName}
-              onChange={(e) => setSaveFilterName(e.target.value)}
+              onChange={e => setSaveFilterName(e.target.value)}
               className="mb-4"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveFilter}>
-                Save Filter
-              </Button>
+              <Button onClick={handleSaveFilter}>Save Filter</Button>
             </div>
           </Card>
         </div>
       )}
     </Card>
-  );
-};
+  )
+}

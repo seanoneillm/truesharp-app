@@ -31,14 +31,14 @@ export default function AddBetsToStrategiesPage() {
       setShowResultModal(true)
       return
     }
-    
+
     setIsStrategyModalOpen(true)
   }
 
   const handleStrategySelection = async (strategyIds: string[]) => {
     try {
       setIsLoading(true)
-      
+
       const response = await fetch('/api/add-bets-to-strategies', {
         method: 'POST',
         headers: {
@@ -46,8 +46,8 @@ export default function AddBetsToStrategiesPage() {
         },
         body: JSON.stringify({
           betIds: selectedBetIds,
-          strategyIds: strategyIds
-        })
+          strategyIds: strategyIds,
+        }),
       })
 
       const data = await response.json()
@@ -57,21 +57,25 @@ export default function AddBetsToStrategiesPage() {
       }
 
       setValidationResults(data.validationResults || [])
-      
+
       if (data.inserted > 0) {
-        setResultMessage(data.message || `Successfully added ${data.inserted} bet${data.inserted !== 1 ? 's' : ''} to strategies`)
+        setResultMessage(
+          data.message ||
+            `Successfully added ${data.inserted} bet${data.inserted !== 1 ? 's' : ''} to strategies`
+        )
         setResultType('success')
-        
+
         // Clear selected bets on success
         setSelectedBetIds([])
       } else {
-        setResultMessage('No bets were added. All selected bets either already exist in the selected strategies or do not match the strategy filters.')
+        setResultMessage(
+          'No bets were added. All selected bets either already exist in the selected strategies or do not match the strategy filters.'
+        )
         setResultType('warning')
       }
 
       setShowResultModal(true)
       setIsStrategyModalOpen(false)
-
     } catch (error) {
       console.error('Error adding bets to strategies:', error)
       setResultMessage(error instanceof Error ? error.message : 'Failed to add bets to strategies')
@@ -86,13 +90,17 @@ export default function AddBetsToStrategiesPage() {
     if (validationResults.length === 0) return null
 
     const validCount = validationResults.filter(r => r.valid).length
-    const duplicateCount = validationResults.filter(r => r.reason === 'Bet already exists in strategy').length
-    const filterMismatchCount = validationResults.filter(r => r.reason === 'Bet does not match strategy filters').length
+    const duplicateCount = validationResults.filter(
+      r => r.reason === 'Bet already exists in strategy'
+    ).length
+    const filterMismatchCount = validationResults.filter(
+      r => r.reason === 'Bet does not match strategy filters'
+    ).length
 
     return (
-      <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-        <h4 className="font-medium mb-2">Validation Summary:</h4>
-        <ul className="text-sm space-y-1 text-muted-foreground">
+      <div className="mt-4 rounded-lg bg-muted/50 p-4">
+        <h4 className="mb-2 font-medium">Validation Summary:</h4>
+        <ul className="space-y-1 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-600" />
             {validCount} bet-strategy combinations added successfully
@@ -116,13 +124,13 @@ export default function AddBetsToStrategiesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="mx-auto max-w-4xl space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
+        <div className="space-y-4 text-center">
           <h1 className="text-3xl font-bold">Add Bets to Strategies</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Select your pending bets and add them to one or more of your strategies. 
-            Bets will be automatically validated against each strategy's filters before being added.
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            Select your pending bets and add them to one or more of your strategies. Bets will be
+            automatically validated against each strategy's filters before being added.
           </p>
         </div>
 
@@ -130,18 +138,18 @@ export default function AddBetsToStrategiesPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full">
                 <span className="text-sm font-bold">1</span>
               </div>
               Select Pending Bets
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Choose from your pending bets for games that haven't started yet. 
-              You can select multiple bets at once.
+            <p className="mb-4 text-sm text-muted-foreground">
+              Choose from your pending bets for games that haven't started yet. You can select
+              multiple bets at once.
             </p>
-            
+
             <PendingBetsSelector
               selectedBetIds={selectedBetIds}
               onBetsSelected={setSelectedBetIds}
@@ -151,7 +159,7 @@ export default function AddBetsToStrategiesPage() {
 
         {/* Action Button */}
         <div className="flex justify-center">
-          <Button 
+          <Button
             onClick={handleAddToStrategies}
             disabled={selectedBetIds.length === 0}
             className="flex items-center gap-2"
@@ -170,29 +178,29 @@ export default function AddBetsToStrategiesPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="text-center space-y-2">
-                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
-                  <span className="text-blue-600 font-bold">1</span>
+              <div className="space-y-2 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                  <span className="font-bold text-blue-600">1</span>
                 </div>
                 <h3 className="font-medium">Select Bets</h3>
                 <p className="text-xs text-muted-foreground">
                   Choose pending bets for upcoming games
                 </p>
               </div>
-              
-              <div className="text-center space-y-2">
-                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                  <span className="text-green-600 font-bold">2</span>
+
+              <div className="space-y-2 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                  <span className="font-bold text-green-600">2</span>
                 </div>
                 <h3 className="font-medium">Choose Strategies</h3>
                 <p className="text-xs text-muted-foreground">
                   Select which strategies to add the bets to
                 </p>
               </div>
-              
-              <div className="text-center space-y-2">
-                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto">
-                  <span className="text-purple-600 font-bold">3</span>
+
+              <div className="space-y-2 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                  <span className="font-bold text-purple-600">3</span>
                 </div>
                 <h3 className="font-medium">Auto-Validate</h3>
                 <p className="text-xs text-muted-foreground">
@@ -200,10 +208,10 @@ export default function AddBetsToStrategiesPage() {
                 </p>
               </div>
             </div>
-            
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <h4 className="font-medium mb-2">Validation Process:</h4>
-              <ul className="text-sm space-y-1 text-muted-foreground">
+
+            <div className="rounded-lg bg-muted/50 p-4">
+              <h4 className="mb-2 font-medium">Validation Process:</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>• Checks if bet matches strategy's sport/league filters</li>
                 <li>• Validates bet type against strategy requirements</li>
                 <li>• Verifies odds, stakes, and other filter criteria</li>
@@ -231,11 +239,7 @@ export default function AddBetsToStrategiesPage() {
             setValidationResults([])
           }}
           title={
-            resultType === 'success' 
-              ? 'Success!' 
-              : resultType === 'warning' 
-                ? 'Warning' 
-                : 'Error'
+            resultType === 'success' ? 'Success!' : resultType === 'warning' ? 'Warning' : 'Error'
           }
           description={
             <div>

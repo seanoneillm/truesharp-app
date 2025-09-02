@@ -2,10 +2,7 @@
 'use client'
 import Sidebar from '@/components/layout/sidebar'
 import { TopBar } from '@/components/layout/top-bar'
-import {
-    Menu,
-    X
-} from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -25,18 +22,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile Menu Overlay - only render when mounted to prevent hydration mismatch */}
       {isMounted && mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="fixed inset-0 bg-gray-900/80" 
-            onClick={() => setMobileMenuOpen(false)} 
-          />
+          <div className="fixed inset-0 bg-gray-900/80" onClick={() => setMobileMenuOpen(false)} />
           <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white">
-            <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
+            <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
               <Link href="/" className="text-xl font-bold text-blue-600">
                 TrueSharp
               </Link>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-md hover:bg-gray-100"
+                className="rounded-md p-2 hover:bg-gray-100"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -52,7 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content - offset by sidebar width */}
       <div className="lg:pl-64">
         {/* Top Bar */}
-        <TopBar 
+        <TopBar
           mobileMenuButton={
             isMounted ? (
               <button
@@ -69,12 +63,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )
           }
         />
-        
+
         {/* Page content */}
         <main className="py-6">
-          <div className="px-4 sm:px-6 lg:px-8">
-            {children}
-          </div>
+          <div className="px-4 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
     </div>

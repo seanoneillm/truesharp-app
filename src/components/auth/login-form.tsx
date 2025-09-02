@@ -25,13 +25,13 @@ export function LoginForm() {
   const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [urlMessage, setUrlMessage] = useState<string | null>(null)
   const [urlMessageType, setUrlMessageType] = useState<'success' | 'error'>('error')
-  
+
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   })
-  
+
   const [errors, setErrors] = useState<FormErrors>({})
   const searchParams = useSearchParams()
   const { signIn } = useAuth()
@@ -55,17 +55,17 @@ export function LoginForm() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
     const newValue = type === 'checkbox' ? checked : value
-    
+
     setFormData(prev => ({
       ...prev,
-      [name]: newValue
+      [name]: newValue,
     }))
 
     // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
-        [name]: undefined
+        [name]: undefined,
       }))
     }
   }
@@ -91,21 +91,21 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (!validateForm()) {
       return
     }
 
     setIsLoading(true)
     setErrors({})
-    
+
     try {
       const result = await signIn({
         email: formData.email,
         password: formData.password,
-        rememberMe: formData.rememberMe
+        rememberMe: formData.rememberMe,
       })
-      
+
       if (result.error) {
         setErrors({ general: result.error })
       } else {
@@ -125,18 +125,22 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* URL Message (verification success/error) */}
         {urlMessage && (
-          <div className={`p-4 border rounded-xl ${
-            urlMessageType === 'success' 
-              ? 'bg-green-50 border-green-200' 
-              : 'bg-red-50 border-red-200'
-          }`}>
-            <div className={`flex items-center ${
-              urlMessageType === 'success' ? 'text-green-700' : 'text-red-700'
-            }`}>
+          <div
+            className={`rounded-xl border p-4 ${
+              urlMessageType === 'success'
+                ? 'border-green-200 bg-green-50'
+                : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <div
+              className={`flex items-center ${
+                urlMessageType === 'success' ? 'text-green-700' : 'text-red-700'
+              }`}
+            >
               {urlMessageType === 'success' ? (
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 h-4 w-4" />
               ) : (
-                <AlertCircle className="h-4 w-4 mr-2" />
+                <AlertCircle className="mr-2 h-4 w-4" />
               )}
               <span className="text-sm">{urlMessage}</span>
             </div>
@@ -145,9 +149,9 @@ export function LoginForm() {
 
         {/* General Error */}
         {errors.general && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <div className="flex items-center text-red-700">
-              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertCircle className="mr-2 h-4 w-4" />
               <span className="text-sm">{errors.general}</span>
             </div>
           </div>
@@ -158,8 +162,8 @@ export function LoginForm() {
           <label htmlFor="email" className="block text-sm font-medium text-slate-700">
             Email address
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Mail className="h-5 w-5 text-slate-400" />
             </div>
             <input
@@ -170,15 +174,15 @@ export function LoginForm() {
               required
               value={formData.email}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-3 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-3 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email ? 'border-red-300' : 'border-slate-300'
               }`}
               placeholder="Enter your email"
             />
           </div>
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.email}
             </p>
           )}
@@ -189,26 +193,26 @@ export function LoginForm() {
           <label htmlFor="password" className="block text-sm font-medium text-slate-700">
             Password
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Lock className="h-5 w-5 text-slate-400" />
             </div>
             <input
               id="password"
               name="password"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               required
               value={formData.password}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-10 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-10 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.password ? 'border-red-300' : 'border-slate-300'
               }`}
               placeholder="Enter your password"
             />
             <button
               type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-slate-100 rounded-lg transition-colors"
+              className="absolute inset-y-0 right-0 flex items-center rounded-lg pr-3 transition-colors hover:bg-slate-100"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -219,8 +223,8 @@ export function LoginForm() {
             </button>
           </div>
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.password}
             </p>
           )}
@@ -235,7 +239,7 @@ export function LoginForm() {
               type="checkbox"
               checked={formData.rememberMe}
               onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="rememberMe" className="ml-2 block text-sm text-slate-900">
               Remember me
@@ -245,7 +249,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPasswordReset(true)}
-            className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
+            className="text-sm text-blue-600 transition-colors hover:text-blue-500"
           >
             Forgot your password?
           </button>
@@ -256,13 +260,29 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative flex w-full justify-center rounded-xl border border-transparent bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-500 hover:to-cyan-500 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="-ml-1 mr-3 h-5 w-5 animate-spin text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Signing in...
               </>
@@ -274,10 +294,7 @@ export function LoginForm() {
       </form>
 
       {/* Password Reset Modal */}
-      <PasswordReset 
-        isOpen={showPasswordReset}
-        onClose={() => setShowPasswordReset(false)}
-      />
+      <PasswordReset isOpen={showPasswordReset} onClose={() => setShowPasswordReset(false)} />
     </>
   )
 }

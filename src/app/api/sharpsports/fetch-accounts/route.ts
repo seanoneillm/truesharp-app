@@ -13,9 +13,9 @@ class SharpSportsClient {
   async bettoraccountsByBettor({ id }: { id: string }) {
     const response = await fetch(`${this.baseUrl}/bettors/${id}/accounts`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -40,10 +40,7 @@ export async function POST(request: NextRequest) {
     const { bettorId, profileId } = await request.json()
 
     if (!bettorId) {
-      return NextResponse.json(
-        { success: false, error: 'Bettor ID is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'Bettor ID is required' }, { status: 400 })
     }
 
     console.log(`🔄 Fetching accounts for bettor: ${bettorId}`)
@@ -65,13 +62,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'No accounts found for this bettor',
-        accounts: []
+        accounts: [],
       })
     }
 
     // Save/update each account in our database
     const savedAccounts = []
-    
+
     for (const account of accounts) {
       try {
         const accountData = {
@@ -87,14 +84,14 @@ export async function POST(request: NextRequest) {
           paused: account.paused,
           balance: account.balance,
           latest_refresh_time: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }
 
         const { data: savedAccount, error: saveError } = await supabase
           .from('bettor_accounts')
-          .upsert(accountData, { 
+          .upsert(accountData, {
             onConflict: 'sharpsports_account_id',
-            ignoreDuplicates: false 
+            ignoreDuplicates: false,
           })
           .select()
           .single()
@@ -106,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         savedAccounts.push({
           ...savedAccount,
-          original: account // Include original data for reference
+          original: account, // Include original data for reference
         })
 
         console.log(`✅ Saved account: ${account.book?.name} (${account.id})`)
@@ -135,17 +132,16 @@ export async function POST(request: NextRequest) {
       message: `Successfully fetched and saved ${savedAccounts.length} accounts`,
       accounts: savedAccounts,
       totalFetched: accounts.length,
-      totalSaved: savedAccounts.length
+      totalSaved: savedAccounts.length,
     })
-
   } catch (error) {
     console.error('❌ Error fetching bettor accounts:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error
+        details: error,
       },
       { status: 500 }
     )

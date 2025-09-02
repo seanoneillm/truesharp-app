@@ -6,10 +6,7 @@ export async function POST(request: NextRequest) {
     const { email, username } = await request.json()
 
     if (!email || !username) {
-      return NextResponse.json(
-        { error: 'Email and username required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email and username required' }, { status: 400 })
     }
 
     // Test service role database access
@@ -19,10 +16,10 @@ export async function POST(request: NextRequest) {
     )
 
     console.log('Testing direct database insert...')
-    
+
     // Generate a test UUID (proper format)
     const testUserId = '00000000-0000-4000-8000-' + Date.now().toString().slice(-12)
-    
+
     const { data, error } = await serviceSupabase
       .from('profiles')
       .insert({
@@ -34,7 +31,7 @@ export async function POST(request: NextRequest) {
         is_verified_seller: false,
         pro: 'no',
         profile_picture_url: null,
-        public_profile: false
+        public_profile: false,
       })
       .select()
 
@@ -47,24 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Direct database insert successful')
-    
+
     // Clean up test record
-    await serviceSupabase
-      .from('profiles')
-      .delete()
-      .eq('id', testUserId)
+    await serviceSupabase.from('profiles').delete().eq('id', testUserId)
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Database test successful',
-      testUserId 
+      testUserId,
     })
-
   } catch (error) {
     console.error('Test API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

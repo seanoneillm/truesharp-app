@@ -7,17 +7,20 @@ export async function POST(request: NextRequest) {
 
     // Check if API key is configured
     console.log('All env keys:', Object.keys(process.env).sort())
-    console.log('BREVO env variables:', Object.keys(process.env).filter(key => key.includes('BREVO')))
+    console.log(
+      'BREVO env variables:',
+      Object.keys(process.env).filter(key => key.includes('BREVO'))
+    )
     console.log('BREVO_API_KEY exists:', !!process.env.BREVO_API_KEY)
     console.log('BREVO_API_KEY length:', process.env.BREVO_API_KEY?.length)
-    console.log('BREVO_API_KEY starts with xkeysib:', process.env.BREVO_API_KEY?.startsWith('xkeysib-'))
-    
+    console.log(
+      'BREVO_API_KEY starts with xkeysib:',
+      process.env.BREVO_API_KEY?.startsWith('xkeysib-')
+    )
+
     if (!process.env.BREVO_API_KEY) {
       console.error('BREVO_API_KEY not configured')
-      return NextResponse.json(
-        { error: 'Email service not configured' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
     }
 
     console.log('Attempting to subscribe:', { email, firstName })
@@ -47,9 +50,9 @@ export async function POST(request: NextRequest) {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      headers: error.response?.headers
+      headers: error.response?.headers,
     })
-    
+
     // Handle specific Brevo errors
     if (error.response?.status === 400) {
       return NextResponse.json(
@@ -57,20 +60,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     } else if (error.response?.status === 401) {
-      return NextResponse.json(
-        { error: 'Invalid Brevo API key' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid Brevo API key' }, { status: 401 })
     } else if (error.response?.status === 404) {
-      return NextResponse.json(
-        { error: 'Brevo list not found - check list ID' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Brevo list not found - check list ID' }, { status: 404 })
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to subscribe - check server logs' },
-      { status: 500 }
-    )
+
+    return NextResponse.json({ error: 'Failed to subscribe - check server logs' }, { status: 500 })
   }
 }

@@ -63,7 +63,7 @@ export async function fetchROIOverTime(
   toDate?: string
 ): Promise<ROIOverTimeData[]> {
   const supabase = createClient()
-  
+
   try {
     console.log('🔍 Calling analytics.roi_over_time for user:', userId)
     const { data, error } = await supabase.rpc('analytics_roi_over_time', {
@@ -71,7 +71,7 @@ export async function fetchROIOverTime(
       p_filters: JSON.stringify(filters),
       p_tz: timezone,
       p_from: fromDate,
-      p_to: toDate
+      p_to: toDate,
     })
 
     if (error) {
@@ -98,14 +98,14 @@ export async function fetchPerformanceByLeague(
   toDate?: string
 ): Promise<PerformanceByLeagueData[]> {
   const supabase = createClient()
-  
+
   try {
     const { data, error } = await supabase.rpc('analytics_performance_by_league', {
       p_user: userId,
       p_filters: JSON.stringify(filters),
       p_tz: timezone,
       p_from: fromDate,
-      p_to: toDate
+      p_to: toDate,
     })
 
     if (error) {
@@ -130,13 +130,13 @@ export async function fetchWinRateVsExpected(
   minBets: number = 5
 ): Promise<WinRateVsExpectedData[]> {
   const supabase = createClient()
-  
+
   try {
     const { data, error } = await supabase.rpc('analytics_winrate_vs_expected', {
       p_user: userId,
       p_filters: JSON.stringify(filters),
       p_bins: bins,
-      p_min_bets: minBets
+      p_min_bets: minBets,
     })
 
     if (error) {
@@ -161,13 +161,13 @@ export async function fetchMonthlyPerformance(
   toDate?: string
 ): Promise<MonthlyPerformanceData[]> {
   const supabase = createClient()
-  
+
   try {
     const { data, error } = await supabase.rpc('analytics_monthly_performance', {
       p_user: userId,
       p_filters: JSON.stringify(filters),
       p_tz: timezone,
-      p_to: toDate
+      p_to: toDate,
     })
 
     if (error) {
@@ -194,7 +194,7 @@ export async function fetchSeriesData(
   opts: Record<string, any> = {}
 ): Promise<any[]> {
   const supabase = createClient()
-  
+
   try {
     const { data, error } = await supabase.rpc('analytics_fetch_series', {
       p_user: userId,
@@ -202,7 +202,7 @@ export async function fetchSeriesData(
       p_x_dim: xDim,
       p_y_metric: yMetric,
       p_bucket: JSON.stringify(bucket),
-      p_opts: JSON.stringify(opts)
+      p_opts: JSON.stringify(opts),
     })
 
     if (error) {
@@ -231,7 +231,7 @@ export async function fetchEnhancedAnalytics(
   monthlyPerformance: MonthlyPerformanceData[]
 }> {
   console.log('🔍 Fetching enhanced analytics for user:', userId, 'with filters:', filters)
-  
+
   // Test basic RPC connectivity first
   try {
     const supabase = createClient()
@@ -244,31 +244,27 @@ export async function fetchEnhancedAnalytics(
   } catch (error) {
     console.error('🚨 RPC connectivity test exception:', error)
   }
-  
-  const [
-    roiOverTime,
-    performanceByLeague,
-    winRateVsExpected,
-    monthlyPerformance
-  ] = await Promise.all([
-    fetchROIOverTime(userId, filters, timezone),
-    fetchPerformanceByLeague(userId, filters, timezone),
-    fetchWinRateVsExpected(userId, filters),
-    fetchMonthlyPerformance(userId, filters, timezone)
-  ])
+
+  const [roiOverTime, performanceByLeague, winRateVsExpected, monthlyPerformance] =
+    await Promise.all([
+      fetchROIOverTime(userId, filters, timezone),
+      fetchPerformanceByLeague(userId, filters, timezone),
+      fetchWinRateVsExpected(userId, filters),
+      fetchMonthlyPerformance(userId, filters, timezone),
+    ])
 
   console.log('📊 Enhanced analytics results:', {
     roiOverTime: roiOverTime.length,
     performanceByLeague: performanceByLeague.length,
     winRateVsExpected: winRateVsExpected.length,
-    monthlyPerformance: monthlyPerformance.length
+    monthlyPerformance: monthlyPerformance.length,
   })
 
   return {
     roiOverTime,
     performanceByLeague,
     winRateVsExpected,
-    monthlyPerformance
+    monthlyPerformance,
   }
 }
 
@@ -277,15 +273,15 @@ export async function fetchEnhancedAnalytics(
  */
 export async function refreshAnalyticsViews(): Promise<boolean> {
   const supabase = createClient()
-  
+
   try {
     const { error } = await supabase.rpc('refresh_all_views')
-    
+
     if (error) {
       console.warn('Analytics function refresh_all_views not available:', error.message)
       return false
     }
-    
+
     return true
   } catch (error) {
     console.warn('Error calling refresh_all_views (function may not exist):', error)
@@ -353,22 +349,22 @@ export function generateCacheKey(
 export const FILTER_PRESETS = {
   last_7_days: {
     date_from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    date_to: new Date().toISOString()
+    date_to: new Date().toISOString(),
   },
   last_30_days: {
     date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    date_to: new Date().toISOString()
+    date_to: new Date().toISOString(),
   },
   this_month: {
     date_from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
-    date_to: new Date().toISOString()
+    date_to: new Date().toISOString(),
   },
   last_90_days: {
     date_from: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    date_to: new Date().toISOString()
+    date_to: new Date().toISOString(),
   },
   year_to_date: {
     date_from: new Date(new Date().getFullYear(), 0, 1).toISOString(),
-    date_to: new Date().toISOString()
-  }
+    date_to: new Date().toISOString(),
+  },
 }

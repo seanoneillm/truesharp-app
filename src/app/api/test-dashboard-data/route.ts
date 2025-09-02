@@ -33,26 +33,28 @@ export async function GET() {
         leaderboard: {
           count: leaderboard?.length || 0,
           error: leaderboardError?.message,
-          sample: leaderboard?.[0] || null
+          sample: leaderboard?.[0] || null,
         },
         strategies: {
           count: strategies?.length || 0,
           error: strategiesError?.message,
-          sample: strategies?.[0] || null
+          sample: strategies?.[0] || null,
         },
         subscriptions: {
           count: subscriptions?.length || 0,
           error: subscriptionsError?.message,
-          sample: subscriptions?.[0] || null
-        }
-      }
+          sample: subscriptions?.[0] || null,
+        },
+      },
     })
-
   } catch (error) {
     console.error('Dashboard data test error:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

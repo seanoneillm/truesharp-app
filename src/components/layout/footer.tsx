@@ -38,27 +38,25 @@ export default function Footer() {
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           <div className="space-y-8">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-blue-500 mr-2" />
+              <TrendingUp className="mr-2 h-8 w-8 text-blue-500" />
               <span className="text-2xl font-bold text-white">TrueSharp</span>
             </div>
             <p className="text-sm leading-6 text-gray-300">
-              The only verified sports betting platform. Track your real betting performance 
-              with automatic sportsbook sync and turn your expertise into income.
+              The only verified sports betting platform. Track your real betting performance with
+              automatic sportsbook sync and turn your expertise into income.
             </p>
-            <div className="flex space-x-6">
-              {/* Social links would go here */}
-            </div>
+            <div className="flex space-x-6">{/* Social links would go here */}</div>
           </div>
           <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
                 <h3 className="text-sm font-semibold leading-6 text-white">Product</h3>
                 <ul role="list" className="mt-6 space-y-4">
-                  {footerNavigation.product.map((item) => (
+                  {footerNavigation.product.map(item => (
                     <li key={item.name}>
-                      <Link 
-                        href={item.href} 
-                        className="text-sm leading-6 text-gray-300 hover:text-white transition-colors"
+                      <Link
+                        href={item.href}
+                        className="text-sm leading-6 text-gray-300 transition-colors hover:text-white"
                       >
                         {item.name}
                       </Link>
@@ -69,11 +67,11 @@ export default function Footer() {
               <div className="mt-10 md:mt-0">
                 <h3 className="text-sm font-semibold leading-6 text-white">Company</h3>
                 <ul role="list" className="mt-6 space-y-4">
-                  {footerNavigation.company.map((item) => (
+                  {footerNavigation.company.map(item => (
                     <li key={item.name}>
-                      <Link 
-                        href={item.href} 
-                        className="text-sm leading-6 text-gray-300 hover:text-white transition-colors"
+                      <Link
+                        href={item.href}
+                        className="text-sm leading-6 text-gray-300 transition-colors hover:text-white"
                       >
                         {item.name}
                       </Link>
@@ -86,11 +84,11 @@ export default function Footer() {
               <div>
                 <h3 className="text-sm font-semibold leading-6 text-white">Support</h3>
                 <ul role="list" className="mt-6 space-y-4">
-                  {footerNavigation.support.map((item) => (
+                  {footerNavigation.support.map(item => (
                     <li key={item.name}>
-                      <Link 
-                        href={item.href} 
-                        className="text-sm leading-6 text-gray-300 hover:text-white transition-colors"
+                      <Link
+                        href={item.href}
+                        className="text-sm leading-6 text-gray-300 transition-colors hover:text-white"
                       >
                         {item.name}
                       </Link>
@@ -101,11 +99,11 @@ export default function Footer() {
               <div className="mt-10 md:mt-0">
                 <h3 className="text-sm font-semibold leading-6 text-white">Legal</h3>
                 <ul role="list" className="mt-6 space-y-4">
-                  {footerNavigation.legal.map((item) => (
+                  {footerNavigation.legal.map(item => (
                     <li key={item.name}>
-                      <Link 
-                        href={item.href} 
-                        className="text-sm leading-6 text-gray-300 hover:text-white transition-colors"
+                      <Link
+                        href={item.href}
+                        className="text-sm leading-6 text-gray-300 transition-colors hover:text-white"
                       >
                         {item.name}
                       </Link>

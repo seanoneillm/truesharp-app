@@ -31,7 +31,7 @@ export const teamAbbreviations: Record<string, string> = {
   'Philadelphia Phillies': 'PHI',
   'Pittsburgh Pirates': 'PIT',
   'Cincinnati Reds': 'CIN',
-  
+
   // NFL Teams
   'Arizona Cardinals': 'ARI',
   'Atlanta Falcons': 'ATL',
@@ -65,7 +65,7 @@ export const teamAbbreviations: Record<string, string> = {
   'Tampa Bay Buccaneers': 'TB',
   'Tennessee Titans': 'TEN',
   'Washington Commanders': 'WSH',
-  
+
   // NBA Teams
   'Atlanta Hawks': 'ATL',
   'Boston Celtics': 'BOS',
@@ -97,7 +97,7 @@ export const teamAbbreviations: Record<string, string> = {
   'Toronto Raptors': 'TOR',
   'Utah Jazz': 'UTA',
   'Washington Wizards': 'WSH',
-  
+
   // NHL Teams
   'Anaheim Ducks': 'ANA',
   'Arizona Coyotes': 'ARI',
@@ -131,7 +131,7 @@ export const teamAbbreviations: Record<string, string> = {
   'Vegas Golden Knights': 'VGK',
   'Washington Capitals': 'WSH',
   'Winnipeg Jets': 'WPG',
-  
+
   // MLS Teams
   'Atlanta United FC': 'ATL',
   'Austin FC': 'AUS',
@@ -161,8 +161,8 @@ export const teamAbbreviations: Record<string, string> = {
   'Sporting Kansas City': 'SKC',
   'St. Louis City SC': 'STL',
   'Toronto FC': 'TOR',
-  'Vancouver Whitecaps FC': 'VAN'
-};
+  'Vancouver Whitecaps FC': 'VAN',
+}
 
 /**
  * Get abbreviated team name for display in odds buttons
@@ -170,25 +170,28 @@ export const teamAbbreviations: Record<string, string> = {
 export function getTeamAbbreviation(teamName: string): string {
   // First try exact match
   if (teamAbbreviations[teamName]) {
-    return teamAbbreviations[teamName];
+    return teamAbbreviations[teamName]
   }
-  
+
   // Try partial matches for variations
-  const lowerTeamName = teamName.toLowerCase();
+  const lowerTeamName = teamName.toLowerCase()
   for (const [fullName, abbrev] of Object.entries(teamAbbreviations)) {
-    if (fullName.toLowerCase().includes(lowerTeamName) || lowerTeamName.includes(fullName.toLowerCase())) {
-      return abbrev;
+    if (
+      fullName.toLowerCase().includes(lowerTeamName) ||
+      lowerTeamName.includes(fullName.toLowerCase())
+    ) {
+      return abbrev
     }
   }
-  
+
   // Fallback: create abbreviation from team name
-  const words = teamName.split(' ');
+  const words = teamName.split(' ')
   if (words.length === 1) {
-    return teamName.slice(0, 3).toUpperCase();
+    return teamName.slice(0, 3).toUpperCase()
   } else if (words.length === 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase()
   } else {
-    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase()
   }
 }
 
@@ -197,7 +200,7 @@ export function getTeamAbbreviation(teamName: string): string {
  */
 export function formatTeamForDisplay(teamName: string, maxLength: number = 8): string {
   if (teamName.length <= maxLength) {
-    return teamName;
+    return teamName
   }
-  return getTeamAbbreviation(teamName);
+  return getTeamAbbreviation(teamName)
 }

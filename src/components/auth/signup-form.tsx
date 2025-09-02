@@ -33,16 +33,16 @@ export function SignUpForm() {
   const [usernameChecking, setUsernameChecking] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   const [formData, setFormData] = useState<SignUpFormData>({
     email: '',
     username: '',
     password: '',
     confirmPassword: '',
     termsAccepted: false,
-    ageVerified: false
+    ageVerified: false,
   })
-  
+
   const [errors, setErrors] = useState<FormErrors>({})
   const [passwordStrength, setPasswordStrength] = useState(0)
 
@@ -60,9 +60,9 @@ export function SignUpForm() {
       const response = await fetch('/api/auth/check-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ username }),
       })
-      
+
       const data = await response.json()
       setUsernameAvailable(data.available)
     } catch (error) {
@@ -86,17 +86,17 @@ export function SignUpForm() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
     const newValue = type === 'checkbox' ? checked : value
-    
+
     setFormData(prev => ({
       ...prev,
-      [name]: newValue
+      [name]: newValue,
     }))
 
     // Real-time validation
     if (name === 'password') {
       setPasswordStrength(calculatePasswordStrength(value))
     }
-    
+
     if (name === 'username' && typeof value === 'string') {
       // Debounced username checking
       if (usernameTimeoutRef.current) {
@@ -111,7 +111,7 @@ export function SignUpForm() {
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
-        [name]: undefined
+        [name]: undefined,
       }))
     }
   }
@@ -161,13 +161,13 @@ export function SignUpForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
     if (usernameAvailable === false) return
 
     setIsLoading(true)
     setErrors({})
-    
+
     try {
       // Use server-side signup API instead of client-side auth
       const response = await fetch('/api/auth/signup', {
@@ -182,12 +182,12 @@ export function SignUpForm() {
           username: formData.username,
           displayName: formData.username,
           termsAccepted: formData.termsAccepted,
-          ageVerified: formData.ageVerified
-        })
+          ageVerified: formData.ageVerified,
+        }),
       })
 
       const result = await response.json()
-      
+
       if (!response.ok || result.error) {
         setErrors({ general: result.error || 'Signup failed' })
       } else {
@@ -219,9 +219,9 @@ export function SignUpForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* General Error */}
         {errors.general && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <div className="flex items-center text-red-700">
-              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertCircle className="mr-2 h-4 w-4" />
               <span className="text-sm">{errors.general}</span>
             </div>
           </div>
@@ -232,8 +232,8 @@ export function SignUpForm() {
           <label htmlFor="email" className="block text-sm font-medium text-slate-700">
             Email address
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Mail className="h-5 w-5 text-slate-400" />
             </div>
             <input
@@ -244,15 +244,15 @@ export function SignUpForm() {
               required
               value={formData.email}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-3 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-3 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email ? 'border-red-300' : 'border-slate-300'
               }`}
               placeholder="Enter your email"
             />
           </div>
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.email}
             </p>
           )}
@@ -263,8 +263,8 @@ export function SignUpForm() {
           <label htmlFor="username" className="block text-sm font-medium text-slate-700">
             Username
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <User className="h-5 w-5 text-slate-400" />
             </div>
             <input
@@ -274,45 +274,54 @@ export function SignUpForm() {
               required
               value={formData.username}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-10 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
-                errors.username ? 'border-red-300' : 
-                usernameAvailable === true ? 'border-green-300' :
-                usernameAvailable === false ? 'border-red-300' : 
-                'border-slate-300'
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-10 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.username
+                  ? 'border-red-300'
+                  : usernameAvailable === true
+                    ? 'border-green-300'
+                    : usernameAvailable === false
+                      ? 'border-red-300'
+                      : 'border-slate-300'
               }`}
               placeholder="Choose a username (3-20 characters)"
             />
             {/* Username Status Indicator */}
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               {usernameChecking && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600"></div>
               )}
               {!usernameChecking && usernameAvailable === true && (
-                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500">
+                  <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
               )}
               {!usernameChecking && usernameAvailable === false && (
-                <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500">
+                  <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
               )}
             </div>
           </div>
           {errors.username && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.username}
             </p>
           )}
           {!errors.username && usernameAvailable === true && (
-            <p className="mt-1 text-sm text-green-600">
-              ✓ Username is available
-            </p>
+            <p className="mt-1 text-sm text-green-600">✓ Username is available</p>
           )}
         </div>
 
@@ -321,26 +330,26 @@ export function SignUpForm() {
           <label htmlFor="password" className="block text-sm font-medium text-slate-700">
             Password
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Lock className="h-5 w-5 text-slate-400" />
             </div>
             <input
               id="password"
               name="password"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               required
               value={formData.password}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-10 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-10 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.password ? 'border-red-300' : 'border-slate-300'
               }`}
               placeholder="Create a secure password"
             />
             <button
               type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-slate-100 rounded-lg transition-colors"
+              className="absolute inset-y-0 right-0 flex items-center rounded-lg pr-3 transition-colors hover:bg-slate-100"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -350,30 +359,35 @@ export function SignUpForm() {
               )}
             </button>
           </div>
-          
+
           {/* Password Strength Indicator */}
           {formData.password && (
             <div className="mt-2">
               <div className="flex items-center space-x-2">
-                <div className="flex-1 bg-slate-200 rounded-full h-2">
-                  <div 
+                <div className="h-2 flex-1 rounded-full bg-slate-200">
+                  <div
                     className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
                     style={{ width: `${(passwordStrength / 5) * 100}%` }}
                   ></div>
                 </div>
-                <span className={`text-xs font-medium ${
-                  passwordStrength <= 2 ? 'text-red-600' : 
-                  passwordStrength <= 3 ? 'text-yellow-600' : 'text-green-600'
-                }`}>
+                <span
+                  className={`text-xs font-medium ${
+                    passwordStrength <= 2
+                      ? 'text-red-600'
+                      : passwordStrength <= 3
+                        ? 'text-yellow-600'
+                        : 'text-green-600'
+                  }`}
+                >
                   {getPasswordStrengthText()}
                 </span>
               </div>
             </div>
           )}
-          
+
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.password}
             </p>
           )}
@@ -384,26 +398,26 @@ export function SignUpForm() {
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700">
             Confirm Password
           </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="relative mt-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Lock className="h-5 w-5 text-slate-400" />
             </div>
             <input
               id="confirmPassword"
               name="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
+              type={showConfirmPassword ? 'text' : 'password'}
               autoComplete="new-password"
               required
               value={formData.confirmPassword}
               onChange={handleInputChange}
-              className={`appearance-none block w-full pl-10 pr-10 py-3 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:bg-white/80 ${
+              className={`block w-full appearance-none rounded-xl border bg-white/70 py-3 pl-10 pr-10 placeholder-slate-400 backdrop-blur-sm transition-all duration-200 hover:bg-white/80 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.confirmPassword ? 'border-red-300' : 'border-slate-300'
               }`}
               placeholder="Confirm your password"
             />
             <button
               type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-slate-100 rounded-lg transition-colors"
+              className="absolute inset-y-0 right-0 flex items-center rounded-lg pr-3 transition-colors hover:bg-slate-100"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             >
               {showConfirmPassword ? (
@@ -414,8 +428,8 @@ export function SignUpForm() {
             </button>
           </div>
           {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="mt-1 flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.confirmPassword}
             </p>
           )}
@@ -430,22 +444,22 @@ export function SignUpForm() {
               type="checkbox"
               checked={formData.termsAccepted}
               onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded mt-0.5"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-slate-900">
               I agree to the{' '}
               <button
                 type="button"
                 onClick={() => setShowLegalModals(true)}
-                className="text-blue-600 hover:text-blue-500 underline"
+                className="text-blue-600 underline hover:text-blue-500"
               >
                 Terms of Service and Privacy Policy
               </button>
             </label>
           </div>
           {errors.terms && (
-            <p className="text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.terms}
             </p>
           )}
@@ -457,15 +471,15 @@ export function SignUpForm() {
               type="checkbox"
               checked={formData.ageVerified}
               onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded mt-0.5"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="age" className="ml-2 block text-sm text-slate-900">
               I am 21 years of age or older
             </label>
           </div>
           {errors.age && (
-            <p className="text-sm text-red-600 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-1" />
+            <p className="flex items-center text-sm text-red-600">
+              <AlertCircle className="mr-1 h-4 w-4" />
               {errors.age}
             </p>
           )}
@@ -476,13 +490,29 @@ export function SignUpForm() {
           <button
             type="submit"
             disabled={isLoading || usernameChecking || usernameAvailable === false}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative flex w-full justify-center rounded-xl border border-transparent bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-500 hover:to-cyan-500 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="-ml-1 mr-3 h-5 w-5 animate-spin text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Creating Account...
               </>
@@ -494,10 +524,7 @@ export function SignUpForm() {
       </form>
 
       {/* Legal Modals */}
-      <LegalModals 
-        isOpen={showLegalModals}
-        onClose={() => setShowLegalModals(false)}
-      />
+      <LegalModals isOpen={showLegalModals} onClose={() => setShowLegalModals(false)} />
     </>
   )
 }

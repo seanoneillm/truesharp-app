@@ -12,15 +12,12 @@ export async function fetchCustomChartData(
   config: ChartConfig
 ): Promise<CustomChartData[]> {
   const supabase = createClient()
-  
+
   try {
     console.log('🔍 Fetching custom chart data for config:', config)
-    
+
     // Build the base query
-    let query = supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
+    let query = supabase.from('bets').select('*').eq('user_id', userId)
 
     // Apply filters
     if (config.filters.leagues && config.filters.leagues.length > 0) {
@@ -62,7 +59,7 @@ export async function fetchCustomChartData(
     // Process data based on chart configuration
     const processedData = processChartData(rawData, config)
     console.log('✅ Custom chart data processed:', processedData.length, 'records')
-    
+
     return processedData
   } catch (error) {
     console.error('🚨 Error in fetchCustomChartData:', error)
@@ -78,12 +75,12 @@ function processChartData(rawData: any[], config: ChartConfig): CustomChartData[
 
   // Group data by X-axis
   const grouped = groupDataByXAxis(rawData, xAxis)
-  
+
   // Calculate Y-axis values for each group
   const processed = Object.entries(grouped).map(([key, bets]) => {
     const result: CustomChartData = {
       [xAxis]: formatXAxisValue(key, xAxis),
-      raw_value: key // Keep original value for sorting
+      raw_value: key, // Keep original value for sorting
     }
 
     // Calculate Y-axis value
@@ -91,23 +88,23 @@ function processChartData(rawData: any[], config: ChartConfig): CustomChartData[
       case 'count':
         result[yAxis] = bets.length
         break
-      
+
       case 'profit':
         result[yAxis] = calculateTotalProfit(bets)
         break
-      
+
       case 'stake':
         result[yAxis] = calculateTotalStake(bets)
         break
-      
+
       case 'win_rate':
         result[yAxis] = calculateWinRate(bets)
         break
-      
+
       case 'roi':
         result[yAxis] = calculateROI(bets)
         break
-      
+
       default:
         result[yAxis] = 0
     }
@@ -123,38 +120,41 @@ function processChartData(rawData: any[], config: ChartConfig): CustomChartData[
  * Group data by X-axis field
  */
 function groupDataByXAxis(data: any[], xAxis: string): Record<string, any[]> {
-  return data.reduce((acc, bet) => {
-    let key: string
+  return data.reduce(
+    (acc, bet) => {
+      let key: string
 
-    switch (xAxis) {
-      case 'placed_at':
-        // Group by date (YYYY-MM-DD)
-        key = new Date(bet.placed_at).toISOString().split('T')[0]
-        break
-      
-      case 'league':
-        key = bet.league || 'Unknown'
-        break
-      
-      case 'bet_type':
-        key = bet.bet_type || 'Unknown'
-        break
-      
-      case 'sportsbook':
-        key = bet.sportsbook || 'Unknown'
-        break
-      
-      default:
-        key = 'Unknown'
-    }
+      switch (xAxis) {
+        case 'placed_at':
+          // Group by date (YYYY-MM-DD)
+          key = new Date(bet.placed_at).toISOString().split('T')[0]
+          break
 
-    if (!acc[key]) {
-      acc[key] = []
-    }
-    acc[key].push(bet)
-    
-    return acc
-  }, {} as Record<string, any[]>)
+        case 'league':
+          key = bet.league || 'Unknown'
+          break
+
+        case 'bet_type':
+          key = bet.bet_type || 'Unknown'
+          break
+
+        case 'sportsbook':
+          key = bet.sportsbook || 'Unknown'
+          break
+
+        default:
+          key = 'Unknown'
+      }
+
+      if (!acc[key]) {
+        acc[key] = []
+      }
+      acc[key].push(bet)
+
+      return acc
+    },
+    {} as Record<string, any[]>
+  )
 }
 
 /**
@@ -165,18 +165,19 @@ function formatXAxisValue(value: string, xAxis: string): string {
     case 'placed_at':
       // Format date for display
       const date = new Date(value)
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
         day: 'numeric',
-        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
       })
-    
+
     case 'bet_type':
       // Capitalize bet type
-      return value.split('_').map(word => 
-        word.charAt(0).toUpperCase() + word.slice(1)
-      ).join(' ')
-    
+      return value
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+
     default:
       return value
   }
@@ -190,13 +191,13 @@ function sortChartData(data: CustomChartData[], xAxis: string): CustomChartData[
     case 'placed_at':
       // Sort by date
       return data.sort((a, b) => new Date(a.raw_value).getTime() - new Date(b.raw_value).getTime())
-    
+
     case 'league':
     case 'bet_type':
     case 'sportsbook':
       // Sort alphabetically
       return data.sort((a, b) => a[xAxis].localeCompare(b[xAxis]))
-    
+
     default:
       return data
   }
@@ -211,11 +212,11 @@ function calculateTotalProfit(bets: any[]): number {
     if (bet.profit_loss !== null && bet.profit_loss !== undefined) {
       return total + bet.profit_loss
     }
-    
+
     if (bet.profit !== null && bet.profit !== undefined) {
       return total + bet.profit
     }
-    
+
     // Fallback calculation based on status
     const status = bet.status || bet.result
     switch (status) {
@@ -242,7 +243,7 @@ function calculateTotalStake(bets: any[]): number {
 function calculateWinRate(bets: any[]): number {
   const settledBets = bets.filter(bet => ['won', 'lost'].includes(bet.status || bet.result))
   if (settledBets.length === 0) return 0
-  
+
   const wonBets = settledBets.filter(bet => (bet.status || bet.result) === 'won').length
   return (wonBets / settledBets.length) * 100
 }
@@ -253,7 +254,7 @@ function calculateWinRate(bets: any[]): number {
 function calculateROI(bets: any[]): number {
   const totalStake = calculateTotalStake(bets)
   const totalProfit = calculateTotalProfit(bets)
-  
+
   if (totalStake === 0) return 0
   return (totalProfit / totalStake) * 100
 }
@@ -267,7 +268,7 @@ export async function getFilterOptions(userId: string): Promise<{
   sportsbooks: string[]
 }> {
   const supabase = createClient()
-  
+
   try {
     const { data, error } = await supabase
       .from('bets')
@@ -286,7 +287,7 @@ export async function getFilterOptions(userId: string): Promise<{
     return {
       leagues: leagues.sort(),
       betTypes: betTypes.sort(),
-      sportsbooks: sportsbooks.sort()
+      sportsbooks: sportsbooks.sort(),
     }
   } catch (error) {
     console.error('🚨 Error in getFilterOptions:', error)
@@ -317,19 +318,22 @@ export function formatPercentage(value: number): string {
 /**
  * Get color based on value type and amount
  */
-export function getValueColor(value: number, type: 'profit' | 'roi' | 'win_rate' | 'count' | 'stake'): string {
+export function getValueColor(
+  value: number,
+  type: 'profit' | 'roi' | 'win_rate' | 'count' | 'stake'
+): string {
   switch (type) {
     case 'profit':
     case 'roi':
       if (value > 5) return '#059669' // green-600
       if (value < -5) return '#dc2626' // red-600
       return '#64748b' // slate-600
-    
+
     case 'win_rate':
       if (value > 60) return '#059669'
       if (value < 40) return '#dc2626'
       return '#64748b'
-    
+
     default:
       return '#3b82f6' // blue-600
   }

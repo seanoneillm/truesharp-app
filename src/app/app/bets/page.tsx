@@ -21,11 +21,7 @@ export default function BetsPage() {
           </div>
 
           {/* Bet List */}
-          <BetList 
-            title="All Bets"
-            showFilters={true}
-            showViewToggle={true}
-          />
+          <BetList title="All Bets" showFilters={true} showViewToggle={true} />
         </div>
       </div>
     </div>

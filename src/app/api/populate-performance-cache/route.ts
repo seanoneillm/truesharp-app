@@ -20,7 +20,7 @@ export async function POST() {
       console.error('Error fetching users:', usersError)
       return NextResponse.json({
         success: false,
-        error: usersError.message
+        error: usersError.message,
       })
     }
 
@@ -47,25 +47,23 @@ export async function POST() {
         const lostBets = userBets.filter(b => b.status === 'lost').length
         const totalProfit = userBets.reduce((sum, b) => sum + (b.profit || 0), 0)
         const totalStake = userBets.reduce((sum, b) => sum + (b.stake || 0), 0)
-        
+
         const settledBets = wonBets + lostBets
         const winRate = settledBets > 0 ? (wonBets * 100.0) / settledBets : 0
         const roi = totalStake > 0 ? (totalProfit * 100.0) / totalStake : 0
 
         // Insert or update performance cache
-        const { error: cacheError } = await serviceSupabase
-          .from('user_performance_cache')
-          .upsert({
-            user_id: userId,
-            total_bets: totalBets,
-            won_bets: wonBets,
-            lost_bets: lostBets,
-            total_profit: totalProfit,
-            total_stake: totalStake,
-            win_rate: winRate,
-            roi: roi,
-            updated_at: new Date().toISOString()
-          })
+        const { error: cacheError } = await serviceSupabase.from('user_performance_cache').upsert({
+          user_id: userId,
+          total_bets: totalBets,
+          won_bets: wonBets,
+          lost_bets: lostBets,
+          total_profit: totalProfit,
+          total_stake: totalStake,
+          win_rate: winRate,
+          roi: roi,
+          updated_at: new Date().toISOString(),
+        })
 
         if (cacheError) {
           console.warn(`Failed to update cache for user ${userId}:`, cacheError.message)
@@ -79,11 +77,12 @@ export async function POST() {
           lostBets,
           totalProfit,
           winRate: Math.round(winRate * 100) / 100,
-          roi: Math.round(roi * 100) / 100
+          roi: Math.round(roi * 100) / 100,
         })
 
-        console.log(`Updated performance for user ${userId}: ${totalBets} bets, ${Math.round(winRate)}% win rate, ${Math.round(roi)}% ROI`)
-
+        console.log(
+          `Updated performance for user ${userId}: ${totalBets} bets, ${Math.round(winRate)}% win rate, ${Math.round(roi)}% ROI`
+        )
       } catch (err) {
         console.warn(`Error processing user ${userId}:`, err)
         continue
@@ -97,14 +96,13 @@ export async function POST() {
       message: `Updated performance cache for ${results.length} users`,
       processedUsers: results.length,
       totalUsers: uniqueUsers.length,
-      results: results.slice(0, 5) // Show first 5 results
+      results: results.slice(0, 5), // Show first 5 results
     })
-
   } catch (err) {
     console.error('Unexpected error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error updating performance cache'
+      error: 'Unexpected error updating performance cache',
     })
   }
 }

@@ -1,10 +1,12 @@
 # Betting System Backend Functions
 
-This directory contains all the backend TypeScript functions for handling bet submissions in the TrueSharp application.
+This directory contains all the backend TypeScript functions for handling bet submissions in the
+TrueSharp application.
 
 ## Overview
 
-The betting system supports both single bets and multi-leg parlays, with automatic odds calculations, database insertions, and status tracking.
+The betting system supports both single bets and multi-leg parlays, with automatic odds
+calculations, database insertions, and status tracking.
 
 ## Files Structure
 
@@ -28,27 +30,32 @@ src/app/api/bets/
 ## Main Functions
 
 ### `submitBet(userId: string, bets: Bet[], stake: number)`
+
 - Main function that determines if it's a single bet or parlay
 - Handles validation and routes to appropriate function
 - Returns `BetSubmissionResult`
 
 ### `insertSingleBet(userId: string, bet: Bet, stake: number)`
+
 - Inserts a single straight bet into the database
 - Calculates payout automatically
 - Returns bet ID on success
 
 ### `insertParlayBet(userId: string, bets: Bet[], stake: number)`
+
 - Inserts multiple rows for parlay legs
 - First leg contains the stake, others have stake = 0
 - All legs share the same `parlay_id`
 - Calculates parlay odds and total payout
 
 ### `calculateParlayPayoutForUI(bets: Bet[], stake: number)`
+
 - Calculates potential payout for display in UI
 - Handles both single bets and parlays
 - Used for real-time payout calculations
 
 ### `checkParlayStatus(parlayId: string)`
+
 - Reads all legs of a parlay from database
 - Determines overall status:
   - `lost`: Any leg is lost
@@ -60,23 +67,25 @@ src/app/api/bets/
 ## API Integration
 
 ### Submit Bet
-```typescript
-import { submitBets } from '@/lib/api/betting';
 
-const result = await submitBets(betSlipBets, wagerAmount);
+```typescript
+import { submitBets } from '@/lib/api/betting'
+
+const result = await submitBets(betSlipBets, wagerAmount)
 if (result.success) {
-  console.log('Bet submitted:', result.betId || result.parlayId);
+  console.log('Bet submitted:', result.betId || result.parlayId)
 } else {
-  console.error('Error:', result.error);
+  console.error('Error:', result.error)
 }
 ```
 
 ### Check Parlay Status
-```typescript
-import { checkParlayStatus } from '@/lib/api/betting';
 
-const status = await checkParlayStatus(parlayId);
-console.log('Parlay status:', status.status);
+```typescript
+import { checkParlayStatus } from '@/lib/api/betting'
+
+const status = await checkParlayStatus(parlayId)
+console.log('Parlay status:', status.status)
 ```
 
 ## Integration with Bet Slip
@@ -88,16 +97,16 @@ To integrate with the bet slip component, replace the mock API call in `BetSlip.
 // await new Promise(resolve => setTimeout(resolve, 1500));
 
 // With this:
-import { submitBets } from '@/lib/api/betting';
+import { submitBets } from '@/lib/api/betting'
 
-const result = await submitBets(bets, wagerAmount);
+const result = await submitBets(bets, wagerAmount)
 if (result.success) {
-  showSuccess(result.message || 'Bet placed successfully!');
+  showSuccess(result.message || 'Bet placed successfully!')
   // Clear bet slip
-  clearAllBets();
-  setWagerAmount(10);
+  clearAllBets()
+  setWagerAmount(10)
 } else {
-  showError(result.error || 'Failed to place bet');
+  showError(result.error || 'Failed to place bet')
 }
 ```
 
@@ -115,6 +124,7 @@ The system automatically maps bet slip data to the database schema:
 ## Error Handling
 
 All functions include comprehensive error handling:
+
 - Input validation (stake limits, bet count limits)
 - Database error handling
 - Authentication checks in API routes
@@ -132,13 +142,13 @@ All functions include comprehensive error handling:
 The functions can be tested independently:
 
 ```typescript
-import { submitBet } from '@/lib/services/betting';
+import { submitBet } from '@/lib/services/betting'
 
 // Test single bet
-const singleBetResult = await submitBet(userId, [testBet], 25);
+const singleBetResult = await submitBet(userId, [testBet], 25)
 
 // Test parlay
-const parlayResult = await submitBet(userId, [bet1, bet2, bet3], 50);
+const parlayResult = await submitBet(userId, [bet1, bet2, bet3], 50)
 ```
 
 ## Production Considerations

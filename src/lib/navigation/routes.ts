@@ -13,49 +13,49 @@ export const navigationRoutes: NavigationRoute[] = [
     href: '/dashboard',
     icon: 'Home',
     description: 'Main user overview',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Analytics',
     href: '/analytics',
     icon: 'BarChart3',
     description: 'Performance tracking and insights',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Games',
     href: '/games',
     icon: 'Trophy',
     description: 'Live odds and betting interface',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Marketplace',
     href: '/marketplace',
     icon: 'Store',
     description: 'Strategy discovery and subscription',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Monetize',
     href: '/sell',
     icon: 'DollarSign',
     description: 'Seller dashboard and tools',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Subscriptions',
     href: '/subscriptions',
     icon: 'CreditCard',
     description: 'Subscription management',
-    requiresAuth: true
+    requiresAuth: true,
   },
   {
     name: 'Feed',
     href: '/feed',
     icon: 'MessageSquare',
     description: 'Social community features',
-    requiresAuth: true
+    requiresAuth: true,
   },
 ]
 

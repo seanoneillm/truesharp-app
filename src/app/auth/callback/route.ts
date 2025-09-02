@@ -8,18 +8,18 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createServerSupabaseClient(request)
-    
+
     try {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-      
+
       if (error) {
         console.error('Auth callback error:', error)
-        
+
         // Redirect to login with error
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('error', 'verification_failed')
         redirectUrl.searchParams.set('message', 'Email verification failed. Please try again.')
-        
+
         return NextResponse.redirect(redirectUrl)
       }
 
@@ -31,17 +31,16 @@ export async function GET(request: NextRequest) {
       // Successful verification - redirect to next page
       const redirectUrl = new URL(next, request.url)
       redirectUrl.searchParams.set('verified', 'true')
-      
+
       return NextResponse.redirect(redirectUrl)
-      
     } catch (error) {
       console.error('Auth callback exception:', error)
-      
+
       // Redirect to login with error
       const redirectUrl = new URL('/login', request.url)
       redirectUrl.searchParams.set('error', 'callback_error')
       redirectUrl.searchParams.set('message', 'An error occurred during verification.')
-      
+
       return NextResponse.redirect(redirectUrl)
     }
   }
@@ -50,6 +49,6 @@ export async function GET(request: NextRequest) {
   const redirectUrl = new URL('/login', request.url)
   redirectUrl.searchParams.set('error', 'no_code')
   redirectUrl.searchParams.set('message', 'Invalid verification link.')
-  
+
   return NextResponse.redirect(redirectUrl)
 }

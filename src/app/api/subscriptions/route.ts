@@ -5,22 +5,28 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    
+
     // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    console.log('Subscriptions API - Auth check:', { 
-      hasUser: !!user, 
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    console.log('Subscriptions API - Auth check:', {
+      hasUser: !!user,
       authError: authError?.message,
-      userId: user?.id 
+      userId: user?.id,
     })
-    
+
     if (authError || !user) {
       console.error('Authentication failed in subscriptions API:', authError)
-      return NextResponse.json({ 
-        error: 'Authentication required',
-        details: authError?.message || 'No user found'
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          error: 'Authentication required',
+          details: authError?.message || 'No user found',
+        },
+        { status: 401 }
+      )
     }
 
     // First, let's check what basic subscriptions exist without joins
@@ -33,13 +39,14 @@ export async function GET(request: NextRequest) {
     console.log('Subscriptions API - Basic query result:', {
       error: basicError?.message,
       dataCount: basicSubscriptions?.length || 0,
-      sampleData: basicSubscriptions?.slice(0, 2)
+      sampleData: basicSubscriptions?.slice(0, 2),
     })
 
     // Fetch user's subscriptions with strategy and profile data
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from('subscriptions')
-      .select(`
+      .select(
+        `
         id,
         subscriber_id,
         seller_id,
@@ -68,21 +75,25 @@ export async function GET(request: NextRequest) {
           username,
           email
         )
-      `)
+      `
+      )
       .eq('subscriber_id', user.id)
       .order('created_at', { ascending: false })
 
     console.log('Subscriptions API - Query result:', {
       error: subscriptionsError?.message,
-      dataCount: subscriptions?.length || 0
+      dataCount: subscriptions?.length || 0,
     })
 
     if (subscriptionsError) {
       console.error('Error fetching subscriptions:', subscriptionsError)
-      return NextResponse.json({ 
-        error: 'Failed to fetch subscriptions',
-        details: subscriptionsError.message
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: 'Failed to fetch subscriptions',
+          details: subscriptionsError.message,
+        },
+        { status: 500 }
+      )
     }
 
     // Format the response to match the expected structure
@@ -114,22 +125,24 @@ export async function GET(request: NextRequest) {
         strategy_performance_total_bets: strategy?.performance_total_bets || 0,
         // Flattened profile data
         seller_username: profile?.username || 'Unknown',
-        seller_display_name: profile?.username || 'Unknown'
+        seller_display_name: profile?.username || 'Unknown',
       }
     })
 
     return NextResponse.json({
       success: true,
       subscriptions: formattedSubscriptions,
-      count: formattedSubscriptions.length
+      count: formattedSubscriptions.length,
     })
-
   } catch (error) {
     console.error('Subscriptions API error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -137,7 +150,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

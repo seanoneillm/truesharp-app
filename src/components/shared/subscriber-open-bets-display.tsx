@@ -1,14 +1,7 @@
 'use client'
 
 import React from 'react'
-import { 
-  Clock, 
-  Target, 
-  TrendingUp,
-  Calendar,
-  Trophy,
-  Zap
-} from 'lucide-react'
+import { Clock, Target, TrendingUp, Calendar, Trophy, Zap } from 'lucide-react'
 import { OpenBet, formatBetForDisplay } from '@/lib/queries/open-bets'
 
 interface SubscriberOpenBetsDisplayProps {
@@ -19,18 +12,17 @@ interface SubscriberOpenBetsDisplayProps {
   className?: string
 }
 
-export function SubscriberOpenBetsDisplay({ 
-  bets, 
-  title = "Current Open Bets", 
+export function SubscriberOpenBetsDisplay({
+  bets,
+  title = 'Current Open Bets',
   showTitle = true,
   maxBets = 5,
-  className = ""
+  className = '',
 }: SubscriberOpenBetsDisplayProps) {
-  
   if (!bets || bets.length === 0) {
     return (
-      <div className={`p-4 bg-gray-50 rounded-lg text-center ${className}`}>
-        <Clock className="h-5 w-5 text-gray-400 mx-auto mb-2" />
+      <div className={`rounded-lg bg-gray-50 p-4 text-center ${className}`}>
+        <Clock className="mx-auto mb-2 h-5 w-5 text-gray-400" />
         <p className="text-sm text-gray-600">No open bets</p>
       </div>
     )
@@ -43,24 +35,22 @@ export function SubscriberOpenBetsDisplay({
     <div className={`space-y-3 ${className}`}>
       {showTitle && (
         <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-gray-900 flex items-center">
-            <Zap className="h-4 w-4 mr-2 text-orange-500" />
+          <h4 className="flex items-center font-semibold text-gray-900">
+            <Zap className="mr-2 h-4 w-4 text-orange-500" />
             {title} ({bets.length})
           </h4>
         </div>
       )}
 
       <div className="space-y-2">
-        {displayBets.map((bet) => {
+        {displayBets.map(bet => {
           const formattedBet = formatBetForDisplay(bet)
-          return (
-            <SubscriberBetCard key={bet.id} bet={formattedBet} />
-          )
+          return <SubscriberBetCard key={bet.id} bet={formattedBet} />
         })}
       </div>
 
       {hasMoreBets && (
-        <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
+        <div className="border-t border-gray-100 pt-2 text-center text-xs text-gray-500">
           +{bets.length - maxBets} more bet{bets.length - maxBets !== 1 ? 's' : ''}
         </div>
       )}
@@ -106,17 +96,17 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
   }
 
   return (
-    <div className="p-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2 flex-1">
-          <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getBetTypeColor(bet.bet_type)}`}>
+    <div className="rounded-lg border border-gray-100 bg-white p-3 transition-all hover:border-gray-200 hover:shadow-sm">
+      <div className="mb-2 flex items-start justify-between">
+        <div className="flex flex-1 items-center space-x-2">
+          <span
+            className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${getBetTypeColor(bet.bet_type)}`}
+          >
             {getBetTypeIcon(bet.bet_type)}
             <span className="ml-1">{bet.bet_type.toUpperCase()}</span>
           </span>
           {bet.sport && (
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {bet.sport}
-            </span>
+            <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">{bet.sport}</span>
           )}
         </div>
         <div className="text-right">
@@ -125,17 +115,16 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
       </div>
 
       <div className="mb-2">
-        <p className="text-sm font-medium text-gray-900 line-clamp-2">
-          {bet.gameInfo}
-        </p>
+        <p className="line-clamp-2 text-sm font-medium text-gray-900">{bet.gameInfo}</p>
         {bet.home_team && bet.away_team && (
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="mt-1 text-xs text-gray-600">
             {bet.away_team} @ {bet.home_team}
           </p>
         )}
         {bet.line_value && (
           <p className="text-xs text-gray-600">
-            Line: {bet.line_value > 0 ? '+' : ''}{bet.line_value}
+            Line: {bet.line_value > 0 ? '+' : ''}
+            {bet.line_value}
           </p>
         )}
       </div>
@@ -144,13 +133,11 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
         <div className="flex items-center space-x-3">
           {bet.gameTime && (
             <div className="flex items-center text-gray-500">
-              <Calendar className="h-3 w-3 mr-1" />
+              <Calendar className="mr-1 h-3 w-3" />
               {bet.gameTime}
             </div>
           )}
-          {bet.sportsbook && (
-            <span className="text-gray-500">{bet.sportsbook}</span>
-          )}
+          {bet.sportsbook && <span className="text-gray-500">{bet.sportsbook}</span>}
         </div>
       </div>
     </div>
@@ -165,20 +152,28 @@ interface SubscriberOpenBetsSummaryProps {
   className?: string
 }
 
-export function SubscriberOpenBetsSummary({ bets, className = "" }: SubscriberOpenBetsSummaryProps) {
+export function SubscriberOpenBetsSummary({
+  bets,
+  className = '',
+}: SubscriberOpenBetsSummaryProps) {
   if (!bets || bets.length === 0) {
     return null
   }
 
   // Count by bet type for subscribers
-  const betTypeCounts = bets.reduce((counts, bet) => {
-    const type = bet.bet_type.toLowerCase()
-    counts[type] = (counts[type] || 0) + 1
-    return counts
-  }, {} as Record<string, number>)
+  const betTypeCounts = bets.reduce(
+    (counts, bet) => {
+      const type = bet.bet_type.toLowerCase()
+      counts[type] = (counts[type] || 0) + 1
+      return counts
+    },
+    {} as Record<string, number>
+  )
 
   return (
-    <div className={`p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 ${className}`}>
+    <div
+      className={`rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 ${className}`}
+    >
       <div className="flex items-center justify-between">
         <div className="text-center">
           <div className="text-lg font-bold text-gray-900">{bets.length}</div>
@@ -186,7 +181,7 @@ export function SubscriberOpenBetsSummary({ bets, className = "" }: SubscriberOp
         </div>
         <div className="flex flex-wrap gap-1">
           {Object.entries(betTypeCounts).map(([type, count]) => (
-            <span key={type} className="text-xs bg-white px-2 py-1 rounded border">
+            <span key={type} className="rounded border bg-white px-2 py-1 text-xs">
               {count} {type.charAt(0).toUpperCase() + type.slice(1)}
             </span>
           ))}

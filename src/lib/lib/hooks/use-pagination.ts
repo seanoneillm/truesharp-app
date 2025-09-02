@@ -36,12 +36,7 @@ interface UsePaginationOptions {
 }
 
 export function usePagination(options: UsePaginationOptions = {}): UsePaginationReturn {
-  const {
-    initialPage = 1,
-    initialLimit = 20,
-    initialSortBy,
-    initialSortOrder = 'desc'
-  } = options
+  const { initialPage = 1, initialLimit = 20, initialSortBy, initialSortOrder = 'desc' } = options
 
   const [state, setState] = useState<PaginationState>({
     page: initialPage,
@@ -51,7 +46,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
     hasNext: false,
     hasPrev: false,
     sortBy: initialSortBy,
-    sortOrder: initialSortOrder
+    sortOrder: initialSortOrder,
   })
 
   // Calculate derived values
@@ -64,7 +59,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
       ...state,
       totalPages,
       hasNext,
-      hasPrev
+      hasPrev,
     }
   }, [state])
 
@@ -73,10 +68,10 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
     setState(prev => {
       const totalPages = Math.ceil(prev.total / prev.limit)
       const validPage = Math.max(1, Math.min(page, totalPages || 1))
-      
+
       return {
         ...prev,
-        page: validPage
+        page: validPage,
       }
     })
   }, [])
@@ -88,7 +83,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
       if (prev.page < totalPages) {
         return {
           ...prev,
-          page: prev.page + 1
+          page: prev.page + 1,
         }
       }
       return prev
@@ -101,7 +96,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
       if (prev.page > 1) {
         return {
           ...prev,
-          page: prev.page - 1
+          page: prev.page - 1,
         }
       }
       return prev
@@ -113,7 +108,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
     setState(prev => ({
       ...prev,
       limit: Math.max(1, limit),
-      page: 1 // Reset to first page when changing limit
+      page: 1, // Reset to first page when changing limit
     }))
   }, [])
 
@@ -123,7 +118,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
       ...prev,
       sortBy,
       sortOrder,
-      page: 1 // Reset to first page when changing sort
+      page: 1, // Reset to first page when changing sort
     }))
   }, [])
 
@@ -137,7 +132,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
       hasNext: false,
       hasPrev: false,
       sortBy: initialSortBy === undefined ? undefined : initialSortBy,
-      sortOrder: initialSortOrder
+      sortOrder: initialSortOrder,
     })
   }, [initialPage, initialLimit, initialSortBy, initialSortOrder])
 
@@ -145,7 +140,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
   const updateTotal = useCallback((total: number) => {
     setState(prev => ({
       ...prev,
-      total: Math.max(0, total)
+      total: Math.max(0, total),
     }))
   }, [])
 
@@ -179,7 +174,7 @@ export function usePagination(options: UsePaginationOptions = {}): UsePagination
     reset,
     updateTotal,
     getOffset,
-    getParams
+    getParams,
   }
 }
 
@@ -193,12 +188,7 @@ interface UseInfiniteScrollReturn {
 }
 
 export function useInfiniteScroll(options: UsePaginationOptions = {}): UseInfiniteScrollReturn {
-  const {
-    pagination,
-    nextPage,
-    reset,
-    updateTotal
-  } = usePagination(options)
+  const { pagination, nextPage, reset, updateTotal } = usePagination(options)
 
   const loadMore = useCallback(() => {
     if (pagination.hasNext) {
@@ -213,7 +203,7 @@ export function useInfiniteScroll(options: UsePaginationOptions = {}): UseInfini
     loadMore,
     reset,
     updateTotal,
-    isLastPage
+    isLastPage,
   }
 }
 
@@ -228,9 +218,12 @@ export function useTablePagination(options: UsePaginationOptions = {}): UseTable
   const pagination = usePagination(options)
   const pageSizeOptions = [10, 20, 50, 100]
 
-  const setPageSize = useCallback((size: number) => {
-    pagination.setLimit(size)
-  }, [pagination])
+  const setPageSize = useCallback(
+    (size: number) => {
+      pagination.setLimit(size)
+    },
+    [pagination]
+  )
 
   const getRowNumbers = useCallback(() => {
     const start = (pagination.pagination.page - 1) * pagination.pagination.limit + 1
@@ -245,6 +238,6 @@ export function useTablePagination(options: UsePaginationOptions = {}): UseTable
     ...pagination,
     pageSizeOptions,
     setPageSize,
-    getRowNumbers
+    getRowNumbers,
   }
 }

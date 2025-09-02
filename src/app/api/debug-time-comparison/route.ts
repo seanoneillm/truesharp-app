@@ -7,7 +7,7 @@ export async function GET() {
 
     const now = new Date()
     const nowISO = now.toISOString()
-    
+
     console.log('Current time:', nowISO)
     console.log('Current time (local):', now.toString())
 
@@ -29,7 +29,7 @@ export async function GET() {
         game_date: bet.game_date,
         game_date_local: gameDate.toString(),
         is_future: isFuture,
-        hours_difference: (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+        hours_difference: (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60),
       }
     })
 
@@ -53,15 +53,14 @@ export async function GET() {
         futureComparisons,
         filteredBetsCount: filteredBets?.length || 0,
         filteredBets,
-        queryError: error?.message
-      }
+        queryError: error?.message,
+      },
     })
-
   } catch (error) {
     console.error('Debug time comparison error:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

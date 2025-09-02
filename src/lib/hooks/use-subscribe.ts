@@ -28,9 +28,13 @@ interface SubscribeParams {
 }
 
 interface UseSubscribeReturn {
-  subscribe: (params: SubscribeParams) => Promise<{ success: boolean; subscription?: Subscription; error?: string }>
+  subscribe: (
+    params: SubscribeParams
+  ) => Promise<{ success: boolean; subscription?: Subscription; error?: string }>
   unsubscribe: (subscriptionId: string) => Promise<{ success: boolean; error?: string }>
-  checkSubscription: (strategyId: string) => Promise<{ isSubscribed: boolean; subscription?: Subscription }>
+  checkSubscription: (
+    strategyId: string
+  ) => Promise<{ isSubscribed: boolean; subscription?: Subscription }>
   isLoading: boolean
   error: string | null
 }
@@ -51,7 +55,7 @@ export function useSubscribe(): UseSubscribeReturn {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include cookies in the request
-        body: JSON.stringify(params)
+        body: JSON.stringify(params),
       })
 
       const data = await response.json()
@@ -61,11 +65,10 @@ export function useSubscribe(): UseSubscribeReturn {
         return { success: false, error: data.error }
       }
 
-      return { 
-        success: true, 
-        subscription: data.subscription 
+      return {
+        success: true,
+        subscription: data.subscription,
       }
-
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to subscribe'
       setError(errorMessage)
@@ -75,42 +78,44 @@ export function useSubscribe(): UseSubscribeReturn {
     }
   }, [])
 
-  const unsubscribe = useCallback(async (subscriptionId: string) => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const unsubscribe = useCallback(
+    async (subscriptionId: string) => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      // Update subscription status to cancelled
-      const { error: updateError } = await supabase
-        .from('subscriptions')
-        .update({ 
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
+        // Update subscription status to cancelled
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+          })
+          .eq('id', subscriptionId)
 
-      if (updateError) {
-        setError('Failed to cancel subscription')
-        return { success: false, error: 'Failed to cancel subscription' }
+        if (updateError) {
+          setError('Failed to cancel subscription')
+          return { success: false, error: 'Failed to cancel subscription' }
+        }
+
+        return { success: true }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to unsubscribe'
+        setError(errorMessage)
+        return { success: false, error: errorMessage }
+      } finally {
+        setIsLoading(false)
       }
-
-      return { success: true }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to unsubscribe'
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [supabase])
+    },
+    [supabase]
+  )
 
   const checkSubscription = useCallback(async (strategyId: string) => {
     try {
       setError(null)
 
       const response = await fetch(`/api/subscribe?strategyId=${strategyId}`, {
-        credentials: 'include' // Include cookies in the request
+        credentials: 'include', // Include cookies in the request
       })
       const data = await response.json()
 
@@ -120,9 +125,8 @@ export function useSubscribe(): UseSubscribeReturn {
 
       return {
         isSubscribed: data.isSubscribed,
-        subscription: data.subscription
+        subscription: data.subscription,
       }
-
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check subscription'
       setError(errorMessage)
@@ -135,6 +139,6 @@ export function useSubscribe(): UseSubscribeReturn {
     unsubscribe,
     checkSubscription,
     isLoading,
-    error
+    error,
   }
 }

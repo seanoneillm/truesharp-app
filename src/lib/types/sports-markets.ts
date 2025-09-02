@@ -1,47 +1,47 @@
 export interface MarketCategory {
-  id: string;
-  label: string;
-  icon: string;
-  subcategories?: MarketSubcategory[];
+  id: string
+  label: string
+  icon: string
+  subcategories?: MarketSubcategory[]
 }
 
 export interface MarketSubSubcategory {
-  id: string;
-  label: string;
-  markets: string[];
+  id: string
+  label: string
+  markets: string[]
 }
 
 export interface MarketSubcategory {
-  id: string;
-  label: string;
-  markets?: string[];
-  subcategories?: MarketSubSubcategory[];
+  id: string
+  label: string
+  markets?: string[]
+  subcategories?: MarketSubSubcategory[]
 }
 
 export interface SportMarketConfig {
   mainLines: {
-    markets: string[];
-  };
-  playerProps: MarketSubcategory[];
+    markets: string[]
+  }
+  playerProps: MarketSubcategory[]
   teamProps: {
-    markets?: string[];
-    subcategories?: MarketSubcategory[];
-  };
+    markets?: string[]
+    subcategories?: MarketSubcategory[]
+  }
   gameProps: {
-    markets?: string[];
-    subcategories?: MarketSubcategory[];
-  };
+    markets?: string[]
+    subcategories?: MarketSubcategory[]
+  }
 }
 
 export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
   // Baseball (MLB) - Updated from games-page.md
-  'baseball_mlb': {
+  baseball_mlb: {
     mainLines: {
       markets: [
         'Moneyline', // points-home-game-ml-home, points-away-game-ml-away
-        'Run Line (-1.5)', // points-home-game-sp-home, points-away-game-sp-away  
-        'Total Runs Over/Under' // points-all-game-ou-over, points-all-game-ou-under
-      ]
+        'Run Line (-1.5)', // points-home-game-sp-home, points-away-game-sp-away
+        'Total Runs Over/Under', // points-all-game-ou-over, points-all-game-ou-under
+      ],
     },
     playerProps: [
       {
@@ -63,8 +63,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Fantasy Score Over/Under', // fantasyScore-ANY_PLAYER_ID-game-ou-over/under
           'First Home Run Yes/No', // batting_firstHomeRun-ANY_PLAYER_ID-game-yn-yes/no
           'First Run Scored Yes/No', // firstToScore-ANY_PLAYER_ID-game-yn-yes/no
-          'Last Run Scored Yes/No' // lastToScore-ANY_PLAYER_ID-game-yn-yes/no
-        ]
+          'Last Run Scored Yes/No', // lastToScore-ANY_PLAYER_ID-game-yn-yes/no
+        ],
       },
       {
         id: 'pitchers',
@@ -77,9 +77,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Home Runs Allowed Over/Under', // pitching_homeRunsAllowed-ANY_PLAYER_ID-game-ou-over/under
           'Pitches Thrown Over/Under', // pitching_pitchesThrown-ANY_PLAYER_ID-game-ou-over/under
           'Outs Recorded Over/Under', // pitching_outs-ANY_PLAYER_ID-game-ou-over/under
-          'Pitching Win Yes/No' // pitching_win-ANY_PLAYER_ID-game-yn-yes/no
-        ]
-      }
+          'Pitching Win Yes/No', // pitching_win-ANY_PLAYER_ID-game-yn-yes/no
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -88,8 +88,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Strikeouts Over/Under', // pitching_strikeouts-home/away-game-ou-over/under
         'Team Hits Over/Under', // pitching_hits-home/away-game-ou-over/under
         'Team Any Runs Yes/No', // points-home/away-game-yn-yes/no
-        'Team Any Home Runs Yes/No' // batting_homeRuns-home/away-game-yn-yes/no
-      ]
+        'Team Any Home Runs Yes/No', // batting_homeRuns-home/away-game-yn-yes/no
+      ],
     },
     gameProps: {
       markets: [
@@ -101,19 +101,19 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Any Runs Yes/No', // points-all-game-yn-yes/no
         'Any Home Runs Yes/No', // batting_homeRuns-all-game-yn-yes/no
         'First Inning Runs Yes/No', // points-all-1i-yn-yes/no
-        'First Inning Home Run Yes/No' // batting_homeRuns-all-1i-yn-yes/no
-      ]
-    }
+        'First Inning Home Run Yes/No', // batting_homeRuns-all-1i-yn-yes/no
+      ],
+    },
   },
 
   // Football (NFL) - Updated from games-page.md
-  'americanfootball_nfl': {
+  americanfootball_nfl: {
     mainLines: {
       markets: [
         'Point Spread', // points-home-game-sp-home, points-away-game-sp-away
         'Total Points Over/Under', // points-all-game-ou-over, points-all-game-ou-under
-        'Moneyline' // points-home-game-ml-home, points-away-game-ml-away
-      ]
+        'Moneyline', // points-home-game-ml-home, points-away-game-ml-away
+      ],
     },
     playerProps: [
       {
@@ -129,8 +129,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Rushing Yards Over/Under', // rushing_yards-ANY_PLAYER_ID-game-ou-over/under
           'Rushing Touchdowns Over/Under', // rushing_touchdowns-ANY_PLAYER_ID-game-ou-over/under
           'Passing + Rushing Yards Over/Under', // passing+rushing_yards-ANY_PLAYER_ID-game-ou-over/under
-          'Passer Rating Over/Under' // passing_passerRating-ANY_PLAYER_ID-game-ou-over/under
-        ]
+          'Passer Rating Over/Under', // passing_passerRating-ANY_PLAYER_ID-game-ou-over/under
+        ],
       },
       {
         id: 'running-back',
@@ -143,8 +143,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Receiving Yards Over/Under', // receiving_yards-ANY_PLAYER_ID-game-ou-over/under
           'Receiving Touchdowns Over/Under', // receiving_touchdowns-ANY_PLAYER_ID-game-ou-over/under
           'Longest Rush Over/Under', // rushing_longestRush-ANY_PLAYER_ID-game-ou-over/under
-          'Rushing + Receiving Yards Over/Under' // rushing+receiving_yards-ANY_PLAYER_ID-game-ou-over/under
-        ]
+          'Rushing + Receiving Yards Over/Under', // rushing+receiving_yards-ANY_PLAYER_ID-game-ou-over/under
+        ],
       },
       {
         id: 'receiver',
@@ -155,8 +155,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Receiving Touchdowns Over/Under', // receiving_touchdowns-ANY_PLAYER_ID-game-ou-over/under
           'Longest Reception Over/Under', // receiving_longestReception-ANY_PLAYER_ID-game-ou-over/under
           'Rushing Yards Over/Under', // rushing_yards-ANY_PLAYER_ID-game-ou-over/under
-          'Rushing Touchdowns Over/Under' // rushing_touchdowns-ANY_PLAYER_ID-game-ou-over/under
-        ]
+          'Rushing Touchdowns Over/Under', // rushing_touchdowns-ANY_PLAYER_ID-game-ou-over/under
+        ],
       },
       {
         id: 'kicker-defense',
@@ -170,8 +170,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Interceptions Over/Under', // defense_interceptions-ANY_PLAYER_ID-game-ou-over/under
           'Fumble Recoveries Over/Under', // defense_fumbleRecoveries-ANY_PLAYER_ID-game-ou-over/under
           'Defensive Touchdowns Over/Under', // defense_touchdowns-ANY_PLAYER_ID-game-ou-over/under
-          'Tackles Over/Under' // defense_tackles-ANY_PLAYER_ID-game-ou-over/under
-        ]
+          'Tackles Over/Under', // defense_tackles-ANY_PLAYER_ID-game-ou-over/under
+        ],
       },
       {
         id: 'any-player',
@@ -182,9 +182,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'First Touchdown Yes/No', // firstTouchdown-ANY_PLAYER_ID-game-yn-yes/no
           'Last Touchdown Yes/No', // lastTouchdown-ANY_PLAYER_ID-game-yn-yes/no
           'First Score Yes/No', // firstToScore-ANY_PLAYER_ID-game-yn-yes/no
-          'Anytime Touchdown Yes/No' // touchdowns-ANY_PLAYER_ID-game-yn-yes/no
-        ]
-      }
+          'Anytime Touchdown Yes/No', // touchdowns-ANY_PLAYER_ID-game-yn-yes/no
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -197,8 +197,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Any Field Goals Yes/No', // fieldGoals_made-home/away-game-yn-yes/no
         'Team Total Turnovers Over/Under', // turnovers-home/away-game-ou-over/under
         'Team Total Sacks Over/Under', // defense_sacks-home/away-game-ou-over/under
-        'Team Total Tackles Over/Under' // defense_tackles-home/away-game-ou-over/under
-      ]
+        'Team Total Tackles Over/Under', // defense_tackles-home/away-game-ou-over/under
+      ],
     },
     gameProps: {
       markets: [
@@ -214,15 +214,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'First Quarter Points Over/Under', // points-all-1q-ou-over/under
         'First Half Points Over/Under', // points-all-1h-ou-over/under
         'Second Half Points Over/Under', // points-all-2h-ou-over/under
-        'Times Tied Over/Under' // timesTied-all-game-ou-over/under
-      ]
-    }
+        'Times Tied Over/Under', // timesTied-all-game-ou-over/under
+      ],
+    },
   },
 
   // Football (NCAAF)
-  'americanfootball_ncaaf': {
+  americanfootball_ncaaf: {
     mainLines: {
-      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline']
+      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline'],
     },
     playerProps: [
       {
@@ -234,8 +234,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Interceptions Over/Under',
           'Completions Over/Under',
           'Rushing Yards Over/Under',
-          'Rushing Touchdowns Over/Under'
-        ]
+          'Rushing Touchdowns Over/Under',
+        ],
       },
       {
         id: 'running-back',
@@ -245,8 +245,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Rushing Touchdowns Over/Under',
           'Rushing Attempts Over/Under',
           'Receptions Over/Under',
-          'Receiving Yards Over/Under'
-        ]
+          'Receiving Yards Over/Under',
+        ],
       },
       {
         id: 'receiver',
@@ -255,8 +255,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Receiving Yards Over/Under',
           'Receptions Over/Under',
           'Receiving Touchdowns Over/Under',
-          'Rushing Yards Over/Under'
-        ]
+          'Rushing Yards Over/Under',
+        ],
       },
       {
         id: 'kicker-defense',
@@ -265,9 +265,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Kicking Points Over/Under',
           'Field Goals Made Over/Under',
           'Sacks Over/Under',
-          'Interceptions Over/Under'
-        ]
-      }
+          'Interceptions Over/Under',
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -276,8 +276,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Total Field Goals Over/Under',
         'Team to Score First',
         'Team Total Turnovers Over/Under',
-        'Team Total Penalties Over/Under'
-      ]
+        'Team Total Penalties Over/Under',
+      ],
     },
     gameProps: {
       markets: [
@@ -288,15 +288,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'First Score Type (TD/FG/Safety)',
         'Points Scored Even/Odd',
         'First Quarter Points Over/Under',
-        'First Half Points Over/Under'
-      ]
-    }
+        'First Half Points Over/Under',
+      ],
+    },
   },
 
   // Basketball (NBA)
-  'basketball_nba': {
+  basketball_nba: {
     mainLines: {
-      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline']
+      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline'],
     },
     playerProps: [
       {
@@ -310,8 +310,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Three-Point Attempts Over/Under',
           'Free Throws Made Over/Under',
           'Free Throw Attempts Over/Under',
-          'Fantasy Score Over/Under'
-        ]
+          'Fantasy Score Over/Under',
+        ],
       },
       {
         id: 'rebounding',
@@ -319,8 +319,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         markets: [
           'Total Rebounds Over/Under',
           'Offensive Rebounds Over/Under',
-          'Defensive Rebounds Over/Under'
-        ]
+          'Defensive Rebounds Over/Under',
+        ],
       },
       {
         id: 'playmaking',
@@ -329,8 +329,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Assists Over/Under',
           'Turnovers Over/Under',
           'Steals Over/Under',
-          'Blocks Over/Under'
-        ]
+          'Blocks Over/Under',
+        ],
       },
       {
         id: 'combinations',
@@ -340,8 +340,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Points + Assists Over/Under',
           'Rebounds + Assists Over/Under',
           'Points + Rebounds + Assists Over/Under',
-          'Steals + Blocks Over/Under'
-        ]
+          'Steals + Blocks Over/Under',
+        ],
       },
       {
         id: 'specials',
@@ -350,9 +350,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Double-Double Yes/No',
           'Triple-Double Yes/No',
           'First Basket Yes/No',
-          'Last Basket Yes/No'
-        ]
-      }
+          'Last Basket Yes/No',
+        ],
+      },
     ],
     teamProps: {
       subcategories: [
@@ -363,8 +363,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
             'Team Total Points Over/Under',
             'Team Total Three-Pointers Over/Under',
             'Team to Score First',
-            'Team to Score Last'
-          ]
+            'Team to Score Last',
+          ],
         },
         {
           id: 'defense',
@@ -372,18 +372,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           markets: [
             'Team Total Rebounds Over/Under',
             'Team Total Steals Over/Under',
-            'Team Total Blocks Over/Under'
-          ]
+            'Team Total Blocks Over/Under',
+          ],
         },
         {
           id: 'playmaking',
           label: 'Playmaking',
-          markets: [
-            'Team Total Assists Over/Under',
-            'Team Total Turnovers Over/Under'
-          ]
-        }
-      ]
+          markets: ['Team Total Assists Over/Under', 'Team Total Turnovers Over/Under'],
+        },
+      ],
     },
     gameProps: {
       subcategories: [
@@ -396,8 +393,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
             'Total Three-Pointers Over/Under',
             'Total Turnovers Over/Under',
             'Total Steals Over/Under',
-            'Total Blocks Over/Under'
-          ]
+            'Total Blocks Over/Under',
+          ],
         },
         {
           id: 'quarters',
@@ -405,8 +402,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           markets: [
             'First Quarter Points Over/Under',
             'First Half Points Over/Under',
-            'Second Half Points Over/Under'
-          ]
+            'Second Half Points Over/Under',
+          ],
         },
         {
           id: 'specials',
@@ -415,17 +412,17 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
             'Game to Go to Overtime',
             'Points Scored Even/Odd',
             'Highest Scoring Quarter',
-            'Lowest Scoring Quarter'
-          ]
-        }
-      ]
-    }
+            'Lowest Scoring Quarter',
+          ],
+        },
+      ],
+    },
   },
 
   // Basketball (NCAAB)
-  'basketball_ncaab': {
+  basketball_ncaab: {
     mainLines: {
-      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline']
+      markets: ['Point Spread', 'Total Points Over/Under', 'Moneyline'],
     },
     playerProps: [
       {
@@ -435,8 +432,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Points Over/Under',
           'Field Goals Made Over/Under',
           'Three-Pointers Made Over/Under',
-          'Free Throws Made Over/Under'
-        ]
+          'Free Throws Made Over/Under',
+        ],
       },
       {
         id: 'rebounding',
@@ -444,8 +441,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         markets: [
           'Total Rebounds Over/Under',
           'Offensive Rebounds Over/Under',
-          'Defensive Rebounds Over/Under'
-        ]
+          'Defensive Rebounds Over/Under',
+        ],
       },
       {
         id: 'playmaking',
@@ -454,8 +451,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Assists Over/Under',
           'Turnovers Over/Under',
           'Steals Over/Under',
-          'Blocks Over/Under'
-        ]
+          'Blocks Over/Under',
+        ],
       },
       {
         id: 'combo-props',
@@ -463,9 +460,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         markets: [
           'Points + Rebounds Over/Under',
           'Points + Assists Over/Under',
-          'Double-Double Yes/No'
-        ]
-      }
+          'Double-Double Yes/No',
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -473,8 +470,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Total Rebounds Over/Under',
         'Team Total Assists Over/Under',
         'Team Total Three-Pointers Over/Under',
-        'Team to Score First'
-      ]
+        'Team to Score First',
+      ],
     },
     gameProps: {
       markets: [
@@ -483,15 +480,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Total Three-Pointers Over/Under',
         'Game to Go to Overtime',
         'First Half Points Over/Under',
-        'Second Half Points Over/Under'
-      ]
-    }
+        'Second Half Points Over/Under',
+      ],
+    },
   },
 
   // Hockey (NHL)
-  'icehockey_nhl': {
+  icehockey_nhl: {
     mainLines: {
-      markets: ['Moneyline', 'Puck Line (-1.5)', 'Total Goals Over/Under']
+      markets: ['Moneyline', 'Puck Line (-1.5)', 'Total Goals Over/Under'],
     },
     playerProps: [
       {
@@ -509,8 +506,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Time on Ice Over/Under',
           'Faceoff Wins Over/Under',
           'First Goal Scorer Yes/No',
-          'Anytime Goal Scorer Yes/No'
-        ]
+          'Anytime Goal Scorer Yes/No',
+        ],
       },
       {
         id: 'goalies',
@@ -520,9 +517,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Goals Against Over/Under',
           'Save Percentage Over/Under',
           'Shutout Yes/No',
-          'Win Yes/No'
-        ]
-      }
+          'Win Yes/No',
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -534,8 +531,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team to Score Last',
         'Team Any Goals Yes/No',
         'Team Power Play Goals Over/Under',
-        'Team Short-Handed Goals Over/Under'
-      ]
+        'Team Short-Handed Goals Over/Under',
+      ],
     },
     gameProps: {
       markets: [
@@ -549,15 +546,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'First Goal Time Over/Under',
         'First Period Goals Over/Under',
         'Second Period Goals Over/Under',
-        'Third Period Goals Over/Under'
-      ]
-    }
+        'Third Period Goals Over/Under',
+      ],
+    },
   },
 
   // Soccer (Champions League)
-  'soccer_uefa_champs_league': {
+  soccer_uefa_champs_league: {
     mainLines: {
-      markets: ['Moneyline (1X2)', 'Asian Handicap', 'Total Goals Over/Under']
+      markets: ['Moneyline (1X2)', 'Asian Handicap', 'Total Goals Over/Under'],
     },
     playerProps: [
       {
@@ -571,8 +568,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Fouls Committed Over/Under',
           'Cards Received Over/Under',
           'First Goal Scorer Yes/No',
-          'Anytime Goal Scorer Yes/No'
-        ]
+          'Anytime Goal Scorer Yes/No',
+        ],
       },
       {
         id: 'midfielders',
@@ -584,8 +581,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Assists Over/Under',
           'Shots Over/Under',
           'Fouls Committed Over/Under',
-          'Cards Received Over/Under'
-        ]
+          'Cards Received Over/Under',
+        ],
       },
       {
         id: 'defenders',
@@ -596,8 +593,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Blocks Over/Under',
           'Interceptions Over/Under',
           'Fouls Committed Over/Under',
-          'Cards Received Over/Under'
-        ]
+          'Cards Received Over/Under',
+        ],
       },
       {
         id: 'goalkeepers',
@@ -606,9 +603,9 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Saves Over/Under',
           'Goals Conceded Over/Under',
           'Clean Sheet Yes/No',
-          'Punches/Catches Over/Under'
-        ]
-      }
+          'Punches/Catches Over/Under',
+        ],
+      },
     ],
     teamProps: {
       markets: [
@@ -622,8 +619,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Any Goals Yes/No',
         'Team Clean Sheet Yes/No',
         'Team Total Fouls Over/Under',
-        'Team Total Offsides Over/Under'
-      ]
+        'Team Total Offsides Over/Under',
+      ],
     },
     gameProps: {
       markets: [
@@ -639,15 +636,15 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Both Teams to Score Yes/No',
         'First Goal Time Over/Under',
         'First Half Goals Over/Under',
-        'Second Half Goals Over/Under'
-      ]
-    }
+        'Second Half Goals Over/Under',
+      ],
+    },
   },
 
   // Soccer (MLS)
-  'soccer_usa_mls': {
+  soccer_usa_mls: {
     mainLines: {
-      markets: ['Moneyline (1X2)', 'Asian Handicap', 'Total Goals Over/Under']
+      markets: ['Moneyline (1X2)', 'Asian Handicap', 'Total Goals Over/Under'],
     },
     playerProps: [
       {
@@ -658,8 +655,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Shots on Target Over/Under',
           'Assists Over/Under',
           'First Goal Scorer Yes/No',
-          'Anytime Goal Scorer Yes/No'
-        ]
+          'Anytime Goal Scorer Yes/No',
+        ],
       },
       {
         id: 'midfielders',
@@ -668,8 +665,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Passes Completed Over/Under',
           'Tackles Over/Under',
           'Assists Over/Under',
-          'Shots Over/Under'
-        ]
+          'Shots Over/Under',
+        ],
       },
       {
         id: 'defenders',
@@ -678,18 +675,14 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
           'Tackles Over/Under',
           'Clearances Over/Under',
           'Blocks Over/Under',
-          'Interceptions Over/Under'
-        ]
+          'Interceptions Over/Under',
+        ],
       },
       {
         id: 'goalkeepers',
         label: 'Goalkeepers',
-        markets: [
-          'Saves Over/Under',
-          'Goals Conceded Over/Under',
-          'Clean Sheet Yes/No'
-        ]
-      }
+        markets: ['Saves Over/Under', 'Goals Conceded Over/Under', 'Clean Sheet Yes/No'],
+      },
     ],
     teamProps: {
       markets: [
@@ -698,8 +691,8 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Team Total Corners Over/Under',
         'Team Total Cards Over/Under',
         'Team to Score First',
-        'Team Clean Sheet Yes/No'
-      ]
+        'Team Clean Sheet Yes/No',
+      ],
     },
     gameProps: {
       markets: [
@@ -709,25 +702,29 @@ export const sportsMarketConfigs: Record<string, SportMarketConfig> = {
         'Both Teams to Score Yes/No',
         'Goals Scored Even/Odd',
         'First Half Goals Over/Under',
-        'Second Half Goals Over/Under'
-      ]
-    }
-  }
-};
+        'Second Half Goals Over/Under',
+      ],
+    },
+  },
+}
 
 export const getMarketConfigForSport = (sportKey: string): SportMarketConfig | null => {
   // Handle both short and full sport keys
   const mappings: Record<string, string> = {
-    'mlb': 'baseball_mlb',
-    'nfl': 'americanfootball_nfl',
-    'nba': 'basketball_nba',
-    'nhl': 'icehockey_nhl',
-    'ncaaf': 'americanfootball_ncaaf',
-    'ncaab': 'basketball_ncaab',
-    'champions_league': 'soccer_uefa_champs_league',
-    'mls': 'soccer_usa_mls'
-  };
-  
+    mlb: 'baseball_mlb',
+    nfl: 'americanfootball_nfl',
+    nba: 'basketball_nba',
+    nhl: 'icehockey_nhl',
+    ncaaf: 'americanfootball_ncaaf',
+    ncaab: 'basketball_ncaab',
+    champions_league: 'soccer_uefa_champs_league',
+    mls: 'soccer_usa_mls',
+  }
+
   // Try the original key first, then try the mapped key
-  return sportsMarketConfigs[sportKey] || (mappings[sportKey] ? sportsMarketConfigs[mappings[sportKey]] : null) || null;
-};
+  return (
+    sportsMarketConfigs[sportKey] ||
+    (mappings[sportKey] ? sportsMarketConfigs[mappings[sportKey]] : null) ||
+    null
+  )
+}

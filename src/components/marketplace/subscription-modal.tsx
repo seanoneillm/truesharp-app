@@ -9,7 +9,7 @@ import {
   Shield,
   Calendar,
   DollarSign,
-  CheckCircle
+  CheckCircle,
 } from 'lucide-react'
 
 interface StrategyData {
@@ -59,7 +59,7 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
       label: 'Weekly',
       period: 'week',
       savings: null,
-      popular: false
+      popular: false,
     },
     {
       frequency: 'monthly' as const,
@@ -67,16 +67,20 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
       label: 'Monthly',
       period: 'month',
       savings: null,
-      popular: true
+      popular: true,
     },
     {
       frequency: 'yearly' as const,
       price: strategy.pricing_yearly,
       label: 'Yearly',
       period: 'year',
-      savings: Math.round(((strategy.pricing_monthly * 12) - strategy.pricing_yearly) / (strategy.pricing_monthly * 12) * 100),
-      popular: false
-    }
+      savings: Math.round(
+        ((strategy.pricing_monthly * 12 - strategy.pricing_yearly) /
+          (strategy.pricing_monthly * 12)) *
+          100
+      ),
+      popular: false,
+    },
   ]
 
   const selectedOption = pricingOptions.find(option => option.frequency === selectedFrequency)
@@ -86,11 +90,16 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
     try {
       // Here you would integrate with Stripe or your payment processor
       // For now, we'll simulate the subscription process
-      console.log('Subscribing to strategy:', strategy.strategy_id, 'with frequency:', selectedFrequency)
-      
+      console.log(
+        'Subscribing to strategy:',
+        strategy.strategy_id,
+        'with frequency:',
+        selectedFrequency
+      )
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
+
       // Close modal on success
       onClose()
     } catch (error) {
@@ -103,94 +112,86 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose} />
+
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="p-6 border-b border-slate-100">
+        <div className="border-b border-slate-100 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               {strategy.profile_picture_url ? (
                 <img
                   src={strategy.profile_picture_url}
                   alt={strategy.username}
-                  className="w-12 h-12 rounded-full object-cover"
+                  className="h-12 w-12 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-lg font-bold text-white">
                   {strategy.username.charAt(0).toUpperCase()}
                 </div>
               )}
-              
+
               <div>
                 <div className="flex items-center space-x-2">
                   <h2 className="text-xl font-bold text-slate-900">@{strategy.username}</h2>
-                  {strategy.is_verified && (
-                    <Shield className="w-5 h-5 text-blue-500" />
-                  )}
+                  {strategy.is_verified && <Shield className="h-5 w-5 text-blue-500" />}
                 </div>
                 <p className="text-slate-600">{strategy.primary_sport} Specialist</p>
               </div>
             </div>
-            
+
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              className="rounded-full p-2 transition-colors hover:bg-slate-100"
             >
-              <X className="w-5 h-5 text-slate-400" />
+              <X className="h-5 w-5 text-slate-400" />
             </button>
           </div>
         </div>
-        
+
         {/* Strategy Info */}
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">
-            {strategy.strategy_name}
-          </h3>
-          <p className="text-slate-600 mb-4">
-            {strategy.strategy_description}
-          </p>
-          
+        <div className="border-b border-slate-100 p-6">
+          <h3 className="mb-2 text-lg font-semibold text-slate-900">{strategy.strategy_name}</h3>
+          <p className="mb-4 text-slate-600">{strategy.strategy_description}</p>
+
           {/* Performance Metrics */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className={`text-2xl font-bold mb-1 ${
-                strategy.roi_percentage >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {strategy.roi_percentage >= 0 ? '+' : ''}{strategy.roi_percentage.toFixed(1)}%
+            <div className="rounded-lg bg-slate-50 p-4 text-center">
+              <div
+                className={`mb-1 text-2xl font-bold ${
+                  strategy.roi_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {strategy.roi_percentage >= 0 ? '+' : ''}
+                {strategy.roi_percentage.toFixed(1)}%
               </div>
               <div className="text-sm text-slate-600">ROI</div>
             </div>
-            
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-900 mb-1">
+
+            <div className="rounded-lg bg-slate-50 p-4 text-center">
+              <div className="mb-1 text-2xl font-bold text-slate-900">
                 {strategy.win_rate.toFixed(1)}%
               </div>
               <div className="text-sm text-slate-600">Win Rate</div>
             </div>
-            
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-900 mb-1">
-                {strategy.total_bets}
-              </div>
+
+            <div className="rounded-lg bg-slate-50 p-4 text-center">
+              <div className="mb-1 text-2xl font-bold text-slate-900">{strategy.total_bets}</div>
               <div className="text-sm text-slate-600">Total Bets</div>
             </div>
           </div>
         </div>
-        
+
         {/* Pricing Options */}
-        <div className="p-6 border-b border-slate-100">
-          <h4 className="text-lg font-semibold text-slate-900 mb-4">Choose Your Plan</h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {pricingOptions.map((option) => (
+        <div className="border-b border-slate-100 p-6">
+          <h4 className="mb-4 text-lg font-semibold text-slate-900">Choose Your Plan</h4>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {pricingOptions.map(option => (
               <div
                 key={option.frequency}
-                className={`relative border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${
                   selectedFrequency === option.frequency
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-slate-200 hover:border-slate-300'
@@ -198,84 +199,83 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
                 onClick={() => setSelectedFrequency(option.frequency)}
               >
                 {option.popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
+                    <div className="rounded-full bg-blue-500 px-3 py-1 text-xs font-medium text-white">
                       Most Popular
                     </div>
                   </div>
                 )}
-                
+
                 {option.savings && (
-                  <div className="absolute -top-2 -right-2">
-                    <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  <div className="absolute -right-2 -top-2">
+                    <div className="rounded-full bg-green-500 px-2 py-1 text-xs font-medium text-white">
                       Save {option.savings}%
                     </div>
                   </div>
                 )}
-                
+
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-slate-900">
-                    {option.label}
-                  </div>
-                  <div className="text-3xl font-bold text-slate-900 mt-2">
-                    ${option.price}
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    per {option.period}
-                  </div>
+                  <div className="text-lg font-semibold text-slate-900">{option.label}</div>
+                  <div className="mt-2 text-3xl font-bold text-slate-900">${option.price}</div>
+                  <div className="text-sm text-slate-600">per {option.period}</div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        
+
         {/* What's Included */}
-        <div className="p-6 border-b border-slate-100">
-          <h4 className="text-lg font-semibold text-slate-900 mb-4">What's Included</h4>
-          
+        <div className="border-b border-slate-100 p-6">
+          <h4 className="mb-4 text-lg font-semibold text-slate-900">What's Included</h4>
+
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-slate-700">Access to all strategy picks</span>
             </div>
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-slate-700">Real-time notifications</span>
             </div>
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-slate-700">Performance analytics</span>
             </div>
             <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-slate-700">Cancel anytime</span>
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         <div className="p-6">
           <button
             onClick={handleSubscribe}
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
               <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
                 <span>Processing...</span>
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-2">
-                <Crown className="w-5 h-5" />
+                <Crown className="h-5 w-5" />
                 <span>
-                  Subscribe for ${selectedOption?.price}/{selectedOption?.period === 'year' ? 'year' : selectedOption?.period === 'month' ? 'month' : 'week'}
+                  Subscribe for ${selectedOption?.price}/
+                  {selectedOption?.period === 'year'
+                    ? 'year'
+                    : selectedOption?.period === 'month'
+                      ? 'month'
+                      : 'week'}
                 </span>
               </div>
             )}
           </button>
-          
-          <p className="text-xs text-slate-500 text-center mt-3">
+
+          <p className="mt-3 text-center text-xs text-slate-500">
             Secure payment processed by Stripe. Cancel anytime.
           </p>
         </div>

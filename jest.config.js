@@ -9,7 +9,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   // Add more setup options before each test is run
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
+
   // Module name mapping for path aliases
   moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/src/$1',

@@ -18,7 +18,7 @@ import {
   Search,
   User,
   LogOut,
-  Crown
+  Crown,
 } from 'lucide-react'
 
 interface MobileNavProps {
@@ -50,21 +50,14 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
   return (
     <div className="relative z-50 lg:hidden" role="dialog" aria-modal="true">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-gray-900/80" 
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 bg-gray-900/80" onClick={onClose} />
+
       {/* Panel */}
       <div className="fixed inset-0 flex">
         <div className="relative mr-16 flex w-full max-w-xs flex-1">
           {/* Close button */}
           <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-            <button
-              type="button"
-              className="-m-2.5 p-2.5"
-              onClick={onClose}
-            >
+            <button type="button" className="-m-2.5 p-2.5" onClick={onClose}>
               <span className="sr-only">Close sidebar</span>
               <X className="h-6 w-6 text-white" aria-hidden="true" />
             </button>
@@ -75,7 +68,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
             {/* Logo */}
             <div className="flex h-16 shrink-0 items-center">
               <Link href="/dashboard" className="flex items-center" onClick={onClose}>
-                <TrendingUp className="h-8 w-8 text-blue-600 mr-2" />
+                <TrendingUp className="mr-2 h-8 w-8 text-blue-600" />
                 <span className="text-2xl font-bold text-gray-900">TrueSharp</span>
               </Link>
             </div>
@@ -85,7 +78,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
               <ul className="flex flex-1 flex-col gap-y-7">
                 <li>
                   <ul className="-mx-2 space-y-1">
-                    {navigation.map((item) => {
+                    {navigation.map(item => {
                       const current = isCurrentPath(item.href)
                       return (
                         <li key={item.name}>
@@ -93,17 +86,19 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
                             href={item.href}
                             onClick={onClose}
                             className={cn(
-                              'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold',
+                              'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                               current
                                 ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-700 hover:text-blue-700 hover:bg-blue-50'
+                                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
                             )}
                           >
-                            <item.icon 
+                            <item.icon
                               className={cn(
                                 'h-6 w-6 shrink-0',
-                                current ? 'text-blue-700' : 'text-gray-400 group-hover:text-blue-700'
-                              )} 
+                                current
+                                  ? 'text-blue-700'
+                                  : 'text-gray-400 group-hover:text-blue-700'
+                              )}
                             />
                             {item.name}
                           </Link>
@@ -115,18 +110,16 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
 
                 {/* Pro upgrade section */}
                 <li className="mt-auto">
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 text-white">
-                    <div className="flex items-center mb-2">
-                      <Crown className="h-5 w-5 text-yellow-300 mr-2" />
+                  <div className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-white">
+                    <div className="mb-2 flex items-center">
+                      <Crown className="mr-2 h-5 w-5 text-yellow-300" />
                       <span className="text-sm font-semibold">Go Pro</span>
                     </div>
-                    <p className="text-xs text-blue-100 mb-3">
-                      Unlock advanced features
-                    </p>
+                    <p className="mb-3 text-xs text-blue-100">Unlock advanced features</p>
                     <Link
                       href="/upgrade"
                       onClick={onClose}
-                      className="block w-full bg-white text-blue-600 text-center text-sm font-semibold py-2 px-3 rounded-md hover:bg-blue-50 transition-colors"
+                      className="block w-full rounded-md bg-white px-3 py-2 text-center text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-50"
                     >
                       Upgrade
                     </Link>
@@ -162,7 +155,7 @@ export function MobileHeader() {
 
         <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
           <div className="relative flex flex-1">
-            <Search className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-gray-400 pl-3" />
+            <Search className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 pl-3 text-gray-400" />
             <input
               className="block h-full w-full border-0 py-0 pl-10 pr-0 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
               placeholder="Search..."
@@ -177,12 +170,9 @@ export function MobileHeader() {
 
             {/* Profile dropdown */}
             <div className="relative">
-              <button
-                type="button"
-                className="-m-1.5 flex items-center p-1.5"
-              >
+              <button type="button" className="-m-1.5 flex items-center p-1.5">
                 <span className="sr-only">Open user menu</span>
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
                   <User className="h-5 w-5 text-white" />
                 </div>
               </button>
@@ -191,10 +181,7 @@ export function MobileHeader() {
         </div>
       </div>
 
-      <MobileNav 
-        isOpen={mobileMenuOpen} 
-        onClose={() => setMobileMenuOpen(false)} 
-      />
+      <MobileNav isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
     </>
   )
 }

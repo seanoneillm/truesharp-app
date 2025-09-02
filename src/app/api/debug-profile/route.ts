@@ -5,8 +5,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -30,23 +33,29 @@ export async function GET(request: NextRequest) {
       auth_user: {
         id: user.id,
         email: user.email,
-        user_metadata: user.user_metadata
-      }
+        user_metadata: user.user_metadata,
+      },
     })
   } catch (error) {
     console.error('Debug profile error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -63,8 +72,8 @@ export async function POST(request: NextRequest) {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
-        }
+          persistSession: false,
+        },
       }
     )
 
@@ -82,7 +91,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .update({
         bio: testData?.bio || 'Test bio from debug endpoint',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
       .select()
@@ -94,7 +103,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .update({
         bio: testData?.bio || 'Test bio from regular client',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
       .select()
@@ -104,18 +113,21 @@ export async function POST(request: NextRequest) {
       existing_profile: existingProfile,
       service_role_update: {
         data: updatedProfile,
-        error: updateError
+        error: updateError,
       },
       regular_client_update: {
         data: regularUpdate,
-        error: regularError
-      }
+        error: regularError,
+      },
     })
   } catch (error) {
     console.error('Debug profile POST error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

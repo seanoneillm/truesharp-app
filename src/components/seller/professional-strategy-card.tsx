@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, memo } from 'react'
-import { 
-  Edit3, 
-  Save, 
-  X, 
-  Trash2, 
+import {
+  Edit3,
+  Save,
+  X,
+  Trash2,
   DollarSign,
   TrendingUp,
   Target,
@@ -17,7 +17,7 @@ import {
   Eye,
   Globe,
   Lock,
-  Share2
+  Share2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -65,7 +65,7 @@ const ProfessionalStrategyCardComponent = ({
   onDelete,
   onSuccess,
   onError,
-  isLoading = false
+  isLoading = false,
 }: ProfessionalStrategyCardProps) => {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -73,14 +73,14 @@ const ProfessionalStrategyCardComponent = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showMonetizationModal, setShowMonetizationModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
-  
+
   const [editedStrategy, setEditedStrategy] = useState<Partial<StrategyData>>({
     name: strategy.name,
     description: strategy.description,
     monetized: strategy.monetized,
     pricing_weekly: strategy.pricing_weekly,
     pricing_monthly: strategy.pricing_monthly,
-    pricing_yearly: strategy.pricing_yearly
+    pricing_yearly: strategy.pricing_yearly,
   })
 
   const formatCurrency = (amount: number | null) => {
@@ -88,7 +88,7 @@ const ProfessionalStrategyCardComponent = ({
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(amount)
   }
 
@@ -109,7 +109,7 @@ const ProfessionalStrategyCardComponent = ({
       monetized: strategy.monetized,
       pricing_weekly: strategy.pricing_weekly,
       pricing_monthly: strategy.pricing_monthly,
-      pricing_yearly: strategy.pricing_yearly
+      pricing_yearly: strategy.pricing_yearly,
     })
   }
 
@@ -141,7 +141,7 @@ const ProfessionalStrategyCardComponent = ({
 
   const handleToggleMonetization = () => {
     const newMonetizedState = !editedStrategy.monetized
-    
+
     // If turning monetization ON, show warning modal first
     if (newMonetizedState) {
       setShowMonetizationModal(true)
@@ -149,7 +149,7 @@ const ProfessionalStrategyCardComponent = ({
       // Turning monetization OFF - no warning needed
       setEditedStrategy(prev => ({
         ...prev,
-        monetized: false
+        monetized: false,
       }))
     }
   }
@@ -157,68 +157,77 @@ const ProfessionalStrategyCardComponent = ({
   const confirmMonetization = () => {
     setEditedStrategy(prev => ({
       ...prev,
-      monetized: true
+      monetized: true,
     }))
     setShowMonetizationModal(false)
   }
 
   const validatePricing = () => {
-    const hasAtLeastOnePrice = editedStrategy.pricing_weekly || 
-                              editedStrategy.pricing_monthly || 
-                              editedStrategy.pricing_yearly
+    const hasAtLeastOnePrice =
+      editedStrategy.pricing_weekly ||
+      editedStrategy.pricing_monthly ||
+      editedStrategy.pricing_yearly
     return hasAtLeastOnePrice
   }
 
-  const updatePricing = (field: 'pricing_weekly' | 'pricing_monthly' | 'pricing_yearly', value: string) => {
+  const updatePricing = (
+    field: 'pricing_weekly' | 'pricing_monthly' | 'pricing_yearly',
+    value: string
+  ) => {
     const numValue = value === '' ? null : parseFloat(value)
     setEditedStrategy(prev => ({
       ...prev,
-      [field]: numValue
+      [field]: numValue,
     }))
   }
 
   return (
     <>
-      <Card className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <Card className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-50 to-gray-50 p-6 border-b border-gray-100">
+        <div className="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-gray-50 p-6">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-3">
                   <Input
                     value={editedStrategy.name || ''}
-                    onChange={(e) => setEditedStrategy(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={e => setEditedStrategy(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Strategy name"
                     className="text-lg font-semibold"
                   />
                   <textarea
                     value={editedStrategy.description || ''}
-                    onChange={(e) => setEditedStrategy(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={e =>
+                      setEditedStrategy(prev => ({ ...prev, description: e.target.value }))
+                    }
                     placeholder="Strategy description"
-                    className="w-full p-3 border border-gray-300 rounded-lg resize-none h-20 text-sm"
+                    className="h-20 w-full resize-none rounded-lg border border-gray-300 p-3 text-sm"
                   />
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {strategy.name}
-                    </h3>
+                  <div className="mb-2 flex items-center space-x-3">
+                    <h3 className="text-xl font-bold text-gray-900">{strategy.name}</h3>
                     {strategy.start_date && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-full">
-                        📅 Since {new Date(strategy.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                        📅 Since{' '}
+                        {new Date(strategy.start_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">
+                  <p className="text-sm leading-relaxed text-gray-600">
                     {strategy.description || 'No description provided'}
                   </p>
                 </div>
               )}
             </div>
-            
-            <div className="flex items-center space-x-2 ml-4">
+
+            <div className="ml-4 flex items-center space-x-2">
               {isEditing ? (
                 <>
                   <Button
@@ -227,15 +236,11 @@ const ProfessionalStrategyCardComponent = ({
                     size="sm"
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    <Save className="h-4 w-4 mr-1" />
+                    <Save className="mr-1 h-4 w-4" />
                     {isSaving ? 'Saving...' : 'Save'}
                   </Button>
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <X className="h-4 w-4 mr-1" />
+                  <Button onClick={handleCancel} variant="outline" size="sm">
+                    <X className="mr-1 h-4 w-4" />
                     Cancel
                   </Button>
                 </>
@@ -246,28 +251,23 @@ const ProfessionalStrategyCardComponent = ({
                     variant="outline"
                     size="sm"
                     disabled={isLoading || !strategy.monetized}
-                    className="bg-blue-50 border-blue-300 hover:bg-blue-100"
+                    className="border-blue-300 bg-blue-50 hover:bg-blue-100"
                   >
-                    <Share2 className="h-4 w-4 mr-1" />
+                    <Share2 className="mr-1 h-4 w-4" />
                     Share
                   </Button>
-                  <Button
-                    onClick={handleEdit}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                  >
-                    <Edit3 className="h-4 w-4 mr-1" />
+                  <Button onClick={handleEdit} variant="outline" size="sm" disabled={isLoading}>
+                    <Edit3 className="mr-1 h-4 w-4" />
                     Edit
                   </Button>
                   <Button
                     onClick={() => setShowDeleteModal(true)}
                     variant="outline"
                     size="sm"
-                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    className="border-red-300 text-red-600 hover:bg-red-50"
                     disabled={isLoading}
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
+                    <Trash2 className="mr-1 h-4 w-4" />
                     Delete
                   </Button>
                 </>
@@ -277,60 +277,58 @@ const ProfessionalStrategyCardComponent = ({
         </div>
 
         {/* Performance Stats - Read Only */}
-        <div className="p-6 bg-white">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+        <div className="bg-white p-6">
+          <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-700">
             Performance Metrics
           </h4>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
             <div className="text-center">
-              <div className={`flex items-center justify-center space-x-1 mb-2 ${
-                (strategy.performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                <TrendingUp className="w-5 h-5" />
+              <div
+                className={`mb-2 flex items-center justify-center space-x-1 ${
+                  (strategy.performance_roi || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                <TrendingUp className="h-5 w-5" />
                 <span className="text-2xl font-bold">
                   {formatPercentage(strategy.performance_roi)}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 font-medium">ROI</div>
+              <div className="text-xs font-medium text-gray-500">ROI</div>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center space-x-1 mb-2 text-blue-600">
-                <Target className="w-5 h-5" />
+              <div className="mb-2 flex items-center justify-center space-x-1 text-blue-600">
+                <Target className="h-5 w-5" />
                 <span className="text-2xl font-bold">
                   {formatPercentage(strategy.performance_win_rate)}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 font-medium">Win Rate</div>
+              <div className="text-xs font-medium text-gray-500">Win Rate</div>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center space-x-1 mb-2 text-purple-600">
-                <Activity className="w-5 h-5" />
-                <span className="text-2xl font-bold">
-                  {strategy.performance_total_bets}
-                </span>
+              <div className="mb-2 flex items-center justify-center space-x-1 text-purple-600">
+                <Activity className="h-5 w-5" />
+                <span className="text-2xl font-bold">{strategy.performance_total_bets}</span>
               </div>
-              <div className="text-xs text-gray-500 font-medium">Total Bets</div>
+              <div className="text-xs font-medium text-gray-500">Total Bets</div>
             </div>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center space-x-1 mb-2 text-orange-600">
-                <Users className="w-5 h-5" />
-                <span className="text-2xl font-bold">
-                  {strategy.subscriber_count}
-                </span>
+              <div className="mb-2 flex items-center justify-center space-x-1 text-orange-600">
+                <Users className="h-5 w-5" />
+                <span className="text-2xl font-bold">{strategy.subscriber_count}</span>
               </div>
-              <div className="text-xs text-gray-500 font-medium">Subscribers</div>
+              <div className="text-xs font-medium text-gray-500">Subscribers</div>
             </div>
           </div>
         </div>
 
         {/* Open Bets Section */}
         {strategy.open_bets && strategy.open_bets.length > 0 && (
-          <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 border-t border-gray-100">
-            <OpenBetsDisplay 
-              bets={strategy.open_bets} 
+          <div className="border-t border-gray-100 bg-gradient-to-r from-orange-50 to-red-50 p-6">
+            <OpenBetsDisplay
+              bets={strategy.open_bets}
               title="Current Open Bets"
               maxBets={3}
               compact={false}
@@ -339,21 +337,21 @@ const ProfessionalStrategyCardComponent = ({
         )}
 
         {/* Monetization & Pricing */}
-        <div className="p-6 bg-gray-50 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-4">
+        <div className="border-t border-gray-100 bg-gray-50 p-6">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                 Monetization
               </h4>
               {(isEditing ? editedStrategy.monetized : strategy.monetized) && (
-                <div className="flex items-center space-x-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
-                  <Globe className="w-3 h-3" />
+                <div className="flex items-center space-x-1 rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                  <Globe className="h-3 w-3" />
                   <span>Public</span>
                 </div>
               )}
               {!(isEditing ? editedStrategy.monetized : strategy.monetized) && (
-                <div className="flex items-center space-x-1 bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
-                  <Lock className="w-3 h-3" />
+                <div className="flex items-center space-x-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                  <Lock className="h-3 w-3" />
                   <span>Private</span>
                 </div>
               )}
@@ -365,13 +363,13 @@ const ProfessionalStrategyCardComponent = ({
               >
                 {editedStrategy.monetized ? (
                   <>
-                    <ToggleRight className="w-6 h-6 text-green-600" />
-                    <span className="text-green-600 font-medium">Enabled</span>
+                    <ToggleRight className="h-6 w-6 text-green-600" />
+                    <span className="font-medium text-green-600">Enabled</span>
                   </>
                 ) : (
                   <>
-                    <ToggleLeft className="w-6 h-6 text-gray-400" />
-                    <span className="text-gray-500 font-medium">Disabled</span>
+                    <ToggleLeft className="h-6 w-6 text-gray-400" />
+                    <span className="font-medium text-gray-500">Disabled</span>
                   </>
                 )}
               </button>
@@ -380,13 +378,13 @@ const ProfessionalStrategyCardComponent = ({
               <div className="flex items-center space-x-2">
                 {strategy.monetized ? (
                   <>
-                    <ToggleRight className="w-6 h-6 text-green-600" />
-                    <span className="text-green-600 font-medium text-sm">Enabled</span>
+                    <ToggleRight className="h-6 w-6 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">Enabled</span>
                   </>
                 ) : (
                   <>
-                    <ToggleLeft className="w-6 h-6 text-gray-400" />
-                    <span className="text-gray-500 font-medium text-sm">Disabled</span>
+                    <ToggleLeft className="h-6 w-6 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-500">Disabled</span>
                   </>
                 )}
               </div>
@@ -395,12 +393,17 @@ const ProfessionalStrategyCardComponent = ({
 
           {/* Monetization Warning */}
           {isEditing && !editedStrategy.monetized && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <div className="flex items-start space-x-2">
-                <Eye className="w-4 h-4 text-amber-600 mt-0.5" />
+                <Eye className="mt-0.5 h-4 w-4 text-amber-600" />
                 <div className="text-xs text-amber-800">
-                  <p className="font-medium mb-1">Enable monetization to make this strategy public</p>
-                  <p>When enabled, your strategy performance (ROI, win rate, total bets) will be visible to all users. Strategy filters remain private.</p>
+                  <p className="mb-1 font-medium">
+                    Enable monetization to make this strategy public
+                  </p>
+                  <p>
+                    When enabled, your strategy performance (ROI, win rate, total bets) will be
+                    visible to all users. Strategy filters remain private.
+                  </p>
                 </div>
               </div>
             </div>
@@ -409,121 +412,128 @@ const ProfessionalStrategyCardComponent = ({
           {(isEditing ? editedStrategy.monetized : strategy.monetized) && (
             <div>
               {isEditing && !validatePricing() && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-800">
-                    <strong>Action Required:</strong> Set at least one pricing option (weekly, monthly, or yearly) to make your strategy available for subscription.
+                    <strong>Action Required:</strong> Set at least one pricing option (weekly,
+                    monthly, or yearly) to make your strategy available for subscription.
                   </p>
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Weekly Pricing */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Weekly</span>
-                  {isEditing && editedStrategy.pricing_weekly && (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Set</span>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={editedStrategy.pricing_weekly || ''}
-                    onChange={(e) => updatePricing('pricing_weekly', e.target.value)}
-                    placeholder="0"
-                    className="text-lg font-semibold"
-                    min="0"
-                    step="0.01"
-                  />
-                ) : (
-                  <div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(strategy.pricing_weekly)}
-                    </div>
-                    {strategy.weekly_subscribers !== undefined && (
-                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Users className="w-3 h-3 mr-1" />
-                        {strategy.weekly_subscribers} subscribers
-                      </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Weekly Pricing */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="mb-2 flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Weekly</span>
+                    {isEditing && editedStrategy.pricing_weekly && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-600">
+                        Set
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      value={editedStrategy.pricing_weekly || ''}
+                      onChange={e => updatePricing('pricing_weekly', e.target.value)}
+                      placeholder="0"
+                      className="text-lg font-semibold"
+                      min="0"
+                      step="0.01"
+                    />
+                  ) : (
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {formatCurrency(strategy.pricing_weekly)}
+                      </div>
+                      {strategy.weekly_subscribers !== undefined && (
+                        <div className="mt-1 flex items-center text-xs text-gray-500">
+                          <Users className="mr-1 h-3 w-3" />
+                          {strategy.weekly_subscribers} subscribers
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-              {/* Monthly Pricing */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Monthly</span>
-                  {isEditing && editedStrategy.pricing_monthly && (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Set</span>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={editedStrategy.pricing_monthly || ''}
-                    onChange={(e) => updatePricing('pricing_monthly', e.target.value)}
-                    placeholder="0"
-                    className="text-lg font-semibold"
-                    min="0"
-                    step="0.01"
-                  />
-                ) : (
-                  <div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(strategy.pricing_monthly)}
-                    </div>
-                    {strategy.monthly_subscribers !== undefined && (
-                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Users className="w-3 h-3 mr-1" />
-                        {strategy.monthly_subscribers} subscribers
-                      </div>
+                {/* Monthly Pricing */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="mb-2 flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Monthly</span>
+                    {isEditing && editedStrategy.pricing_monthly && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-600">
+                        Set
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      value={editedStrategy.pricing_monthly || ''}
+                      onChange={e => updatePricing('pricing_monthly', e.target.value)}
+                      placeholder="0"
+                      className="text-lg font-semibold"
+                      min="0"
+                      step="0.01"
+                    />
+                  ) : (
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {formatCurrency(strategy.pricing_monthly)}
+                      </div>
+                      {strategy.monthly_subscribers !== undefined && (
+                        <div className="mt-1 flex items-center text-xs text-gray-500">
+                          <Users className="mr-1 h-3 w-3" />
+                          {strategy.monthly_subscribers} subscribers
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-              {/* Yearly Pricing */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Yearly</span>
-                  {isEditing && editedStrategy.pricing_yearly && (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Set</span>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={editedStrategy.pricing_yearly || ''}
-                    onChange={(e) => updatePricing('pricing_yearly', e.target.value)}
-                    placeholder="0"
-                    className="text-lg font-semibold"
-                    min="0"
-                    step="0.01"
-                  />
-                ) : (
-                  <div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(strategy.pricing_yearly)}
-                    </div>
-                    {strategy.yearly_subscribers !== undefined && (
-                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Users className="w-3 h-3 mr-1" />
-                        {strategy.yearly_subscribers} subscribers
-                      </div>
+                {/* Yearly Pricing */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="mb-2 flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Yearly</span>
+                    {isEditing && editedStrategy.pricing_yearly && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-600">
+                        Set
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      value={editedStrategy.pricing_yearly || ''}
+                      onChange={e => updatePricing('pricing_yearly', e.target.value)}
+                      placeholder="0"
+                      className="text-lg font-semibold"
+                      min="0"
+                      step="0.01"
+                    />
+                  ) : (
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {formatCurrency(strategy.pricing_yearly)}
+                      </div>
+                      {strategy.yearly_subscribers !== undefined && (
+                        <div className="mt-1 flex items-center text-xs text-gray-500">
+                          <Users className="mr-1 h-3 w-3" />
+                          {strategy.yearly_subscribers} subscribers
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {!(isEditing ? editedStrategy.monetized : strategy.monetized) && (
-            <div className="text-center text-gray-500 py-8">
-              <DollarSign className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+            <div className="py-8 text-center text-gray-500">
+              <DollarSign className="mx-auto mb-2 h-12 w-12 text-gray-300" />
               <p className="text-sm">
                 Enable monetization to set pricing and start earning revenue
               </p>
@@ -535,75 +545,73 @@ const ProfessionalStrategyCardComponent = ({
       {/* Monetization Warning Modal */}
       <Modal isOpen={showMonetizationModal} onClose={() => setShowMonetizationModal(false)}>
         <div className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="bg-blue-100 p-2 rounded-full">
-              <Globe className="w-6 h-6 text-blue-600" />
+          <div className="mb-4 flex items-center space-x-3">
+            <div className="rounded-full bg-blue-100 p-2">
+              <Globe className="h-6 w-6 text-blue-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Enable Monetization</h3>
               <p className="text-sm text-gray-600">Make your strategy public and start earning</p>
             </div>
           </div>
-          
-          <div className="space-y-4 mb-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">What becomes public when you enable monetization:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+
+          <div className="mb-6 space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <h4 className="mb-2 font-medium text-blue-900">
+                What becomes public when you enable monetization:
+              </h4>
+              <ul className="space-y-1 text-sm text-blue-800">
                 <li className="flex items-center space-x-2">
-                  <Eye className="w-4 h-4" />
+                  <Eye className="h-4 w-4" />
                   <span>Strategy name and description</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4" />
+                  <TrendingUp className="h-4 w-4" />
                   <span>Performance metrics (ROI, Win Rate, Total Bets)</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="h-4 w-4" />
                   <span>Subscription pricing</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Users className="w-4 h-4" />
+                  <Users className="h-4 w-4" />
                   <span>Subscriber count</span>
                 </li>
               </ul>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h4 className="font-medium text-green-900 mb-2">What remains private:</h4>
-              <ul className="text-sm text-green-800 space-y-1">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <h4 className="mb-2 font-medium text-green-900">What remains private:</h4>
+              <ul className="space-y-1 text-sm text-green-800">
                 <li className="flex items-center space-x-2">
-                  <Lock className="w-4 h-4" />
+                  <Lock className="h-4 w-4" />
                   <span>Strategy filters and betting criteria</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Lock className="w-4 h-4" />
+                  <Lock className="h-4 w-4" />
                   <span>Individual bet details (until users subscribe)</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <Lock className="w-4 h-4" />
+                  <Lock className="h-4 w-4" />
                   <span>Your specific betting methodology</span>
                 </li>
               </ul>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm text-amber-800">
-                <strong>Note:</strong> After enabling monetization, you'll need to set at least one pricing option (weekly, monthly, or yearly) before users can subscribe to your strategy.
+                <strong>Note:</strong> After enabling monetization, you'll need to set at least one
+                pricing option (weekly, monthly, or yearly) before users can subscribe to your
+                strategy.
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-end space-x-3">
-            <Button
-              onClick={() => setShowMonetizationModal(false)}
-              variant="outline"
-            >
+            <Button onClick={() => setShowMonetizationModal(false)} variant="outline">
               Cancel
             </Button>
-            <Button
-              onClick={confirmMonetization}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button onClick={confirmMonetization} className="bg-blue-600 hover:bg-blue-700">
               Enable Monetization
             </Button>
           </div>
@@ -613,23 +621,23 @@ const ProfessionalStrategyCardComponent = ({
       {/* Delete Confirmation Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
         <div className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="bg-red-100 p-2 rounded-full">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
+          <div className="mb-4 flex items-center space-x-3">
+            <div className="rounded-full bg-red-100 p-2">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Delete Strategy</h3>
               <p className="text-sm text-gray-600">This action cannot be undone</p>
             </div>
           </div>
-          
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-800">
-              <strong>Warning:</strong> Deleting this strategy will remove all subscribers and cannot be undone. 
-              All associated data will be permanently lost.
+              <strong>Warning:</strong> Deleting this strategy will remove all subscribers and
+              cannot be undone. All associated data will be permanently lost.
             </p>
           </div>
-          
+
           <div className="flex items-center justify-end space-x-3">
             <Button
               onClick={() => setShowDeleteModal(false)}

@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
 import React, { useState } from 'react'
-import { 
-  User, 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
+import {
+  User,
+  TrendingUp,
+  TrendingDown,
+  Target,
   Calendar,
   DollarSign,
   Settings,
@@ -22,29 +22,31 @@ import {
   MoreVertical,
   Eye,
   CreditCard,
-  UserCheck
+  UserCheck,
 } from 'lucide-react'
 import { SubscriptionCardProps } from '@/types/subscriptions'
 import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
 import { OpenBet } from '@/lib/queries/open-bets'
 
-export function SubscriptionCard({ 
-  subscription, 
-  onCancel, 
+export function SubscriptionCard({
+  subscription,
+  onCancel,
   onModify,
   isLoading = false,
-  showPerformance = true 
+  showPerformance = true,
 }: SubscriptionCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  const isActive = subscription.status === 'active' && new Date(subscription.current_period_end) > new Date()
+  const isActive =
+    subscription.status === 'active' && new Date(subscription.current_period_end) > new Date()
   const isCancelling = subscription.cancel_at_period_end
   const isExpired = new Date(subscription.current_period_end) <= new Date()
 
   const getStatusColor = () => {
     if (isCancelling) return 'text-orange-600 bg-orange-50 border-orange-200'
-    if (isExpired || subscription.status === 'canceled') return 'text-red-600 bg-red-50 border-red-200'
+    if (isExpired || subscription.status === 'canceled')
+      return 'text-red-600 bg-red-50 border-red-200'
     if (isActive) return 'text-green-600 bg-green-50 border-green-200'
     return 'text-gray-600 bg-gray-50 border-gray-200'
   }
@@ -118,9 +120,9 @@ export function SubscriptionCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:shadow-lg">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100">
+      <div className="border-b border-gray-100 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
             {/* Seller Avatar */}
@@ -129,16 +131,16 @@ export function SubscriptionCard({
                 <img
                   src={subscription.seller.profile_picture_url}
                   alt={subscription.seller.username || 'Seller'}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100"
+                  className="h-12 w-12 rounded-full object-cover ring-2 ring-gray-100"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 font-bold text-white shadow-lg">
                   {(subscription.seller?.username?.substring(0, 2) || 'UN').toUpperCase()}
                 </div>
               )}
-              
+
               {subscription.seller?.is_verified_seller && (
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
                   <UserCheck className="h-3 w-3 text-white" />
                 </div>
               )}
@@ -151,13 +153,17 @@ export function SubscriptionCard({
                   @{subscription.seller?.username || 'Unknown'}
                 </h3>
                 {subscription.tier && (
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getTierBadgeColor(subscription.tier)}`}>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${getTierBadgeColor(subscription.tier)}`}
+                  >
                     {subscription.tier}
                   </span>
                 )}
               </div>
               <p className="text-sm text-gray-600">
-                {subscription.seller?.display_name || subscription.strategy?.name || 'Strategy Subscription'}
+                {subscription.seller?.display_name ||
+                  subscription.strategy?.name ||
+                  'Strategy Subscription'}
               </p>
             </div>
           </div>
@@ -166,48 +172,48 @@ export function SubscriptionCard({
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               disabled={isLoading}
             >
               <MoreVertical className="h-5 w-5" />
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-10">
+              <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-gray-200 bg-white shadow-lg">
                 <div className="py-1">
                   <button
                     onClick={() => {
                       setShowDetails(!showDetails)
                       setShowMenu(false)
                     }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <Eye className="h-4 w-4 mr-3" />
+                    <Eye className="mr-3 h-4 w-4" />
                     {showDetails ? 'Hide Details' : 'View Details'}
                   </button>
-                  
+
                   {onModify && isActive && (
                     <button
                       onClick={() => {
                         onModify(subscription.id)
                         setShowMenu(false)
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      <CreditCard className="h-4 w-4 mr-3" />
+                      <CreditCard className="mr-3 h-4 w-4" />
                       Manage Billing
                     </button>
                   )}
-                  
+
                   {isActive && !isCancelling && (
                     <button
                       onClick={() => {
                         onCancel(subscription.id)
                         setShowMenu(false)
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
-                      <X className="h-4 w-4 mr-3" />
+                      <X className="mr-3 h-4 w-4" />
                       Cancel Subscription
                     </button>
                   )}
@@ -219,7 +225,9 @@ export function SubscriptionCard({
 
         {/* Status */}
         <div className="mt-4 flex items-center justify-between">
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor()}`}>
+          <div
+            className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor()}`}
+          >
             {getStatusIcon()}
             <span className="ml-2">{getStatusText()}</span>
           </div>
@@ -228,25 +236,24 @@ export function SubscriptionCard({
             <p className="text-2xl font-bold text-gray-900">
               ${(subscription.price || subscription.price_cents / 100).toFixed(2)}
             </p>
-            <p className="text-sm text-gray-500">
-              per {subscription.frequency}
-            </p>
+            <p className="text-sm text-gray-500">per {subscription.frequency}</p>
           </div>
         </div>
       </div>
 
       {/* Performance Metrics */}
       {showPerformance && (
-        <div className="p-6 border-b border-gray-100">
-          <h4 className="font-medium text-gray-900 mb-3">Strategy Performance</h4>
-          
+        <div className="border-b border-gray-100 p-6">
+          <h4 className="mb-3 font-medium text-gray-900">Strategy Performance</h4>
+
           <div className="grid grid-cols-3 gap-4">
             {/* ROI */}
             <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <BarChart3 className="h-4 w-4 text-purple-500 mr-1" />
+              <div className="mb-1 flex items-center justify-center">
+                <BarChart3 className="mr-1 h-4 w-4 text-purple-500" />
                 <span className={`text-lg font-bold ${getPerformanceColor(roi)}`}>
-                  {roi > 0 ? '+' : ''}{roi.toFixed(1)}%
+                  {roi > 0 ? '+' : ''}
+                  {roi.toFixed(1)}%
                 </span>
               </div>
               <p className="text-xs text-gray-500">ROI</p>
@@ -254,22 +261,18 @@ export function SubscriptionCard({
 
             {/* Win Rate */}
             <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <Target className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-lg font-bold text-gray-900">
-                  {winRate.toFixed(1)}%
-                </span>
+              <div className="mb-1 flex items-center justify-center">
+                <Target className="mr-1 h-4 w-4 text-green-500" />
+                <span className="text-lg font-bold text-gray-900">{winRate.toFixed(1)}%</span>
               </div>
               <p className="text-xs text-gray-500">Win Rate</p>
             </div>
 
             {/* Total Bets */}
             <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <Target className="h-4 w-4 text-blue-500 mr-1" />
-                <span className="text-lg font-bold text-gray-900">
-                  {totalBets}
-                </span>
+              <div className="mb-1 flex items-center justify-center">
+                <Target className="mr-1 h-4 w-4 text-blue-500" />
+                <span className="text-lg font-bold text-gray-900">{totalBets}</span>
               </div>
               <p className="text-xs text-gray-500">Total Bets</p>
             </div>
@@ -279,9 +282,9 @@ export function SubscriptionCard({
 
       {/* Open Bets Section */}
       {subscription.strategy?.open_bets && subscription.strategy.open_bets.length > 0 && (
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
-          <SubscriberOpenBetsDisplay 
-            bets={subscription.strategy.open_bets} 
+        <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+          <SubscriberOpenBetsDisplay
+            bets={subscription.strategy.open_bets}
             title="Current Open Picks"
             maxBets={3}
             showTitle={true}
@@ -294,12 +297,14 @@ export function SubscriptionCard({
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500">Next billing date:</span>
           <span className="font-medium text-gray-900">
-            {isCancelling ? 'Cancelled' : new Date(subscription.current_period_end).toLocaleDateString()}
+            {isCancelling
+              ? 'Cancelled'
+              : new Date(subscription.current_period_end).toLocaleDateString()}
           </span>
         </div>
-        
+
         {subscription.frequency !== 'monthly' && (
-          <div className="flex items-center justify-between text-sm mt-2">
+          <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-gray-500">Monthly equivalent:</span>
             <span className="font-medium text-gray-900">
               ${calculateMonthlyEquivalent().toFixed(2)}/month
@@ -308,10 +313,11 @@ export function SubscriptionCard({
         )}
 
         {isCancelling && (
-          <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
             <p className="text-sm text-orange-800">
-              <AlertTriangle className="h-4 w-4 inline mr-2" />
-              Subscription will end on {new Date(subscription.current_period_end).toLocaleDateString()}
+              <AlertTriangle className="mr-2 inline h-4 w-4" />
+              Subscription will end on{' '}
+              {new Date(subscription.current_period_end).toLocaleDateString()}
             </p>
           </div>
         )}
@@ -319,31 +325,34 @@ export function SubscriptionCard({
 
       {/* Detailed Information (Expandable) */}
       {showDetails && (
-        <div className="border-t border-gray-100 p-6 bg-gray-50">
-          <h4 className="font-medium text-gray-900 mb-3">Subscription Details</h4>
-          
+        <div className="border-t border-gray-100 bg-gray-50 p-6">
+          <h4 className="mb-3 font-medium text-gray-900">Subscription Details</h4>
+
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Subscription ID:</span>
-              <span className="text-gray-900 font-mono text-xs">{subscription.id}</span>
+              <span className="font-mono text-xs text-gray-900">{subscription.id}</span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-gray-500">Started:</span>
-              <span className="text-gray-900">{new Date(subscription.created_at).toLocaleDateString()}</span>
+              <span className="text-gray-900">
+                {new Date(subscription.created_at).toLocaleDateString()}
+              </span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-gray-500">Current period:</span>
               <span className="text-gray-900">
-                {new Date(subscription.current_period_start).toLocaleDateString()} - {new Date(subscription.current_period_end).toLocaleDateString()}
+                {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
+                {new Date(subscription.current_period_end).toLocaleDateString()}
               </span>
             </div>
 
             {subscription.strategy?.description && (
               <div>
                 <span className="text-gray-500">Strategy:</span>
-                <p className="text-gray-900 mt-1">{subscription.strategy.description}</p>
+                <p className="mt-1 text-gray-900">{subscription.strategy.description}</p>
               </div>
             )}
           </div>
@@ -355,30 +364,30 @@ export function SubscriptionCard({
 
 function SubscriptionCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="p-6 border-b border-gray-100">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse" />
+            <div className="h-12 w-12 animate-pulse rounded-full bg-gray-200" />
             <div>
-              <div className="h-5 bg-gray-200 rounded w-24 mb-2 animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded w-32 animate-pulse" />
+              <div className="mb-2 h-5 w-24 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
             </div>
           </div>
           <div className="text-right">
-            <div className="h-8 bg-gray-200 rounded w-20 mb-1 animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
+            <div className="mb-1 h-8 w-20 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
           </div>
         </div>
       </div>
 
-      <div className="p-6 border-b border-gray-100">
-        <div className="h-5 bg-gray-200 rounded w-32 mb-3 animate-pulse" />
+      <div className="border-b border-gray-100 p-6">
+        <div className="mb-3 h-5 w-32 animate-pulse rounded bg-gray-200" />
         <div className="grid grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="text-center">
-              <div className="h-6 bg-gray-200 rounded mb-1 animate-pulse" />
-              <div className="h-3 bg-gray-200 rounded animate-pulse" />
+              <div className="mb-1 h-6 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 animate-pulse rounded bg-gray-200" />
             </div>
           ))}
         </div>
@@ -387,12 +396,12 @@ function SubscriptionCardSkeleton() {
       <div className="p-6">
         <div className="space-y-2">
           <div className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-24 animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded w-20 animate-pulse" />
+            <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
           </div>
           <div className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-32 animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded w-24 animate-pulse" />
+            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
           </div>
         </div>
       </div>

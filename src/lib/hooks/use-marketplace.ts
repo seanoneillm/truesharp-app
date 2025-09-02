@@ -57,9 +57,9 @@ export function useMarketplace(): UseMarketplaceReturn {
       total: 0,
       totalPages: 0,
       hasNext: false,
-      hasPrev: false
+      hasPrev: false,
     },
-    success: true
+    success: true,
   })
   const [featuredSellers, setFeaturedSellers] = useState<MarketplaceSeller[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -69,14 +69,15 @@ export function useMarketplace(): UseMarketplaceReturn {
     page: 1,
     limit: 20,
     sortBy: 'roi',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
   })
 
   // Build query with filters
   const buildQuery = useCallback(() => {
     let query = supabaseDirect
       .from('profiles')
-      .select(`
+      .select(
+        `
         *,
         seller_settings (
           bronze_price,
@@ -91,7 +92,9 @@ export function useMarketplace(): UseMarketplaceReturn {
           roi,
           profit
         )
-      `, { count: 'exact' })
+      `,
+        { count: 'exact' }
+      )
       .eq('seller_enabled', true)
 
     // Apply filters
@@ -110,54 +113,58 @@ export function useMarketplace(): UseMarketplaceReturn {
   }, [filters])
 
   // Fetch sellers with pagination
-  const fetchSellers = useCallback(async (page: number = 1, append: boolean = false) => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const fetchSellers = useCallback(
+    async (page: number = 1, append: boolean = false) => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      const query = buildQuery()
-      const paginationOptions = {
-        ...pagination,
-        page
+        const query = buildQuery()
+        const paginationOptions = {
+          ...pagination,
+          page,
+        }
+
+        const result = await paginatedRequest<any>(query, paginationOptions)
+
+        if (result.success) {
+          // Transform the data to include performance metrics
+          const transformedData: MarketplaceSeller[] = result.data.map(seller => ({
+            ...seller,
+            seller_settings: seller.seller_settings?.[0] || null,
+            performance: {
+              total_bets: seller.user_performance_cache?.[0]?.total_bets || 0,
+              win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
+              roi: seller.user_performance_cache?.[0]?.roi || 0,
+              profit: seller.user_performance_cache?.[0]?.profit || 0,
+              subscribers: 0, // TODO: Calculate from subscriptions table
+              rating: 4.5, // TODO: Calculate from reviews/ratings
+            },
+          }))
+
+          setSellers(prev => ({
+            ...result,
+            data: append ? [...prev.data, ...transformedData] : transformedData,
+          }))
+        } else {
+          throw new Error(result.error || 'Failed to fetch sellers')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch sellers')
+      } finally {
+        setIsLoading(false)
       }
-
-      const result = await paginatedRequest<any>(query, paginationOptions)
-
-      if (result.success) {
-        // Transform the data to include performance metrics
-        const transformedData: MarketplaceSeller[] = result.data.map(seller => ({
-          ...seller,
-          seller_settings: seller.seller_settings?.[0] || null,
-          performance: {
-            total_bets: seller.user_performance_cache?.[0]?.total_bets || 0,
-            win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
-            roi: seller.user_performance_cache?.[0]?.roi || 0,
-            profit: seller.user_performance_cache?.[0]?.profit || 0,
-            subscribers: 0, // TODO: Calculate from subscriptions table
-            rating: 4.5 // TODO: Calculate from reviews/ratings
-          }
-        }))
-
-        setSellers(prev => ({
-          ...result,
-          data: append ? [...prev.data, ...transformedData] : transformedData
-        }))
-      } else {
-        throw new Error(result.error || 'Failed to fetch sellers')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch sellers')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [buildQuery, pagination])
+    },
+    [buildQuery, pagination]
+  )
 
   // Fetch featured sellers
   const fetchFeaturedSellers = useCallback(async () => {
     try {
       const { data, error } = await supabaseDirect
         .from('profiles')
-        .select(`
+        .select(
+          `
           *,
           seller_settings (
             bronze_price,
@@ -172,7 +179,8 @@ export function useMarketplace(): UseMarketplaceReturn {
             roi,
             profit
           )
-        `)
+        `
+        )
         .eq('seller_enabled', true)
         .eq('is_verified', true)
         .order('created_at', { ascending: false })
@@ -189,8 +197,8 @@ export function useMarketplace(): UseMarketplaceReturn {
           roi: seller.user_performance_cache?.[0]?.roi || 0,
           profit: seller.user_performance_cache?.[0]?.profit || 0,
           subscribers: 0,
-          rating: 4.5
-        }
+          rating: 4.5,
+        },
       }))
 
       setFeaturedSellers(transformedData)
@@ -208,10 +216,7 @@ export function useMarketplace(): UseMarketplaceReturn {
 
   // Refresh sellers
   const refresh = useCallback(async () => {
-    await Promise.all([
-      fetchSellers(1, false),
-      fetchFeaturedSellers()
-    ])
+    await Promise.all([fetchSellers(1, false), fetchFeaturedSellers()])
   }, [fetchSellers, fetchFeaturedSellers])
 
   // Get individual seller
@@ -219,7 +224,8 @@ export function useMarketplace(): UseMarketplaceReturn {
     try {
       const { data, error } = await supabaseDirect
         .from('profiles')
-        .select(`
+        .select(
+          `
           *,
           seller_settings (
             bronze_price,
@@ -234,7 +240,8 @@ export function useMarketplace(): UseMarketplaceReturn {
             roi,
             profit
           )
-        `)
+        `
+        )
         .eq('username', username)
         .eq('seller_enabled', true)
         .single()
@@ -250,8 +257,8 @@ export function useMarketplace(): UseMarketplaceReturn {
           roi: data.user_performance_cache?.[0]?.roi || 0,
           profit: data.user_performance_cache?.[0]?.profit || 0,
           subscribers: 0,
-          rating: 4.5
-        }
+          rating: 4.5,
+        },
       }
     } catch (err) {
       console.error('Failed to fetch seller:', err)
@@ -296,10 +303,10 @@ export function useMarketplace(): UseMarketplaceReturn {
           total_bets: 0,
           win_rate: 0,
           roi: 0,
-          profit: 0
+          profit: 0,
         },
         recentBets: recentBets || [],
-        subscriberCount: subscriberCount || 0
+        subscriberCount: subscriberCount || 0,
       }
     } catch (err) {
       console.error('Failed to fetch seller performance:', err)
@@ -337,6 +344,6 @@ export function useMarketplace(): UseMarketplaceReturn {
     loadMore,
     refresh,
     getSeller,
-    getSellerPerformance
+    getSellerPerformance,
   }
 }

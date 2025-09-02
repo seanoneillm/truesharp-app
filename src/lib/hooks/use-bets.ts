@@ -105,14 +105,14 @@ export function useBets(userId?: string): UseBetsReturn {
     total: 0,
     totalPages: 0,
     hasNext: false,
-    hasPrev: false
+    hasPrev: false,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<BetFilters>({})
   const [authReady, setAuthReady] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  
+
   const supabase = createClientComponentClient()
 
   // Monitor authentication state
@@ -121,8 +121,11 @@ export function useBets(userId?: string): UseBetsReturn {
 
     const checkAuth = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
         if (sessionError) {
           console.error('Session error:', sessionError)
           setError(`Session error: ${sessionError.message}`)
@@ -150,7 +153,9 @@ export function useBets(userId?: string): UseBetsReturn {
 
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
       if (event === 'SIGNED_IN' && session?.user) {
@@ -178,109 +183,111 @@ export function useBets(userId?: string): UseBetsReturn {
       // Add teams field for compatibility
       teams: `${bet.home_team} vs ${bet.away_team}`,
       // Map settled_at based on result
-      settled_at: bet.result && bet.result !== 'pending' ? bet.updated_at : null
+      settled_at: bet.result && bet.result !== 'pending' ? bet.updated_at : null,
     }
   }
 
   // Fetch bets function
-  const fetchBets = useCallback(async (page: number = 1, append: boolean = false) => {
-    if (!authReady || !currentUser) {
-      console.log('Fetch bets skipped: auth not ready or no user', { authReady, currentUser })
-      setIsLoading(false)
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      const targetUserId = userId || currentUser.id
-
-      // Build query
-      let query = supabase
-        .from('bets')
-        .select('*', { count: 'exact' })
-        .eq('user_id', targetUserId)
-        .order('placed_at', { ascending: false })
-
-      // Apply filters
-      if (filters.sports && filters.sports.length > 0) {
-        query = query.in('sport', filters.sports)
+  const fetchBets = useCallback(
+    async (page: number = 1, append: boolean = false) => {
+      if (!authReady || !currentUser) {
+        console.log('Fetch bets skipped: auth not ready or no user', { authReady, currentUser })
+        setIsLoading(false)
+        return
       }
 
-      if (filters.betTypes && filters.betTypes.length > 0) {
-        query = query.in('bet_type', filters.betTypes)
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const targetUserId = userId || currentUser.id
+
+        // Build query
+        let query = supabase
+          .from('bets')
+          .select('*', { count: 'exact' })
+          .eq('user_id', targetUserId)
+          .order('placed_at', { ascending: false })
+
+        // Apply filters
+        if (filters.sports && filters.sports.length > 0) {
+          query = query.in('sport', filters.sports)
+        }
+
+        if (filters.betTypes && filters.betTypes.length > 0) {
+          query = query.in('bet_type', filters.betTypes)
+        }
+
+        if (filters.results && filters.results.length > 0) {
+          query = query.in('result', filters.results)
+        }
+
+        if (filters.sportsbooks && filters.sportsbooks.length > 0) {
+          query = query.in('sportsbook', filters.sportsbooks)
+        }
+
+        if (filters.dateRange?.start) {
+          query = query.gte('placed_at', filters.dateRange.start.toISOString())
+        }
+
+        if (filters.dateRange?.end) {
+          query = query.lte('placed_at', filters.dateRange.end.toISOString())
+        }
+
+        if (filters.search) {
+          query = query.ilike('description', `%${filters.search}%`)
+        }
+
+        // Apply pagination
+        const from = (page - 1) * pagination.limit
+        const to = from + pagination.limit - 1
+        query = query.range(from, to)
+
+        const { data, error: queryError, count } = await query
+
+        console.log('Supabase query result:', {
+          data: data?.length || 0,
+          error: queryError,
+          count,
+          firstBet: data?.[0],
+        })
+
+        if (queryError) {
+          throw new Error(`Database error: ${queryError.message}`)
+        }
+
+        const total = count || 0
+        const totalPages = Math.ceil(total / pagination.limit)
+
+        const newPagination: PaginationInfo = {
+          page,
+          limit: pagination.limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        }
+
+        setPagination(newPagination)
+
+        // Transform the data
+        const transformedData = (data || []).map(transformBet)
+
+        if (append && page > 1) {
+          setBetsData(prev => [...prev, ...transformedData])
+        } else {
+          setBetsData(transformedData)
+        }
+      } catch (err) {
+        console.error('Error in fetchBets:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch bets')
+        setBetsData([])
+      } finally {
+        setIsLoading(false)
       }
-
-      if (filters.results && filters.results.length > 0) {
-        query = query.in('result', filters.results)
-      }
-
-      if (filters.sportsbooks && filters.sportsbooks.length > 0) {
-        query = query.in('sportsbook', filters.sportsbooks)
-      }
-
-      if (filters.dateRange?.start) {
-        query = query.gte('placed_at', filters.dateRange.start.toISOString())
-      }
-
-      if (filters.dateRange?.end) {
-        query = query.lte('placed_at', filters.dateRange.end.toISOString())
-      }
-
-      if (filters.search) {
-        query = query.ilike('description', `%${filters.search}%`)
-      }
-
-      // Apply pagination
-      const from = (page - 1) * pagination.limit
-      const to = from + pagination.limit - 1
-      query = query.range(from, to)
-
-      const { data, error: queryError, count } = await query
-
-      console.log('Supabase query result:', {
-        data: data?.length || 0,
-        error: queryError,
-        count,
-        firstBet: data?.[0]
-      })
-
-      if (queryError) {
-        throw new Error(`Database error: ${queryError.message}`)
-      }
-
-      const total = count || 0
-      const totalPages = Math.ceil(total / pagination.limit)
-      
-      const newPagination: PaginationInfo = {
-        page,
-        limit: pagination.limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
-
-      setPagination(newPagination)
-
-      // Transform the data
-      const transformedData = (data || []).map(transformBet)
-
-      if (append && page > 1) {
-        setBetsData(prev => [...prev, ...transformedData])
-      } else {
-        setBetsData(transformedData)
-      }
-
-    } catch (err) {
-      console.error('Error in fetchBets:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch bets')
-      setBetsData([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [supabase, authReady, currentUser, userId, filters, pagination.limit])
+    },
+    [supabase, authReady, currentUser, userId, filters, pagination.limit]
+  )
 
   // Refresh bets
   const refresh = useCallback(async () => {
@@ -314,7 +321,7 @@ export function useBets(userId?: string): UseBetsReturn {
   const legacyBets = {
     data: betsData,
     pagination,
-    success: !error && authReady
+    success: !error && authReady,
   }
 
   return {
@@ -325,6 +332,6 @@ export function useBets(userId?: string): UseBetsReturn {
     refresh,
     loadMore,
     setFilters: setFiltersWrapper,
-    bets: legacyBets
+    bets: legacyBets,
   }
 }

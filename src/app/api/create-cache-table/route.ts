@@ -35,27 +35,26 @@ export async function POST() {
         DROP POLICY IF EXISTS "Service role can manage all performance caches" ON public.user_performance_cache;
         CREATE POLICY "Service role can manage all performance caches" ON public.user_performance_cache
           FOR ALL USING (current_setting('role') = 'service_role');
-      `
+      `,
     })
 
     if (error) {
       console.error('Error creating performance cache table:', error)
       return NextResponse.json({
         success: false,
-        error: error.message
+        error: error.message,
       })
     }
 
     return NextResponse.json({
       success: true,
-      message: 'User performance cache table created successfully'
+      message: 'User performance cache table created successfully',
     })
-
   } catch (err) {
     console.error('Unexpected error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error creating table'
+      error: 'Unexpected error creating table',
     })
   }
 }

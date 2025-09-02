@@ -1,14 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import {
   Activity,
   BarChart3,
@@ -25,8 +31,8 @@ import {
   Target,
   Trash2,
   TrendingUp,
-  X
-} from "lucide-react"
+  X,
+} from 'lucide-react'
 import { TrueSharpShield } from '@/components/ui/truesharp-shield'
 import {
   CartesianGrid,
@@ -35,7 +41,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
 } from 'recharts'
 import { CustomChartBuilder } from './custom-chart-builder'
 import type { ChartConfig } from '@/lib/types/custom-charts'
@@ -51,13 +57,32 @@ interface AnalyticsData {
   averageStake: number
   largestWin: number
   largestLoss: number
-  currentStreak: { type: 'win' | 'loss', count: number }
+  currentStreak: { type: 'win' | 'loss'; count: number }
   sportBreakdown: { sport: string; count: number; profit: number; winRate: number }[]
-  leagueBreakdown: { league: string; bets: number; stake: number; net_profit: number; roi_pct: number }[]
+  leagueBreakdown: {
+    league: string
+    bets: number
+    stake: number
+    net_profit: number
+    roi_pct: number
+  }[]
   monthlyData: { month: string; profit: number; bets: number; roi: number }[]
   roiOverTime: { day: string; net_profit: number; stake: number; roi_pct: number; bets: number }[]
-  winRateVsExpected: { bucket_label: string; bucket_start_pct: number; bucket_end_pct: number; bets: number; expected_pct: number; actual_pct: number }[]
-  monthlyPerformance: { month: string; bets: number; stake: number; net_profit: number; roi_pct: number }[]
+  winRateVsExpected: {
+    bucket_label: string
+    bucket_start_pct: number
+    bucket_end_pct: number
+    bets: number
+    expected_pct: number
+    actual_pct: number
+  }[]
+  monthlyPerformance: {
+    month: string
+    bets: number
+    stake: number
+    net_profit: number
+    roi_pct: number
+  }[]
   clvData?: { date: string; clv: number; profit: number }[]
   varianceData?: { period: string; variance: number; expectedValue: number }[]
 }
@@ -69,14 +94,13 @@ interface AnalyticsTabProps {
   user?: User | null
 }
 
-
 export function AnalyticsTab({ data, isPro, isLoading = false, user }: AnalyticsTabProps) {
   // Custom charts state
   const [customCharts, setCustomCharts] = useState<ChartConfig[]>([])
   const [filterOptions, setFilterOptions] = useState({
     leagues: [] as string[],
     betTypes: [] as string[],
-    sportsbooks: [] as string[]
+    sportsbooks: [] as string[],
   })
 
   // Chart builder modal state
@@ -90,8 +114,8 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       leagues: [] as string[],
       status: [] as string[],
       betTypes: [] as string[],
-      dateRange: null as { start: string; end: string } | null
-    }
+      dateRange: null as { start: string; end: string } | null,
+    },
   })
   const [activeStep, setActiveStep] = useState(1)
 
@@ -114,8 +138,18 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
   // Helper functions for time period controls
   const getMonthOptions = () => {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ]
     return months.map((month, index) => ({ value: index, label: month }))
   }
@@ -142,17 +176,17 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       case 'week':
         return {
           start: startOfWeek,
-          end: new Date()
+          end: new Date(),
         }
       case 'month':
         return {
           start: startOfMonth,
-          end: endOfMonth
+          end: endOfMonth,
         }
       case 'year':
         return {
           start: startOfYear,
-          end: endOfYear
+          end: endOfYear,
         }
       default:
         return { start: startOfMonth, end: endOfMonth }
@@ -170,7 +204,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
   // Data processing for Performance Over Time chart (ROI + Profit)
   const getPerformanceChartData = () => {
     const { start, end } = getDateRange()
-    
+
     // Use the more granular roiOverTime data as the source of truth
     const sourceData = data.roiOverTime || []
     const filteredData = sourceData.filter(item => {
@@ -182,52 +216,54 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       // For week/month view, show daily data
       return filteredData.map(item => ({
         date: item.day,
-        dateLabel: new Date(item.day).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
+        dateLabel: new Date(item.day).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
         }),
         net_profit: item.net_profit,
         roi_pct: item.roi_pct,
         bets: item.bets,
-        stake: item.stake
+        stake: item.stake,
       }))
     } else {
       // For year view, aggregate by month
       const monthlyAgg: { [key: string]: any } = {}
-      
+
       filteredData.forEach(item => {
         const date = new Date(item.day)
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
-        
+
         if (!monthlyAgg[monthKey]) {
           monthlyAgg[monthKey] = {
             date: monthKey,
-            dateLabel: date.toLocaleDateString('en-US', { 
-              month: 'short', 
-              year: '2-digit' 
+            dateLabel: date.toLocaleDateString('en-US', {
+              month: 'short',
+              year: '2-digit',
             }),
             net_profit: 0,
             bets: 0,
-            stake: 0
+            stake: 0,
           }
         }
-        
+
         monthlyAgg[monthKey].net_profit += item.net_profit
         monthlyAgg[monthKey].bets += item.bets
         monthlyAgg[monthKey].stake += item.stake
       })
-      
-      return Object.values(monthlyAgg).map((month: any) => ({
-        ...month,
-        roi_pct: month.stake > 0 ? (month.net_profit / month.stake) * 100 : 0
-      })).sort((a, b) => a.date.localeCompare(b.date))
+
+      return Object.values(monthlyAgg)
+        .map((month: any) => ({
+          ...month,
+          roi_pct: month.stake > 0 ? (month.net_profit / month.stake) * 100 : 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date))
     }
   }
 
   // Data processing for Bets Over Time chart
   const getBetsChartData = () => {
     const { start, end } = getDateRange()
-    
+
     const sourceData = data.roiOverTime || []
     const filteredData = sourceData.filter(item => {
       const itemDate = new Date(item.day)
@@ -238,47 +274,55 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       // For week/month view, show daily data
       return filteredData.map(item => ({
         date: item.day,
-        dateLabel: new Date(item.day).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
+        dateLabel: new Date(item.day).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
         }),
         bets: item.bets,
-        stake: item.stake
+        stake: item.stake,
       }))
     } else {
       // For year view, aggregate by month
       const monthlyAgg: { [key: string]: any } = {}
-      
+
       filteredData.forEach(item => {
         const date = new Date(item.day)
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
-        
+
         if (!monthlyAgg[monthKey]) {
           monthlyAgg[monthKey] = {
             date: monthKey,
-            dateLabel: date.toLocaleDateString('en-US', { 
-              month: 'short', 
-              year: '2-digit' 
+            dateLabel: date.toLocaleDateString('en-US', {
+              month: 'short',
+              year: '2-digit',
             }),
             bets: 0,
-            stake: 0
+            stake: 0,
           }
         }
-        
+
         monthlyAgg[monthKey].bets += item.bets
         monthlyAgg[monthKey].stake += item.stake
       })
-      
+
       return Object.values(monthlyAgg).sort((a, b) => a.date.localeCompare(b.date))
     }
   }
 
-  const TimePeriodControls = ({ title, description, icon }: { title: string; description: string; icon?: React.ReactNode }) => (
+  const TimePeriodControls = ({
+    title,
+    description,
+    icon,
+  }: {
+    title: string
+    description: string
+    icon?: React.ReactNode
+  }) => (
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
         {icon || (
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+          <div className="rounded-lg bg-blue-100 p-2">
+            <TrendingUp className="h-5 w-5 text-blue-600" />
           </div>
         )}
         <div>
@@ -287,12 +331,12 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         </div>
       </div>
       <div className="flex items-center space-x-2">
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          {['week', 'month', 'year'].map((period) => (
+        <div className="flex rounded-lg bg-gray-100 p-1">
+          {['week', 'month', 'year'].map(period => (
             <button
               key={period}
               onClick={() => setTimePeriod(period as 'week' | 'month' | 'year')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
                 timePeriod === period
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
@@ -305,7 +349,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         {timePeriod === 'month' && (
           <Select
             value={selectedMonth.toString()}
-            onValueChange={(value) => setSelectedMonth(parseInt(value))}
+            onValueChange={value => setSelectedMonth(parseInt(value))}
           >
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -322,7 +366,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         {timePeriod === 'year' && (
           <Select
             value={selectedYear.toString()}
-            onValueChange={(value) => setSelectedYear(parseInt(value))}
+            onValueChange={value => setSelectedYear(parseInt(value))}
           >
             <SelectTrigger className="w-20">
               <SelectValue />
@@ -353,7 +397,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
     sportBreakdown: data?.sportBreakdown || [],
     monthlyData: data?.monthlyData || [],
     clvData: data?.clvData || [],
-    varianceData: data?.varianceData || []
+    varianceData: data?.varianceData || [],
   }
 
   // Custom chart handlers
@@ -367,31 +411,31 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
 
   const validateChartConfig = () => {
     const errors: string[] = []
-    
+
     // Check for duplicate titles
     if (chartConfig.title) {
-      const existingChart = customCharts.find(chart => 
-        chart.title.toLowerCase() === chartConfig.title.toLowerCase()
+      const existingChart = customCharts.find(
+        chart => chart.title.toLowerCase() === chartConfig.title.toLowerCase()
       )
       if (existingChart) {
         errors.push('A chart with this title already exists')
       }
     }
-    
+
     // Validate chart configuration
     if (!chartConfig.chartType || !chartConfig.xAxis || !chartConfig.yAxis) {
       errors.push('Please select chart type, X-axis, and Y-axis')
     }
-    
+
     // Warn about potential data issues
     if (chartConfig.yAxis === 'win_rate' && chartConfig.filters.status.length > 0) {
-      const hasOnlyPending = chartConfig.filters.status.length === 1 && 
-                           chartConfig.filters.status[0] === 'pending'
+      const hasOnlyPending =
+        chartConfig.filters.status.length === 1 && chartConfig.filters.status[0] === 'pending'
       if (hasOnlyPending) {
         errors.push('Win rate calculation requires settled bets (won/lost)')
       }
     }
-    
+
     return errors
   }
 
@@ -410,19 +454,22 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       yAxis: chartConfig.yAxis,
       filters: {
         leagues: chartConfig.filters.leagues,
-        status: chartConfig.filters.status.length > 0 ? chartConfig.filters.status as any : undefined,
+        status:
+          chartConfig.filters.status.length > 0 ? (chartConfig.filters.status as any) : undefined,
         bet_types: chartConfig.filters.betTypes,
-        date_range: chartConfig.filters.dateRange ? {
-          start: new Date(chartConfig.filters.dateRange.start),
-          end: new Date(chartConfig.filters.dateRange.end)
-        } : undefined
-      }
+        date_range: chartConfig.filters.dateRange
+          ? {
+              start: new Date(chartConfig.filters.dateRange.start),
+              end: new Date(chartConfig.filters.dateRange.end),
+            }
+          : undefined,
+      },
     }
-    
+
     setCustomCharts(prev => [...prev, newChart])
     setShowChartBuilder(false)
     resetChartConfig()
-    
+
     // Show success message
     setTimeout(() => {
       alert(`✅ "${newChart.title}" chart created successfully!`)
@@ -441,7 +488,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       profit: 'Total Profit',
       stake: 'Total Stake',
       win_rate: 'Win Rate',
-      roi: 'ROI'
+      roi: 'ROI',
     }
     return labels[yAxis] || yAxis
   }
@@ -451,7 +498,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       placed_at: 'Time',
       league: 'League',
       bet_type: 'Bet Type',
-      sportsbook: 'Sportsbook'
+      sportsbook: 'Sportsbook',
     }
     return labels[xAxis] || xAxis
   }
@@ -466,8 +513,8 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         leagues: [],
         status: [],
         betTypes: [],
-        dateRange: null
-      }
+        dateRange: null,
+      },
     })
     setActiveStep(1)
   }
@@ -476,23 +523,23 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
     const duplicatedChart: ChartConfig = {
       ...chart,
       id: `custom-${Date.now()}`,
-      title: `${chart.title} (Copy)`
+      title: `${chart.title} (Copy)`,
     }
     setCustomCharts(prev => [...prev, duplicatedChart])
   }
-  
+
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              <div key={i} className="h-32 rounded bg-gray-200"></div>
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-96 bg-gray-200 rounded"></div>
+              <div key={i} className="h-96 rounded bg-gray-200"></div>
             ))}
           </div>
         </div>
@@ -507,21 +554,20 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
     return `$${amount >= 0 ? '+' : ''}${amount.toFixed(2)}`
   }
 
-
   return (
     <div className="space-y-6">
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Bets</p>
-                                <p className="text-2xl font-bold">{safeData.totalBets}</p>
-                <p className="text-xs text-gray-500 mt-1">All time</p>
+                <p className="text-2xl font-bold">{safeData.totalBets}</p>
+                <p className="mt-1 text-xs text-gray-500">All time</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Target className="w-6 h-6 text-blue-600" />
+              <div className="rounded-lg bg-blue-100 p-3">
+                <Target className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -533,10 +579,10 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
               <div>
                 <p className="text-sm text-gray-600">Win Rate</p>
                 <p className="text-2xl font-bold">{safeData.winRate.toFixed(1)}%</p>
-                <Progress value={safeData.winRate} className="w-full mt-2 h-2" />
+                <Progress value={safeData.winRate} className="mt-2 h-2 w-full" />
               </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="rounded-lg bg-green-100 p-3">
+                <TrendingUp className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
@@ -547,13 +593,20 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">ROI</p>
-                <p className={`text-2xl font-bold ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {safeData.roi >= 0 ? '+' : ''}{safeData.roi.toFixed(1)}%
+                <p
+                  className={`text-2xl font-bold ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {safeData.roi >= 0 ? '+' : ''}
+                  {safeData.roi.toFixed(1)}%
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Return on investment</p>
+                <p className="mt-1 text-xs text-gray-500">Return on investment</p>
               </div>
-              <div className={`p-3 rounded-lg ${safeData.roi >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                <Activity className={`w-6 h-6 ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <div
+                className={`rounded-lg p-3 ${safeData.roi >= 0 ? 'bg-green-100' : 'bg-red-100'}`}
+              >
+                <Activity
+                  className={`h-6 w-6 ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                />
               </div>
             </div>
           </CardContent>
@@ -564,13 +617,19 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Net Profit</p>
-                <p className={`text-2xl font-bold ${safeData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p
+                  className={`text-2xl font-bold ${safeData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {formatCurrency(safeData.netProfit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Total profit/loss</p>
+                <p className="mt-1 text-xs text-gray-500">Total profit/loss</p>
               </div>
-              <div className={`p-3 rounded-lg ${safeData.netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                <DollarSign className={`w-6 h-6 ${data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <div
+                className={`rounded-lg p-3 ${safeData.netProfit >= 0 ? 'bg-green-100' : 'bg-red-100'}`}
+              >
+                <DollarSign
+                  className={`h-6 w-6 ${data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                />
               </div>
             </div>
           </CardContent>
@@ -578,15 +637,15 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       </div>
 
       {/* Free Tier Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Performance Over Time Chart */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+        <Card className="border-0 bg-gradient-to-br from-white to-slate-50 shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <LineChart className="w-5 h-5 text-purple-600" />
+                  <div className="rounded-lg bg-purple-100 p-2">
+                    <LineChart className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Performance Over Time</h3>
@@ -594,12 +653,12 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    {['week', 'month', 'year'].map((period) => (
+                  <div className="flex rounded-lg bg-gray-100 p-1">
+                    {['week', 'month', 'year'].map(period => (
                       <button
                         key={period}
                         onClick={() => setTimePeriod(period as 'week' | 'month' | 'year')}
-                        className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                        className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
                           timePeriod === period
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-gray-600 hover:text-gray-800'
@@ -612,7 +671,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   {timePeriod === 'month' && (
                     <Select
                       value={selectedMonth.toString()}
-                      onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                      onValueChange={value => setSelectedMonth(parseInt(value))}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />
@@ -629,7 +688,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   {timePeriod === 'year' && (
                     <Select
                       value={selectedYear.toString()}
-                      onValueChange={(value) => setSelectedYear(parseInt(value))}
+                      onValueChange={value => setSelectedYear(parseInt(value))}
                     >
                       <SelectTrigger className="w-20">
                         <SelectValue />
@@ -644,7 +703,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                     </Select>
                   )}
                   {!isPro && (
-                    <Badge variant="outline" className="text-amber-600 border-amber-600">
+                    <Badge variant="outline" className="border-amber-600 text-amber-600">
                       <span className="text-xs">Last 6 months only</span>
                     </Badge>
                   )}
@@ -655,13 +714,13 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsLineChart data={getPerformanceChartData()}>
-                <CartesianGrid 
-                  strokeDasharray="2 2" 
-                  stroke="#e2e8f0" 
+                <CartesianGrid
+                  strokeDasharray="2 2"
+                  stroke="#e2e8f0"
                   horizontal={true}
                   vertical={false}
                 />
-                <XAxis 
+                <XAxis
                   dataKey="dateLabel"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
@@ -670,51 +729,53 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   textAnchor={timePeriod === 'month' ? 'end' : 'middle'}
                   height={timePeriod === 'month' ? 60 : 30}
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="profit"
                   orientation="left"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `$${Math.abs(value) >= 1000 ? (value/1000).toFixed(1) + 'k' : value.toFixed(0)}`}
+                  tickFormatter={value =>
+                    `$${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + 'k' : value.toFixed(0)}`
+                  }
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="roi"
                   orientation="right"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `${value.toFixed(1)}%`}
+                  tickFormatter={value => `${value.toFixed(1)}%`}
                 />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
                     backgroundColor: 'white',
                     border: 'none',
                     borderRadius: '12px',
                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                    fontSize: '13px'
+                    fontSize: '13px',
                   }}
                   formatter={(value: number, name: string) => [
                     name === 'Net Profit' ? formatCurrency(value) : `${value.toFixed(1)}%`,
-                    name === 'Net Profit' ? 'Net Profit' : 'ROI %'
+                    name === 'Net Profit' ? 'Net Profit' : 'ROI %',
                   ]}
-                  labelFormatter={(value) => value}
+                  labelFormatter={value => value}
                 />
-                <Line 
+                <Line
                   yAxisId="profit"
-                  type="monotone" 
-                  dataKey="net_profit" 
-                  stroke="#059669" 
+                  type="monotone"
+                  dataKey="net_profit"
+                  stroke="#059669"
                   strokeWidth={3}
                   dot={{ r: 1.5, fill: '#059669', strokeWidth: 0 }}
                   activeDot={{ r: 4, fill: '#059669', strokeWidth: 2, stroke: 'white' }}
                   name="Net Profit"
                 />
-                <Line 
+                <Line
                   yAxisId="roi"
-                  type="monotone" 
-                  dataKey="roi_pct" 
-                  stroke="#2563eb" 
+                  type="monotone"
+                  dataKey="roi_pct"
+                  stroke="#2563eb"
                   strokeWidth={3}
                   dot={{ r: 1.5, fill: '#2563eb', strokeWidth: 0 }}
                   activeDot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: 'white' }}
@@ -726,12 +787,12 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         </Card>
 
         {/* Performance by League - Compact */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+        <Card className="border-0 bg-gradient-to-br from-white to-slate-50 shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <PieChartIcon className="w-4 h-4 text-indigo-600" />
+                <div className="rounded-lg bg-indigo-100 p-2">
+                  <PieChartIcon className="h-4 w-4 text-indigo-600" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-gray-900">Performance by League</h3>
@@ -741,42 +802,55 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             </CardTitle>
           </CardHeader>
           <CardContent className="py-0 pb-4">
-            <div className="max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 max-h-64 overflow-y-auto">
               <div className="space-y-2 pr-2">
-                {(data.leagueBreakdown || []).map((league) => (
-                  <div key={league.league} className="flex items-center justify-between p-3 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-100 hover:shadow-sm transition-all duration-200">
+                {(data.leagueBreakdown || []).map(league => (
+                  <div
+                    key={league.league}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 bg-white/80 p-3 backdrop-blur-sm transition-all duration-200 hover:shadow-sm"
+                  >
                     <div className="flex items-center space-x-3">
-                      <div 
-                        className={`w-2.5 h-2.5 rounded-full shadow-sm ${
-                          league.roi_pct >= 5 ? 'bg-emerald-500' : 
-                          league.roi_pct <= -5 ? 'bg-rose-500' : 
-                          'bg-slate-400'
+                      <div
+                        className={`h-2.5 w-2.5 rounded-full shadow-sm ${
+                          league.roi_pct >= 5
+                            ? 'bg-emerald-500'
+                            : league.roi_pct <= -5
+                              ? 'bg-rose-500'
+                              : 'bg-slate-400'
                         }`}
                       />
                       <div>
                         <p className="text-sm font-medium text-gray-900">{league.league}</p>
-                        <p className="text-xs text-gray-500">{league.bets} bets • ${league.stake.toFixed(0)}</p>
+                        <p className="text-xs text-gray-500">
+                          {league.bets} bets • ${league.stake.toFixed(0)}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-bold ${
-                        league.roi_pct >= 5 ? 'text-emerald-600' : 
-                        league.roi_pct <= -5 ? 'text-rose-600' : 
-                        'text-slate-600'
-                      }`}>
+                      <p
+                        className={`text-sm font-bold ${
+                          league.roi_pct >= 5
+                            ? 'text-emerald-600'
+                            : league.roi_pct <= -5
+                              ? 'text-rose-600'
+                              : 'text-slate-600'
+                        }`}
+                      >
                         {league.roi_pct ? league.roi_pct.toFixed(1) : '0.0'}%
                       </p>
-                      <p className={`text-xs font-medium ${
-                        league.net_profit >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                      }`}>
+                      <p
+                        className={`text-xs font-medium ${
+                          league.net_profit >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
+                      >
                         {formatCurrency(league.net_profit)}
                       </p>
                     </div>
                   </div>
                 ))}
                 {(!data.leagueBreakdown || data.leagueBreakdown.length === 0) && (
-                  <div className="text-center py-8 text-gray-400">
-                    <PieChartIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <div className="py-8 text-center text-gray-400">
+                    <PieChartIcon className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     <p className="text-sm font-medium">No league data available</p>
                     <p className="text-xs">Leagues with 10+ bets will appear here</p>
                   </div>
@@ -788,17 +862,17 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       </div>
 
       {/* Enhanced Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Bets Over Time Chart */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+        <Card className="border-0 bg-gradient-to-br from-white to-slate-50 shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle>
-              <TimePeriodControls 
-                title="Betting Activity" 
+              <TimePeriodControls
+                title="Betting Activity"
                 description={`${timePeriod === 'week' ? 'This week' : timePeriod === 'month' ? `${getMonthOptions()[selectedMonth]?.label} ${selectedYear}` : selectedYear} betting volume`}
                 icon={
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                  <div className="rounded-lg bg-purple-100 p-2">
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
                   </div>
                 }
               />
@@ -806,17 +880,17 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <RechartsLineChart 
+              <RechartsLineChart
                 data={getBetsChartData()}
                 margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
               >
-                <CartesianGrid 
-                  strokeDasharray="2 2" 
-                  stroke="#e2e8f0" 
+                <CartesianGrid
+                  strokeDasharray="2 2"
+                  stroke="#e2e8f0"
                   horizontal={true}
                   vertical={false}
                 />
-                <XAxis 
+                <XAxis
                   dataKey="dateLabel"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
@@ -825,51 +899,55 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   textAnchor={timePeriod === 'month' ? 'end' : 'middle'}
                   height={timePeriod === 'month' ? 60 : 30}
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="bets"
                   orientation="left"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => Math.round(value).toString()}
+                  tickFormatter={value => Math.round(value).toString()}
                 />
-                <YAxis 
+                <YAxis
                   yAxisId="stake"
                   orientation="right"
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `$${Math.abs(value) >= 1000 ? (value/1000).toFixed(1) + 'k' : value.toFixed(0)}`}
+                  tickFormatter={value =>
+                    `$${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + 'k' : value.toFixed(0)}`
+                  }
                 />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
                     backgroundColor: 'white',
                     border: 'none',
                     borderRadius: '12px',
                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                    fontSize: '13px'
+                    fontSize: '13px',
                   }}
                   formatter={(value: number, name: string) => [
-                    name === 'Bets' ? `${Math.round(value)} bet${Math.round(value) !== 1 ? 's' : ''}` : formatCurrency(value),
-                    name === 'Bets' ? 'Bets Placed' : 'Total Stake'
+                    name === 'Bets'
+                      ? `${Math.round(value)} bet${Math.round(value) !== 1 ? 's' : ''}`
+                      : formatCurrency(value),
+                    name === 'Bets' ? 'Bets Placed' : 'Total Stake',
                   ]}
-                  labelFormatter={(value) => value}
+                  labelFormatter={value => value}
                 />
-                <Line 
+                <Line
                   yAxisId="bets"
-                  type="monotone" 
-                  dataKey="bets" 
-                  stroke="#8b5cf6" 
+                  type="monotone"
+                  dataKey="bets"
+                  stroke="#8b5cf6"
                   strokeWidth={3}
                   dot={{ r: 1.5, fill: '#8b5cf6', strokeWidth: 0 }}
                   activeDot={{ r: 4, fill: '#8b5cf6', strokeWidth: 2, stroke: 'white' }}
                   name="Bets"
                 />
-                <Line 
+                <Line
                   yAxisId="stake"
-                  type="monotone" 
-                  dataKey="stake" 
-                  stroke="#f59e0b" 
+                  type="monotone"
+                  dataKey="stake"
+                  stroke="#f59e0b"
                   strokeWidth={3}
                   dot={{ r: 1.5, fill: '#f59e0b', strokeWidth: 0 }}
                   activeDot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: 'white' }}
@@ -878,8 +956,8 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
               </RechartsLineChart>
             </ResponsiveContainer>
             {(!data.roiOverTime || getBetsChartData().length === 0) && (
-              <div className="text-center py-12 text-gray-400">
-                <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-30" />
+              <div className="py-12 text-center text-gray-400">
+                <BarChart3 className="mx-auto mb-4 h-16 w-16 opacity-30" />
                 <p className="text-lg font-medium">No betting activity for selected period</p>
                 <p className="text-sm">{`No bets placed in ${timePeriod === 'week' ? 'this week' : timePeriod === 'month' ? `${getMonthOptions()[selectedMonth]?.label} ${selectedYear}` : selectedYear}`}</p>
               </div>
@@ -888,22 +966,24 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         </Card>
 
         {/* Enhanced Win Rate vs Expected Chart */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+        <Card className="border-0 bg-gradient-to-br from-white to-slate-50 shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Target className="w-5 h-5 text-green-600" />
+                <div className="rounded-lg bg-green-100 p-2">
+                  <Target className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Odds Calibration Analysis</h3>
-                  <p className="text-sm text-gray-500">Comparing your actual win rates vs bookmaker implied probability</p>
+                  <p className="text-sm text-gray-500">
+                    Comparing your actual win rates vs bookmaker implied probability
+                  </p>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-sm text-gray-500">
                   {data.winRateVsExpected && data.winRateVsExpected.length > 0 && (
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md">
+                    <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">
                       {data.winRateVsExpected.reduce((sum, item) => sum + item.bets, 0)} total bets
                     </span>
                   )}
@@ -913,15 +993,18 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           </CardHeader>
           <CardContent>
             {/* Legend and Explanation */}
-            <div className="mb-4 p-4 bg-gray-50/50 rounded-lg border border-gray-200/50">
-              <div className="flex items-center justify-between mb-2">
+            <div className="mb-4 rounded-lg border border-gray-200/50 bg-gray-50/50 p-4">
+              <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center space-x-6">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-0.5 bg-gray-400" style={{borderStyle: 'dashed', borderWidth: '1px 0'}}></div>
+                    <div
+                      className="h-0.5 w-4 bg-gray-400"
+                      style={{ borderStyle: 'dashed', borderWidth: '1px 0' }}
+                    ></div>
                     <span className="text-sm text-gray-600">Expected (Bookmaker)</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-0.5 bg-green-600"></div>
+                    <div className="h-0.5 w-4 bg-green-600"></div>
                     <span className="text-sm text-gray-600">Your Actual</span>
                   </div>
                 </div>
@@ -930,22 +1013,24 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                 </div>
               </div>
               <p className="text-xs text-gray-600">
-                This chart groups your settled bets ('won' or 'lost' status) by their implied probability ranges and compares your actual win rate to the bookmaker's expected win rate derived from the betting odds. 
-                Points above the dotted line indicate you're outperforming market expectations in that probability range.
+                This chart groups your settled bets ('won' or 'lost' status) by their implied
+                probability ranges and compares your actual win rate to the bookmaker's expected win
+                rate derived from the betting odds. Points above the dotted line indicate you're
+                outperforming market expectations in that probability range.
               </p>
             </div>
             <ResponsiveContainer width="100%" height={320}>
-              <RechartsLineChart 
+              <RechartsLineChart
                 data={data.winRateVsExpected || []}
                 margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
               >
-                <CartesianGrid 
-                  strokeDasharray="2 2" 
-                  stroke="#e2e8f0" 
+                <CartesianGrid
+                  strokeDasharray="2 2"
+                  stroke="#e2e8f0"
                   horizontal={true}
                   vertical={false}
                 />
-                <XAxis 
+                <XAxis
                   dataKey="bucket_label"
                   tick={{ fontSize: 10, fill: '#64748b' }}
                   tickLine={false}
@@ -954,48 +1039,50 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fontSize: 11, fill: '#64748b' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `${value}%`}
+                  tickFormatter={value => `${value}%`}
                 />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
                     backgroundColor: 'white',
                     border: 'none',
                     borderRadius: '12px',
                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
                     fontSize: '13px',
-                    minWidth: '200px'
+                    minWidth: '200px',
                   }}
                   formatter={(value: number, name: string, props: any) => {
                     const diff = name === 'Actual' ? value - props.payload.expected_pct : 0
-                    const diffText = name === 'Actual' && diff !== 0 ? 
-                      ` (${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)` : ''
+                    const diffText =
+                      name === 'Actual' && diff !== 0
+                        ? ` (${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)`
+                        : ''
                     return [
                       `${value.toFixed(1)}%${diffText}`,
-                      name === 'Expected' ? 'Expected Win Rate' : 'Your Actual Win Rate'
+                      name === 'Expected' ? 'Expected Win Rate' : 'Your Actual Win Rate',
                     ]
                   }}
-                  labelFormatter={(label) => {
+                  labelFormatter={label => {
                     const item = (data.winRateVsExpected || []).find(d => d.bucket_label === label)
                     return item ? `${label} Range • ${item.bets} bets` : label
                   }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="expected_pct" 
-                  stroke="#94a3b8" 
+                <Line
+                  type="monotone"
+                  dataKey="expected_pct"
+                  stroke="#94a3b8"
                   strokeWidth={2}
                   strokeDasharray="8 4"
                   dot={{ r: 1.5, fill: '#94a3b8', strokeWidth: 0 }}
                   activeDot={{ r: 4, fill: '#94a3b8', strokeWidth: 2, stroke: 'white' }}
                   name="Expected"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="actual_pct" 
+                <Line
+                  type="monotone"
+                  dataKey="actual_pct"
                   stroke="#059669"
                   strokeWidth={3}
                   dot={{ r: 1.5, fill: '#059669', strokeWidth: 0 }}
@@ -1004,54 +1091,60 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                 />
               </RechartsLineChart>
             </ResponsiveContainer>
-            {(!data.winRateVsExpected || data.winRateVsExpected.length === 0) ? (
-              <div className="text-center py-12 text-gray-400">
-                <Target className="w-16 h-16 mx-auto mb-4 opacity-30" />
+            {!data.winRateVsExpected || data.winRateVsExpected.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">
+                <Target className="mx-auto mb-4 h-16 w-16 opacity-30" />
                 <p className="text-lg font-medium">No calibration data available</p>
-                <p className="text-sm">Place bets across different odds ranges to see your calibration analysis</p>
+                <p className="text-sm">
+                  Place bets across different odds ranges to see your calibration analysis
+                </p>
               </div>
             ) : (
               /* Summary Statistics */
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {(() => {
                   const totalBets = data.winRateVsExpected.reduce((sum, item) => sum + item.bets, 0)
-                  const weightedExpected = data.winRateVsExpected.reduce((sum, item) => 
-                    sum + (item.expected_pct * item.bets), 0) / totalBets
-                  const weightedActual = data.winRateVsExpected.reduce((sum, item) => 
-                    sum + (item.actual_pct * item.bets), 0) / totalBets
+                  const weightedExpected =
+                    data.winRateVsExpected.reduce(
+                      (sum, item) => sum + item.expected_pct * item.bets,
+                      0
+                    ) / totalBets
+                  const weightedActual =
+                    data.winRateVsExpected.reduce(
+                      (sum, item) => sum + item.actual_pct * item.bets,
+                      0
+                    ) / totalBets
                   const difference = weightedActual - weightedExpected
                   const bestRange = data.winRateVsExpected.reduce((best, item) => {
                     const diff = item.actual_pct - item.expected_pct
-                    return diff > (best.actual_pct - best.expected_pct) ? item : best
+                    return diff > best.actual_pct - best.expected_pct ? item : best
                   })
-                  
+
                   return (
                     <>
-                      <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="rounded-lg bg-blue-50 p-3">
                         <div className="text-sm font-medium text-blue-900">Overall Performance</div>
                         <div className="text-lg font-bold text-blue-700">
-                          {difference > 0 ? '+' : ''}{difference.toFixed(1)}%
+                          {difference > 0 ? '+' : ''}
+                          {difference.toFixed(1)}%
                         </div>
-                        <div className="text-xs text-blue-600">
-                          vs bookmaker expectations
-                        </div>
+                        <div className="text-xs text-blue-600">vs bookmaker expectations</div>
                       </div>
-                      
-                      <div className="p-3 bg-green-50 rounded-lg">
+
+                      <div className="rounded-lg bg-green-50 p-3">
                         <div className="text-sm font-medium text-green-900">Best Range</div>
                         <div className="text-lg font-bold text-green-700">
                           {bestRange.bucket_label}
                         </div>
                         <div className="text-xs text-green-600">
-                          +{(bestRange.actual_pct - bestRange.expected_pct).toFixed(1)}% above expected
+                          +{(bestRange.actual_pct - bestRange.expected_pct).toFixed(1)}% above
+                          expected
                         </div>
                       </div>
-                      
-                      <div className="p-3 bg-purple-50 rounded-lg">
+
+                      <div className="rounded-lg bg-purple-50 p-3">
                         <div className="text-sm font-medium text-purple-900">Sample Size</div>
-                        <div className="text-lg font-bold text-purple-700">
-                          {totalBets}
-                        </div>
+                        <div className="text-lg font-bold text-purple-700">{totalBets}</div>
                         <div className="text-xs text-purple-600">
                           bets across {data.winRateVsExpected.length} ranges
                         </div>
@@ -1065,82 +1158,89 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         </Card>
       </div>
 
-
       {/* Custom Charts Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Custom Charts</h3>
-            <p className="text-sm text-gray-500">Create your own analytics views with custom filters and chart types</p>
+            <p className="text-sm text-gray-500">
+              Create your own analytics views with custom filters and chart types
+            </p>
           </div>
           {user ? (
             <div className="relative">
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              <Button
+                className="transform bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
                 onClick={() => setShowChartBuilder(true)}
                 size="lg"
               >
                 <div className="flex items-center space-x-2">
-                  <div className="p-1 bg-white/20 rounded">
-                    <Plus className="w-4 h-4" />
+                  <div className="rounded bg-white/20 p-1">
+                    <Plus className="h-4 w-4" />
                   </div>
                   <span className="font-medium">Create Custom Chart</span>
                 </div>
               </Button>
               {customCharts.length === 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
+                <div className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-orange-400"></div>
               )}
             </div>
           ) : (
-            <div className="text-sm text-gray-500 italic">
-              Sign in to create custom charts
-            </div>
+            <div className="text-sm italic text-gray-500">Sign in to create custom charts</div>
           )}
         </div>
 
         {customCharts.length > 0 && (
-          <div className="space-y-4 bg-gradient-to-r from-gray-50/50 to-blue-50/30 p-6 rounded-lg border border-gray-100">
+          <div className="space-y-4 rounded-lg border border-gray-100 bg-gradient-to-r from-gray-50/50 to-blue-50/30 p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                <div className="rounded-lg bg-blue-100 p-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">Your Custom Charts ({customCharts.length})</h4>
-                  <p className="text-sm text-gray-500">Professional analytics views tailored to your data</p>
+                  <h4 className="text-lg font-semibold text-gray-900">
+                    Your Custom Charts ({customCharts.length})
+                  </h4>
+                  <p className="text-sm text-gray-500">
+                    Professional analytics views tailored to your data
+                  </p>
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+              <Badge variant="secondary" className="border-blue-200 bg-blue-100 text-blue-700">
                 {customCharts.length} Active
               </Badge>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-              {customCharts.map((chart) => (
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+              {customCharts.map(chart => (
                 <div key={chart.id} className="group">
-                  <Card className="border border-gray-200 hover:border-blue-300 transition-all duration-200 hover:shadow-md bg-white flex flex-col">
-                    <CardHeader className="pb-2 px-4 pt-4">
+                  <Card className="flex flex-col border border-gray-200 bg-white transition-all duration-200 hover:border-blue-300 hover:shadow-md">
+                    <CardHeader className="px-4 pb-2 pt-4">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base font-semibold text-gray-900 group-hover:text-blue-900 transition-colors truncate">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="truncate text-base font-semibold text-gray-900 transition-colors group-hover:text-blue-900">
                             {chart.title}
                           </CardTitle>
-                          <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
+                          <div className="mt-1 flex items-center space-x-3 text-xs text-gray-500">
                             <div className="flex items-center space-x-1">
-                              {chart.chartType === 'bar' && <BarChart3 className="w-3 h-3" />}
-                              {chart.chartType === 'line' && <TrendingUp className="w-3 h-3" />}
-                              {chart.chartType === 'pie' && <PieChartIcon className="w-3 h-3" />}
-                              <span>{chart.chartType.charAt(0).toUpperCase() + chart.chartType.slice(1)}</span>
+                              {chart.chartType === 'bar' && <BarChart3 className="h-3 w-3" />}
+                              {chart.chartType === 'line' && <TrendingUp className="h-3 w-3" />}
+                              {chart.chartType === 'pie' && <PieChartIcon className="h-3 w-3" />}
+                              <span>
+                                {chart.chartType.charAt(0).toUpperCase() + chart.chartType.slice(1)}
+                              </span>
                             </div>
                             <div className="flex items-center space-x-1 truncate">
-                              <Settings className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">{getYAxisLabel(chart.yAxis)} by {getXAxisLabel(chart.xAxis)}</span>
+                              <Settings className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">
+                                {getYAxisLabel(chart.yAxis)} by {getXAxisLabel(chart.xAxis)}
+                              </span>
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Compact Chart Actions */}
-                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <div className="flex flex-shrink-0 items-center space-x-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1148,7 +1248,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                             className="h-6 w-6 p-0 hover:bg-blue-50"
                             title="Duplicate Chart"
                           >
-                            <Copy className="w-3 h-3 text-blue-600" />
+                            <Copy className="h-3 w-3 text-blue-600" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1157,52 +1257,67 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                             className="h-6 w-6 p-0 hover:bg-red-50"
                             title="Delete Chart"
                           >
-                            <Trash2 className="w-3 h-3 text-red-600" />
+                            <Trash2 className="h-3 w-3 text-red-600" />
                           </Button>
                         </div>
                       </div>
 
                       {/* Compact Filters Display */}
                       {(chart.filters.status && chart.filters.status.length > 0) ||
-                       (chart.filters.leagues && chart.filters.leagues.length > 0) ? (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {chart.filters.status && chart.filters.status.slice(0, 3).map((status) => (
-                            <Badge key={status} variant="secondary" className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
-                              {status}
-                            </Badge>
-                          ))}
+                      (chart.filters.leagues && chart.filters.leagues.length > 0) ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {chart.filters.status &&
+                            chart.filters.status.slice(0, 3).map(status => (
+                              <Badge
+                                key={status}
+                                variant="secondary"
+                                className="border-blue-200 bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700"
+                              >
+                                {status}
+                              </Badge>
+                            ))}
                           {chart.filters.status && chart.filters.status.length > 3 && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-gray-50 text-gray-600">
+                            <Badge
+                              variant="secondary"
+                              className="bg-gray-50 px-1.5 py-0.5 text-xs text-gray-600"
+                            >
                               +{chart.filters.status.length - 3}
                             </Badge>
                           )}
                           {chart.filters.leagues && chart.filters.leagues.length > 0 && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200">
+                            <Badge
+                              variant="secondary"
+                              className="border-green-200 bg-green-50 px-1.5 py-0.5 text-xs text-green-700"
+                            >
                               {chart.filters.leagues.length} leagues
                             </Badge>
                           )}
                         </div>
                       ) : null}
                     </CardHeader>
-                    
-                    <CardContent className="px-4 pb-4 pt-2 flex-1 flex flex-col">
+
+                    <CardContent className="flex flex-1 flex-col px-4 pb-4 pt-2">
                       {/* Responsive Chart Rendering */}
-                      <div className="w-full bg-gray-50/50 rounded border overflow-hidden flex-1 min-h-[300px]">
+                      <div className="min-h-[300px] w-full flex-1 overflow-hidden rounded border bg-gray-50/50">
                         <CustomChartRenderer
                           config={chart}
                           userId={user?.id || ''}
                           onDelete={() => handleDeleteCustomChart(chart.id)}
-                          className="w-full h-full"
+                          className="h-full w-full"
                         />
                       </div>
-                      
+
                       {/* Compact Actions Footer */}
-                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+                      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
                         <div className="text-xs text-gray-400">
                           {new Date(parseInt(chart.id.split('-')[1])).toLocaleDateString()}
                         </div>
-                        <Button variant="ghost" size="sm" className="text-xs h-6 px-2 text-gray-500 hover:text-gray-700">
-                          <Download className="w-3 h-3 mr-1" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          <Download className="mr-1 h-3 w-3" />
                           Export
                         </Button>
                       </div>
@@ -1215,35 +1330,38 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         )}
 
         {customCharts.length === 0 && user && (
-          <Card className="border-2 border-dashed border-gray-200 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-300">
+          <Card className="border-2 border-dashed border-gray-200 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 transition-all duration-300 hover:from-blue-50/50 hover:to-indigo-50/50">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div className="relative mb-6">
-                <div className="p-6 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl shadow-lg">
-                  <BarChart3 className="w-10 h-10 text-white" />
+                <div className="rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 p-6 shadow-lg">
+                  <BarChart3 className="h-10 w-10 text-white" />
                 </div>
-                <div className="absolute -top-2 -right-2 w-4 h-4 bg-orange-400 rounded-full animate-pulse"></div>
+                <div className="absolute -right-2 -top-2 h-4 w-4 animate-pulse rounded-full bg-orange-400"></div>
               </div>
-              
-              <div className="text-center max-w-lg space-y-4">
-                <h4 className="text-xl font-bold text-gray-900 mb-2">Ready to Create Your First Chart?</h4>
-                <p className="text-gray-600 text-base leading-relaxed">
-                  Unlock powerful insights by creating custom analytics views. Mix and match different chart types, 
-                  data dimensions, and filters to visualize your betting performance exactly how you want.
+
+              <div className="max-w-lg space-y-4 text-center">
+                <h4 className="mb-2 text-xl font-bold text-gray-900">
+                  Ready to Create Your First Chart?
+                </h4>
+                <p className="text-base leading-relaxed text-gray-600">
+                  Unlock powerful insights by creating custom analytics views. Mix and match
+                  different chart types, data dimensions, and filters to visualize your betting
+                  performance exactly how you want.
                 </p>
-                
-                <div className="grid grid-cols-3 gap-4 mt-8 mb-6">
-                  <div className="text-center p-3 bg-white/60 rounded-lg border border-gray-100">
-                    <BarChart3 className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+
+                <div className="mb-6 mt-8 grid grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-gray-100 bg-white/60 p-3 text-center">
+                    <BarChart3 className="mx-auto mb-2 h-6 w-6 text-blue-600" />
                     <div className="text-sm font-medium text-gray-700">Bar Charts</div>
                     <div className="text-xs text-gray-500">Compare categories</div>
                   </div>
-                  <div className="text-center p-3 bg-white/60 rounded-lg border border-gray-100">
-                    <TrendingUp className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                  <div className="rounded-lg border border-gray-100 bg-white/60 p-3 text-center">
+                    <TrendingUp className="mx-auto mb-2 h-6 w-6 text-green-600" />
                     <div className="text-sm font-medium text-gray-700">Line Charts</div>
                     <div className="text-xs text-gray-500">Track trends</div>
                   </div>
-                  <div className="text-center p-3 bg-white/60 rounded-lg border border-gray-100">
-                    <PieChartIcon className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                  <div className="rounded-lg border border-gray-100 bg-white/60 p-3 text-center">
+                    <PieChartIcon className="mx-auto mb-2 h-6 w-6 text-purple-600" />
                     <div className="text-sm font-medium text-gray-700">Pie Charts</div>
                     <div className="text-xs text-gray-500">Show proportions</div>
                   </div>
@@ -1251,14 +1369,14 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
 
                 <Button
                   onClick={() => setShowChartBuilder(true)}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  className="transform rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
                   size="lg"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="mr-2 h-5 w-5" />
                   Create Your First Chart
                 </Button>
-                
-                <p className="text-xs text-gray-400 mt-4">
+
+                <p className="mt-4 text-xs text-gray-400">
                   🎯 Pro tip: Start with "Count of Bets by League" for a quick overview
                 </p>
               </div>
@@ -1268,17 +1386,20 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       </div>
 
       {/* Current Streak & Recent Performance */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Current Streak</p>
-              <p className={`text-3xl font-bold ${
-                data.currentStreak.type === 'win' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {data.currentStreak.count}{data.currentStreak.type === 'win' ? 'W' : 'L'}
+              <p className="mb-1 text-sm text-gray-600">Current Streak</p>
+              <p
+                className={`text-3xl font-bold ${
+                  data.currentStreak.type === 'win' ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {data.currentStreak.count}
+                {data.currentStreak.type === 'win' ? 'W' : 'L'}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-1 text-xs text-gray-500">
                 {data.currentStreak.type === 'win' ? 'Winning' : 'Losing'} streak
               </p>
             </div>
@@ -1288,11 +1409,11 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Largest Win</p>
+              <p className="mb-1 text-sm text-gray-600">Largest Win</p>
               <p className="text-3xl font-bold text-green-600">
                 {formatCurrency(safeData.largestWin)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Single bet profit</p>
+              <p className="mt-1 text-xs text-gray-500">Single bet profit</p>
             </div>
           </CardContent>
         </Card>
@@ -1300,59 +1421,68 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Largest Loss</p>
+              <p className="mb-1 text-sm text-gray-600">Largest Loss</p>
               <p className="text-3xl font-bold text-red-600">
                 {formatCurrency(safeData.largestLoss)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Single bet loss</p>
+              <p className="mt-1 text-xs text-gray-500">Single bet loss</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Enhanced Custom Chart Builder Modal */}
-      <Dialog open={showChartBuilder} onOpenChange={(open) => {
-        setShowChartBuilder(open)
-        if (!open) resetChartConfig()
-      }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden fixed top-[6vh] left-[50%] translate-x-[-50%] border-2 border-gradient-to-r from-blue-200 to-indigo-200 shadow-2xl rounded-xl backdrop-blur-sm bg-white/95">
-          <DialogHeader className="border-b border-gray-200/50 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 -m-6 mb-4 p-6 rounded-t-xl">
+      <Dialog
+        open={showChartBuilder}
+        onOpenChange={open => {
+          setShowChartBuilder(open)
+          if (!open) resetChartConfig()
+        }}
+      >
+        <DialogContent className="border-gradient-to-r fixed left-[50%] top-[6vh] max-h-[85vh] translate-x-[-50%] overflow-hidden rounded-xl border-2 bg-white/95 from-blue-200 to-indigo-200 shadow-2xl backdrop-blur-sm sm:max-w-[600px]">
+          <DialogHeader className="-m-6 mb-4 rounded-t-xl border-b border-gray-200/50 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 pb-4">
             <DialogTitle className="flex items-center space-x-3 text-xl">
-              <div className="p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200/30">
+              <div className="rounded-lg border border-blue-200/30 bg-gradient-to-r from-blue-100 to-indigo-100 p-2">
                 <TrueSharpShield className="h-6 w-6" variant="light" />
               </div>
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-white" />
+              <div className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 p-2">
+                <BarChart3 className="h-5 w-5 text-white" />
               </div>
               <span>Create Custom Chart</span>
             </DialogTitle>
-            <div className="text-sm text-gray-500 mt-2">
+            <div className="mt-2 text-sm text-gray-500">
               Build personalized analytics views with advanced filtering and visualization options
             </div>
           </DialogHeader>
-          
+
           {/* Step Indicator - Now 2 Steps */}
           <div className="flex items-center justify-center space-x-4 py-4">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium ${
-              activeStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium ${
+                activeStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}
+            >
               1
             </div>
-            <div className="text-xs text-gray-500 font-medium">Configure</div>
-            <div className={`w-20 h-1 rounded ${activeStep >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`} />
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium ${
-              activeStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
+            <div className="text-xs font-medium text-gray-500">Configure</div>
+            <div
+              className={`h-1 w-20 rounded ${activeStep >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}
+            />
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium ${
+                activeStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}
+            >
               2
             </div>
-            <div className="text-xs text-gray-500 font-medium">Finalize</div>
+            <div className="text-xs font-medium text-gray-500">Finalize</div>
           </div>
 
-          <div className="overflow-y-auto max-h-96">
+          <div className="max-h-96 overflow-y-auto">
             {/* Step 1: Chart Configuration */}
             {activeStep === 1 && (
               <div className="space-y-6">
-                <div className="text-center pb-2">
+                <div className="pb-2 text-center">
                   <h3 className="text-lg font-semibold text-gray-900">Chart Configuration</h3>
                   <p className="text-sm text-gray-500">Choose your chart type and data axes</p>
                 </div>
@@ -1362,26 +1492,47 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   <Label className="text-base font-medium">Chart Type</Label>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { value: 'bar', label: 'Bar Chart', icon: BarChart3, desc: 'Compare categories' },
-                      { value: 'line', label: 'Line Chart', icon: TrendingUp, desc: 'Show trends over time' },
-                      { value: 'pie', label: 'Pie Chart', icon: PieChartIcon, desc: 'Show proportions' }
-                    ].map((type) => {
+                      {
+                        value: 'bar',
+                        label: 'Bar Chart',
+                        icon: BarChart3,
+                        desc: 'Compare categories',
+                      },
+                      {
+                        value: 'line',
+                        label: 'Line Chart',
+                        icon: TrendingUp,
+                        desc: 'Show trends over time',
+                      },
+                      {
+                        value: 'pie',
+                        label: 'Pie Chart',
+                        icon: PieChartIcon,
+                        desc: 'Show proportions',
+                      },
+                    ].map(type => {
                       const Icon = type.icon
                       return (
                         <button
                           key={type.value}
-                          onClick={() => setChartConfig(prev => ({ ...prev, chartType: type.value as any }))}
-                          className={`p-4 border-2 rounded-lg text-center transition-all hover:shadow-md ${
-                            chartConfig.chartType === type.value 
-                              ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          onClick={() =>
+                            setChartConfig(prev => ({ ...prev, chartType: type.value as any }))
+                          }
+                          className={`rounded-lg border-2 p-4 text-center transition-all hover:shadow-md ${
+                            chartConfig.chartType === type.value
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          <Icon className={`w-8 h-8 mx-auto mb-2 ${
-                            chartConfig.chartType === type.value ? 'text-blue-600' : 'text-gray-400'
-                          }`} />
+                          <Icon
+                            className={`mx-auto mb-2 h-8 w-8 ${
+                              chartConfig.chartType === type.value
+                                ? 'text-blue-600'
+                                : 'text-gray-400'
+                            }`}
+                          />
                           <div className="text-sm font-medium">{type.label}</div>
-                          <div className="text-xs text-gray-500 mt-1">{type.desc}</div>
+                          <div className="mt-1 text-xs text-gray-500">{type.desc}</div>
                         </button>
                       )
                     })}
@@ -1391,13 +1542,13 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                 {/* Axes Configuration */}
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-base font-medium flex items-center space-x-2">
-                      <Settings className="w-4 h-4" />
+                    <Label className="flex items-center space-x-2 text-base font-medium">
+                      <Settings className="h-4 w-4" />
                       <span>X-Axis (Categories)</span>
                     </Label>
-                    <Select 
-                      value={chartConfig.xAxis} 
-                      onValueChange={(value: 'placed_at' | 'league' | 'bet_type' | 'sportsbook') => 
+                    <Select
+                      value={chartConfig.xAxis}
+                      onValueChange={(value: 'placed_at' | 'league' | 'bet_type' | 'sportsbook') =>
                         setChartConfig(prev => ({ ...prev, xAxis: value }))
                       }
                     >
@@ -1407,25 +1558,25 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                       <SelectContent>
                         <SelectItem value="league">
                           <div className="flex items-center space-x-2">
-                            <Target className="w-4 h-4" />
+                            <Target className="h-4 w-4" />
                             <span>League</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="bet_type">
                           <div className="flex items-center space-x-2">
-                            <Settings className="w-4 h-4" />
+                            <Settings className="h-4 w-4" />
                             <span>Bet Type</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="sportsbook">
                           <div className="flex items-center space-x-2">
-                            <Target className="w-4 h-4" />
+                            <Target className="h-4 w-4" />
                             <span>Sportsbook</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="placed_at">
                           <div className="flex items-center space-x-2">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="h-4 w-4" />
                             <span>Date</span>
                           </div>
                         </SelectItem>
@@ -1434,13 +1585,13 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-base font-medium flex items-center space-x-2">
-                      <TrendingUp className="w-4 h-4" />
+                    <Label className="flex items-center space-x-2 text-base font-medium">
+                      <TrendingUp className="h-4 w-4" />
                       <span>Y-Axis (Values)</span>
                     </Label>
-                    <Select 
-                      value={chartConfig.yAxis} 
-                      onValueChange={(value: 'count' | 'profit' | 'stake' | 'win_rate' | 'roi') => 
+                    <Select
+                      value={chartConfig.yAxis}
+                      onValueChange={(value: 'count' | 'profit' | 'stake' | 'win_rate' | 'roi') =>
                         setChartConfig(prev => ({ ...prev, yAxis: value }))
                       }
                     >
@@ -1459,16 +1610,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                 </div>
 
                 {/* Live Preview */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+                  <div className="mb-2 flex items-center space-x-2">
+                    <div className="h-2 w-2 rounded-full bg-blue-500"></div>
                     <span className="text-sm font-medium text-blue-900">Preview</span>
                   </div>
-                  <div className="text-lg font-semibold text-blue-900">
-                    {generateChartTitle()}
-                  </div>
-                  <div className="text-sm text-blue-700 mt-1">
-                    {chartConfig.chartType.charAt(0).toUpperCase() + chartConfig.chartType.slice(1)} chart showing {getYAxisLabel(chartConfig.yAxis).toLowerCase()} grouped by {getXAxisLabel(chartConfig.xAxis).toLowerCase()}
+                  <div className="text-lg font-semibold text-blue-900">{generateChartTitle()}</div>
+                  <div className="mt-1 text-sm text-blue-700">
+                    {chartConfig.chartType.charAt(0).toUpperCase() + chartConfig.chartType.slice(1)}{' '}
+                    chart showing {getYAxisLabel(chartConfig.yAxis).toLowerCase()} grouped by{' '}
+                    {getXAxisLabel(chartConfig.xAxis).toLowerCase()}
                   </div>
                 </div>
               </div>
@@ -1477,35 +1628,45 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             {/* Step 2: Finalize */}
             {activeStep === 2 && (
               <div className="space-y-6">
-                <div className="text-center pb-2">
+                <div className="pb-2 text-center">
                   <h3 className="text-lg font-semibold text-gray-900">Finalize Your Chart</h3>
-                  <p className="text-sm text-gray-500">Add a custom title and review your configuration</p>
+                  <p className="text-sm text-gray-500">
+                    Add a custom title and review your configuration
+                  </p>
                 </div>
 
                 {/* Custom Title */}
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-base font-medium">Chart Title</Label>
+                  <Label htmlFor="title" className="text-base font-medium">
+                    Chart Title
+                  </Label>
                   <Input
                     id="title"
                     placeholder={generateChartTitle()}
                     value={chartConfig.title}
-                    onChange={(e) => setChartConfig(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={e => setChartConfig(prev => ({ ...prev, title: e.target.value }))}
                     className="h-12 text-lg"
                   />
                 </div>
 
                 {/* Configuration Summary */}
-                <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                <div className="space-y-4 rounded-lg bg-gray-50 p-6">
                   <h4 className="font-semibold text-gray-900">Chart Summary</h4>
-                  
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <div className="text-gray-600">Type</div>
-                      <div className="font-medium">{chartConfig.chartType.charAt(0).toUpperCase() + chartConfig.chartType.slice(1)} Chart</div>
+                      <div className="font-medium">
+                        {chartConfig.chartType.charAt(0).toUpperCase() +
+                          chartConfig.chartType.slice(1)}{' '}
+                        Chart
+                      </div>
                     </div>
                     <div>
                       <div className="text-gray-600">Data</div>
-                      <div className="font-medium">{getYAxisLabel(chartConfig.yAxis)} by {getXAxisLabel(chartConfig.xAxis)}</div>
+                      <div className="font-medium">
+                        {getYAxisLabel(chartConfig.yAxis)} by {getXAxisLabel(chartConfig.xAxis)}
+                      </div>
                     </div>
                     {chartConfig.filters.status.length > 0 && (
                       <div>
@@ -1516,7 +1677,9 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                     {chartConfig.filters.leagues.length > 0 && (
                       <div>
                         <div className="text-gray-600">Leagues</div>
-                        <div className="font-medium">{chartConfig.filters.leagues.length} selected</div>
+                        <div className="font-medium">
+                          {chartConfig.filters.leagues.length} selected
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1526,26 +1689,23 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           </div>
 
           {/* Modal Actions */}
-          <div className="flex justify-between items-center pt-6 border-t">
-            <Button 
-              variant="outline" 
+          <div className="flex items-center justify-between border-t pt-6">
+            <Button
+              variant="outline"
               onClick={() => setShowChartBuilder(false)}
               className="flex items-center space-x-2"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
               <span>Cancel</span>
             </Button>
 
             <div className="flex space-x-2">
               {activeStep > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveStep(prev => prev - 1)}
-                >
+                <Button variant="outline" onClick={() => setActiveStep(prev => prev - 1)}>
                   Previous
                 </Button>
               )}
-              
+
               {activeStep < 2 ? (
                 <Button
                   onClick={() => setActiveStep(prev => prev + 1)}
@@ -1558,7 +1718,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                   onClick={handleCreateChart}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Create Chart
                 </Button>
               )}

@@ -41,12 +41,12 @@ export default function MarketplacePreview() {
       try {
         const params = new URLSearchParams({
           sort: 'roi',
-          limit: '3'
+          limit: '3',
         })
-        
+
         const response = await fetch(`/api/marketplace?${params.toString()}`)
         const data = await response.json()
-        
+
         if (data.error) {
           console.error('Error fetching strategies:', data.error)
           setTopStrategies([])
@@ -66,9 +66,9 @@ export default function MarketplacePreview() {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl p-6 border border-gray-100">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="p-3 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl">
+      <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-gray-50 p-6 shadow-xl">
+        <div className="mb-6 flex items-center space-x-3">
+          <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 p-3">
             <Trophy className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
@@ -77,8 +77,11 @@ export default function MarketplacePreview() {
           </div>
         </div>
         <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl"></div>
+          {[1, 2, 3].map(i => (
+            <div
+              key={i}
+              className="h-20 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200"
+            ></div>
           ))}
         </div>
       </div>
@@ -86,10 +89,10 @@ export default function MarketplacePreview() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-2xl p-6 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-gray-50 p-6 shadow-xl transition-all duration-300 hover:shadow-2xl">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="p-3 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl shadow-sm">
+          <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 p-3 shadow-sm">
             <Trophy className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
@@ -103,19 +106,19 @@ export default function MarketplacePreview() {
       </div>
 
       {topStrategies.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mx-auto h-20 w-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+        <div className="py-12 text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200">
             <Award className="h-10 w-10 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No strategies available</h3>
-          <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">No strategies available</h3>
+          <p className="mx-auto mb-6 max-w-sm text-sm text-gray-500">
             Check back soon for top performing strategies from our community.
           </p>
           <Link
             href="/marketplace"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl shadow-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200"
+            className="inline-flex transform items-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-700 hover:to-blue-800"
           >
-            <Award className="h-4 w-4 mr-2" />
+            <Award className="mr-2 h-4 w-4" />
             Explore Marketplace
           </Link>
         </div>
@@ -124,81 +127,90 @@ export default function MarketplacePreview() {
           {topStrategies.map((strategy, index) => (
             <div
               key={strategy.id}
-              className="group relative bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1"
+              className="group relative transform rounded-xl border border-gray-200 bg-gradient-to-r from-white to-gray-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="relative">
-                    <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <span className="text-white font-bold text-lg">
-                        #{index + 1}
-                      </span>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-blue-600 shadow-lg">
+                      <span className="text-lg font-bold text-white">#{index + 1}</span>
                     </div>
                     {index === 0 && (
-                      <div className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                        <Star className="h-3 w-3 text-white fill-current" />
+                      <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500">
+                        <Star className="h-3 w-3 fill-current text-white" />
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="text-sm font-bold text-gray-900 truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center space-x-2">
+                      <p className="truncate text-sm font-bold text-gray-900">
                         {strategy.strategy_name}
                       </p>
-                      <div className="flex items-center space-x-1 bg-emerald-100 px-2 py-1 rounded-full">
+                      <div className="flex items-center space-x-1 rounded-full bg-emerald-100 px-2 py-1">
                         <TrendingUp className="h-3 w-3 text-emerald-600" />
                         <span className="text-xs font-semibold text-emerald-700">
                           {strategy.roi_percentage?.toFixed(1) || '0'}%
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">
-                      by @{strategy.username}
-                    </p>
+                    <p className="mb-2 text-xs text-gray-500">by @{strategy.username}</p>
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
-                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs text-gray-600 font-medium">
+                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                        <span className="text-xs font-medium text-gray-600">
                           {(strategy.win_rate || 0).toFixed(0)}% win rate
                         </span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Users className="h-3 w-3 text-blue-500" />
-                        <span className="text-xs text-gray-600 font-medium">
+                        <span className="text-xs font-medium text-gray-600">
                           {strategy.total_bets || 0} bets
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
-                  <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                    ${strategy.pricing_monthly || strategy.pricing_weekly || strategy.pricing_yearly || strategy.price || 25}
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-lg font-bold text-transparent">
+                    $
+                    {strategy.pricing_monthly ||
+                      strategy.pricing_weekly ||
+                      strategy.pricing_yearly ||
+                      strategy.price ||
+                      25}
                   </div>
-                  <div className="text-xs text-gray-500 font-medium">
-                    {strategy.pricing_monthly ? '/month' : strategy.pricing_weekly ? '/week' : strategy.pricing_yearly ? '/year' : '/month'}
+                  <div className="text-xs font-medium text-gray-500">
+                    {strategy.pricing_monthly
+                      ? '/month'
+                      : strategy.pricing_weekly
+                        ? '/week'
+                        : strategy.pricing_yearly
+                          ? '/year'
+                          : '/month'}
                   </div>
-                  <div className="flex items-center justify-end mt-1">
+                  <div className="mt-1 flex items-center justify-end">
                     <div className="flex items-center space-x-1 text-orange-500">
                       <Users className="h-3 w-3" />
-                      <span className="text-xs font-semibold">{strategy.subscriber_count || 0}</span>
+                      <span className="text-xs font-semibold">
+                        {strategy.subscriber_count || 0}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
-          
+
           {/* Enhanced Browse All Link */}
-          <div className="text-center pt-6 border-t border-gray-100">
+          <div className="border-t border-gray-100 pt-6 text-center">
             <Link
               href="/marketplace"
-              className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200"
+              className="group inline-flex transform items-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-700 hover:to-blue-800"
             >
-              <Trophy className="h-5 w-5 mr-2 group-hover:animate-pulse" />
+              <Trophy className="mr-2 h-5 w-5 group-hover:animate-pulse" />
               Discover All Strategies
-              <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         </div>

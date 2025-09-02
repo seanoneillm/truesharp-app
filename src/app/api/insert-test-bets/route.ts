@@ -15,7 +15,7 @@ export async function POST() {
     if (usersError || !users || users.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No users found in profiles table'
+        error: 'No users found in profiles table',
       })
     }
 
@@ -31,7 +31,7 @@ export async function POST() {
     if (strategiesError || !strategies || strategies.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No strategies found in strategies table'
+        error: 'No strategies found in strategies table',
       })
     }
 
@@ -47,20 +47,18 @@ export async function POST() {
       .single()
 
     if (!existingSub) {
-      const { error: subError } = await supabase
-        .from('subscriptions')
-        .insert({
-          subscriber_id: userId,
-          seller_id: strategies[0].user_id,
-          strategy_id: strategyId,
-          status: 'active',
-          frequency: 'monthly',
-          price: 29.99,
-          currency: 'USD',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        })
+      const { error: subError } = await supabase.from('subscriptions').insert({
+        subscriber_id: userId,
+        seller_id: strategies[0].user_id,
+        strategy_id: strategyId,
+        status: 'active',
+        frequency: 'monthly',
+        price: 29.99,
+        currency: 'USD',
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      })
 
       if (subError) {
         console.error('Error creating subscription:', subError)
@@ -72,7 +70,7 @@ export async function POST() {
     // 4. Insert test bets
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    
+
     const dayAfterTomorrow = new Date()
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
 
@@ -87,12 +85,12 @@ export async function POST() {
         bet_description: 'Red Sox +1.5',
         line_value: 1.5,
         odds: -110,
-        stake: 100.00,
+        stake: 100.0,
         potential_payout: 190.91,
         status: 'pending',
         placed_at: new Date().toISOString(),
         game_date: tomorrow.toISOString(),
-        sportsbook: 'DraftKings'
+        sportsbook: 'DraftKings',
       },
       {
         user_id: userId,
@@ -104,12 +102,12 @@ export async function POST() {
         bet_description: 'Over 8.5',
         line_value: 8.5,
         odds: 105,
-        stake: 50.00,
-        potential_payout: 102.50,
+        stake: 50.0,
+        potential_payout: 102.5,
         status: 'pending',
         placed_at: new Date().toISOString(),
         game_date: dayAfterTomorrow.toISOString(),
-        sportsbook: 'FanDuel'
+        sportsbook: 'FanDuel',
       },
       {
         user_id: userId,
@@ -120,13 +118,13 @@ export async function POST() {
         bet_type: 'moneyline',
         bet_description: 'Chiefs ML',
         odds: -150,
-        stake: 75.00,
-        potential_payout: 125.00,
+        stake: 75.0,
+        potential_payout: 125.0,
         status: 'pending',
         placed_at: new Date().toISOString(),
         game_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        sportsbook: 'BetMGM'
-      }
+        sportsbook: 'BetMGM',
+      },
     ]
 
     const { data: insertedBets, error: betsError } = await supabase
@@ -138,7 +136,7 @@ export async function POST() {
       console.error('Error inserting bets:', betsError)
       return NextResponse.json({
         success: false,
-        error: betsError.message
+        error: betsError.message,
       })
     }
 
@@ -148,7 +146,7 @@ export async function POST() {
     if (insertedBets && insertedBets.length > 0) {
       const strategyBetsData = insertedBets.map(bet => ({
         strategy_id: strategyId,
-        bet_id: bet.id
+        bet_id: bet.id,
       }))
 
       const { error: strategyBetsError } = await supabase
@@ -159,7 +157,7 @@ export async function POST() {
         console.error('Error linking bets to strategy:', strategyBetsError)
         return NextResponse.json({
           success: false,
-          error: strategyBetsError.message
+          error: strategyBetsError.message,
         })
       }
 
@@ -172,15 +170,14 @@ export async function POST() {
       data: {
         userId,
         strategyId,
-        betsCreated: insertedBets?.length || 0
-      }
+        betsCreated: insertedBets?.length || 0,
+      },
     })
-
   } catch (error) {
     console.error('Error creating test bets:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

@@ -27,7 +27,9 @@ async function createLeaderboardEntry(strategyId: string, supabase: SupabaseClie
   // First get the strategy details
   const { data: strategy, error: strategyError } = await supabase
     .from('strategies')
-    .select('user_id, name, monetized, pricing_weekly, pricing_monthly, pricing_yearly, performance_roi, performance_win_rate, performance_total_bets')
+    .select(
+      'user_id, name, monetized, pricing_weekly, pricing_monthly, pricing_yearly, performance_roi, performance_win_rate, performance_total_bets'
+    )
     .eq('id', strategyId)
     .single()
 
@@ -49,27 +51,25 @@ async function createLeaderboardEntry(strategyId: string, supabase: SupabaseClie
   }
 
   // Create leaderboard entry
-  const { error: insertError } = await supabase
-    .from('strategy_leaderboard')
-    .insert({
-      strategy_id: strategyId,
-      user_id: strategy.user_id,
-      strategy_name: strategy.name,
-      username: user.username,
-      is_verified_seller: user.is_verified_seller || false,
-      total_bets: strategy.performance_total_bets || 0,
-      winning_bets: 0, // Will be calculated by triggers
-      losing_bets: 0,
-      push_bets: 0,
-      roi_percentage: strategy.performance_roi || 0,
-      win_rate: (strategy.performance_win_rate || 0) / 100, // Convert percentage to decimal
-      is_monetized: strategy.monetized || false,
-      subscription_price_weekly: strategy.pricing_weekly,
-      subscription_price_monthly: strategy.pricing_monthly,
-      subscription_price_yearly: strategy.pricing_yearly,
-      is_eligible: (strategy.performance_total_bets || 0) >= 10, // Example threshold
-      minimum_bets_met: (strategy.performance_total_bets || 0) >= 10
-    })
+  const { error: insertError } = await supabase.from('strategy_leaderboard').insert({
+    strategy_id: strategyId,
+    user_id: strategy.user_id,
+    strategy_name: strategy.name,
+    username: user.username,
+    is_verified_seller: user.is_verified_seller || false,
+    total_bets: strategy.performance_total_bets || 0,
+    winning_bets: 0, // Will be calculated by triggers
+    losing_bets: 0,
+    push_bets: 0,
+    roi_percentage: strategy.performance_roi || 0,
+    win_rate: (strategy.performance_win_rate || 0) / 100, // Convert percentage to decimal
+    is_monetized: strategy.monetized || false,
+    subscription_price_weekly: strategy.pricing_weekly,
+    subscription_price_monthly: strategy.pricing_monthly,
+    subscription_price_yearly: strategy.pricing_yearly,
+    is_eligible: (strategy.performance_total_bets || 0) >= 10, // Example threshold
+    minimum_bets_met: (strategy.performance_total_bets || 0) >= 10,
+  })
 
   if (insertError) {
     console.error('Error creating leaderboard entry:', insertError)
@@ -81,14 +81,15 @@ async function createLeaderboardEntry(strategyId: string, supabase: SupabaseClie
 
 export async function fetchUserStrategies(userId: string): Promise<StrategyData[]> {
   const supabase = createBrowserClient()
-  
+
   console.log('Fetching strategies from leaderboard for user:', userId)
   console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-  
+
   try {
     const { data, error } = await supabase
       .from('strategy_leaderboard')
-      .select(`
+      .select(
+        `
         strategy_id,
         strategy_name,
         is_monetized,
@@ -101,7 +102,8 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
         created_at,
         updated_at,
         start_date
-      `)
+      `
+      )
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
@@ -110,13 +112,13 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
         message: error.message,
         details: error.details,
         hint: error.hint,
-        code: error.code
+        code: error.code,
       })
       throw new Error(`Failed to fetch strategies: ${error.message || JSON.stringify(error)}`)
     }
 
     console.log('Strategies fetched successfully:', data)
-    
+
     if (!data || data.length === 0) {
       return []
     }
@@ -134,29 +136,34 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
     }
 
     // Calculate subscriber counts by frequency for each strategy
-    const subscriberCounts = subscriptions ? subscriptions.reduce((acc, sub) => {
-      if (!acc[sub.strategy_id]) {
-        acc[sub.strategy_id] = {
-          total: 0,
-          weekly: 0,
-          monthly: 0,
-          yearly: 0
-        }
-      }
-      
-      const strategyCount = acc[sub.strategy_id]!
-      strategyCount.total++
-      
-      if (sub.frequency === 'weekly') {
-        strategyCount.weekly++
-      } else if (sub.frequency === 'monthly') {
-        strategyCount.monthly++
-      } else if (sub.frequency === 'yearly') {
-        strategyCount.yearly++
-      }
-      
-      return acc
-    }, {} as Record<string, { total: number; weekly: number; monthly: number; yearly: number }>) : {}
+    const subscriberCounts = subscriptions
+      ? subscriptions.reduce(
+          (acc, sub) => {
+            if (!acc[sub.strategy_id]) {
+              acc[sub.strategy_id] = {
+                total: 0,
+                weekly: 0,
+                monthly: 0,
+                yearly: 0,
+              }
+            }
+
+            const strategyCount = acc[sub.strategy_id]!
+            strategyCount.total++
+
+            if (sub.frequency === 'weekly') {
+              strategyCount.weekly++
+            } else if (sub.frequency === 'monthly') {
+              strategyCount.monthly++
+            } else if (sub.frequency === 'yearly') {
+              strategyCount.yearly++
+            }
+
+            return acc
+          },
+          {} as Record<string, { total: number; weekly: number; monthly: number; yearly: number }>
+        )
+      : {}
 
     // Map leaderboard data to StrategyData format and add subscriber counts
     const strategiesWithSubscriberCounts = data.map(strategy => ({
@@ -176,22 +183,24 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
       subscriber_count: subscriberCounts[strategy.strategy_id]?.total || 0,
       weekly_subscribers: subscriberCounts[strategy.strategy_id]?.weekly || 0,
       monthly_subscribers: subscriberCounts[strategy.strategy_id]?.monthly || 0,
-      yearly_subscribers: subscriberCounts[strategy.strategy_id]?.yearly || 0
+      yearly_subscribers: subscriberCounts[strategy.strategy_id]?.yearly || 0,
     }))
 
     return strategiesWithSubscriberCounts
   } catch (networkError) {
     console.error('Network/connection error:', networkError)
-    throw new Error(`Connection error: ${networkError instanceof Error ? networkError.message : 'Unknown error'}`)
+    throw new Error(
+      `Connection error: ${networkError instanceof Error ? networkError.message : 'Unknown error'}`
+    )
   }
 }
 
 export async function updateStrategy(
-  strategyId: string, 
+  strategyId: string,
   updates: StrategyUpdateData
 ): Promise<void> {
   console.log('Updating strategy via API:', strategyId, 'with updates:', updates)
-  
+
   try {
     const response = await fetch('/api/strategies', {
       method: 'PATCH',
@@ -200,8 +209,8 @@ export async function updateStrategy(
       },
       body: JSON.stringify({
         id: strategyId,
-        ...updates
-      })
+        ...updates,
+      }),
     })
 
     if (!response.ok) {
@@ -220,12 +229,9 @@ export async function updateStrategy(
 
 export async function deleteStrategy(strategyId: string): Promise<void> {
   const supabase = createBrowserClient()
-  
+
   // Delete the strategy - cascade should handle related records
-  const { error } = await supabase
-    .from('strategies')
-    .delete()
-    .eq('id', strategyId)
+  const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
 
   if (error) {
     console.error('Error deleting strategy:', error)
@@ -234,14 +240,14 @@ export async function deleteStrategy(strategyId: string): Promise<void> {
 }
 
 export async function createStrategy(
-  userId: string, 
-  strategyData: Omit<StrategyUpdateData, 'id'> & { 
+  userId: string,
+  strategyData: Omit<StrategyUpdateData, 'id'> & {
     name: string
     filter_config: Record<string, unknown>
   }
 ): Promise<StrategyData> {
   const supabase = createBrowserClient()
-  
+
   const { data, error } = await supabase
     .from('strategies')
     .insert({
@@ -255,7 +261,7 @@ export async function createStrategy(
       filter_config: strategyData.filter_config || {},
       performance_roi: null,
       performance_win_rate: null,
-      performance_total_bets: 0
+      performance_total_bets: 0,
     })
     .select()
     .single()
@@ -280,6 +286,6 @@ export async function createStrategy(
     subscriber_count: 0,
     weekly_subscribers: 0,
     monthly_subscribers: 0,
-    yearly_subscribers: 0
+    yearly_subscribers: 0,
   }
 }

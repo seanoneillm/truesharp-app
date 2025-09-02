@@ -1,5 +1,5 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 // Utility for combining Tailwind classes
 export function cn(...inputs: ClassValue[]) {
@@ -48,12 +48,12 @@ export function calculateROI(profit: number, invested: number): number {
 export function timeAgo(date: Date): string {
   const now = new Date()
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-  
+
   if (diffInSeconds < 60) return 'just now'
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
-  
+
   return date.toLocaleDateString()
 }
 
@@ -103,7 +103,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
     if (!inThrottle) {
       func(...args)
       inThrottle = true
-      setTimeout(() => inThrottle = false, limit)
+      setTimeout(() => (inThrottle = false), limit)
     }
   }
 }
@@ -121,12 +121,15 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
 // Array helpers
 export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
-  return array.reduce((groups, item) => {
-    const group = (item[key] as string) || 'undefined'
-    groups[group] = groups[group] || []
-    groups[group].push(item)
-    return groups
-  }, {} as Record<string, T[]>)
+  return array.reduce(
+    (groups, item) => {
+      const group = (item[key] as string) || 'undefined'
+      groups[group] = groups[group] || []
+      groups[group].push(item)
+      return groups
+    },
+    {} as Record<string, T[]>
+  )
 }
 
 export function unique<T>(array: T[]): T[] {

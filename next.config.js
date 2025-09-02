@@ -10,12 +10,7 @@ const nextConfig = {
   poweredByHeader: false,
 
   // Allow ngrok domains for development
-  allowedDevOrigins: [
-    'localhost:3001',
-    'localhost:3000',
-    '.ngrok.io',
-    '.ngrok-free.app'
-  ],
+  allowedDevOrigins: ['localhost:3001', 'localhost:3000', '.ngrok.io', '.ngrok-free.app'],
 
   // Image optimization (updated for Next.js 15)
   images: {
@@ -25,7 +20,7 @@ const nextConfig = {
         hostname: 'avatars.githubusercontent.com',
       },
       {
-        protocol: 'https', 
+        protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
       {
@@ -39,7 +34,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'trsogafrxpptszxydycn.supabase.co',
-      }
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -107,7 +102,7 @@ const nextConfig = {
 
   // Output configuration for deployment
   output: 'standalone',
-  
+
   // Trailing slash handling
   trailingSlash: false,
 }

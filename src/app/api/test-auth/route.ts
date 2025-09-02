@@ -5,10 +5,13 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    
+
     // Test 1: Get user from auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     // Test 2: Check what auth.uid() returns in a query
     const { data: authTest } = await supabase
       .rpc('get_auth_uid')
@@ -33,13 +36,16 @@ export async function GET(request: NextRequest) {
       auth_error: authError?.message || null,
       profile_select: { data: profileSelect, error: selectError?.message || null },
       update_test: { data: updateTest, error: updateError?.message || null },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    return NextResponse.json({ 
-      error: 'Test failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Test failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 

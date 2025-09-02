@@ -34,70 +34,82 @@ interface FilterConfig {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🎯 Strategy creation API called');
-    
+    console.log('🎯 Strategy creation API called')
+
     // Parse request body first to get clientUserId for fallback auth
     const body: CreateStrategyRequest = await request.json()
-    const { name, description, filter_config, monetized = false, pricing_weekly, pricing_monthly, pricing_yearly, userId: clientUserId } = body
-    
-    const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    console.log('🔐 Auth check result:', { 
-      hasUser: !!user, 
-      userId: user?.id?.substring(0, 8) + '...' || 'undefined...', 
-      authError: authError?.message || 'No error',
-      hasClientUserId: !!clientUserId
-    });
+    const {
+      name,
+      description,
+      filter_config,
+      monetized = false,
+      pricing_weekly,
+      pricing_monthly,
+      pricing_yearly,
+      userId: clientUserId,
+    } = body
 
-    let finalUser = user;
+    const supabase = await createServerSupabaseClient(request)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    console.log('🔐 Auth check result:', {
+      hasUser: !!user,
+      userId: user?.id?.substring(0, 8) + '...' || 'undefined...',
+      authError: authError?.message || 'No error',
+      hasClientUserId: !!clientUserId,
+    })
+
+    let finalUser = user
 
     if (authError || !user) {
-      console.log('❌ Authentication failed, trying fallback methods...');
-      
+      console.log('❌ Authentication failed, trying fallback methods...')
+
       // Try service role fallback like in betting API
       try {
-        const { createClient } = await import('@supabase/supabase-js');
+        const { createClient } = await import('@supabase/supabase-js')
         const serviceSupabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        
+        )
+
         // Try to extract user ID from JWT token
-        const authTokenCookie = request.cookies.get('sb-trsogafrxpptszxydycn-auth-token')?.value;
-        let userId = null;
-        
+        const authTokenCookie = request.cookies.get('sb-trsogafrxpptszxydycn-auth-token')?.value
+        let userId = null
+
         if (authTokenCookie) {
           try {
-            let tokenValue = authTokenCookie;
+            let tokenValue = authTokenCookie
             if (authTokenCookie.startsWith('[') && authTokenCookie.endsWith(']')) {
-              const parsed = JSON.parse(authTokenCookie);
+              const parsed = JSON.parse(authTokenCookie)
               if (Array.isArray(parsed) && parsed.length > 0) {
-                tokenValue = parsed[0];
+                tokenValue = parsed[0]
               }
             }
-            
-            const tokenParts = tokenValue.split('.');
+
+            const tokenParts = tokenValue.split('.')
             if (tokenParts.length === 3 && tokenParts[1]) {
-              const payload = JSON.parse(atob(tokenParts[1]));
-              userId = payload.sub;
-              console.log('📋 Extracted user ID from token:', userId?.substring(0, 8) + '...');
+              const payload = JSON.parse(atob(tokenParts[1]))
+              userId = payload.sub
+              console.log('📋 Extracted user ID from token:', userId?.substring(0, 8) + '...')
             }
           } catch (e) {
-            console.log('⚠️ Could not extract user ID from token:', e);
+            console.log('⚠️ Could not extract user ID from token:', e)
           }
         }
-        
+
         if (userId) {
           // Validate that this user exists
           const { data: userProfile, error: profileError } = await serviceSupabase
             .from('profiles')
             .select('id, email')
             .eq('id', userId)
-            .single();
-            
+            .single()
+
           if (!profileError && userProfile) {
-            console.log('✅ User validated via service role');
+            console.log('✅ User validated via service role')
             finalUser = {
               id: userId,
               email: userProfile.email,
@@ -108,23 +120,23 @@ export async function POST(request: NextRequest) {
               user_metadata: {},
               identities: [],
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
+              updated_at: new Date().toISOString(),
+            }
           } else {
-            console.log('❌ User validation failed:', profileError?.message);
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            console.log('❌ User validation failed:', profileError?.message)
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
           }
         } else if (clientUserId) {
           // Use client-provided user ID as fallback like in betting API
-          console.log('🔄 Trying client-provided user ID validation...');
+          console.log('🔄 Trying client-provided user ID validation...')
           const { data: userProfile, error: profileError } = await serviceSupabase
             .from('profiles')
             .select('id, email')
             .eq('id', clientUserId)
-            .single();
-            
+            .single()
+
           if (!profileError && userProfile) {
-            console.log('✅ User validated via client-provided ID');
+            console.log('✅ User validated via client-provided ID')
             finalUser = {
               id: clientUserId,
               email: userProfile.email,
@@ -135,87 +147,115 @@ export async function POST(request: NextRequest) {
               user_metadata: {},
               identities: [],
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
+              updated_at: new Date().toISOString(),
+            }
           } else {
-            console.log('❌ Client user validation failed:', profileError?.message);
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            console.log('❌ Client user validation failed:', profileError?.message)
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
           }
         } else {
-          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
       } catch (fallbackError) {
-        console.log('❌ Fallback authentication failed:', fallbackError);
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.log('❌ Fallback authentication failed:', fallbackError)
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
     }
 
     if (!finalUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Validate required fields
     if (!name || name.length < 1 || name.length > 100) {
-      return NextResponse.json({ error: 'Strategy name must be between 1 and 100 characters' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Strategy name must be between 1 and 100 characters' },
+        { status: 400 }
+      )
     }
 
     // Validate filters according to enhanced strategy creation rules
     const filters = filter_config as FilterConfig
-    
+
     // Rule 1: Status filter MUST be "All" - no other status filters allowed
     if (!filters.statuses || !filters.statuses.includes('All') || filters.statuses.length !== 1) {
-      return NextResponse.json({ 
-        error: 'Strategy creation requires bet status to be set to "All" only. No specific status filters are allowed.' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            'Strategy creation requires bet status to be set to "All" only. No specific status filters are allowed.',
+        },
+        { status: 400 }
+      )
     }
 
     // Rule 2: Either "All" leagues OR exactly ONE specific league must be selected
     const leagues = filters.leagues || []
     const hasAllLeagues = leagues.includes('All')
     const specificLeagues = leagues.filter(l => l !== 'All')
-    
+
     if (!hasAllLeagues && specificLeagues.length !== 1) {
-      return NextResponse.json({ 
-        error: 'Strategy creation requires either "All" leagues or exactly one specific league to be selected' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            'Strategy creation requires either "All" leagues or exactly one specific league to be selected',
+        },
+        { status: 400 }
+      )
     }
-    
+
     if (hasAllLeagues && specificLeagues.length > 0) {
-      return NextResponse.json({ 
-        error: 'Strategy creation cannot have both "All" and specific leagues selected' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Strategy creation cannot have both "All" and specific leagues selected',
+        },
+        { status: 400 }
+      )
     }
 
     // Rule 3: Either "All" bet types OR exactly ONE specific bet type must be selected
-    const allowedBetTypes = ['total', 'moneyline', 'spread', 'player_prop', 'team_prop', 'game_prop']
+    const allowedBetTypes = [
+      'total',
+      'moneyline',
+      'spread',
+      'player_prop',
+      'team_prop',
+      'game_prop',
+    ]
     const betTypes = filters.betTypes || []
     const hasAllBetTypes = betTypes.includes('All')
     const specificBetTypes = betTypes.filter(bt => bt !== 'All' && allowedBetTypes.includes(bt))
-    
+
     if (!hasAllBetTypes && specificBetTypes.length !== 1) {
-      return NextResponse.json({ 
-        error: 'Strategy creation requires either "All" bet types or exactly one specific bet type to be selected' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            'Strategy creation requires either "All" bet types or exactly one specific bet type to be selected',
+        },
+        { status: 400 }
+      )
     }
-    
+
     if (hasAllBetTypes && specificBetTypes.length > 0) {
-      return NextResponse.json({ 
-        error: 'Strategy creation cannot have both "All" and specific bet types selected' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Strategy creation cannot have both "All" and specific bet types selected',
+        },
+        { status: 400 }
+      )
     }
 
     // Extract convenience fields for database indexing
     const sport = hasAllLeagues ? 'All' : specificLeagues[0] // Use "All" or the specific league
     const league = sport // In our schema, sport and league are the same
-    
+
     // Extract the actual bet type for filtering (spread, moneyline, total, etc.)
     const betType = hasAllBetTypes ? 'All' : specificBetTypes[0] // Use "All" or the specific bet type
-    
-    console.log('🎯 BET TYPE EXTRACTION DEBUG:');
-    console.log('   hasAllBetTypes:', hasAllBetTypes);
-    console.log('   specificBetTypes:', specificBetTypes);
-    console.log('   FINAL betType for filtering:', betType);
-    
+
+    console.log('🎯 BET TYPE EXTRACTION DEBUG:')
+    console.log('   hasAllBetTypes:', hasAllBetTypes)
+    console.log('   specificBetTypes:', specificBetTypes)
+    console.log('   FINAL betType for filtering:', betType)
+
     // Determine parlay category for additional filtering if needed
     let parlayCategoryType = null
     if (filters.isParlays && filters.isParlays.includes('All')) {
@@ -240,54 +280,59 @@ export async function POST(request: NextRequest) {
       pricing_weekly,
       pricing_monthly,
       pricing_yearly,
-      
+
       // Array fields from filters - handle "All" or specific selections
       sports: hasAllLeagues ? null : [sport], // null for "All", array for specific
       leagues: hasAllLeagues ? null : specificLeagues, // null for "All", array for specific
       bet_types: specificBetTypes, // Single bet type as required
-      sportsbooks: filters.sportsbooks && filters.sportsbooks.length > 0 ? filters.sportsbooks : null,
-      
+      sportsbooks:
+        filters.sportsbooks && filters.sportsbooks.length > 0 ? filters.sportsbooks : null,
+
       // Side and parlay preferences
-      home_away_preference: filters.sides && !filters.sides.includes('All') ? filters.sides.join(',') : null,
-      
+      home_away_preference:
+        filters.sides && !filters.sides.includes('All') ? filters.sides.join(',') : null,
+
       // Ranges as JSONB (if any ranges are specified)
       odds_ranges: filters.oddsRange ? filters.oddsRange : null,
       spread_ranges: filters.spreadRange ? filters.spreadRange : null,
       total_ranges: filters.totalRange ? filters.totalRange : null,
-      
+
       // Date and time filters
-      date_ranges: filters.customStartDate || filters.customEndDate ? {
-        start_date: filters.customStartDate || null,
-        end_date: filters.customEndDate || null,
-        time_range: filters.timeRange || null
-      } : null,
-      
+      date_ranges:
+        filters.customStartDate || filters.customEndDate
+          ? {
+              start_date: filters.customStartDate || null,
+              end_date: filters.customEndDate || null,
+              time_range: filters.timeRange || null,
+            }
+          : null,
+
       // Start date field - dedicated field for strategy start date
-      start_date: filters.customStartDate || null,  // Dedicated field for strategy start date
-      
+      start_date: filters.customStartDate || null, // Dedicated field for strategy start date
+
       // Bet sizing from stake range
       bet_sizing: filters.stakeRange ? filters.stakeRange : null,
-      
+
       // Index fields for performance
       sport,
       league,
       bet_type: parlayCategoryType, // Database constraint expects null/Parlay/Straight
       odds_range: filters.oddsRange || null,
       spread_range: filters.spreadRange || null,
-      total_range: filters.totalRange || null
+      total_range: filters.totalRange || null,
     }
 
     // Create service role client for database operations to bypass RLS
-    const { createClient } = await import('@supabase/supabase-js');
+    const { createClient } = await import('@supabase/supabase-js')
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    )
 
-    console.log('🎯 Strategy creation with comprehensive data mapping');
-    console.log('📊 Filters received:', JSON.stringify(filters, null, 2));
-    console.log('📋 Strategy data to be saved:', JSON.stringify(strategyData, null, 2));
-    
+    console.log('🎯 Strategy creation with comprehensive data mapping')
+    console.log('📊 Filters received:', JSON.stringify(filters, null, 2))
+    console.log('📋 Strategy data to be saved:', JSON.stringify(strategyData, null, 2))
+
     // Insert strategy into database using service role
     const { data: strategy, error: insertError } = await serviceSupabase
       .from('strategies')
@@ -300,7 +345,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create strategy' }, { status: 500 })
     }
 
-    console.log('✅ Strategy created successfully:', JSON.stringify(strategy, null, 2));
+    console.log('✅ Strategy created successfully:', JSON.stringify(strategy, null, 2))
 
     // Find matching bets for this strategy using service role
     let betsQuery = serviceSupabase
@@ -317,7 +362,7 @@ export async function POST(request: NextRequest) {
       sides: filters.sides,
       statuses: filters.statuses,
       customStartDate: filters.customStartDate,
-      customEndDate: filters.customEndDate
+      customEndDate: filters.customEndDate,
     })
 
     // First, let's see what bets this user actually has
@@ -337,17 +382,17 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Unique sportsbooks:', [...new Set(allUserBets.map(b => b.sportsbook))])
       console.log('🔍 Parlay distribution:', {
         parlays: allUserBets.filter(b => b.is_parlay).length,
-        straight: allUserBets.filter(b => !b.is_parlay).length
+        straight: allUserBets.filter(b => !b.is_parlay).length,
       })
     }
 
     // Apply sport/league filter with case-insensitive matching and sport mapping
     if (sport && sport !== 'All') {
       console.log('🔍 Applying sport filter:', sport)
-      
+
       // Create a list of possible sport variations to match
       const sportVariations = []
-      
+
       if (sport === 'NFL') {
         sportVariations.push('NFL', 'nfl', 'football', 'Football', 'American Football')
       } else if (sport === 'NBA') {
@@ -360,7 +405,7 @@ export async function POST(request: NextRequest) {
         // Default case - try both exact match and lowercase
         sportVariations.push(sport, sport.toLowerCase(), sport.toUpperCase())
       }
-      
+
       console.log('🔍 Sport variations to match:', sportVariations)
       betsQuery = betsQuery.in('sport', sportVariations)
     } else {
@@ -370,11 +415,11 @@ export async function POST(request: NextRequest) {
     // Apply bet type filter with variations
     if (betType && betType !== 'All') {
       console.log('🔍 Applying bet_type filter:', betType)
-      
+
       // Create a list of possible bet type variations
       const betTypeVariations = []
       const lowerBetType = betType.toLowerCase()
-      
+
       if (lowerBetType === 'moneyline') {
         betTypeVariations.push('moneyline', 'ml', 'money_line')
       } else if (lowerBetType === 'spread') {
@@ -387,7 +432,7 @@ export async function POST(request: NextRequest) {
         // Default case - try both exact match and lowercase
         betTypeVariations.push(betType, lowerBetType, betType.toUpperCase())
       }
-      
+
       console.log('🔍 Bet type variations to match:', betTypeVariations)
       betsQuery = betsQuery.in('bet_type', betTypeVariations)
     } else {
@@ -396,7 +441,10 @@ export async function POST(request: NextRequest) {
 
     // Apply other filters with proper null handling
     if (filters.sides && !filters.sides.includes('All')) {
-      console.log('🔍 Applying sides filter:', filters.sides.map(s => s.toLowerCase()))
+      console.log(
+        '🔍 Applying sides filter:',
+        filters.sides.map(s => s.toLowerCase())
+      )
       const sideValues = filters.sides.map(s => s.toLowerCase())
       // Handle both null sides and the specific side values
       betsQuery = betsQuery.or(`side.in.(${sideValues.join(',')}),side.is.null`)
@@ -435,7 +483,10 @@ export async function POST(request: NextRequest) {
     // Add additional filters that might be missing
     if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes('All')) {
       console.log('🔍 Applying status filter:', filters.statuses)
-      betsQuery = betsQuery.in('status', filters.statuses.map(s => s.toLowerCase()))
+      betsQuery = betsQuery.in(
+        'status',
+        filters.statuses.map(s => s.toLowerCase())
+      )
     } else {
       console.log('🔍 No status filter applied')
     }
@@ -467,7 +518,7 @@ export async function POST(request: NextRequest) {
     if (matchingBets && matchingBets.length > 0) {
       const strategyBets = matchingBets.map(bet => ({
         strategy_id: strategy.id,
-        bet_id: bet.id
+        bet_id: bet.id,
       }))
 
       const { error: strategyBetsError } = await serviceSupabase
@@ -487,15 +538,15 @@ export async function POST(request: NextRequest) {
       const winningBets = settledBets.filter(bet => bet.status === 'won').length
       const losingBets = settledBets.filter(bet => bet.status === 'lost').length
       const pushBets = matchingBets.filter(bet => bet.status === 'void').length
-      
+
       // Ensure bet counts add up correctly (fix constraint violation)
       const calculatedTotal = winningBets + losingBets + pushBets
       const adjustedTotal = Math.max(totalBets, calculatedTotal)
       const adjustedLosing = adjustedTotal - winningBets - pushBets
-      
+
       const totalProfit = matchingBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
       const totalStake = matchingBets.reduce((sum, bet) => sum + (bet.stake || 0), 0)
-      
+
       const roiPercentage = totalStake > 0 ? (totalProfit / totalStake) * 100 : 0
       const winRate = adjustedTotal > 0 ? (winningBets / adjustedTotal) * 100 : 0
 
@@ -525,7 +576,7 @@ export async function POST(request: NextRequest) {
           is_monetized: monetized,
           subscription_price_weekly: pricing_weekly,
           subscription_price_monthly: pricing_monthly,
-          subscription_price_yearly: pricing_yearly
+          subscription_price_yearly: pricing_yearly,
         })
 
       if (leaderboardError) {
@@ -536,7 +587,7 @@ export async function POST(request: NextRequest) {
           total_bets: adjustedTotal,
           winning_bets: winningBets,
           roi_percentage: roiPercentage,
-          win_rate: winRate / 100
+          win_rate: winRate / 100,
         })
       }
 
@@ -546,7 +597,7 @@ export async function POST(request: NextRequest) {
         .update({
           performance_total_bets: adjustedTotal,
           performance_roi: roiPercentage,
-          performance_win_rate: winRate
+          performance_win_rate: winRate,
         })
         .eq('id', strategy.id)
 
@@ -555,7 +606,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       console.log('⚠️ No matching bets found - creating leaderboard entry with zero metrics')
-      
+
       // Get user profile for username even when no bets
       const { data: profile } = await serviceSupabase
         .from('profiles')
@@ -582,7 +633,7 @@ export async function POST(request: NextRequest) {
           is_monetized: monetized,
           subscription_price_weekly: pricing_weekly,
           subscription_price_monthly: pricing_monthly,
-          subscription_price_yearly: pricing_yearly
+          subscription_price_yearly: pricing_yearly,
         })
 
       if (leaderboardError) {
@@ -592,14 +643,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       strategy: {
         ...strategy,
-        performance_total_bets: matchingBets?.length || 0
-      }
+        performance_total_bets: matchingBets?.length || 0,
+      },
     })
-
   } catch (error) {
     console.error('Error in strategy creation:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -609,8 +659,11 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -618,13 +671,15 @@ export async function GET(request: NextRequest) {
     // Get strategies from strategy_leaderboard table with strategy details
     const { data: leaderboardStrategies, error } = await supabase
       .from('strategy_leaderboard')
-      .select(`
+      .select(
+        `
         *,
         strategies!inner(start_date, date_ranges, filter_config)
-      `)
+      `
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
@@ -632,63 +687,64 @@ export async function GET(request: NextRequest) {
     console.log('Strategies found:', leaderboardStrategies?.length || 0)
 
     // Transform leaderboard data to match expected format for frontend
-    const transformedStrategies = leaderboardStrategies?.map(strategy => {
-      // Extract start_date from strategies join or date_ranges
-      const strategyData = strategy.strategies
-      const startDate = strategyData?.start_date || 
-                       strategyData?.date_ranges?.start_date || 
-                       strategyData?.filter_config?.customStartDate || 
-                       null
+    const transformedStrategies =
+      leaderboardStrategies?.map(strategy => {
+        // Extract start_date from strategies join or date_ranges
+        const strategyData = strategy.strategies
+        const startDate =
+          strategyData?.start_date ||
+          strategyData?.date_ranges?.start_date ||
+          strategyData?.filter_config?.customStartDate ||
+          null
 
-      return {
-        // Use leaderboard data directly
-        id: strategy.strategy_id,
-        name: strategy.strategy_name,
-        description: strategy.description || '',
-        status: 'active',
-        filters: {
-          sports: strategy.primary_sport ? [strategy.primary_sport] : [],
-          betTypes: strategy.bet_type ? [strategy.bet_type] : [],
-          leagues: [],
-          statuses: [],
-          isParlays: [],
-          sides: [],
-          oddsTypes: [],
-          timeRange: 'All time',
-          sportsbooks: [],
-          customStartDate: startDate
-        },
-        created_at: strategy.created_at,
-        updated_at: strategy.updated_at,
-        user_id: strategy.user_id,
-        start_date: startDate,
-        
-        // Leaderboard performance data
-        roi_percentage: strategy.roi_percentage || 0,
-        win_rate: strategy.win_rate || 0,
-        total_bets: strategy.total_bets || 0,
-        winning_bets: strategy.winning_bets || 0,
-        losing_bets: strategy.losing_bets || 0,
-        push_bets: strategy.push_bets || 0,
-        primary_sport: strategy.primary_sport,
-        bet_type: strategy.bet_type,
-        verification_status: strategy.verification_status || 'unverified',
-        is_verified_seller: strategy.is_verified_seller || false,
-        overall_rank: strategy.overall_rank,
-        sport_rank: strategy.sport_rank,
-        is_eligible: strategy.is_eligible || false,
-        minimum_bets_met: strategy.minimum_bets_met || false,
-        is_monetized: strategy.is_monetized || false,
-        subscription_price_weekly: strategy.subscription_price_weekly,
-        subscription_price_monthly: strategy.subscription_price_monthly,
-        subscription_price_yearly: strategy.subscription_price_yearly
-      }
-    }) || []
+        return {
+          // Use leaderboard data directly
+          id: strategy.strategy_id,
+          name: strategy.strategy_name,
+          description: strategy.description || '',
+          status: 'active',
+          filters: {
+            sports: strategy.primary_sport ? [strategy.primary_sport] : [],
+            betTypes: strategy.bet_type ? [strategy.bet_type] : [],
+            leagues: [],
+            statuses: [],
+            isParlays: [],
+            sides: [],
+            oddsTypes: [],
+            timeRange: 'All time',
+            sportsbooks: [],
+            customStartDate: startDate,
+          },
+          created_at: strategy.created_at,
+          updated_at: strategy.updated_at,
+          user_id: strategy.user_id,
+          start_date: startDate,
+
+          // Leaderboard performance data
+          roi_percentage: strategy.roi_percentage || 0,
+          win_rate: strategy.win_rate || 0,
+          total_bets: strategy.total_bets || 0,
+          winning_bets: strategy.winning_bets || 0,
+          losing_bets: strategy.losing_bets || 0,
+          push_bets: strategy.push_bets || 0,
+          primary_sport: strategy.primary_sport,
+          bet_type: strategy.bet_type,
+          verification_status: strategy.verification_status || 'unverified',
+          is_verified_seller: strategy.is_verified_seller || false,
+          overall_rank: strategy.overall_rank,
+          sport_rank: strategy.sport_rank,
+          is_eligible: strategy.is_eligible || false,
+          minimum_bets_met: strategy.minimum_bets_met || false,
+          is_monetized: strategy.is_monetized || false,
+          subscription_price_weekly: strategy.subscription_price_weekly,
+          subscription_price_monthly: strategy.subscription_price_monthly,
+          subscription_price_yearly: strategy.subscription_price_yearly,
+        }
+      }) || []
 
     return NextResponse.json({
-      strategies: transformedStrategies
+      strategies: transformedStrategies,
     })
-
   } catch (error) {
     console.error('Error in GET strategies:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -698,8 +754,11 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -724,26 +783,26 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Create service role client for database operations to bypass RLS
-    const { createClient } = await import('@supabase/supabase-js');
-    
+    const { createClient } = await import('@supabase/supabase-js')
+
     console.log('🔐 Environment check in PATCH:', {
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       supabaseUrlLength: process.env.NEXT_PUBLIC_SUPABASE_URL?.length,
-      serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length
-    });
-    
+      serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length,
+    })
+
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    )
 
     // Update strategy using service role
     const { error: updateError } = await serviceSupabase
       .from('strategies')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', strategyId)
 
@@ -754,7 +813,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update strategy_leaderboard if relevant fields are being updated
     const leaderboardUpdates: Record<string, string | number | boolean | null> = {
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }
 
     // Add strategy name if updated
@@ -779,9 +838,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Only update leaderboard if there are relevant changes
-    if (Object.keys(leaderboardUpdates).length > 1) { // More than just updated_at
+    if (Object.keys(leaderboardUpdates).length > 1) {
+      // More than just updated_at
       console.log('Updating strategy_leaderboard with:', leaderboardUpdates)
-      
+
       const { error: leaderboardError } = await serviceSupabase
         .from('strategy_leaderboard')
         .update(leaderboardUpdates)
@@ -789,7 +849,7 @@ export async function PATCH(request: NextRequest) {
 
       if (leaderboardError) {
         console.error('Error updating strategy leaderboard:', leaderboardError)
-        
+
         // Check if the strategy_leaderboard entry exists
         const { data: existingEntry, error: checkError } = await serviceSupabase
           .from('strategy_leaderboard')
@@ -799,17 +859,22 @@ export async function PATCH(request: NextRequest) {
 
         if (checkError || !existingEntry) {
           console.warn('Strategy_leaderboard entry does not exist, attempting to create it...')
-          
+
           // Get strategy details for leaderboard creation
           const { data: strategyDetails, error: strategyError } = await serviceSupabase
             .from('strategies')
-            .select('user_id, name, monetized, pricing_weekly, pricing_monthly, pricing_yearly, performance_roi, performance_win_rate, performance_total_bets')
+            .select(
+              'user_id, name, monetized, pricing_weekly, pricing_monthly, pricing_yearly, performance_roi, performance_win_rate, performance_total_bets'
+            )
             .eq('id', strategyId)
             .single()
 
           if (strategyError || !strategyDetails) {
             console.error('Error fetching strategy for leaderboard creation:', strategyError)
-            return NextResponse.json({ error: 'Failed to update strategy leaderboard' }, { status: 500 })
+            return NextResponse.json(
+              { error: 'Failed to update strategy leaderboard' },
+              { status: 500 }
+            )
           }
 
           // Get user details
@@ -821,35 +886,39 @@ export async function PATCH(request: NextRequest) {
 
           if (userError || !userProfile) {
             console.error('Error fetching user for leaderboard creation:', userError)
-            return NextResponse.json({ error: 'Failed to update strategy leaderboard' }, { status: 500 })
+            return NextResponse.json(
+              { error: 'Failed to update strategy leaderboard' },
+              { status: 500 }
+            )
           }
 
           // Create leaderboard entry
-          const { error: createError } = await serviceSupabase
-            .from('strategy_leaderboard')
-            .insert({
-              strategy_id: strategyId,
-              user_id: strategyDetails.user_id,
-              strategy_name: strategyDetails.name,
-              username: userProfile.username,
-              is_verified_seller: userProfile.is_verified_seller || false,
-              total_bets: strategyDetails.performance_total_bets || 0,
-              winning_bets: 0,
-              losing_bets: 0,
-              push_bets: 0,
-              roi_percentage: strategyDetails.performance_roi || 0,
-              win_rate: (strategyDetails.performance_win_rate || 0) / 100,
-              is_monetized: strategyDetails.monetized || false,
-              subscription_price_weekly: strategyDetails.pricing_weekly,
-              subscription_price_monthly: strategyDetails.pricing_monthly,
-              subscription_price_yearly: strategyDetails.pricing_yearly,
-              is_eligible: (strategyDetails.performance_total_bets || 0) >= 10,
-              minimum_bets_met: (strategyDetails.performance_total_bets || 0) >= 10
-            })
+          const { error: createError } = await serviceSupabase.from('strategy_leaderboard').insert({
+            strategy_id: strategyId,
+            user_id: strategyDetails.user_id,
+            strategy_name: strategyDetails.name,
+            username: userProfile.username,
+            is_verified_seller: userProfile.is_verified_seller || false,
+            total_bets: strategyDetails.performance_total_bets || 0,
+            winning_bets: 0,
+            losing_bets: 0,
+            push_bets: 0,
+            roi_percentage: strategyDetails.performance_roi || 0,
+            win_rate: (strategyDetails.performance_win_rate || 0) / 100,
+            is_monetized: strategyDetails.monetized || false,
+            subscription_price_weekly: strategyDetails.pricing_weekly,
+            subscription_price_monthly: strategyDetails.pricing_monthly,
+            subscription_price_yearly: strategyDetails.pricing_yearly,
+            is_eligible: (strategyDetails.performance_total_bets || 0) >= 10,
+            minimum_bets_met: (strategyDetails.performance_total_bets || 0) >= 10,
+          })
 
           if (createError) {
             console.error('Error creating leaderboard entry:', createError)
-            return NextResponse.json({ error: 'Failed to create strategy leaderboard entry' }, { status: 500 })
+            return NextResponse.json(
+              { error: 'Failed to create strategy leaderboard entry' },
+              { status: 500 }
+            )
           }
 
           // Retry the update
@@ -860,17 +929,22 @@ export async function PATCH(request: NextRequest) {
 
           if (retryError) {
             console.error('Failed to update leaderboard after creating entry:', retryError)
-            return NextResponse.json({ error: 'Failed to update strategy leaderboard' }, { status: 500 })
+            return NextResponse.json(
+              { error: 'Failed to update strategy leaderboard' },
+              { status: 500 }
+            )
           }
         } else {
           console.error('Strategy_leaderboard entry exists but update failed:', leaderboardError)
-          return NextResponse.json({ error: 'Failed to update strategy leaderboard' }, { status: 500 })
+          return NextResponse.json(
+            { error: 'Failed to update strategy leaderboard' },
+            { status: 500 }
+          )
         }
       }
     }
 
     return NextResponse.json({ success: true })
-
   } catch (error) {
     console.error('Error in PATCH strategy:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -880,8 +954,11 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -906,10 +983,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete strategy (cascades to strategy_bets and strategy_leaderboard)
-    const { error: deleteError } = await supabase
-      .from('strategies')
-      .delete()
-      .eq('id', strategyId)
+    const { error: deleteError } = await supabase.from('strategies').delete().eq('id', strategyId)
 
     if (deleteError) {
       console.error('Error deleting strategy:', deleteError)
@@ -917,7 +991,6 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-
   } catch (error) {
     console.error('Error in DELETE strategy:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -4,15 +4,18 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const type = formData.get('type') as string || 'general'
+    const type = (formData.get('type') as string) || 'general'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -27,7 +30,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Only images are allowed' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid file type. Only images are allowed' },
+        { status: 400 }
+      )
     }
 
     // Generate unique filename
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
       .from('uploads')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
       })
 
     if (uploadError) {
@@ -47,9 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('uploads')
-      .getPublicUrl(fileName)
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(fileName)
 
     // Save file record to database
     const { data: fileRecord, error: dbError } = await supabase
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
         mimetype: file.type,
         public_url: urlData.publicUrl,
         upload_type: type,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       })
       .select()
       .single()
@@ -73,15 +77,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: dbError.message }, { status: 400 })
     }
 
-    return NextResponse.json({
-      data: {
-        id: fileRecord.id,
-        url: urlData.publicUrl,
-        filename: file.name,
-        size: file.size,
-        type: file.type
-      }
-    }, { status: 201 })
+    return NextResponse.json(
+      {
+        data: {
+          id: fileRecord.id,
+          url: urlData.publicUrl,
+          filename: file.name,
+          size: file.size,
+          type: file.type,
+        },
+      },
+      { status: 201 }
+    )
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -90,8 +97,11 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -31,7 +31,8 @@ export async function POST(request: Request) {
       startDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`
       const lastDay = new Date(currentYear, currentMonth, 0).getDate()
       endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDay}`
-    } else { // week
+    } else {
+      // week
       const now = new Date()
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       startDate = oneWeekAgo.toISOString().split('T')[0] || ''
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       runningProfit += bet.profit || 0
       return {
         date: bet.placed_at.split('T')[0],
-        profit: runningProfit
+        profit: runningProfit,
       }
     })
 
@@ -75,9 +76,8 @@ export async function POST(request: Request) {
       totalProfit,
       totalBets: bets.length,
       period,
-      year
+      year,
     })
-
   } catch (error) {
     console.error('Analytics query error:', error)
     return NextResponse.json({ error: 'Analytics query failed' }, { status: 500 })

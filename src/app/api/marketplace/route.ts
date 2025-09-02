@@ -1,34 +1,34 @@
-import { createServerClient } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
-import { calculateLeaderboardScore } from '@/lib/marketplace/ranking';
+import { createServerClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { calculateLeaderboardScore } from '@/lib/marketplace/ranking'
 
 export interface StrategyData {
-  id: string;
-  strategy_id: string;
-  user_id: string; // Add user_id for seller identification
-  strategy_name: string;
-  strategy_description: string;
-  username: string;
-  display_name: string;
-  profile_picture_url: string | null;
-  total_bets: number;
-  roi_percentage: number;
-  win_rate: number;
-  primary_sport: string;
-  strategy_type: string;
-  price: number;
-  pricing_weekly: number;
-  pricing_monthly: number;
-  pricing_yearly: number;
-  subscriber_count: number;
-  is_verified: boolean;
-  verification_status: string;
-  rank: number | null;
-  leaderboard_score?: number; // Composite algorithm score
-  last_bet_date: string | null;
-  last_updated: string;
-  created_at: string;
-  start_date?: string; // Start date for strategy filtering
+  id: string
+  strategy_id: string
+  user_id: string // Add user_id for seller identification
+  strategy_name: string
+  strategy_description: string
+  username: string
+  display_name: string
+  profile_picture_url: string | null
+  total_bets: number
+  roi_percentage: number
+  win_rate: number
+  primary_sport: string
+  strategy_type: string
+  price: number
+  pricing_weekly: number
+  pricing_monthly: number
+  pricing_yearly: number
+  subscriber_count: number
+  is_verified: boolean
+  verification_status: string
+  rank: number | null
+  leaderboard_score?: number // Composite algorithm score
+  last_bet_date: string | null
+  last_updated: string
+  created_at: string
+  start_date?: string // Start date for strategy filtering
 }
 
 export async function GET(request: NextRequest) {
@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
     const verified = searchParams.get('verified')
 
     // Query the strategy_leaderboard table directly - only monetized strategies
-    let query = supabase
-      .from('strategy_leaderboard')
-      .select('*')
-      .eq('is_monetized', true)
+    let query = supabase.from('strategy_leaderboard').select('*').eq('is_monetized', true)
 
     // Apply sport filter
     if (sport && sport !== 'all') {
@@ -61,8 +58,9 @@ export async function GET(request: NextRequest) {
     switch (sortBy) {
       case 'leaderboard':
         // Since leaderboard_score column doesn't exist, order by ROI for now
-        query = query.order('roi_percentage', { ascending: false })
-                      .order('overall_rank', { ascending: true, nullsLast: true })
+        query = query
+          .order('roi_percentage', { ascending: false })
+          .order('overall_rank', { ascending: true, nullsLast: true })
         break
       case 'roi':
         query = query.order('roi_percentage', { ascending: false })
@@ -89,8 +87,13 @@ export async function GET(request: NextRequest) {
 
     // Get additional strategy details if needed
     const strategyIds = (leaderboardData || []).map(s => s.strategy_id)
-    let strategyDetails: Array<{ id: string; description: string; subscriber_count: number; start_date?: string }> = []
-    
+    let strategyDetails: Array<{
+      id: string
+      description: string
+      subscriber_count: number
+      start_date?: string
+    }> = []
+
     if (strategyIds.length > 0) {
       const { data: strategies, error: strategyError } = await supabase
         .from('strategies')
@@ -105,7 +108,7 @@ export async function GET(request: NextRequest) {
     // Transform to StrategyData format and calculate leaderboard scores
     const strategiesWithStats = (leaderboardData || []).map((item): StrategyData => {
       const strategyDetail = strategyDetails.find(s => s.id === item.strategy_id)
-      
+
       // Calculate leaderboard score using our algorithm
       const leaderboardScore = calculateLeaderboardScore({
         id: item.id,
@@ -135,9 +138,9 @@ export async function GET(request: NextRequest) {
         subscription_price_yearly: item.subscription_price_yearly,
         created_at: item.created_at || new Date().toISOString(),
         updated_at: item.updated_at || new Date().toISOString(),
-        last_calculated_at: item.last_calculated_at || new Date().toISOString()
+        last_calculated_at: item.last_calculated_at || new Date().toISOString(),
       })
-      
+
       return {
         id: item.id,
         strategy_id: item.strategy_id,
@@ -164,7 +167,7 @@ export async function GET(request: NextRequest) {
         last_bet_date: null,
         last_updated: item.updated_at,
         created_at: item.created_at,
-        start_date: strategyDetail?.start_date || null
+        start_date: strategyDetail?.start_date || null,
       }
     })
 
@@ -179,10 +182,9 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: strategiesWithStats.length,
-        totalPages: Math.ceil(strategiesWithStats.length / limit)
-      }
+        totalPages: Math.ceil(strategiesWithStats.length / limit),
+      },
     })
-
   } catch (error) {
     console.error('Marketplace API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

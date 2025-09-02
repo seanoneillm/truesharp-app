@@ -138,8 +138,8 @@ module.exports = {
         '6xl': ['3.75rem', { lineHeight: '1' }],
       },
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
+        18: '4.5rem',
+        88: '22rem',
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -173,9 +173,9 @@ module.exports = {
         },
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        card: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'glow': '0 0 20px rgba(59, 130, 246, 0.3)',
+        glow: '0 0 20px rgba(59, 130, 246, 0.3)',
       },
       backdropBlur: {
         xs: '2px',

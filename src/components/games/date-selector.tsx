@@ -1,120 +1,120 @@
-'use client';
+'use client'
 
-import { Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar } from 'lucide-react'
+import { useState } from 'react'
 
 interface DateSelectorProps {
-  selectedDate: Date | null;
-  onDateChange: (date: Date) => void;
+  selectedDate: Date | null
+  onDateChange: (date: Date) => void
 }
 
 export default function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) {
-  const [showCalendar, setShowCalendar] = useState(false);
-  
+  const [showCalendar, setShowCalendar] = useState(false)
+
   // Get normalized dates for comparison (removes time component)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
 
   // Helper function to check if a date matches today/yesterday/tomorrow
   const isToday = (date: Date) => {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    return normalizedDate.getTime() === today.getTime();
-  };
+    const normalizedDate = new Date(date)
+    normalizedDate.setHours(0, 0, 0, 0)
+    return normalizedDate.getTime() === today.getTime()
+  }
 
   const isYesterday = (date: Date) => {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    return normalizedDate.getTime() === yesterday.getTime();
-  };
+    const normalizedDate = new Date(date)
+    normalizedDate.setHours(0, 0, 0, 0)
+    return normalizedDate.getTime() === yesterday.getTime()
+  }
 
   const isTomorrow = (date: Date) => {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    return normalizedDate.getTime() === tomorrow.getTime();
-  };
+    const normalizedDate = new Date(date)
+    normalizedDate.setHours(0, 0, 0, 0)
+    return normalizedDate.getTime() === tomorrow.getTime()
+  }
 
   // Format date for input field
   const formatDateForInput = (date: Date): string => {
-    return date.toISOString().split('T')[0] || '';
-  };
+    return date.toISOString().split('T')[0] || ''
+  }
 
   // Handle date selection from input
   const handleDateSelect = (dateString: string) => {
-    const newDate = new Date(dateString + 'T00:00:00');
-    onDateChange(newDate);
-    setShowCalendar(false);
-  };
+    const newDate = new Date(dateString + 'T00:00:00')
+    onDateChange(newDate)
+    setShowCalendar(false)
+  }
 
   // Handle quick date button clicks
   const handleQuickDate = (targetDate: Date) => {
-    onDateChange(targetDate);
-  };
+    onDateChange(targetDate)
+  }
 
   // Return loading state if selectedDate is null
   if (!selectedDate) {
     return (
       <div className="flex items-center space-x-2">
-        <div className="animate-pulse bg-slate-200 h-10 w-20 rounded-lg"></div>
-        <div className="animate-pulse bg-slate-200 h-10 w-24 rounded-lg"></div>
-        <div className="animate-pulse bg-slate-200 h-10 w-32 rounded-lg"></div>
+        <div className="h-10 w-20 animate-pulse rounded-lg bg-slate-200"></div>
+        <div className="h-10 w-24 animate-pulse rounded-lg bg-slate-200"></div>
+        <div className="h-10 w-32 animate-pulse rounded-lg bg-slate-200"></div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="p-4">
         {/* Header with current date */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
+            <Calendar className="h-5 w-5 text-blue-600" />
             <h3 className="font-semibold text-slate-900">Date Selection</h3>
           </div>
           <span className="text-sm text-slate-600">
-            {selectedDate.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              month: 'long', 
+            {selectedDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
               day: 'numeric',
-              year: 'numeric'
+              year: 'numeric',
             })}
           </span>
         </div>
 
         {/* Quick Date Tabs */}
-        <div className="flex items-center space-x-1 bg-slate-50 p-1 rounded-lg mb-4">
+        <div className="mb-4 flex items-center space-x-1 rounded-lg bg-slate-50 p-1">
           <button
             onClick={() => handleQuickDate(yesterday)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex-1 ${
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
               isYesterday(selectedDate)
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
             }`}
           >
             Yesterday
           </button>
           <button
             onClick={() => handleQuickDate(today)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex-1 ${
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
               isToday(selectedDate)
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
             }`}
           >
             Today
           </button>
           <button
             onClick={() => handleQuickDate(tomorrow)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex-1 ${
+            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
               isTomorrow(selectedDate)
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
             }`}
           >
             Tomorrow
@@ -127,13 +127,13 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
             <input
               type="date"
               value={formatDateForInput(selectedDate)}
-              onChange={(e) => handleDateSelect(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              onChange={e => handleDateSelect(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button
             onClick={() => setShowCalendar(!showCalendar)}
-            className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+            className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
           >
             {showCalendar ? 'Hide' : 'More'}
           </button>
@@ -141,25 +141,25 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
 
         {/* Expandable Calendar Options */}
         {showCalendar && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="mt-4 border-t border-slate-100 pt-4">
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
-                  handleQuickDate(today);
-                  setShowCalendar(false);
+                  handleQuickDate(today)
+                  setShowCalendar(false)
                 }}
-                className="px-3 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-center"
+                className="rounded-lg bg-blue-50 px-3 py-2 text-center text-sm text-blue-600 transition-colors hover:bg-blue-100"
               >
                 Jump to Today
               </button>
               <button
                 onClick={() => {
-                  const nextWeek = new Date(today);
-                  nextWeek.setDate(today.getDate() + 7);
-                  handleQuickDate(nextWeek);
-                  setShowCalendar(false);
+                  const nextWeek = new Date(today)
+                  nextWeek.setDate(today.getDate() + 7)
+                  handleQuickDate(nextWeek)
+                  setShowCalendar(false)
                 }}
-                className="px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-center"
+                className="rounded-lg bg-slate-50 px-3 py-2 text-center text-sm text-slate-600 transition-colors hover:bg-slate-100"
               >
                 Next Week
               </button>
@@ -168,5 +168,5 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
         )}
       </div>
     </div>
-  );
+  )
 }

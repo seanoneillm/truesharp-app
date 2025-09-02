@@ -71,7 +71,7 @@ const fallbackUser: User = {
 // Mock posts data - extending picks with social features
 const mockPosts: Post[] = [
   ...mockData.picks
-    .map((pick) => {
+    .map(pick => {
       const author = mockData.users.find(u => u.id === pick.userId)
       if (!author) return null
       return {
@@ -84,7 +84,7 @@ const mockPosts: Post[] = [
         engagement: pick.engagement,
         isFollowing: Math.random() > 0.5,
         isLiked: Math.random() > 0.7,
-        isBookmarked: Math.random() > 0.8
+        isBookmarked: Math.random() > 0.8,
       }
     })
     .filter((x): x is PickPost => x !== null),
@@ -92,24 +92,26 @@ const mockPosts: Post[] = [
     id: 'post-1',
     type: 'text' as const,
     author: mockData.users[0] || fallbackUser,
-    content: "Just hit a 7-game winning streak! 🔥 The key is patience and waiting for the right spots. Never chase losses and always stick to your unit size. Who else is having a hot week?",
+    content:
+      'Just hit a 7-game winning streak! 🔥 The key is patience and waiting for the right spots. Never chase losses and always stick to your unit size. Who else is having a hot week?',
     timestamp: new Date('2024-12-21T15:30:00'),
     engagement: { views: 1240, likes: 89, comments: 24, shares: 12 },
     isFollowing: true,
     isLiked: false,
-    isBookmarked: true
+    isBookmarked: true,
   },
   {
-    id: 'post-2', 
+    id: 'post-2',
     type: 'celebration' as const,
     author: mockData.users[1] || fallbackUser,
-    content: "🎉 HUGE WIN! That under 8.5 just hit in the 9th inning. Sometimes it's better to be lucky than good! Thanks to everyone who tailed.",
+    content:
+      "🎉 HUGE WIN! That under 8.5 just hit in the 9th inning. Sometimes it's better to be lucky than good! Thanks to everyone who tailed.",
     timestamp: new Date('2024-12-21T14:15:00'),
     engagement: { views: 2150, likes: 156, comments: 43, shares: 28 },
     isFollowing: false,
     isLiked: true,
-    isBookmarked: false
-  }
+    isBookmarked: false,
+  },
 ]
 
 export function FeedContainer({ activeFilter }: FeedContainerProps) {
@@ -140,8 +142,8 @@ export function FeedContainer({ activeFilter }: FeedContainerProps) {
   })
 
   // Sort posts by timestamp (newest first)
-  const sortedPosts = filteredPosts.sort((a, b) => 
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  const sortedPosts = filteredPosts.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   )
 
   const loadMorePosts = async () => {
@@ -159,21 +161,30 @@ export function FeedContainer({ activeFilter }: FeedContainerProps) {
 
   if (sortedPosts.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+      <div className="py-12 text-center">
+        <div className="mx-auto max-w-md">
+          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+            <svg
+              className="h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+              />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+          <h3 className="mb-2 text-lg font-medium text-gray-900">No posts yet</h3>
           <p className="text-gray-500">
-            {activeFilter === 'following' 
-              ? "Follow some bettors to see their posts here."
+            {activeFilter === 'following'
+              ? 'Follow some bettors to see their posts here.'
               : activeFilter === 'live'
-              ? "No live games starting soon."
-              : "Be the first to post something!"
-            }
+                ? 'No live games starting soon.'
+                : 'Be the first to post something!'}
           </p>
         </div>
       </div>
@@ -183,36 +194,34 @@ export function FeedContainer({ activeFilter }: FeedContainerProps) {
   return (
     <div className="space-y-6">
       {/* Filter Description */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
         <p className="text-sm text-blue-800">
-          {activeFilter === 'forYou' && "Showing personalized content based on your interests and activity"}
-          {activeFilter === 'following' && "Showing posts from people you follow"}
-          {activeFilter === 'live' && "Showing picks for games starting within the next 4 hours"}
-          {activeFilter === 'hot' && "Showing trending posts with high engagement"}
+          {activeFilter === 'forYou' &&
+            'Showing personalized content based on your interests and activity'}
+          {activeFilter === 'following' && 'Showing posts from people you follow'}
+          {activeFilter === 'live' && 'Showing picks for games starting within the next 4 hours'}
+          {activeFilter === 'hot' && 'Showing trending posts with high engagement'}
         </p>
       </div>
 
       {/* Posts */}
       <div className="space-y-6">
-        {sortedPosts.map((post) => (
-          <PostCard 
-            key={post.id} 
-            post={post}
-          />
+        {sortedPosts.map(post => (
+          <PostCard key={post.id} post={post} />
         ))}
       </div>
 
       {/* Load More */}
       {hasMore && (
-        <div className="text-center pt-6">
+        <div className="pt-6 text-center">
           <button
             onClick={loadMorePosts}
             disabled={isLoading}
-            className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <Spinner className="h-4 w-4 mr-2" />
+                <Spinner className="mr-2 h-4 w-4" />
                 Loading...
               </>
             ) : (

@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -14,7 +17,8 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('pick_posts')
-      .select(`
+      .select(
+        `
         *,
         profiles!inner(
           id,
@@ -33,7 +37,8 @@ export async function GET(request: NextRequest) {
           stake,
           actual_payout
         )
-      `)
+      `
+      )
       .eq('tier', 'free') // Only show free picks in public feed
       .order('posted_at', { ascending: false })
 
@@ -56,7 +61,7 @@ export async function GET(request: NextRequest) {
         // If not following anyone, return empty results
         return NextResponse.json({
           data: [],
-          pagination: { page, limit, total: 0, totalPages: 0 }
+          pagination: { page, limit, total: 0, totalPages: 0 },
         })
       }
     }
@@ -65,7 +70,7 @@ export async function GET(request: NextRequest) {
       // Show picks for games starting within next 4 hours
       const fourHoursFromNow = new Date()
       fourHoursFromNow.setHours(fourHoursFromNow.getHours() + 4)
-      
+
       query = query
         .gte('bets.game_date', new Date().toISOString())
         .lte('bets.game_date', fourHoursFromNow.toISOString())
@@ -87,8 +92,10 @@ export async function GET(request: NextRequest) {
     if (filter === 'hot') {
       sortedPicks = sortedPicks.sort((a: any, b: any) => {
         // Simple engagement score based on confidence and recency
-        const aScore = a.confidence * (1 / ((Date.now() - new Date(a.posted_at).getTime()) / 1000 / 3600))
-        const bScore = b.confidence * (1 / ((Date.now() - new Date(b.posted_at).getTime()) / 1000 / 3600))
+        const aScore =
+          a.confidence * (1 / ((Date.now() - new Date(a.posted_at).getTime()) / 1000 / 3600))
+        const bScore =
+          b.confidence * (1 / ((Date.now() - new Date(b.posted_at).getTime()) / 1000 / 3600))
         return bScore - aScore
       })
     }
@@ -99,8 +106,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
-      }
+        totalPages: Math.ceil((count || 0) / limit),
+      },
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

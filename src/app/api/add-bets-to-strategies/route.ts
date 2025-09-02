@@ -90,7 +90,7 @@ function validateBetAgainstStrategy(bet: any, strategy: any): boolean {
 
 function getSportVariations(sport: string): string[] {
   const variations = []
-  
+
   if (sport === 'NFL') {
     variations.push('NFL', 'nfl', 'football', 'Football', 'American Football')
   } else if (sport === 'NBA') {
@@ -102,14 +102,14 @@ function getSportVariations(sport: string): string[] {
   } else {
     variations.push(sport, sport.toLowerCase(), sport.toUpperCase())
   }
-  
+
   return variations
 }
 
 function getBetTypeVariations(betType: string): string[] {
   const variations = []
   const lowerBetType = betType.toLowerCase()
-  
+
   if (lowerBetType === 'moneyline') {
     variations.push('moneyline', 'ml', 'money_line')
   } else if (lowerBetType === 'spread') {
@@ -121,13 +121,13 @@ function getBetTypeVariations(betType: string): string[] {
   } else {
     variations.push(betType, lowerBetType, betType.toUpperCase())
   }
-  
+
   return variations
 }
 
 function getSportsbookVariations(sportsbooks: string[]): string[] {
   const variations = []
-  
+
   for (const sportsbook of sportsbooks) {
     if (sportsbook.toLowerCase() === 'draftkings') {
       variations.push('DraftKings', 'draftkings', 'DK')
@@ -139,15 +139,18 @@ function getSportsbookVariations(sportsbooks: string[]): string[] {
       variations.push(sportsbook, sportsbook.toLowerCase(), sportsbook.toUpperCase())
     }
   }
-  
+
   return [...new Set(variations)]
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -211,33 +214,33 @@ export async function POST(request: NextRequest) {
     for (const bet of bets) {
       for (const strategy of strategies) {
         const comboKey = `${strategy.id}-${bet.id}`
-        
+
         // Skip if this combo already exists
         if (existingCombos.has(comboKey)) {
           validationResults.push({
             betId: bet.id,
             strategyId: strategy.id,
             valid: false,
-            reason: 'Bet already exists in strategy'
+            reason: 'Bet already exists in strategy',
           })
           continue
         }
 
         // Validate bet against strategy filters
         const isValid = validateBetAgainstStrategy(bet, strategy)
-        
+
         validationResults.push({
           betId: bet.id,
           strategyId: strategy.id,
           valid: isValid,
-          reason: isValid ? 'Valid' : 'Bet does not match strategy filters'
+          reason: isValid ? 'Valid' : 'Bet does not match strategy filters',
         })
 
         if (isValid) {
           strategyBetsToInsert.push({
             strategy_id: strategy.id,
             bet_id: bet.id,
-            added_at: new Date().toISOString()
+            added_at: new Date().toISOString(),
           })
 
           // Track strategy updates
@@ -279,7 +282,7 @@ export async function POST(request: NextRequest) {
           .from('strategy_leaderboard')
           .update({
             total_bets: newTotal,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('strategy_id', strategyId)
 
@@ -314,13 +317,11 @@ export async function POST(request: NextRequest) {
               message: `${betCount} new bet${betCount > 1 ? 's' : ''} added to strategy "${strategyData?.name}"`,
               metadata: {
                 strategy_id: strategyId,
-                bet_count: betCount
-              }
+                bet_count: betCount,
+              },
             }))
 
-            await serviceSupabase
-              .from('notifications')
-              .insert(notifications)
+            await serviceSupabase.from('notifications').insert(notifications)
           }
         } catch (notificationError) {
           console.error('Error sending notifications:', notificationError)
@@ -333,9 +334,8 @@ export async function POST(request: NextRequest) {
       success: true,
       inserted: insertedCount,
       validationResults,
-      message: `Successfully added ${insertedCount} bet${insertedCount !== 1 ? 's' : ''} to strategies`
+      message: `Successfully added ${insertedCount} bet${insertedCount !== 1 ? 's' : ''} to strategies`,
     })
-
   } catch (error) {
     console.error('API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -45,7 +45,7 @@ export function useNotifications(): UseNotificationsReturn {
       ...notification,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       read: false,
-      duration: notification.duration ?? 5000
+      duration: notification.duration ?? 5000,
     }
 
     setNotifications(prev => [newNotification, ...prev])
@@ -65,18 +65,12 @@ export function useNotifications(): UseNotificationsReturn {
 
   // Mark notification as read
   const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      )
-    )
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)))
   }, [])
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    )
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
   }, [])
 
   // Clear all notifications
@@ -103,8 +97,8 @@ export function useNotifications(): UseNotificationsReturn {
         data: { pickId: '123', result: 'won' },
         action: {
           label: 'View Pick',
-          url: '/picks/123'
-        }
+          url: '/picks/123',
+        },
       },
       {
         id: '2',
@@ -117,8 +111,8 @@ export function useNotifications(): UseNotificationsReturn {
         data: { subscriberId: '456', tier: 'premium' },
         action: {
           label: 'View Subscriber',
-          url: '/sell/subscribers'
-        }
+          url: '/sell/subscribers',
+        },
       },
       {
         id: '3',
@@ -131,55 +125,67 @@ export function useNotifications(): UseNotificationsReturn {
         data: { sportsbook: 'betmgm' },
         action: {
           label: 'Reconnect',
-          url: '/settings/sportsbooks'
-        }
-      }
+          url: '/settings/sportsbooks',
+        },
+      },
     ]
 
     // Only set demo notifications if none exist
-    setNotifications(prev => prev.length === 0 ? demoNotifications : prev)
+    setNotifications(prev => (prev.length === 0 ? demoNotifications : prev))
   }, [])
 
   // Helper functions for common notification types
-  const showSuccess = useCallback((message: string, title?: string) => {
-    addNotification({
-      type: 'success',
-      title: title || 'Success',
-      message,
-      autoClose: true,
-      duration: 3000
-    })
-  }, [addNotification])
+  const showSuccess = useCallback(
+    (message: string, title?: string) => {
+      addNotification({
+        type: 'success',
+        title: title || 'Success',
+        message,
+        autoClose: true,
+        duration: 3000,
+      })
+    },
+    [addNotification]
+  )
 
-  const showError = useCallback((message: string, title?: string) => {
-    addNotification({
-      type: 'error',
-      title: title || 'Error',
-      message,
-      autoClose: true,
-      duration: 5000
-    })
-  }, [addNotification])
+  const showError = useCallback(
+    (message: string, title?: string) => {
+      addNotification({
+        type: 'error',
+        title: title || 'Error',
+        message,
+        autoClose: true,
+        duration: 5000,
+      })
+    },
+    [addNotification]
+  )
 
-  const showWarning = useCallback((message: string, title?: string) => {
-    addNotification({
-      type: 'warning',
-      title: title || 'Warning',
-      message,
-      autoClose: true,
-      duration: 4000
-    })
-  }, [addNotification])
+  const showWarning = useCallback(
+    (message: string, title?: string) => {
+      addNotification({
+        type: 'warning',
+        title: title || 'Warning',
+        message,
+        autoClose: true,
+        duration: 4000,
+      })
+    },
+    [addNotification]
+  )
 
-  const showInfo = useCallback((message: string, title?: string) => {
-    addNotification({
-      type: 'info',
-      title: title || 'Info',
-      message,
-      autoClose: true,
-      duration: 3000
-    })
-  }, [addNotification])
+  const showInfo = useCallback(
+    (message: string, title?: string) => {
+      addNotification({
+        type: 'info',
+        title: title || 'Info',
+        message,
+        autoClose: true,
+        duration: 3000,
+      })
+    },
+    [addNotification]
+  )
 
   return {
     notifications,
@@ -196,6 +202,6 @@ export function useNotifications(): UseNotificationsReturn {
     showSuccess,
     showError,
     showWarning,
-    showInfo
+    showInfo,
   }
 }

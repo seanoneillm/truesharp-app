@@ -9,13 +9,13 @@ export default function RawSupabaseTestPage() {
   const testRawFetch = async () => {
     setLoading(true)
     setResult('')
-    
+
     try {
       console.log('🧪 Testing raw fetch to Supabase...')
-      
+
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
+
       if (!supabaseUrl || !supabaseKey) {
         setResult('❌ Missing environment variables')
         return
@@ -26,13 +26,13 @@ export default function RawSupabaseTestPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
           email: 'test@example.com',
-          password: 'testpassword123'
-        })
+          password: 'testpassword123',
+        }),
       })
 
       console.log('🧪 Response status:', response.status)
@@ -46,7 +46,6 @@ export default function RawSupabaseTestPage() {
       } else {
         setResult(`✅ HTTP ${response.status}: ${responseText}`)
       }
-
     } catch (error) {
       console.error('🧪 Raw fetch error:', error)
       setResult(`❌ Fetch error: ${error}`)
@@ -56,21 +55,21 @@ export default function RawSupabaseTestPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Raw Supabase Auth Test</h1>
-      
+    <div className="mx-auto max-w-2xl p-8">
+      <h1 className="mb-4 text-2xl font-bold">Raw Supabase Auth Test</h1>
+
       <button
         onClick={testRawFetch}
         disabled={loading}
-        className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 disabled:opacity-50"
+        className="rounded-lg bg-red-500 px-6 py-3 text-white hover:bg-red-600 disabled:opacity-50"
       >
         {loading ? 'Testing...' : 'Test Raw HTTP Request'}
       </button>
 
       {result && (
-        <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
-          <h3 className="font-semibold mb-2">Result:</h3>
-          <pre className="whitespace-pre-wrap text-sm max-h-96 overflow-auto">{result}</pre>
+        <div className="mt-6 rounded-lg border bg-gray-50 p-4">
+          <h3 className="mb-2 font-semibold">Result:</h3>
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-sm">{result}</pre>
         </div>
       )}
     </div>

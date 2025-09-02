@@ -14,15 +14,18 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password,
     })
 
     if (error) {
       console.error('Login error:', error)
-      return NextResponse.json({
-        success: false,
-        error: error.message
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 400 }
+      )
     }
 
     console.log('Login successful for user:', data.user?.id)
@@ -32,18 +35,20 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
       user: {
         id: data.user?.id,
-        email: data.user?.email
+        email: data.user?.email,
       },
       session: {
-        access_token: data.session?.access_token ? 'present' : 'missing'
-      }
+        access_token: data.session?.access_token ? 'present' : 'missing',
+      },
     })
-
   } catch (err) {
     console.error('Unexpected login error:', err)
-    return NextResponse.json({
-      success: false,
-      error: 'Unexpected error during login'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Unexpected error during login',
+      },
+      { status: 500 }
+    )
   }
 }

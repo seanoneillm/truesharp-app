@@ -6,33 +6,39 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     console.log('🔗 SharpSports Accounts - Storing new linked account')
-    
+
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     let effectiveUserId = user?.id
     let querySupabase = supabase
-    
+
     // Handle service role fallback for authentication
     const body = await request.json()
-    
+
     if (authError || !user) {
       const userId = body.userId
-      
+
       if (userId) {
-        console.log('SharpSports Accounts - Using service role with userId:', userId.substring(0, 8) + '...')
-        
+        console.log(
+          'SharpSports Accounts - Using service role with userId:',
+          userId.substring(0, 8) + '...'
+        )
+
         const serviceSupabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
           {
             auth: {
               autoRefreshToken: false,
-              persistSession: false
-            }
+              persistSession: false,
+            },
           }
         )
-        
+
         effectiveUserId = userId
         querySupabase = serviceSupabase
       } else {
@@ -47,7 +53,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing bettorAccount data' }, { status: 400 })
     }
 
-    console.log('SharpSports Accounts - Processing account:', bettorAccount.id, 'for user:', effectiveUserId?.substring(0, 8) + '...')
+    console.log(
+      'SharpSports Accounts - Processing account:',
+      bettorAccount.id,
+      'for user:',
+      effectiveUserId?.substring(0, 8) + '...'
+    )
 
     // Map SharpSports bettorAccount to our bettor_account table
     const accountData = {
@@ -65,20 +76,20 @@ export async function POST(request: NextRequest) {
       access: bettorAccount.access || false,
       paused: bettorAccount.paused || false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }
 
     console.log('SharpSports Accounts - Inserting account data:', {
       ...accountData,
-      user_id: accountData.user_id?.substring(0, 8) + '...'
+      user_id: accountData.user_id?.substring(0, 8) + '...',
     })
 
     // Insert the new bettor account (or update if it already exists)
     const { data: insertedAccount, error: insertError } = await querySupabase
       .from('bettor_account')
-      .upsert(accountData, { 
+      .upsert(accountData, {
         onConflict: 'sharpsports_account_id',
-        ignoreDuplicates: false 
+        ignoreDuplicates: false,
       })
       .select()
       .single()
@@ -90,18 +101,20 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ SharpSports Accounts - Successfully stored account:', bettorAccount.id)
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       account: insertedAccount,
-      message: 'Bettor account successfully linked'
+      message: 'Bettor account successfully linked',
     })
-
   } catch (error) {
     console.error('SharpSports Accounts - Unexpected error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -110,46 +123,55 @@ export async function GET(request: NextRequest) {
   try {
     const url = request.nextUrl
     const params = url.searchParams
-    
+
     // Check if this is a SharpSports callback with account data
     const bettorAccountId = params.get('bettorAccountId') || params.get('accountId')
     const contextId = params.get('contextId') || params.get('cid')
     const userId = params.get('userId')
-    
+
     if (bettorAccountId || contextId) {
-      console.log('🔗 SharpSports Accounts - Handling callback with params:', Object.fromEntries(params))
-      
+      console.log(
+        '🔗 SharpSports Accounts - Handling callback with params:',
+        Object.fromEntries(params)
+      )
+
       // This is a callback from SharpSports - fetch the account data and store it
       return await handleSharpSportsCallback(request, params)
     }
-    
+
     // Regular request to fetch linked accounts
     console.log('📋 SharpSports Accounts - Fetching linked accounts')
-    
+
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     let effectiveUserId = user?.id
     let querySupabase = supabase
-    
+
     // Handle service role fallback for authentication
     if (authError || !user) {
       const userIdParam = params.get('userId')
-      
+
       if (userIdParam) {
-        console.log('SharpSports Accounts - Using service role with userId:', userIdParam.substring(0, 8) + '...')
-        
+        console.log(
+          'SharpSports Accounts - Using service role with userId:',
+          userIdParam.substring(0, 8) + '...'
+        )
+
         const serviceSupabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
           {
             auth: {
               autoRefreshToken: false,
-              persistSession: false
-            }
+              persistSession: false,
+            },
           }
         )
-        
+
         effectiveUserId = userIdParam
         querySupabase = serviceSupabase
       } else {
@@ -158,7 +180,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('SharpSports Accounts - Fetching accounts for user:', effectiveUserId?.substring(0, 8) + '...')
+    console.log(
+      'SharpSports Accounts - Fetching accounts for user:',
+      effectiveUserId?.substring(0, 8) + '...'
+    )
 
     const { data: accounts, error: accountsError } = await querySupabase
       .from('bettor_account')
@@ -173,17 +198,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 SharpSports Accounts - Found ${accounts?.length || 0} linked accounts`)
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       accounts: accounts || [],
-      count: accounts?.length || 0
+      count: accounts?.length || 0,
     })
-
   } catch (error) {
     console.error('SharpSports Accounts - Unexpected error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -191,7 +218,7 @@ export async function GET(request: NextRequest) {
 async function handleSharpSportsCallback(request: NextRequest, params: URLSearchParams) {
   try {
     console.log('🔄 SharpSports Callback - Processing account link callback')
-    
+
     const apiKey = process.env.SHARPSPORTS_API_KEY
     if (!apiKey) {
       console.error('SharpSports Callback - API key not configured')
@@ -202,7 +229,7 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
     const bettorAccountId = params.get('bettorAccountId') || params.get('accountId')
     const contextId = params.get('contextId') || params.get('cid')
     const userId = params.get('userId') // This should be our internal user ID
-    
+
     console.log('SharpSports Callback - Parameters:', { bettorAccountId, contextId, userId })
 
     if (!bettorAccountId) {
@@ -211,22 +238,27 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
     }
 
     // Use sandbox API for development
-    const apiBaseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://api.sharpsports.io' 
-      : 'https://api.sharpsports.io'
+    const apiBaseUrl =
+      process.env.NODE_ENV === 'production'
+        ? 'https://api.sharpsports.io'
+        : 'https://api.sharpsports.io'
 
     // Fetch the bettor account details from SharpSports
     const accountResponse = await fetch(`${apiBaseUrl}/v1/bettorAccounts/${bettorAccountId}`, {
       headers: {
-        'Authorization': `Token ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Token ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!accountResponse.ok) {
       const errorText = await accountResponse.text()
-      console.error(`SharpSports Callback - Failed to fetch account: ${accountResponse.status} - ${errorText}`)
-      return new Response(`Failed to fetch account details: ${errorText}`, { status: accountResponse.status })
+      console.error(
+        `SharpSports Callback - Failed to fetch account: ${accountResponse.status} - ${errorText}`
+      )
+      return new Response(`Failed to fetch account details: ${errorText}`, {
+        status: accountResponse.status,
+      })
     }
 
     const bettorAccount = await accountResponse.json()
@@ -239,8 +271,8 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
-        }
+          persistSession: false,
+        },
       }
     )
 
@@ -260,7 +292,7 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
       access: bettorAccount.access || false,
       paused: bettorAccount.paused || false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }
 
     console.log('SharpSports Callback - Inserting account data for user:', userId)
@@ -268,9 +300,9 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
     // Insert the new bettor account (or update if it already exists)
     const { data: insertedAccount, error: insertError } = await serviceSupabase
       .from('bettor_account')
-      .upsert(accountData, { 
+      .upsert(accountData, {
         onConflict: 'sharpsports_account_id',
-        ignoreDuplicates: false 
+        ignoreDuplicates: false,
       })
       .select()
       .single()
@@ -283,7 +315,8 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
     console.log('✅ SharpSports Callback - Successfully stored account:', bettorAccount.id)
 
     // Return a success page that closes the popup
-    return new Response(`
+    return new Response(
+      `
       <!DOCTYPE html>
       <html>
       <head>
@@ -310,12 +343,15 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
         </script>
       </body>
       </html>
-    `, {
-      headers: { 'Content-Type': 'text/html' }
-    })
-
+    `,
+      {
+        headers: { 'Content-Type': 'text/html' },
+      }
+    )
   } catch (error) {
     console.error('SharpSports Callback - Unexpected error:', error)
-    return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 })
+    return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      status: 500,
+    })
   }
 }

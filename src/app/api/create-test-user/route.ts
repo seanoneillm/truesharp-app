@@ -13,7 +13,7 @@ export async function POST() {
 
     // Check if user exists in auth
     const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(testUserId)
-    
+
     if (authError || !authUser.user) {
       // Create auth user if doesn't exist
       const { data: createdUser, error: createError } = await supabase.auth.admin.createUser({
@@ -21,16 +21,19 @@ export async function POST() {
         password: 'testpassword123',
         email_confirm: true,
         user_metadata: {
-          test_user_id: testUserId
-        }
+          test_user_id: testUserId,
+        },
       })
 
       if (createError) {
         console.error('Error creating auth user:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create test user', 
-          details: createError.message 
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: 'Failed to create test user',
+            details: createError.message,
+          },
+          { status: 500 }
+        )
       }
 
       console.log('Created auth user:', createdUser.user?.id)
@@ -42,14 +45,14 @@ export async function POST() {
       success: true,
       message: 'Test auth user setup completed',
       testUserId,
-      instructions: 'You can now log in with email: analytics-test@example.com and password: testpassword123',
+      instructions:
+        'You can now log in with email: analytics-test@example.com and password: testpassword123',
       loginInfo: {
         email: 'analytics-test@example.com',
         password: 'testpassword123',
-        userId: testUserId
-      }
+        userId: testUserId,
+      },
     })
-
   } catch (error) {
     console.error('Test auth setup error:', error)
     return NextResponse.json({ error: 'Failed to setup test auth' }, { status: 500 })

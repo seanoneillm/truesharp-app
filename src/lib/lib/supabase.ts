@@ -1,5 +1,8 @@
 // src/lib/supabase.ts
-import { createClientComponentClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import {
+  createClientComponentClient,
+  createServerComponentClient,
+} from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
 export function createClient() {
@@ -222,34 +225,34 @@ export type Database = {
           status: string
           started_at: string
           expires_at: string | null
-                    stripe_subscription_id: string | null
-                    created_at: string
-                  }
-                  Insert: {
-                    id?: string
-                    subscriber_id: string
-                    seller_id: string
-                    tier: string
-                    price: number
-                    status: string
-                    started_at: string
-                    expires_at?: string | null
-                    stripe_subscription_id?: string | null
-                    created_at?: string
-                  }
-                  Update: {
-                    id?: string
-                    subscriber_id?: string
-                    seller_id?: string
-                    tier?: string
-                    price?: number
-                    status?: string
-                    started_at?: string
-                    expires_at?: string | null
-                    stripe_subscription_id?: string | null
-                    created_at?: string
-                  }
-                }
-              }
-            }
-          }
+          stripe_subscription_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          subscriber_id: string
+          seller_id: string
+          tier: string
+          price: number
+          status: string
+          started_at: string
+          expires_at?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          subscriber_id?: string
+          seller_id?: string
+          tier?: string
+          price?: number
+          status?: string
+          started_at?: string
+          expires_at?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+        }
+      }
+    }
+  }
+}

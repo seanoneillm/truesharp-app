@@ -4,18 +4,23 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   try {
     const supabase = createBrowserClient()
-    
+
     console.log('Checking session...')
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession()
+
     console.log('Session check result:', {
       hasSession: !!session,
       error: error?.message,
-      user: session?.user ? {
-        id: session.user.id,
-        email: session.user.email,
-        created_at: session.user.created_at
-      } : null
+      user: session?.user
+        ? {
+            id: session.user.id,
+            email: session.user.email,
+            created_at: session.user.created_at,
+          }
+        : null,
     })
 
     if (session?.user) {
@@ -33,25 +38,28 @@ export async function GET() {
         user: {
           id: session.user.id,
           email: session.user.email,
-          created_at: session.user.created_at
+          created_at: session.user.created_at,
         },
         profile,
         session: {
           expires_at: session.expires_at,
-          access_token: session.access_token ? 'present' : 'missing'
-        }
+          access_token: session.access_token ? 'present' : 'missing',
+        },
       })
     } else {
       return NextResponse.json({
         authenticated: false,
-        error: error?.message || 'No session found'
+        error: error?.message || 'No session found',
       })
     }
   } catch (error) {
     console.error('Session check error:', error)
-    return NextResponse.json({
-      authenticated: false,
-      error: 'Session check failed'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        authenticated: false,
+        error: 'Session check failed',
+      },
+      { status: 500 }
+    )
   }
 }

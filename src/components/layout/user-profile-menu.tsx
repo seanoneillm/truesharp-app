@@ -52,7 +52,6 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
     setIsOpen(false)
   }
 
-
   const getUserInitials = () => {
     if (!isHydrated || authLoading || profileLoading) return 'U'
     if (profile?.display_name) return profile.display_name.charAt(0).toUpperCase()
@@ -80,14 +79,14 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
   // Show loading state until hydrated and auth is complete
   if (!isHydrated || authLoading || profileLoading) {
     return (
-      <div className={cn("relative", className)}>
+      <div className={cn('relative', className)}>
         <button
           disabled
-          className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-gray-50"
+          className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50"
         >
-          <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+          <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
           <div className="hidden lg:block">
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
           </div>
         </button>
       </div>
@@ -95,34 +94,32 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
   }
 
   return (
-    <div ref={menuRef} className={cn("relative", className)}>
+    <div ref={menuRef} className={cn('relative', className)}>
       {/* Profile Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 p-2 rounded-lg transition-colors",
-          "hover:bg-gray-50",
-          isOpen && "bg-gray-50"
+          'flex items-center gap-2 rounded-lg p-2 transition-colors',
+          'hover:bg-gray-50',
+          isOpen && 'bg-gray-50'
         )}
       >
         {/* Profile Picture */}
         <div className="relative">
           {profile?.profile_picture_url ? (
-            <img 
-              src={profile.profile_picture_url} 
-              alt="Profile" 
-              className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm"
+            <img
+              src={profile.profile_picture_url}
+              alt="Profile"
+              className="h-8 w-8 rounded-full object-cover shadow-sm ring-2 ring-white"
             />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center ring-2 ring-white shadow-sm">
-              <span className="text-sm font-medium text-white">
-                {getUserInitials()}
-              </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm ring-2 ring-white">
+              <span className="text-sm font-medium text-white">{getUserInitials()}</span>
             </div>
           )}
           {profile?.is_verified_seller && (
-            <div className="absolute -bottom-0.5 -right-0.5 bg-blue-600 rounded-full p-0.5">
-              <div className="h-2 w-2 bg-white rounded-full" />
+            <div className="absolute -bottom-0.5 -right-0.5 rounded-full bg-blue-600 p-0.5">
+              <div className="h-2 w-2 rounded-full bg-white" />
             </div>
           )}
         </div>
@@ -130,47 +127,41 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
         {/* User Info - Hidden on mobile */}
         <div className="hidden lg:flex lg:items-center lg:gap-2">
           <div className="text-left">
-            <div className="text-sm font-medium text-gray-900 truncate max-w-32">
+            <div className="max-w-32 truncate text-sm font-medium text-gray-900">
               {getDisplayName()}
             </div>
           </div>
-          <ChevronDown 
+          <ChevronDown
             className={cn(
-              "h-4 w-4 text-gray-400 transition-transform duration-200",
-              isOpen && "rotate-180"
-            )} 
+              'h-4 w-4 text-gray-400 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
           />
         </div>
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 z-50 rounded-xl bg-white shadow-lg ring-1 ring-gray-900/5 border border-gray-200">
+        <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-900/5">
           <div className="py-2">
             {/* Profile Info Header - Mobile Only */}
-            <div className="lg:hidden px-4 py-3 border-b border-gray-100">
+            <div className="border-b border-gray-100 px-4 py-3 lg:hidden">
               <div className="flex items-center gap-3">
                 {profile?.profile_picture_url ? (
-                  <img 
-                    src={profile.profile_picture_url} 
-                    alt="Profile" 
+                  <img
+                    src={profile.profile_picture_url}
+                    alt="Profile"
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                    <span className="text-white font-medium">
-                      {getUserInitials()}
-                    </span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
+                    <span className="font-medium text-white">{getUserInitials()}</span>
                   </div>
                 )}
                 <div>
-                  <div className="font-medium text-gray-900 truncate">
-                    {getDisplayName()}
-                  </div>
+                  <div className="truncate font-medium text-gray-900">{getDisplayName()}</div>
                   {profile?.bio && (
-                    <div className="text-xs text-gray-500 truncate max-w-32">
-                      {profile.bio}
-                    </div>
+                    <div className="max-w-32 truncate text-xs text-gray-500">{profile.bio}</div>
                   )}
                 </div>
               </div>
@@ -180,7 +171,7 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
             <div className="py-1">
               <button
                 onClick={() => handleMenuClick('/settings')}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
               >
                 <Settings className="h-4 w-4 text-gray-400" />
                 <span>Settings</span>
@@ -188,17 +179,17 @@ export function UserProfileMenu({ className }: UserProfileMenuProps) {
 
               <button
                 onClick={() => handleMenuClick('/help')}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
               >
                 <HelpCircle className="h-4 w-4 text-gray-400" />
                 <span>Help</span>
               </button>
 
-              <div className="border-t border-gray-100 my-1" />
+              <div className="my-1 border-t border-gray-100" />
 
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
               >
                 <LogOut className="h-4 w-4 text-red-400" />
                 <span>Sign out</span>

@@ -5,10 +5,14 @@ import { User } from '../types'
 export const supabase = createClientComponentClient()
 
 // Authentication functions
-export async function signUp(email: string, password: string, userData?: {
-  username: string
-  displayName: string
-}): Promise<{ user: AuthUser | null; error: AuthError | null }> {
+export async function signUp(
+  email: string,
+  password: string,
+  userData?: {
+    username: string
+    displayName: string
+  }
+): Promise<{ user: AuthUser | null; error: AuthError | null }> {
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -28,16 +32,14 @@ export async function signUp(email: string, password: string, userData?: {
 
     // Create profile record if signup successful
     if (data.user && userData) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            username: userData.username,
-            display_name: userData.displayName,
-            email: data.user.email,
-          },
-        ])
+      const { error: profileError } = await supabase.from('profiles').insert([
+        {
+          id: data.user.id,
+          username: userData.username,
+          display_name: userData.displayName,
+          email: data.user.email,
+        },
+      ])
 
       if (profileError) {
         console.error('Profile creation error:', profileError)
@@ -72,11 +74,11 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
 export async function signOut(): Promise<{ error: AuthError | null }> {
   try {
     const { error } = await supabase.auth.signOut()
-    
+
     if (error) {
       console.error('Signout error:', error)
     }
-    
+
     return { error }
   } catch (error) {
     console.error('Signout exception:', error)
@@ -89,11 +91,11 @@ export async function resetPassword(email: string): Promise<{ error: AuthError |
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
-    
+
     if (error) {
       console.error('Reset password error:', error)
     }
-    
+
     return { error }
   } catch (error) {
     console.error('Reset password exception:', error)
@@ -106,11 +108,11 @@ export async function updatePassword(newPassword: string): Promise<{ error: Auth
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     })
-    
+
     if (error) {
       console.error('Update password error:', error)
     }
-    
+
     return { error }
   } catch (error) {
     console.error('Update password exception:', error)
@@ -121,13 +123,16 @@ export async function updatePassword(newPassword: string): Promise<{ error: Auth
 // Profile functions
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
     if (error) {
       console.error('Get current user error:', error)
       return null
     }
-    
+
     return user
   } catch (error) {
     console.error('Get current user exception:', error)
@@ -142,12 +147,12 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       .select('*')
       .eq('id', userId)
       .single()
-    
+
     if (error) {
       console.error('Get user profile error:', error)
       return null
     }
-    
+
     return profile
   } catch (error) {
     console.error('Get user profile exception:', error)
@@ -155,7 +160,10 @@ export async function getUserProfile(userId: string): Promise<User | null> {
   }
 }
 
-export async function updateUserProfile(userId: string, updates: Partial<User>): Promise<{ data: User | null; error: any }> {
+export async function updateUserProfile(
+  userId: string,
+  updates: Partial<User>
+): Promise<{ data: User | null; error: any }> {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -163,12 +171,12 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
       .eq('id', userId)
       .select()
       .single()
-    
+
     if (error) {
       console.error('Update profile error:', error)
       return { data: null, error }
     }
-    
+
     return { data, error: null }
   } catch (error) {
     console.error('Update profile exception:', error)
@@ -180,11 +188,11 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
 export async function refreshSession(): Promise<{ error: AuthError | null }> {
   try {
     const { error } = await supabase.auth.refreshSession()
-    
+
     if (error) {
       console.error('Refresh session error:', error)
     }
-    
+
     return { error }
   } catch (error) {
     console.error('Refresh session exception:', error)
@@ -210,7 +218,7 @@ export function isValidUsername(username: string): boolean {
 // Error handling
 export function getAuthErrorMessage(error: AuthError | null): string {
   if (!error) return 'An unknown error occurred'
-  
+
   switch (error.message) {
     case 'Invalid login credentials':
       return 'Invalid email or password'

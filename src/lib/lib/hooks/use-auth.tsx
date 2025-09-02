@@ -1,5 +1,5 @@
 // FILE: src/lib/hooks/use-auth.tsx (Updated with better debugging)
-"use client"
+'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User as AuthUser, Session } from '@supabase/supabase-js'
@@ -12,7 +12,11 @@ interface AuthContextType {
   profile: User | null
   session: Session | null
   loading: boolean
-  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: string | null }>
+  signIn: (
+    email: string,
+    password: string,
+    rememberMe?: boolean
+  ) => Promise<{ error: string | null }>
   signUp: (userData: SignUpData) => Promise<{ error: string | null }>
   signOut: () => Promise<{ error: string | null }>
   updateProfile: (updates: Partial<User>) => Promise<{ error: string | null }>
@@ -44,32 +48,29 @@ export function useAuthProvider(): AuthContextType {
   const [profile, setProfile] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   const supabase = createClientComponentClient()
 
   // Get user profile with better error handling
   const fetchProfile = async (userId: string): Promise<User | null> => {
     try {
       console.log('Fetching profile for user ID:', userId)
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
 
       if (error) {
         console.error('Profile fetch error details:', {
           message: error.message,
           details: error.details,
           hint: error.hint,
-          code: error.code
+          code: error.code,
         })
-        
+
         // If profile doesn't exist, try to create one
-        if (error.code === 'PGRST116') { // Row not found
+        if (error.code === 'PGRST116') {
+          // Row not found
           console.log('Profile not found, attempting to create one...')
-          
+
           const { data: userData } = await supabase.auth.getUser()
           if (userData.user) {
             const { data: newProfile, error: createError } = await supabase
@@ -86,7 +87,7 @@ export function useAuthProvider(): AuthContextType {
                   total_followers: 0,
                   total_following: 0,
                   join_date: new Date().toISOString(),
-                }
+                },
               ])
               .select()
               .single()
@@ -100,7 +101,7 @@ export function useAuthProvider(): AuthContextType {
             return newProfile
           }
         }
-        
+
         return null
       }
 
@@ -117,10 +118,13 @@ export function useAuthProvider(): AuthContextType {
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...')
-        
+
         // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
         if (error) {
           console.error('Error getting session:', error)
         }
@@ -130,7 +134,7 @@ export function useAuthProvider(): AuthContextType {
         if (session?.user) {
           setUser(session.user)
           setSession(session)
-          
+
           // Fetch user profile
           const userProfile = await fetchProfile(session.user.id)
           setProfile(userProfile)
@@ -145,26 +149,26 @@ export function useAuthProvider(): AuthContextType {
     initializeAuth()
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id)
 
-        if (session?.user) {
-          setUser(session.user)
-          setSession(session)
-          
-          // Fetch user profile
-          const userProfile = await fetchProfile(session.user.id)
-          setProfile(userProfile)
-        } else {
-          setUser(null)
-          setProfile(null)
-          setSession(null)
-        }
+      if (session?.user) {
+        setUser(session.user)
+        setSession(session)
 
-        setLoading(false)
+        // Fetch user profile
+        const userProfile = await fetchProfile(session.user.id)
+        setProfile(userProfile)
+      } else {
+        setUser(null)
+        setProfile(null)
+        setSession(null)
       }
-    )
+
+      setLoading(false)
+    })
 
     return () => {
       subscription.unsubscribe()
@@ -175,9 +179,9 @@ export function useAuthProvider(): AuthContextType {
   const signIn = async (email: string, password: string, rememberMe?: boolean) => {
     try {
       setLoading(true)
-      
+
       const response = await authApi.login(email, password, rememberMe)
-      
+
       if (response.error) {
         return { error: response.error }
       }
@@ -196,9 +200,9 @@ export function useAuthProvider(): AuthContextType {
   const signUp = async (userData: SignUpData) => {
     try {
       setLoading(true)
-      
+
       const response = await authApi.signup(userData)
-      
+
       if (response.error) {
         return { error: response.error }
       }
@@ -217,9 +221,9 @@ export function useAuthProvider(): AuthContextType {
   const signOut = async () => {
     try {
       setLoading(true)
-      
+
       const response = await authApi.logout()
-      
+
       if (response.error) {
         return { error: response.error }
       }
@@ -259,7 +263,7 @@ export function useAuthProvider(): AuthContextType {
 
       // Update local profile state
       setProfile(data)
-      
+
       return { error: null }
     } catch (error) {
       console.error('Profile update exception:', error)
@@ -297,9 +301,5 @@ import React from 'react'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useAuthProvider()
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

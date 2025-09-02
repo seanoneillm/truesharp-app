@@ -13,23 +13,26 @@ interface ToggleProps {
 }
 
 const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
-  ({ checked = false, onCheckedChange, disabled, size = 'default', className, id, ...props }, ref) => {
+  (
+    { checked = false, onCheckedChange, disabled, size = 'default', className, id, ...props },
+    ref
+  ) => {
     const sizes = {
       sm: {
         switch: 'h-4 w-7',
         thumb: 'h-3 w-3',
-        translate: 'translate-x-3'
+        translate: 'translate-x-3',
       },
       default: {
         switch: 'h-6 w-11',
         thumb: 'h-5 w-5',
-        translate: 'translate-x-5'
+        translate: 'translate-x-5',
       },
       lg: {
         switch: 'h-7 w-12',
         thumb: 'h-6 w-6',
-        translate: 'translate-x-5'
-      }
+        translate: 'translate-x-5',
+      },
     }
 
     const sizeClasses = sizes[size]
@@ -83,20 +86,14 @@ const LabeledToggle: React.FC<LabeledToggleProps> = ({
   const toggleId = id || React.useId()
   const descriptionId = description ? `${toggleId}-description` : undefined
 
-  const toggleElement = (
-    <Toggle
-      id={toggleId}
-      aria-describedby={descriptionId}
-      {...toggleProps}
-    />
-  )
+  const toggleElement = <Toggle id={toggleId} aria-describedby={descriptionId} {...toggleProps} />
 
   const labelElement = (
     <div className="flex flex-col">
       {label && (
         <label
           htmlFor={toggleId}
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
           {label}
         </label>
@@ -140,12 +137,12 @@ const ToggleGroup: React.FC<ToggleGroupProps> = ({
   onValueChange,
   options,
   className,
-  size = 'default'
+  size = 'default',
 }) => {
   const sizes = {
     sm: 'px-2 py-1 text-xs',
     default: 'px-3 py-2 text-sm',
-    lg: 'px-4 py-2 text-base'
+    lg: 'px-4 py-2 text-base',
   }
 
   const handleToggle = (optionValue: string) => {
@@ -176,14 +173,14 @@ const ToggleGroup: React.FC<ToggleGroupProps> = ({
           disabled={option.disabled}
           onClick={() => handleToggle(option.value)}
           className={cn(
-            'relative inline-flex items-center border font-medium focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+            'relative inline-flex items-center border font-medium focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
             sizes[size],
             index === 0 && 'rounded-l-md',
             index === options.length - 1 && 'rounded-r-md',
             index !== 0 && '-ml-px',
             isSelected(option.value)
               ? 'bg-primary text-primary-foreground border-primary z-10'
-              : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
           )}
         >
           {option.label}

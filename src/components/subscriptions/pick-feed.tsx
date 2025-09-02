@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
 import React, { useState, useEffect } from 'react'
-import { 
-  Target, 
-  Clock, 
-  TrendingUp, 
+import {
+  Target,
+  Clock,
+  TrendingUp,
   TrendingDown,
   Star,
   Calendar,
@@ -19,54 +19,57 @@ import {
   DollarSign,
   Percent,
   BarChart3,
-  Timer
+  Timer,
 } from 'lucide-react'
 import { PickFeedProps, SubscriptionPick } from '@/types/subscriptions'
 
-export function PickFeed({ 
-  subscriptionId, 
-  picks, 
-  isLoading = false, 
+export function PickFeed({
+  subscriptionId,
+  picks,
+  isLoading = false,
   onCopyBet,
-  showCopyButton = true 
+  showCopyButton = true,
 }: PickFeedProps) {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d' | 'all'>('30d')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'won' | 'lost' | 'void'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'won' | 'lost' | 'void'>(
+    'all'
+  )
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'confidence' | 'odds'>('newest')
   const [expandedPicks, setExpandedPicks] = useState<Set<string>>(new Set())
 
-  const filteredPicks = picks
-    ?.filter(pick => {
-      if (statusFilter !== 'all' && pick.bet.status !== statusFilter) {
-        return false
-      }
-
-      if (timeframe !== 'all') {
-        const pickDate = new Date(pick.posted_at)
-        const now = new Date()
-        const daysAgo = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90
-        const cutoff = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000))
-        
-        if (pickDate < cutoff) {
+  const filteredPicks =
+    picks
+      ?.filter(pick => {
+        if (statusFilter !== 'all' && pick.bet.status !== statusFilter) {
           return false
         }
-      }
 
-      return true
-    })
-    ?.sort((a, b) => {
-      switch (sortBy) {
-        case 'oldest':
-          return new Date(a.posted_at).getTime() - new Date(b.posted_at).getTime()
-        case 'confidence':
-          return (b.bet.confidence || 0) - (a.bet.confidence || 0)
-        case 'odds':
-          return Math.abs(b.bet.odds) - Math.abs(a.bet.odds)
-        case 'newest':
-        default:
-          return new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime()
-      }
-    }) || []
+        if (timeframe !== 'all') {
+          const pickDate = new Date(pick.posted_at)
+          const now = new Date()
+          const daysAgo = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90
+          const cutoff = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
+
+          if (pickDate < cutoff) {
+            return false
+          }
+        }
+
+        return true
+      })
+      ?.sort((a, b) => {
+        switch (sortBy) {
+          case 'oldest':
+            return new Date(a.posted_at).getTime() - new Date(b.posted_at).getTime()
+          case 'confidence':
+            return (b.bet.confidence || 0) - (a.bet.confidence || 0)
+          case 'odds':
+            return Math.abs(b.bet.odds) - Math.abs(a.bet.odds)
+          case 'newest':
+          default:
+            return new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime()
+        }
+      }) || []
 
   const toggleExpanded = (pickId: string) => {
     const newExpanded = new Set(expandedPicks)
@@ -115,7 +118,7 @@ export function PickFeed({
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 2,
     }).format(amount)
   }
 
@@ -154,15 +157,15 @@ export function PickFeed({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex flex-wrap gap-4 items-center">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-center gap-4">
           {/* Timeframe Filter */}
           <div className="flex items-center space-x-2">
             <Calendar className="h-4 w-4 text-gray-500" />
             <select
               value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as typeof timeframe)}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setTimeframe(e.target.value as typeof timeframe)}
+              className="rounded-lg border border-gray-300 px-3 py-1 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -176,8 +179,8 @@ export function PickFeed({
             <Filter className="h-4 w-4 text-gray-500" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="rounded-lg border border-gray-300 px-3 py-1 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All picks</option>
               <option value="pending">Pending</option>
@@ -192,8 +195,8 @@ export function PickFeed({
             <BarChart3 className="h-4 w-4 text-gray-500" />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-lg border border-gray-300 px-3 py-1 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             >
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -210,22 +213,21 @@ export function PickFeed({
 
       {/* Picks List */}
       {filteredPicks.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
             <Target className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No picks found</h3>
+          <h3 className="mb-2 text-lg font-medium text-gray-900">No picks found</h3>
           <p className="text-gray-600">
-            {statusFilter !== 'all' || timeframe !== 'all' 
+            {statusFilter !== 'all' || timeframe !== 'all'
               ? 'Try adjusting your filters to see more picks'
-              : 'No picks have been posted yet'
-            }
+              : 'No picks have been posted yet'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredPicks.map((pick) => (
-            <PickCard 
+          {filteredPicks.map(pick => (
+            <PickCard
               key={pick.id}
               pick={pick}
               isExpanded={expandedPicks.has(pick.id)}
@@ -248,7 +250,13 @@ interface PickCardProps {
   showCopyButton: boolean
 }
 
-function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButton }: PickCardProps) {
+function PickCard({
+  pick,
+  isExpanded,
+  onToggleExpanded,
+  onCopyBet,
+  showCopyButton,
+}: PickCardProps) {
   const bet = pick.bet
   const isSettled = ['won', 'lost', 'void'].includes(bet.status)
   const isPending = bet.status === 'pending'
@@ -314,15 +322,15 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100">
+      <div className="border-b border-gray-100 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
             <div className="text-2xl">{getSportIcon(bet.sport)}</div>
-            
+
             <div>
-              <div className="flex items-center space-x-2 mb-1">
+              <div className="mb-1 flex items-center space-x-2">
                 <span className="text-sm font-medium text-gray-600">{bet.sport}</span>
                 {bet.league && (
                   <>
@@ -335,21 +343,22 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
                   {new Date(pick.posted_at).toLocaleDateString()}
                 </span>
               </div>
-              
+
               <h3 className="text-lg font-semibold text-gray-900">
-                {bet.home_team && bet.away_team 
+                {bet.home_team && bet.away_team
                   ? `${bet.away_team} @ ${bet.home_team}`
-                  : bet.bet_description
-                }
+                  : bet.bet_description}
               </h3>
-              
-              <p className="text-gray-600 mt-1">{bet.bet_description}</p>
+
+              <p className="mt-1 text-gray-600">{bet.bet_description}</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
             {/* Status */}
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(bet.status)}`}>
+            <div
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor(bet.status)}`}
+            >
               {getStatusIcon(bet.status)}
               <span className="ml-2 capitalize">{bet.status}</span>
             </div>
@@ -358,17 +367,17 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
             {showCopyButton && isPending && pick.copyBetStatus && !pick.copyBetStatus.copied && (
               <button
                 onClick={() => onCopyBet(pick.id)}
-                className="inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
               >
-                <Copy className="h-4 w-4 mr-1" />
+                <Copy className="mr-1 h-4 w-4" />
                 Copy Bet
               </button>
             )}
 
             {/* Already Copied Indicator */}
             {pick.copyBetStatus?.copied && (
-              <div className="inline-flex items-center px-3 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm font-medium">
-                <CheckCircle className="h-4 w-4 mr-1" />
+              <div className="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
+                <CheckCircle className="mr-1 h-4 w-4" />
                 Copied
               </div>
             )}
@@ -378,33 +387,29 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
 
       {/* Main Content */}
       <div className="p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
           {/* Odds */}
           <div className="text-center">
-            <div className="flex items-center justify-center mb-1">
-              <Percent className="h-4 w-4 text-purple-500 mr-1" />
-              <span className="text-lg font-bold text-gray-900">
-                {formatOdds(bet.odds)}
-              </span>
+            <div className="mb-1 flex items-center justify-center">
+              <Percent className="mr-1 h-4 w-4 text-purple-500" />
+              <span className="text-lg font-bold text-gray-900">{formatOdds(bet.odds)}</span>
             </div>
             <p className="text-xs text-gray-500">Odds</p>
           </div>
 
           {/* Stake */}
           <div className="text-center">
-            <div className="flex items-center justify-center mb-1">
-              <DollarSign className="h-4 w-4 text-green-500 mr-1" />
-              <span className="text-lg font-bold text-gray-900">
-                ${bet.stake.toFixed(0)}
-              </span>
+            <div className="mb-1 flex items-center justify-center">
+              <DollarSign className="mr-1 h-4 w-4 text-green-500" />
+              <span className="text-lg font-bold text-gray-900">${bet.stake.toFixed(0)}</span>
             </div>
             <p className="text-xs text-gray-500">Stake</p>
           </div>
 
           {/* Potential Payout */}
           <div className="text-center">
-            <div className="flex items-center justify-center mb-1">
-              <TrendingUp className="h-4 w-4 text-blue-500 mr-1" />
+            <div className="mb-1 flex items-center justify-center">
+              <TrendingUp className="mr-1 h-4 w-4 text-blue-500" />
               <span className="text-lg font-bold text-gray-900">
                 ${bet.potential_payout.toFixed(2)}
               </span>
@@ -415,11 +420,9 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
           {/* Confidence */}
           {bet.confidence && (
             <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                <span className="text-lg font-bold text-gray-900">
-                  {bet.confidence}/5
-                </span>
+              <div className="mb-1 flex items-center justify-center">
+                <Star className="mr-1 h-4 w-4 text-yellow-500" />
+                <span className="text-lg font-bold text-gray-900">{bet.confidence}/5</span>
               </div>
               <p className="text-xs text-gray-500">Confidence</p>
             </div>
@@ -428,7 +431,7 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
 
         {/* Line Value */}
         {bet.line_value && (
-          <div className="text-center mb-4">
+          <div className="mb-4 text-center">
             <span className="text-sm text-gray-500">Line: </span>
             <span className="text-sm font-medium text-gray-900">
               {bet.line_value > 0 ? `+${bet.line_value}` : bet.line_value}
@@ -438,12 +441,18 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
 
         {/* Result (if settled) */}
         {isSettled && bet.profit !== undefined && (
-          <div className="text-center p-3 rounded-lg bg-gray-50 border">
+          <div className="rounded-lg border bg-gray-50 p-3 text-center">
             <div className="flex items-center justify-center space-x-2">
               <span className="text-sm text-gray-600">Result:</span>
-              <span className={`text-lg font-bold ${
-                bet.profit > 0 ? 'text-green-600' : bet.profit < 0 ? 'text-red-600' : 'text-gray-600'
-              }`}>
+              <span
+                className={`text-lg font-bold ${
+                  bet.profit > 0
+                    ? 'text-green-600'
+                    : bet.profit < 0
+                      ? 'text-red-600'
+                      : 'text-gray-600'
+                }`}
+              >
                 {bet.profit > 0 ? '+' : ''}${bet.profit.toFixed(2)}
               </span>
             </div>
@@ -451,25 +460,25 @@ function PickCard({ pick, isExpanded, onToggleExpanded, onCopyBet, showCopyButto
         )}
 
         {/* Expand/Collapse Button */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-4 border-t border-gray-100 pt-4">
           <button
             onClick={onToggleExpanded}
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center text-sm text-gray-600 transition-colors hover:text-gray-900"
           >
-            <Eye className="h-4 w-4 mr-2" />
+            <Eye className="mr-2 h-4 w-4" />
             {isExpanded ? 'Hide Details' : 'View Details'}
           </button>
         </div>
 
         {/* Expanded Details */}
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-gray-100 space-y-3 text-sm">
+          <div className="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-500">Pick ID:</span>
-                <p className="text-gray-900 font-mono text-xs">{pick.id}</p>
+                <p className="font-mono text-xs text-gray-900">{pick.id}</p>
               </div>
-              
+
               <div>
                 <span className="text-gray-500">Posted:</span>
                 <p className="text-gray-900">{new Date(pick.posted_at).toLocaleString()}</p>
@@ -514,35 +523,35 @@ function PickFeedLoading() {
   return (
     <div className="space-y-6">
       {/* Filters Loading */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex items-center space-x-4">
-          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse" />
-          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse" />
-          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse" />
+          <div className="h-8 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="h-8 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="h-8 w-32 animate-pulse rounded bg-gray-200" />
         </div>
       </div>
 
       {/* Pick Cards Loading */}
       <div className="space-y-4">
         {[...Array(3)].map((_, index) => (
-          <div key={index} className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-start justify-between mb-4">
+          <div key={index} className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-gray-200 rounded animate-pulse" />
+                <div className="h-8 w-8 animate-pulse rounded bg-gray-200" />
                 <div>
-                  <div className="h-4 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
-                  <div className="h-6 bg-gray-200 rounded w-48 mb-1 animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded w-64 animate-pulse" />
+                  <div className="mb-2 h-4 w-32 animate-pulse rounded bg-gray-200" />
+                  <div className="mb-1 h-6 w-48 animate-pulse rounded bg-gray-200" />
+                  <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
                 </div>
               </div>
-              <div className="h-8 bg-gray-200 rounded w-24 animate-pulse" />
+              <div className="h-8 w-24 animate-pulse rounded bg-gray-200" />
             </div>
-            
+
             <div className="grid grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="text-center">
-                  <div className="h-6 bg-gray-200 rounded mb-1 animate-pulse" />
-                  <div className="h-3 bg-gray-200 rounded animate-pulse" />
+                  <div className="mb-1 h-6 animate-pulse rounded bg-gray-200" />
+                  <div className="h-3 animate-pulse rounded bg-gray-200" />
                 </div>
               ))}
             </div>

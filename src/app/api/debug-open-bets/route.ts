@@ -13,10 +13,10 @@ export async function GET() {
       .eq('status', 'pending')
       .limit(10)
 
-    console.log('🔍 Debug - All pending bets:', { 
-      error: pendingError?.message, 
+    console.log('🔍 Debug - All pending bets:', {
+      error: pendingError?.message,
       count: allPendingBets?.length || 0,
-      sample: allPendingBets?.slice(0, 2)
+      sample: allPendingBets?.slice(0, 2),
     })
 
     // 2. Check if there are pending bets with future game dates
@@ -27,16 +27,17 @@ export async function GET() {
       .gt('game_date', new Date().toISOString())
       .limit(10)
 
-    console.log('🔍 Debug - Future pending bets:', { 
-      error: futureError?.message, 
+    console.log('🔍 Debug - Future pending bets:', {
+      error: futureError?.message,
       count: futurePendingBets?.length || 0,
-      sample: futurePendingBets?.slice(0, 2)
+      sample: futurePendingBets?.slice(0, 2),
     })
 
     // 3. Check strategy_bets table
     const { data: strategyBetsData, error: strategyBetsError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets!inner (
@@ -45,13 +46,14 @@ export async function GET() {
           game_date,
           bet_description
         )
-      `)
+      `
+      )
       .limit(10)
 
-    console.log('🔍 Debug - Strategy bets:', { 
-      error: strategyBetsError?.message, 
+    console.log('🔍 Debug - Strategy bets:', {
+      error: strategyBetsError?.message,
       count: strategyBetsData?.length || 0,
-      sample: strategyBetsData?.slice(0, 2)
+      sample: strategyBetsData?.slice(0, 2),
     })
 
     // 4. Check subscriptions to get strategy IDs
@@ -61,21 +63,21 @@ export async function GET() {
       .eq('status', 'active')
       .limit(5)
 
-    console.log('🔍 Debug - Active subscriptions:', { 
-      error: subsError?.message, 
+    console.log('🔍 Debug - Active subscriptions:', {
+      error: subsError?.message,
       count: subscriptions?.length || 0,
-      sample: subscriptions?.slice(0, 2)
+      sample: subscriptions?.slice(0, 2),
     })
 
     // 5. Test getOpenBetsForStrategies with sample strategy IDs
     if (subscriptions && subscriptions.length > 0) {
       const strategyIds = subscriptions.map(s => s.strategy_id).filter(Boolean)
       const openBetsResult = await getOpenBetsForStrategies(strategyIds, supabase)
-      
+
       console.log('🔍 Debug - getOpenBetsForStrategies result:', {
         strategyIds,
         result: openBetsResult,
-        totalBets: Object.values(openBetsResult).flat().length
+        totalBets: Object.values(openBetsResult).flat().length,
       })
     }
 
@@ -90,16 +92,15 @@ export async function GET() {
           pendingBets: allPendingBets?.slice(0, 2),
           futureBets: futurePendingBets?.slice(0, 2),
           strategyBets: strategyBetsData?.slice(0, 2),
-          subscriptions: subscriptions?.slice(0, 2)
-        }
-      }
+          subscriptions: subscriptions?.slice(0, 2),
+        },
+      },
     })
-
   } catch (error) {
     console.error('Debug endpoint error:', error)
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }

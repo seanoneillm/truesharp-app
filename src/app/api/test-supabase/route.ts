@@ -31,15 +31,11 @@ export async function GET(request: NextRequest) {
       success: true,
       tests: {
         profiles: { data: profiles, error: profileError?.message },
-        users: { data: users, error: usersError?.message }
-      }
+        users: { data: users, error: usersError?.message },
+      },
     })
-
   } catch (error) {
     console.error('Connection test error:', error)
-    return NextResponse.json(
-      { error: 'Connection test failed', details: error },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Connection test failed', details: error }, { status: 500 })
   }
 }

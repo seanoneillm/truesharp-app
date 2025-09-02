@@ -76,6 +76,6 @@ export function useProfile() {
     profile,
     loading: loading || authLoading,
     error,
-    refreshProfile
+    refreshProfile,
   }
 }

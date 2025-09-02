@@ -1,9 +1,9 @@
-import { Bet, BetFilter } from './base-filter-engine';
+import { Bet, BetFilter } from './base-filter-engine'
 
 export function filterBySport(sport: string): BetFilter {
-  return (bet: Bet) => bet.sport === sport;
+  return (bet: Bet) => bet.sport === sport
 }
 
 export function filterByLeague(league: string): BetFilter {
-  return (bet: Bet) => bet.league === league;
+  return (bet: Bet) => bet.league === league
 }

@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -30,24 +33,21 @@ export async function GET(request: NextRequest) {
             avgBetSize: cachedPerf.avg_bet_size,
             variance: cachedPerf.variance,
             streaks: {
-              current: { 
-                type: cachedPerf.current_streak_type || 'win', 
-                count: cachedPerf.current_streak_count 
+              current: {
+                type: cachedPerf.current_streak_type || 'win',
+                count: cachedPerf.current_streak_count,
               },
-              longest: { 
-                type: 'win', 
-                count: cachedPerf.longest_win_streak 
-              }
-            }
-          }
+              longest: {
+                type: 'win',
+                count: cachedPerf.longest_win_streak,
+              },
+            },
+          },
         })
       }
     }
     // Calculate filtered performance
-    let query = supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', user.id)
+    let query = supabase.from('bets').select('*').eq('user_id', user.id)
     if (sports.length > 0 && !sports.includes('all')) {
       query = query.in('sport', sports)
     }
@@ -82,8 +82,8 @@ export async function GET(request: NextRequest) {
         streaks: {
           current: { type: 'win', count: 0 },
           longest: { type: 'win', count: 0 },
-        }
-      }
+        },
+      },
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

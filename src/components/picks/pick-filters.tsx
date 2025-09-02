@@ -18,7 +18,7 @@ const sports = [
   { value: 'MLB', label: 'MLB' },
   { value: 'NHL', label: 'NHL' },
   { value: 'Soccer', label: 'Soccer' },
-  { value: 'Tennis', label: 'Tennis' }
+  { value: 'Tennis', label: 'Tennis' },
 ]
 
 const tiers = [
@@ -26,7 +26,7 @@ const tiers = [
   { value: 'free', label: 'Free' },
   { value: 'bronze', label: 'Bronze' },
   { value: 'silver', label: 'Silver' },
-  { value: 'premium', label: 'Premium' }
+  { value: 'premium', label: 'Premium' },
 ]
 
 export function PickFilters({
@@ -34,7 +34,7 @@ export function PickFilters({
   setSelectedSport,
   selectedTier,
   setSelectedTier,
-  onClose
+  onClose,
 }: PickFiltersProps) {
   const clearFilters = () => {
     setSelectedSport('all')
@@ -44,8 +44,8 @@ export function PickFilters({
   const hasActiveFilters = selectedSport !== 'all' || selectedTier !== 'all'
 
   return (
-    <Card className="p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
+    <Card className="mb-6 p-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="font-medium text-gray-900">Filter Picks</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -54,15 +54,13 @@ export function PickFilters({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sport
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Sport</label>
           <select
             value={selectedSport}
-            onChange={(e) => setSelectedSport(e.target.value)}
+            onChange={e => setSelectedSport(e.target.value)}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            {sports.map((sport) => (
+            {sports.map(sport => (
               <option key={sport.value} value={sport.value}>
                 {sport.label}
               </option>
@@ -71,15 +69,13 @@ export function PickFilters({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tier
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Tier</label>
           <select
             value={selectedTier}
-            onChange={(e) => setSelectedTier(e.target.value)}
+            onChange={e => setSelectedTier(e.target.value)}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            {tiers.map((tier) => (
+            {tiers.map(tier => (
               <option key={tier.value} value={tier.value}>
                 {tier.label}
               </option>
@@ -88,8 +84,8 @@ export function PickFilters({
         </div>
 
         <div className="flex items-end">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={clearFilters}
             disabled={!hasActiveFilters}
             className="w-full"

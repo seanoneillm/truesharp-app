@@ -30,7 +30,7 @@ export function SellerProfileEditor({
   isOpen,
   onClose,
   onSuccess,
-  initialData
+  initialData,
 }: SellerProfileEditorProps) {
   const { user } = useAuth()
   const [bio, setBio] = useState(initialData?.bio || '')
@@ -68,7 +68,7 @@ export function SellerProfileEditor({
       const response = await fetch('/api/seller-profile/upload-image', {
         method: 'POST',
         body: formData,
-        credentials: 'include'
+        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -143,28 +143,26 @@ export function SellerProfileEditor({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-full max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Seller Profile</DialogTitle>
-          <DialogDescription>
-            Customize your profile to attract subscribers
-          </DialogDescription>
+          <DialogDescription>Customize your profile to attract subscribers</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-8 py-4">
           {/* Images Section */}
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {/* Profile Photo */}
             <div className="space-y-4">
-              <Label className="text-base font-semibold flex items-center gap-2">
+              <Label className="flex items-center gap-2 text-base font-semibold">
                 <User className="h-4 w-4" />
                 Profile Photo
               </Label>
               <div className="flex items-center gap-4">
-                <div 
+                <div
                   className={cn(
-                    "w-20 h-20 rounded-full border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer flex items-center justify-center group transition-all",
-                    profileImg && "border-solid border-blue-200 bg-blue-50"
+                    'group flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:bg-gray-100',
+                    profileImg && 'border-solid border-blue-200 bg-blue-50'
                   )}
                   onClick={() => !uploadingProfile && profileInputRef.current?.click()}
                 >
@@ -174,7 +172,7 @@ export function SellerProfileEditor({
                     <img
                       src={profileImg}
                       alt="Profile"
-                      className="w-full h-full object-cover rounded-full"
+                      className="h-full w-full rounded-full object-cover"
                     />
                   ) : (
                     <Upload className="h-6 w-6 text-gray-400 group-hover:text-blue-500" />
@@ -188,14 +186,18 @@ export function SellerProfileEditor({
                     disabled={uploadingProfile}
                     className="w-full"
                   >
-                    {uploadingProfile ? 'Uploading...' : profileImg ? 'Change Photo' : 'Upload Photo'}
+                    {uploadingProfile
+                      ? 'Uploading...'
+                      : profileImg
+                        ? 'Change Photo'
+                        : 'Upload Photo'}
                   </Button>
                   {profileImg && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setProfileImg('')}
-                      className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="mt-2 w-full text-red-600 hover:bg-red-50 hover:text-red-700"
                     >
                       Remove
                     </Button>
@@ -207,34 +209,34 @@ export function SellerProfileEditor({
 
             {/* Banner Image */}
             <div className="space-y-4">
-              <Label className="text-base font-semibold flex items-center gap-2">
+              <Label className="flex items-center gap-2 text-base font-semibold">
                 <ImageIcon className="h-4 w-4" />
                 Banner Image
               </Label>
-              <div 
+              <div
                 className={cn(
-                  "h-24 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer flex items-center justify-center group transition-all",
-                  bannerImg && "border-solid border-blue-200 bg-blue-50"
+                  'group flex h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:bg-gray-100',
+                  bannerImg && 'border-solid border-blue-200 bg-blue-50'
                 )}
                 onClick={() => !uploadingBanner && bannerInputRef.current?.click()}
               >
                 {uploadingBanner ? (
                   <div className="text-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-500 mx-auto mb-1" />
+                    <Loader2 className="mx-auto mb-1 h-6 w-6 animate-spin text-blue-500" />
                     <p className="text-sm text-gray-600">Uploading...</p>
                   </div>
                 ) : bannerImg ? (
-                  <div className="relative w-full h-full">
+                  <div className="relative h-full w-full">
                     <img
                       src={bannerImg}
                       alt="Banner"
-                      className="w-full h-full object-cover rounded-lg"
+                      className="h-full w-full rounded-lg object-cover"
                     />
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={(e) => {
+                      className="absolute right-2 top-2"
+                      onClick={e => {
                         e.stopPropagation()
                         setBannerImg('')
                       }}
@@ -244,7 +246,7 @@ export function SellerProfileEditor({
                   </div>
                 ) : (
                   <div className="text-center">
-                    <Upload className="h-6 w-6 text-gray-400 group-hover:text-blue-500 mx-auto mb-1" />
+                    <Upload className="mx-auto mb-1 h-6 w-6 text-gray-400 group-hover:text-blue-500" />
                     <p className="text-sm text-gray-600">Click to upload banner</p>
                   </div>
                 )}
@@ -261,19 +263,25 @@ export function SellerProfileEditor({
             <Textarea
               id="bio"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={e => setBio(e.target.value)}
               placeholder="Tell potential subscribers about your betting expertise, experience, and what makes your strategies unique..."
               className="min-h-[120px] resize-none"
               maxLength={500}
             />
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 Share your experience, specialties, and track record
               </p>
-              <p className={cn(
-                "text-sm font-medium",
-                bio.length > 450 ? "text-red-600" : bio.length > 400 ? "text-yellow-600" : "text-gray-500"
-              )}>
+              <p
+                className={cn(
+                  'text-sm font-medium',
+                  bio.length > 450
+                    ? 'text-red-600'
+                    : bio.length > 400
+                      ? 'text-yellow-600'
+                      : 'text-gray-500'
+                )}
+              >
                 {bio.length}/500
               </p>
             </div>
@@ -281,31 +289,29 @@ export function SellerProfileEditor({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center pt-6 border-t">
-          <p className="text-sm text-gray-500">
-            Changes will appear on your marketplace profile
-          </p>
+        <div className="flex items-center justify-between border-t pt-6">
+          <p className="text-sm text-gray-500">Changes will appear on your marketplace profile</p>
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={onClose}
               disabled={isLoading || uploadingProfile || uploadingBanner}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSave}
               disabled={isLoading || uploadingProfile || uploadingBanner}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="mr-2 h-4 w-4" />
                   Save Profile
                 </>
               )}
@@ -318,7 +324,7 @@ export function SellerProfileEditor({
           ref={profileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => {
+          onChange={e => {
             const file = e.target.files?.[0]
             if (file) handleImageUpload(file, 'profile')
           }}
@@ -328,7 +334,7 @@ export function SellerProfileEditor({
           ref={bannerInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => {
+          onChange={e => {
             const file = e.target.files?.[0]
             if (file) handleImageUpload(file, 'banner')
           }}

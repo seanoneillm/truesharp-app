@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('id, email, username')
         .in('id', uniqueSubscribers)
-      
+
       userDetails = users || []
     }
 
@@ -39,29 +39,32 @@ export async function GET(request: NextRequest) {
       database_analysis: {
         total_subscriptions: allSubscriptions?.length || 0,
         total_unique_subscribers: uniqueSubscribers.length,
-        sample_subscriptions: allSubscriptions?.map(s => ({
-          id: s.id,
-          subscriber_id: s.subscriber_id,
-          status: s.status,
-          created_at: s.created_at
-        })) || [],
+        sample_subscriptions:
+          allSubscriptions?.map(s => ({
+            id: s.id,
+            subscriber_id: s.subscriber_id,
+            status: s.status,
+            created_at: s.created_at,
+          })) || [],
         subscriber_users: userDetails.map(u => ({
           id: u.id,
           email: u.email,
-          username: u.username
-        }))
+          username: u.username,
+        })),
       },
       errors: {
         allSubsError: allSubsError?.message,
-        usersError: usersError?.message
-      }
+        usersError: usersError?.message,
+      },
     })
-
   } catch (error) {
     console.error('Debug API error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

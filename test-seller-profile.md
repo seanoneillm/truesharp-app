@@ -1,7 +1,9 @@
 # Seller Profile Implementation Test Plan
 
 ## Setup Required
+
 1. **Run the SQL Migration:**
+
    ```sql
    -- Execute the SQL in create-seller-profiles-table.sql in your Supabase console
    ```
@@ -13,12 +15,14 @@
 ## Testing Steps
 
 ### 1. Test API Endpoints
+
 ```bash
 # Test getting seller profile (replace 'username' with actual username)
 curl "http://localhost:3000/api/seller-profile?username=testuser"
 ```
 
 ### 2. Test Seller Profile Page
+
 1. Navigate to `/marketplace/[username]` where username is a valid seller
 2. Verify the page displays:
    - Profile header with banner and profile image
@@ -28,6 +32,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
    - Subscribe buttons with authentication check
 
 ### 3. Test Profile Editor
+
 1. **From Sell Page:**
    - Go to `/sell`
    - Click "Customize Profile" button in header
@@ -46,6 +51,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
    - Verify data persists
 
 ### 4. Test Authentication Flow
+
 1. **Not Logged In:**
    - Visit seller profile page
    - Click subscribe button
@@ -59,6 +65,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
 ## Expected Behavior
 
 ### Seller Profile Page (`/marketplace/[username]`)
+
 - ✅ Clean, professional layout
 - ✅ Banner image (gray default if none)
 - ✅ Circle profile photo (avatar default if none)
@@ -69,6 +76,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
 - ✅ Subscribe buttons with auth check
 
 ### Profile Editor
+
 - ✅ Modal opens from Sell page and Topbar
 - ✅ Image upload with validation (5MB, JPEG/PNG/WebP)
 - ✅ Bio text area with character limit
@@ -76,6 +84,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
 - ✅ Loading states during upload/save
 
 ### API Endpoints
+
 - ✅ GET `/api/seller-profile?username=X` - Fetch seller data
 - ✅ POST `/api/seller-profile` - Update seller profile
 - ✅ POST `/api/seller-profile/upload-image` - Upload images
@@ -83,6 +92,7 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
 ## Files Created/Modified
 
 ### New Files:
+
 - `create-seller-profiles-table.sql` - Database migration
 - `src/app/api/seller-profile/route.ts` - Main API endpoint
 - `src/app/api/seller-profile/upload-image/route.ts` - Image upload
@@ -90,13 +100,16 @@ curl "http://localhost:3000/api/seller-profile?username=testuser"
 - `src/components/ui/label.tsx` - Label component
 
 ### Modified Files:
+
 - `src/app/marketplace/[username]/page.tsx` - Complete rewrite for new design
 - `src/app/sell/page.tsx` - Added Customize Profile button
 - `src/components/layout/user-profile-menu.tsx` - Added profile menu item
 - `src/components/ui/dialog.tsx` - Added DialogDescription component
 
 ## Database Schema
+
 The `seller_profiles` table stores customization data:
+
 - `user_id` (FK to profiles.id) - Owner of the profile
 - `bio` - Custom bio text
 - `profile_img` - URL to profile image in Supabase Storage
@@ -104,6 +117,7 @@ The `seller_profiles` table stores customization data:
 - `updated_at` - Last modified timestamp
 
 ## Future Enhancements
+
 - Image cropping/resizing on upload
 - More banner templates
 - Social media links

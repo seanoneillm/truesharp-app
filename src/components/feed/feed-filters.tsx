@@ -14,8 +14,8 @@ export function FeedFilters({ onClose }: FeedFiltersProps) {
   const timeRanges = ['All Time', 'Today', 'This Week', 'This Month']
 
   return (
-    <Card className="p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
+    <Card className="mb-6 p-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="font-medium text-gray-900">Filter Feed</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -25,11 +25,9 @@ export function FeedFilters({ onClose }: FeedFiltersProps) {
       <div className="space-y-4">
         {/* Sports Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sports
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Sports</label>
           <div className="flex flex-wrap gap-2">
-            {sports.map((sport) => (
+            {sports.map(sport => (
               <Badge
                 key={sport}
                 variant={sport === 'All' ? 'default' : 'outline'}
@@ -43,11 +41,9 @@ export function FeedFilters({ onClose }: FeedFiltersProps) {
 
         {/* Post Type Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Content Type
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Content Type</label>
           <div className="flex flex-wrap gap-2">
-            {postTypes.map((type) => (
+            {postTypes.map(type => (
               <Badge
                 key={type}
                 variant={type === 'All' ? 'default' : 'outline'}
@@ -61,11 +57,9 @@ export function FeedFilters({ onClose }: FeedFiltersProps) {
 
         {/* Time Range Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Time Range
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Time Range</label>
           <div className="flex flex-wrap gap-2">
-            {timeRanges.map((range) => (
+            {timeRanges.map(range => (
               <Badge
                 key={range}
                 variant={range === 'All Time' ? 'default' : 'outline'}
@@ -82,9 +76,7 @@ export function FeedFilters({ onClose }: FeedFiltersProps) {
           <Button variant="outline" size="sm">
             Clear All
           </Button>
-          <Button size="sm">
-            Apply Filters
-          </Button>
+          <Button size="sm">Apply Filters</Button>
         </div>
       </div>
     </Card>

@@ -24,7 +24,7 @@ interface UsePostsOptions {
 
 export function usePosts(options: UsePostsOptions = {}) {
   const { filter = 'public', limit = 20, autoRefresh = false } = options
-  
+
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +39,7 @@ export function usePosts(options: UsePostsOptions = {}) {
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString(),
-        filter
+        filter,
       })
 
       const response = await fetch(`/api/feed?${params}`)
@@ -57,7 +57,6 @@ export function usePosts(options: UsePostsOptions = {}) {
 
       setHasMore(result.data.length === limit)
       setPage(pageNum)
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -78,9 +77,12 @@ export function usePosts(options: UsePostsOptions = {}) {
   const createPost = async (content: string, imageFile?: File) => {
     try {
       const supabase = createClient()
-      
+
       // Check if user is authenticated
-      const { data: { session }, error: authError } = await supabase.auth.getSession()
+      const {
+        data: { session },
+        error: authError,
+      } = await supabase.auth.getSession()
       if (authError || !session) {
         throw new Error('You must be logged in to create a post')
       }
@@ -94,7 +96,7 @@ export function usePosts(options: UsePostsOptions = {}) {
 
         const uploadResponse = await fetch('/api/upload/image', {
           method: 'POST',
-          body: formData
+          body: formData,
         })
 
         const uploadResult = await uploadResponse.json()
@@ -114,9 +116,10 @@ export function usePosts(options: UsePostsOptions = {}) {
           content: content.trim(),
           image_url: imageUrl,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .select(`
+        .select(
+          `
           *,
           profiles!inner(
             id,
@@ -124,7 +127,8 @@ export function usePosts(options: UsePostsOptions = {}) {
             profile_picture_url,
             is_verified_seller
           )
-        `)
+        `
+        )
         .single()
 
       if (error) {
@@ -133,9 +137,8 @@ export function usePosts(options: UsePostsOptions = {}) {
 
       // Add new post to the beginning of the list
       setPosts(prev => [post, ...prev])
-      
-      return post
 
+      return post
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to create post')
     }
@@ -159,6 +162,6 @@ export function usePosts(options: UsePostsOptions = {}) {
     hasMore,
     loadMore,
     refresh,
-    createPost
+    createPost,
   }
 }

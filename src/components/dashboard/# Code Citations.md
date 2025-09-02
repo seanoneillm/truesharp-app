@@ -1,6 +1,7 @@
 # Code Citations
 
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -8,8 +9,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   sport
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -17,8 +18,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   sport_title
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -27,8 +28,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   commence
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -37,8 +38,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   commence_time: string
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -48,8 +49,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   home
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -59,8 +60,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   home_team: string
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -71,8 +72,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   away_team:
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -84,8 +85,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   book
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -97,8 +98,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   bookmakers
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -110,8 +111,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
   bookmakers:
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -124,8 +125,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
 }
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -140,8 +141,8 @@ https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f
 export interface Book
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -157,8 +158,8 @@ export interface Bookmaker {
   key
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -175,8 +176,8 @@ export interface Bookmaker {
   title
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -194,8 +195,8 @@ export interface Bookmaker {
   last
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -213,8 +214,8 @@ export interface Bookmaker {
   last_update
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -233,8 +234,8 @@ export interface Bookmaker {
   markets
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -254,31 +255,8 @@ export interface Bookmaker {
 }
 ```
 
-
 ## License: unknown
-https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
-```
-: string
-  sport_title: string
-  commence_time: string
-  home_team: string
-  away_team: string
-  bookmakers: Bookmaker[]
-}
-
-export interface Bookmaker {
-  key: string
-  title: string
-  last_update: string
-  markets: Market[]
-}
-
-export interface Market {
-```
-
-
-## License: unknown
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -298,11 +276,34 @@ export interface Bookmaker {
 }
 
 export interface Market {
+```
+
+## License: unknown
+
+https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
+
+```
+: string
+  sport_title: string
+  commence_time: string
+  home_team: string
+  away_team: string
+  bookmakers: Bookmaker[]
+}
+
+export interface Bookmaker {
+  key: string
+  title: string
+  last_update: string
+  markets: Market[]
+}
+
+export interface Market {
   key: string
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -326,8 +327,8 @@ export interface Market {
   last
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -351,8 +352,8 @@ export interface Market {
   last_update: string
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -377,8 +378,8 @@ export interface Market {
   outcomes
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -403,8 +404,8 @@ export interface Market {
   outcomes: Outcome[]
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -432,8 +433,8 @@ export interface Market {
 export interface
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -462,8 +463,8 @@ export interface Outcome {
   name
 ```
 
-
 ## License: unknown
+
 https://github.com/JarrettTo/SBAI.com-Frontend/blob/bc99a2b32b12f14d5986853e245f09101ec455cb/types/Odds.ts
 
 ```
@@ -491,4 +492,3 @@ export interface Market {
 export interface Outcome {
   name: string
 ```
-

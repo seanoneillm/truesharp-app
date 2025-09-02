@@ -32,10 +32,7 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
 
   try {
     // Fetch all user bets
-    const { data: bets, error } = await supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
+    const { data: bets, error } = await supabase.from('bets').select('*').eq('user_id', userId)
 
     if (error) {
       console.error('Error fetching bets for stats:', error)
@@ -51,7 +48,7 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
     const settledBets = bets.filter(bet => bet.status === 'won' || bet.status === 'lost')
     const wonBets = bets.filter(bet => bet.status === 'won')
     const lostBets = bets.filter(bet => bet.status === 'lost')
-    
+
     const totalWins = wonBets.length
     const totalLosses = lostBets.length
     const winRate = settledBets.length > 0 ? (totalWins / settledBets.length) * 100 : 0
@@ -62,7 +59,7 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
 
     bets.forEach(bet => {
       totalStaked += bet.stake
-      
+
       if (bet.status === 'won' && bet.profit) {
         totalProfit += bet.profit
       } else if (bet.status === 'lost') {
@@ -77,7 +74,7 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
     const today = new Date()
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-    
+
     const todaysBets = bets.filter(bet => {
       const betDate = new Date(bet.placed_at)
       return betDate >= startOfDay && betDate < endOfDay
@@ -95,9 +92,8 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
       roi,
       avgBetSize,
       todaysBets,
-      activePicks
+      activePicks,
     }
-
   } catch (error) {
     console.error('Error calculating dashboard stats:', error)
     return getEmptyStats()
@@ -122,14 +118,13 @@ export async function getTodaysBets(userId: string): Promise<BetData[]> {
       .order('placed_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching today\'s bets:', error)
+      console.error("Error fetching today's bets:", error)
       return []
     }
 
     return bets || []
-
   } catch (error) {
-    console.error('Error getting today\'s bets:', error)
+    console.error("Error getting today's bets:", error)
     return []
   }
 }
@@ -151,7 +146,6 @@ export async function getRecentBets(userId: string, limit: number = 10): Promise
     }
 
     return bets || []
-
   } catch (error) {
     console.error('Error getting recent bets:', error)
     return []
@@ -168,6 +162,6 @@ function getEmptyStats(): DashboardStats {
     roi: 0,
     avgBetSize: 0,
     todaysBets: 0,
-    activePicks: 0
+    activePicks: 0,
   }
 }

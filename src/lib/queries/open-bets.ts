@@ -47,24 +47,24 @@ export interface StrategyWithOpenBets {
  * Logic: bets where status = 'pending' AND game_date > NOW()
  */
 export async function getOpenBetsForStrategies(
-  strategyIds: string[], 
+  strategyIds: string[],
   supabaseClient?: any
 ): Promise<Record<string, OpenBet[]>> {
   const supabase = supabaseClient || createClient()
-  
+
   console.log('🎯 getOpenBetsForStrategies - Starting with strategy IDs:', strategyIds)
-  
+
   if (strategyIds.length === 0) {
     console.log('🎯 getOpenBetsForStrategies - No strategy IDs provided, returning empty')
     return {}
   }
 
   try {
-
     // Fetch strategy_bets with open bet filters
     const { data: strategyBets, error: strategyBetsError } = await supabase
       .from('strategy_bets')
-      .select(`
+      .select(
+        `
         strategy_id,
         bet_id,
         bets!inner (
@@ -85,7 +85,8 @@ export async function getOpenBetsForStrategies(
           sportsbook,
           side
         )
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
       .eq('bets.status', 'pending')
       .gt('bets.game_date', new Date().toISOString())
@@ -96,24 +97,24 @@ export async function getOpenBetsForStrategies(
       sampleData: strategyBets?.slice(0, 2),
       query: 'strategy_bets with inner join',
       strategyIds,
-      currentTime: new Date().toISOString()
+      currentTime: new Date().toISOString(),
     })
 
     if (!strategyBetsError && strategyBets && strategyBets.length > 0) {
       // Group bets by strategy_id
       const betsByStrategy: Record<string, OpenBet[]> = {}
-      
+
       strategyBets.forEach((strategyBet: any) => {
         if (!betsByStrategy[strategyBet.strategy_id]) {
           betsByStrategy[strategyBet.strategy_id] = []
         }
-        
+
         betsByStrategy[strategyBet.strategy_id].push({
           ...strategyBet.bets,
-          strategy_id: strategyBet.strategy_id
+          strategy_id: strategyBet.strategy_id,
         })
       })
-      
+
       console.log('🎯 getOpenBetsForStrategies - Grouped bets by strategy:', betsByStrategy)
       return betsByStrategy
     }
@@ -121,7 +122,6 @@ export async function getOpenBetsForStrategies(
     // Fallback: use direct strategy_id relationship in bets table
     console.log('🎯 getOpenBetsForStrategies - Using fallback method')
     return await getOpenBetsDirectByStrategy(strategyIds, supabase)
-
   } catch (error) {
     console.error('Error fetching open bets for strategies:', error)
     return {}
@@ -137,9 +137,9 @@ export async function getOpenBetsDirectByStrategy(
   supabaseClient?: any
 ): Promise<Record<string, OpenBet[]>> {
   const supabase = supabaseClient || createClient()
-  
+
   console.log('🎯 getOpenBetsDirectByStrategy - Starting with strategy IDs:', strategyIds)
-  
+
   if (strategyIds.length === 0) {
     return {}
   }
@@ -147,7 +147,8 @@ export async function getOpenBetsDirectByStrategy(
   try {
     const { data: bets, error } = await supabase
       .from('bets')
-      .select(`
+      .select(
+        `
         id,
         sport,
         league,
@@ -165,7 +166,8 @@ export async function getOpenBetsDirectByStrategy(
         sportsbook,
         strategy_id,
         side
-      `)
+      `
+      )
       .in('strategy_id', strategyIds)
       .eq('status', 'pending')
       .gt('game_date', new Date().toISOString())
@@ -177,7 +179,7 @@ export async function getOpenBetsDirectByStrategy(
       sampleData: bets?.slice(0, 2),
       query: 'direct bets table query',
       strategyIds,
-      currentTime: new Date().toISOString()
+      currentTime: new Date().toISOString(),
     })
 
     if (error) {
@@ -187,7 +189,7 @@ export async function getOpenBetsDirectByStrategy(
 
     // Group bets by strategy_id
     const betsByStrategy: Record<string, OpenBet[]> = {}
-    
+
     bets?.forEach((bet: OpenBet) => {
       if (bet.strategy_id && !betsByStrategy[bet.strategy_id]) {
         betsByStrategy[bet.strategy_id] = []
@@ -218,7 +220,8 @@ export async function getSellerStrategiesWithOpenBets(
     // First, get user's strategies from leaderboard
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategy_leaderboard')
-      .select(`
+      .select(
+        `
         strategy_id,
         strategy_name,
         user_id,
@@ -229,7 +232,8 @@ export async function getSellerStrategiesWithOpenBets(
         subscription_price_monthly,
         subscription_price_yearly,
         is_monetized
-      `)
+      `
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
@@ -239,10 +243,10 @@ export async function getSellerStrategiesWithOpenBets(
     }
 
     const strategyIds = strategies.map(s => s.strategy_id)
-    
+
     // Get open bets for these strategies - try strategy_bets first
     let openBetsByStrategy = await getOpenBetsForStrategies(strategyIds, supabase)
-    
+
     // If no results, try direct approach
     if (Object.keys(openBetsByStrategy).length === 0) {
       openBetsByStrategy = await getOpenBetsDirectByStrategy(strategyIds, supabase)
@@ -269,7 +273,7 @@ export async function getSellerStrategiesWithOpenBets(
         subscriber_count: 0, // Would need to join with subscriptions if needed
         open_bets: openBets,
         open_bets_count: openBets.length,
-        total_potential_profit: totalPotentialProfit
+        total_potential_profit: totalPotentialProfit,
       }
     })
 
@@ -303,7 +307,7 @@ export async function getSubscriberStrategiesWithOpenBets(
     console.log('🔍 getSubscriberStrategiesWithOpenBets - Subscriptions query result:', {
       error: subscriptionsError?.message,
       dataCount: subscriptions?.length || 0,
-      sampleData: subscriptions?.slice(0, 2)
+      sampleData: subscriptions?.slice(0, 2),
     })
 
     if (subscriptionsError || !subscriptions) {
@@ -312,9 +316,7 @@ export async function getSubscriberStrategiesWithOpenBets(
     }
 
     // Extract strategy IDs from subscriptions
-    const strategyIds = subscriptions
-      .map(sub => sub.strategy_id)
-      .filter(id => id !== null) // Filter out null strategy_ids
+    const strategyIds = subscriptions.map(sub => sub.strategy_id).filter(id => id !== null) // Filter out null strategy_ids
 
     console.log('🔍 getSubscriberStrategiesWithOpenBets - Extracted strategy IDs:', strategyIds)
 
@@ -326,7 +328,8 @@ export async function getSubscriberStrategiesWithOpenBets(
     // Now fetch the strategy details separately
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategies')
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
@@ -338,13 +341,14 @@ export async function getSubscriberStrategiesWithOpenBets(
         pricing_monthly,
         pricing_yearly,
         subscriber_count
-      `)
+      `
+      )
       .in('id', strategyIds)
 
     console.log('🔍 getSubscriberStrategiesWithOpenBets - Strategies query result:', {
       error: strategiesError?.message,
       dataCount: strategies?.length || 0,
-      sampleData: strategies?.slice(0, 2)
+      sampleData: strategies?.slice(0, 2),
     })
 
     if (strategiesError || !strategies) {
@@ -355,7 +359,10 @@ export async function getSubscriberStrategiesWithOpenBets(
     // Get open bets for subscribed strategies
     const openBetsByStrategy = await getOpenBetsForStrategies(strategyIds, supabase)
 
-    console.log('🔍 getSubscriberStrategiesWithOpenBets - Open bets by strategy:', openBetsByStrategy)
+    console.log(
+      '🔍 getSubscriberStrategiesWithOpenBets - Open bets by strategy:',
+      openBetsByStrategy
+    )
 
     // Combine strategies with their open bets
     const strategiesWithBets = strategies.map(strategy => {
@@ -367,22 +374,25 @@ export async function getSubscriberStrategiesWithOpenBets(
       console.log('🔍 getSubscriberStrategiesWithOpenBets - Processing strategy:', {
         id: strategy.id,
         name: strategy.name,
-        openBetsCount: openBets.length
+        openBetsCount: openBets.length,
       })
 
       return {
         ...strategy,
         open_bets: openBets,
         open_bets_count: openBets.length,
-        total_potential_profit: totalPotentialProfit
+        total_potential_profit: totalPotentialProfit,
       }
     })
 
-    console.log('🔍 getSubscriberStrategiesWithOpenBets - Final result:', strategiesWithBets.map(s => ({
-      id: s.id,
-      name: s.name,
-      open_bets_count: s.open_bets_count
-    })))
+    console.log(
+      '🔍 getSubscriberStrategiesWithOpenBets - Final result:',
+      strategiesWithBets.map(s => ({
+        id: s.id,
+        name: s.name,
+        open_bets_count: s.open_bets_count,
+      }))
+    )
 
     return strategiesWithBets
   } catch (error) {
@@ -395,19 +405,19 @@ export async function getSubscriberStrategiesWithOpenBets(
  * Helper function to format bet information for display
  */
 export function formatBetForDisplay(bet: OpenBet) {
-  const gameInfo = bet.bet_description || (bet.home_team && bet.away_team 
-    ? `${bet.away_team} @ ${bet.home_team}`
-    : 'Unknown bet')
+  const gameInfo =
+    bet.bet_description ||
+    (bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : 'Unknown bet')
 
   const oddsDisplay = bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`
-  
+
   const potentialProfit = bet.potential_payout - bet.stake
-  
+
   return {
     ...bet,
     gameInfo,
     oddsDisplay,
     potentialProfit,
-    gameTime: bet.game_date ? new Date(bet.game_date).toLocaleString() : null
+    gameTime: bet.game_date ? new Date(bet.game_date).toLocaleString() : null,
   }
 }

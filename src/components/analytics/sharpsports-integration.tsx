@@ -49,7 +49,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       setError(null)
 
       const response = await fetch(`/api/sharpsports/accounts?userId=${effectiveUserId}`)
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load accounts: ${response.status}`)
       }
@@ -57,7 +57,6 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       const data = await response.json()
       console.log(`✅ Loaded ${data.accounts.length} SharpSports accounts`)
       setAccounts(data.accounts)
-      
     } catch (error) {
       console.error('Error loading accounts:', error)
       setError(error instanceof Error ? error.message : 'Failed to load accounts')
@@ -80,12 +79,13 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           userId: effectiveUserId,
-          redirectUrl: window.location.hostname === 'localhost' 
-            ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
-            : `${window.location.origin}/api/sharpsports/accounts`
-        })
+          redirectUrl:
+            window.location.hostname === 'localhost'
+              ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
+              : `${window.location.origin}/api/sharpsports/accounts`,
+        }),
       })
 
       if (!response.ok) {
@@ -97,11 +97,11 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
 
       // Step 2: Use the correct SharpSports UI URL format
       const booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
-      
+
       console.log('📋 Opening Booklink UI:', booklinkUrl)
-      
+
       const popup = window.open(
-        booklinkUrl, 
+        booklinkUrl,
         'sharpsports-booklink',
         'width=700,height=800,scrollbars=yes,resizable=yes,location=yes'
       )
@@ -114,10 +114,10 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       // Enhanced popup monitoring
       let popupCheckAttempts = 0
       const maxAttempts = 600 // 10 minutes
-      
+
       const checkClosed = setInterval(() => {
         popupCheckAttempts++
-        
+
         try {
           // Try to access popup properties to see if it's still valid
           if (popup.closed) {
@@ -129,7 +129,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
             }, 1000)
             return
           }
-          
+
           // Check if popup navigated to an error page
           try {
             const popupUrl = popup.location.href
@@ -143,19 +143,17 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
           } catch (e) {
             // Cross-origin restrictions prevent reading popup URL - this is normal
           }
-          
         } catch (error) {
           // Popup might be closed or inaccessible
           console.log('Popup check error:', error)
         }
-        
+
         // Cleanup after max attempts
         if (popupCheckAttempts >= maxAttempts) {
           clearInterval(checkClosed)
           console.log('📝 Popup monitor timeout reached')
         }
       }, 1000)
-
     } catch (error) {
       console.error('Error generating SharpSports context:', error)
       setError(error instanceof Error ? error.message : 'Failed to generate SharpSports context')
@@ -177,7 +175,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: effectiveUserId })
+        body: JSON.stringify({ userId: effectiveUserId }),
       })
 
       if (!response.ok) {
@@ -186,16 +184,17 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
 
       const data = await response.json()
       console.log('✅ Refresh initiated:', data.message)
-      
+
       // Show success message with details
       if (data.refreshed > 0) {
         setError(null)
         // Note: The actual bet sync happens via webhook, so we just show that refresh was initiated
-        console.log(`🎉 Refresh initiated for ${data.refreshed} accounts. Bets will sync automatically when ready.`)
+        console.log(
+          `🎉 Refresh initiated for ${data.refreshed} accounts. Bets will sync automatically when ready.`
+        )
       } else {
         setError('No accounts were refreshed. Please check your linked accounts.')
       }
-      
     } catch (error) {
       console.error('Error refreshing accounts:', error)
       setError(error instanceof Error ? error.message : 'Failed to refresh accounts')
@@ -217,7 +216,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: effectiveUserId })
+        body: JSON.stringify({ userId: effectiveUserId }),
       })
 
       if (!response.ok) {
@@ -226,11 +225,10 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
 
       const data = await response.json()
       console.log('✅ Manual sync completed:', data.message)
-      
+
       if (data.totalBetsProcessed > 0) {
         console.log(`🎉 Successfully processed ${data.totalBetsProcessed} bets`)
       }
-      
     } catch (error) {
       console.error('Error syncing bets:', error)
       setError(error instanceof Error ? error.message : 'Failed to sync bets')
@@ -252,7 +250,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Account Status */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
           <div>
             <p className="text-sm font-medium">Linked Accounts</p>
             <p className="text-xs text-gray-600">
@@ -261,7 +259,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
           </div>
           {verifiedAccountsCount > 0 && (
             <div className="flex items-center text-green-600">
-              <Check className="h-4 w-4 mr-1" />
+              <Check className="mr-1 h-4 w-4" />
               <span className="text-sm">Connected</span>
             </div>
           )}
@@ -270,16 +268,16 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         {/* Linked Accounts List */}
         {loading ? (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             <span className="text-sm">Loading accounts...</span>
           </div>
         ) : accounts.length > 0 ? (
           <div className="space-y-2">
             <p className="text-sm font-medium">Connected Sportsbooks:</p>
-            {accounts.map((account) => (
-              <div 
-                key={account.id} 
-                className="flex items-center justify-between p-2 border rounded-lg"
+            {accounts.map(account => (
+              <div
+                key={account.id}
+                className="flex items-center justify-between rounded-lg border p-2"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{account.book_name}</span>
@@ -290,13 +288,13 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
                 </div>
                 <div className="flex items-center gap-2">
                   {account.verified && account.access ? (
-                    <span className="text-xs text-green-600 flex items-center">
-                      <Check className="h-3 w-3 mr-1" />
+                    <span className="flex items-center text-xs text-green-600">
+                      <Check className="mr-1 h-3 w-3" />
                       Active
                     </span>
                   ) : (
-                    <span className="text-xs text-yellow-600 flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" />
+                    <span className="flex items-center text-xs text-yellow-600">
+                      <AlertCircle className="mr-1 h-3 w-3" />
                       {!account.verified ? 'Unverified' : 'No Access'}
                     </span>
                   )}
@@ -310,20 +308,20 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
 
         {/* Error Display */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleLinkSportsbooks}
             disabled={loading}
             className="flex-1"
             variant="outline"
           >
-            <Link className="h-4 w-4 mr-2" />
+            <Link className="mr-2 h-4 w-4" />
             Link Sportsbooks
           </Button>
 
@@ -334,9 +332,9 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
             variant="outline"
           >
             {refreshing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
             )}
             Refresh Accounts
           </Button>
@@ -353,30 +351,42 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
               size="sm"
             >
               {syncing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
               Manual Sync (Dev)
             </Button>
-            
-            <div className="text-xs space-y-1">
+
+            <div className="space-y-1 text-xs">
               <p className="font-medium">Test different Booklink URLs:</p>
-              <button 
-                className="text-blue-600 hover:underline block text-xs"
-                onClick={() => window.open(`https://sandbox-booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`)}
+              <button
+                className="block text-xs text-blue-600 hover:underline"
+                onClick={() =>
+                  window.open(
+                    `https://sandbox-booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                  )
+                }
               >
                 1. sandbox-booklink.sharpsports.io
               </button>
-              <button 
-                className="text-blue-600 hover:underline block text-xs"
-                onClick={() => window.open(`https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`)}
+              <button
+                className="block text-xs text-blue-600 hover:underline"
+                onClick={() =>
+                  window.open(
+                    `https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                  )
+                }
               >
                 2. booklink.sharpsports.io (prod)
               </button>
-              <button 
-                className="text-blue-600 hover:underline block text-xs"
-                onClick={() => window.open(`https://app.sharpsports.io/booklink?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`)}
+              <button
+                className="block text-xs text-blue-600 hover:underline"
+                onClick={() =>
+                  window.open(
+                    `https://app.sharpsports.io/booklink?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                  )
+                }
               >
                 3. app.sharpsports.io/booklink
               </button>
@@ -385,7 +395,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         )}
 
         {/* Info Text */}
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="space-y-1 text-xs text-gray-500">
           <p>• Link your sportsbook accounts to automatically sync your bets</p>
           <p>• Refresh accounts to check for new bets from your linked sportsbooks</p>
           <p>• Bets are automatically synced when accounts are refreshed</p>

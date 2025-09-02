@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient(request)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +29,10 @@ export async function POST(request: NextRequest) {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Only JPG, PNG, and GIF files are supported' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Only JPG, PNG, and GIF files are supported' },
+        { status: 400 }
+      )
     }
 
     // Generate unique filename
@@ -34,29 +40,29 @@ export async function POST(request: NextRequest) {
     const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
     // Upload to Supabase storage
-    const { data, error } = await supabase.storage
-      .from('post-images')
-      .upload(fileName, file, {
-        contentType: file.type,
-        upsert: false
-      })
+    const { data, error } = await supabase.storage.from('post-images').upload(fileName, file, {
+      contentType: file.type,
+      upsert: false,
+    })
 
     if (error) {
       return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('post-images')
-      .getPublicUrl(fileName)
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('post-images').getPublicUrl(fileName)
 
-    return NextResponse.json({ 
-      data: { 
-        url: publicUrl,
-        path: data.path 
-      } 
-    }, { status: 200 })
-
+    return NextResponse.json(
+      {
+        data: {
+          url: publicUrl,
+          path: data.path,
+        },
+      },
+      { status: 200 }
+    )
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

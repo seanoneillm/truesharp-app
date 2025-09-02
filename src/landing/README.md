@@ -2,7 +2,9 @@
 
 ## Overview
 
-A modern, responsive landing page for TrueSharp's verified sports betting community. Features a clean design with the TrueSharp shield logo, gradient backgrounds, and a focused email collection form.
+A modern, responsive landing page for TrueSharp's verified sports betting community. Features a
+clean design with the TrueSharp shield logo, gradient backgrounds, and a focused email collection
+form.
 
 ## Key Features
 
@@ -19,7 +21,8 @@ This is a Next.js application optimized for Vercel deployment.
 
 ### Repository Setup
 
-If you're deploying this to a separate repository (`truesharp-landing`), make sure all these files are at the **root level** of that repository, not in a subdirectory.
+If you're deploying this to a separate repository (`truesharp-landing`), make sure all these files
+are at the **root level** of that repository, not in a subdirectory.
 
 ### File Structure
 
@@ -52,7 +55,8 @@ BREVO_API_KEY=your_brevo_api_key_here
 
 ### Manual Fix for Current Error
 
-The error "No Output Directory named 'public' found" suggests Vercel is treating this as a static site. To fix:
+The error "No Output Directory named 'public' found" suggests Vercel is treating this as a static
+site. To fix:
 
 1. Make sure this is a **Next.js** project in Vercel settings
 2. Ensure all files are at the repository root

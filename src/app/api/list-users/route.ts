@@ -10,7 +10,7 @@ export async function GET() {
     )
 
     const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
-    
+
     if (userError) {
       console.error('Error listing users:', userError)
       return NextResponse.json({ error: 'Unable to list users' }, { status: 500 })
@@ -21,16 +21,15 @@ export async function GET() {
       email: user.email,
       email_confirmed: !!user.email_confirmed_at,
       created_at: user.created_at,
-      last_sign_in: user.last_sign_in_at
+      last_sign_in: user.last_sign_in_at,
     }))
 
     console.log('Found users:', users.length)
 
     return NextResponse.json({
       userCount: users.length,
-      users: users
+      users: users,
     })
-
   } catch (error) {
     console.error('List users error:', error)
     return NextResponse.json({ error: 'Failed to list users' }, { status: 500 })

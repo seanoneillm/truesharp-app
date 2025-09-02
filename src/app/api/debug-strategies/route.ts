@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   try {
     const supabase = createClient()
-    
+
     // Check what strategies exist
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategies')
@@ -27,25 +27,27 @@ export async function GET() {
       strategies: {
         data: strategies || [],
         error: strategiesError?.message,
-        count: strategies?.length || 0
+        count: strategies?.length || 0,
       },
       profiles: {
         data: profiles || [],
         error: profilesError?.message,
-        count: profiles?.length || 0
+        count: profiles?.length || 0,
       },
       leaderboard: {
         data: leaderboard || [],
         error: leaderboardError?.message,
-        count: leaderboard?.length || 0
-      }
+        count: leaderboard?.length || 0,
+      },
     })
-
   } catch (error) {
     console.error('Debug error:', error)
-    return NextResponse.json({ 
-      error: 'Debug failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Debug failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

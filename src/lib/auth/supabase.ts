@@ -378,8 +378,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Client for browser/client components
-export const createBrowserClient = () => 
-  createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const createBrowserClient = () => createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Direct client (for API routes)
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)

@@ -23,13 +23,15 @@ interface BetFilters {
 
 // Get user's bets with filtering and pagination
 export async function getUserBets(filters: BetFilters = {}, options = { page: 1, limit: 20 }) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     let query = supabase
       .from('bets')
-      .select(`
+      .select(
+        `
         *,
         sportsbook:sportsbook_connections(name, logo)
-      `)
+      `
+      )
       .eq('user_id', userId)
 
     // Apply filters
@@ -80,13 +82,15 @@ export async function getUserBets(filters: BetFilters = {}, options = { page: 1,
 
 // Get bet by ID
 export async function getBetById(betId: string) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     return await supabase
       .from('bets')
-      .select(`
+      .select(
+        `
         *,
         sportsbook:sportsbook_connections(name, logo)
-      `)
+      `
+      )
       .eq('id', betId)
       .eq('user_id', userId)
       .single()
@@ -95,7 +99,7 @@ export async function getBetById(betId: string) {
 
 // Create manual bet entry
 export async function createManualBet(betData: BetForm) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     const bet = {
       user_id: userId,
       sport: betData.sport,
@@ -104,27 +108,25 @@ export async function createManualBet(betData: BetForm) {
       description: betData.description,
       odds: betData.odds,
       stake: betData.stake,
-      potential_payout: betData.stake * (betData.odds > 0 ? (betData.odds / 100) + 1 : (100 / Math.abs(betData.odds)) + 1),
+      potential_payout:
+        betData.stake *
+        (betData.odds > 0 ? betData.odds / 100 + 1 : 100 / Math.abs(betData.odds) + 1),
       status: 'pending',
       placed_at: new Date().toISOString(),
       game_date: betData.gameDate.toISOString(),
       teams: betData.teams,
       is_public: betData.isPublic || false,
       external_bet_id: `manual_${Date.now()}`,
-      sportsbook_id: 'manual' // For manual entries
+      sportsbook_id: 'manual', // For manual entries
     }
 
-    return await supabase
-      .from('bets')
-      .insert(bet)
-      .select()
-      .single()
+    return await supabase.from('bets').insert(bet).select().single()
   })
 }
 
 // Update bet
 export async function updateBet(betId: string, updates: Partial<Bet>) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     return await supabase
       .from('bets')
       .update(updates)
@@ -137,7 +139,7 @@ export async function updateBet(betId: string, updates: Partial<Bet>) {
 
 // Delete bet (only for manual entries)
 export async function deleteBet(betId: string) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     return await supabase
       .from('bets')
       .delete()
@@ -148,11 +150,15 @@ export async function deleteBet(betId: string) {
 }
 
 // Settle bet (manual result entry)
-export async function settleBet(betId: string, result: 'won' | 'lost' | 'void' | 'cancelled', actualPayout?: number) {
-  return authenticatedRequest(async (userId) => {
+export async function settleBet(
+  betId: string,
+  result: 'won' | 'lost' | 'void' | 'cancelled',
+  actualPayout?: number
+) {
+  return authenticatedRequest(async userId => {
     const updates: any = {
       status: result,
-      settled_at: new Date().toISOString()
+      settled_at: new Date().toISOString(),
     }
 
     if (actualPayout !== undefined) {
@@ -168,7 +174,7 @@ export async function settleBet(betId: string, result: 'won' | 'lost' | 'void' |
 
       if (bet) {
         const { stake, odds } = bet
-        updates.actual_payout = stake * (odds > 0 ? (odds / 100) + 1 : (100 / Math.abs(odds)) + 1)
+        updates.actual_payout = stake * (odds > 0 ? odds / 100 + 1 : 100 / Math.abs(odds) + 1)
       }
     } else {
       updates.actual_payout = 0
@@ -227,12 +233,12 @@ export async function getUserBetStats(userId: string, filters: BetFilters = {}) 
     const lostBets = bets.filter(bet => bet.status === 'lost').length
     const settledBets = wonBets + lostBets
     const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0
-    
+
     const totalStaked = bets.reduce((sum, bet) => sum + (bet.stake || 0), 0)
     const totalReturned = bets
       .filter(bet => bet.status === 'won')
       .reduce((sum, bet) => sum + (bet.actual_payout || 0), 0)
-    
+
     const profit = totalReturned - totalStaked
     const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0
 
@@ -249,8 +255,10 @@ export async function getUserBetStats(userId: string, filters: BetFilters = {}) 
     if (recentBets.length > 0 && recentBets[0]) {
       streakType = recentBets[0].status === 'won' ? 'win' : 'loss'
       for (const bet of recentBets) {
-        if ((streakType === 'win' && bet.status === 'won') || 
-            (streakType === 'loss' && bet.status === 'lost')) {
+        if (
+          (streakType === 'win' && bet.status === 'won') ||
+          (streakType === 'loss' && bet.status === 'lost')
+        ) {
           currentStreak++
         } else {
           break
@@ -259,13 +267,17 @@ export async function getUserBetStats(userId: string, filters: BetFilters = {}) 
     }
 
     // Biggest win/loss
-    const biggestWin = Math.max(...bets
-      .filter(bet => bet.status === 'won')
-      .map(bet => (bet.actual_payout || 0) - (bet.stake || 0)), 0)
-    
-    const biggestLoss = Math.max(...bets
-      .filter(bet => bet.status === 'lost')
-      .map(bet => bet.stake || 0), 0)
+    const biggestWin = Math.max(
+      ...bets
+        .filter(bet => bet.status === 'won')
+        .map(bet => (bet.actual_payout || 0) - (bet.stake || 0)),
+      0
+    )
+
+    const biggestLoss = Math.max(
+      ...bets.filter(bet => bet.status === 'lost').map(bet => bet.stake || 0),
+      0
+    )
 
     return {
       data: {
@@ -280,12 +292,12 @@ export async function getUserBetStats(userId: string, filters: BetFilters = {}) 
         avgBetSize,
         currentStreak: {
           count: currentStreak,
-          type: streakType
+          type: streakType,
         },
         biggestWin,
-        biggestLoss
+        biggestLoss,
       },
-      error: null
+      error: null,
     }
   })
 }
@@ -295,7 +307,8 @@ export async function getPublicBets(filters: BetFilters = {}, options = { page: 
   return apiRequest(async () => {
     let query = supabase
       .from('bets')
-      .select(`
+      .select(
+        `
         id,
         sport,
         bet_type,
@@ -305,7 +318,8 @@ export async function getPublicBets(filters: BetFilters = {}, options = { page: 
         stake,
         actual_payout,
         user:profiles(username, display_name, is_verified)
-      `)
+      `
+      )
       .eq('is_public', true)
 
     // Apply filters similar to getUserBets
@@ -328,16 +342,16 @@ export async function getPublicBets(filters: BetFilters = {}, options = { page: 
 
 // Sync bets from sportsbook (placeholder for future implementation)
 export async function syncBetsFromSportsbook(_sportsbookId: string) {
-  return authenticatedRequest(async (_userId) => {
+  return authenticatedRequest(async _userId => {
     // This would integrate with sportsbook APIs
     // For now, return a placeholder response
     return {
       data: {
         synced: 0,
         errors: [],
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
       },
-      error: null
+      error: null,
     }
   })
 }

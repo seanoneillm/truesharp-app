@@ -4,7 +4,17 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Pick, User } from '@/lib/types'
 import { cn, timeAgo } from '@/lib/utils'
-import { Bookmark, CheckCircle, Clock, Crown, Eye, Heart, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
+import {
+  Bookmark,
+  CheckCircle,
+  Clock,
+  Crown,
+  Eye,
+  Heart,
+  MessageCircle,
+  MoreHorizontal,
+  Share2,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -46,45 +56,49 @@ export function PostCard({ post }: PostCardProps) {
 
   const getTierColor = (tier: string) => {
     switch (tier) {
-      case 'premium': return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-200'
-      default: return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'premium':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'silver':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'bronze':
+        return 'bg-amber-100 text-amber-800 border-amber-200'
+      default:
+        return 'bg-blue-100 text-blue-800 border-blue-200'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'won': return 'bg-green-100 text-green-800'
-      case 'lost': return 'bg-red-100 text-red-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'won':
+        return 'bg-green-100 text-green-800'
+      case 'lost':
+        return 'bg-red-100 text-red-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
   return (
-    <Card className="p-6 hover:shadow-md transition-shadow">
+    <Card className="p-6 transition-shadow hover:shadow-md">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="mb-4 flex items-start justify-between">
         <div className="flex items-center space-x-3">
           <Link href={`/profile/${post.author.username}`}>
-            <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium cursor-pointer hover:bg-blue-600 transition-colors">
+            <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-blue-500 font-medium text-white transition-colors hover:bg-blue-600">
               {post.author.avatar}
             </div>
           </Link>
           <div>
             <div className="flex items-center space-x-2">
               <Link href={`/profile/${post.author.username}`}>
-                <span className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer">
+                <span className="cursor-pointer font-medium text-gray-900 hover:text-blue-600">
                   @{post.author.username}
                 </span>
               </Link>
-              {post.author.isVerified && (
-                <CheckCircle className="h-4 w-4 text-blue-500" />
-              )}
-              {post.author.sellerEnabled && (
-                <Crown className="h-4 w-4 text-yellow-500" />
-              )}
+              {post.author.isVerified && <CheckCircle className="h-4 w-4 text-blue-500" />}
+              {post.author.sellerEnabled && <Crown className="h-4 w-4 text-yellow-500" />}
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <span>{post.author.displayName}</span>
@@ -103,43 +117,43 @@ export function PostCard({ post }: PostCardProps) {
         {/* Post Type Badge */}
         {post.type !== 'text' && (
           <div className="mb-3">
-            <Badge variant="outline" className={cn(
-              post.type === 'pick' ? 'border-blue-200 text-blue-800' :
-              post.type === 'celebration' ? 'border-green-200 text-green-800' :
-              'border-gray-200 text-gray-800'
-            )}>
-              {post.type === 'pick' ? '🎯 Pick' : 
-               post.type === 'celebration' ? '🎉 Win' : 'Post'}
+            <Badge
+              variant="outline"
+              className={cn(
+                post.type === 'pick'
+                  ? 'border-blue-200 text-blue-800'
+                  : post.type === 'celebration'
+                    ? 'border-green-200 text-green-800'
+                    : 'border-gray-200 text-gray-800'
+              )}
+            >
+              {post.type === 'pick' ? '🎯 Pick' : post.type === 'celebration' ? '🎉 Win' : 'Post'}
             </Badge>
           </div>
         )}
 
         {/* Text Content */}
-        <p className="text-gray-900 mb-4 whitespace-pre-wrap">{post.content}</p>
+        <p className="mb-4 whitespace-pre-wrap text-gray-900">{post.content}</p>
 
         {/* Pick Details */}
         {post.pick && (
-          <div className="bg-gray-50 rounded-lg p-4 border">
+          <div className="rounded-lg border bg-gray-50 p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
+                <div className="mb-2 flex items-center space-x-2">
                   <Badge variant="secondary">{post.pick.sport}</Badge>
-                  <Badge className={getTierColor(post.pick.tier)}>
-                    {post.pick.tier}
-                  </Badge>
+                  <Badge className={getTierColor(post.pick.tier)}>{post.pick.tier}</Badge>
                   {post.pick.status !== 'pending' && (
-                    <Badge className={getStatusColor(post.pick.status)}>
-                      {post.pick.status}
-                    </Badge>
+                    <Badge className={getStatusColor(post.pick.status)}>{post.pick.status}</Badge>
                   )}
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">{post.pick.title}</h4>
+                <h4 className="mb-1 font-medium text-gray-900">{post.pick.title}</h4>
                 <div className="flex items-center space-x-4 text-sm text-gray-600">
                   <span>Confidence: {post.pick.confidence}/5</span>
                   <span>Odds: {post.pick.odds}</span>
                   {post.pick.status === 'pending' && (
                     <div className="flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
+                      <Clock className="mr-1 h-3 w-3" />
                       <span>Live</span>
                     </div>
                   )}
@@ -147,12 +161,16 @@ export function PostCard({ post }: PostCardProps) {
               </div>
               {post.pick.result && (
                 <div className="text-right">
-                  <span className={cn(
-                    "text-lg font-bold",
-                    post.pick.status === 'won' ? 'text-green-600' :
-                    post.pick.status === 'lost' ? 'text-red-600' :
-                    'text-gray-600'
-                  )}>
+                  <span
+                    className={cn(
+                      'text-lg font-bold',
+                      post.pick.status === 'won'
+                        ? 'text-green-600'
+                        : post.pick.status === 'lost'
+                          ? 'text-red-600'
+                          : 'text-gray-600'
+                    )}
+                  >
                     {post.pick.result}
                   </span>
                 </div>
@@ -163,21 +181,21 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Engagement Stats */}
-      <div className="flex items-center space-x-6 text-sm text-gray-500 mb-4">
+      <div className="mb-4 flex items-center space-x-6 text-sm text-gray-500">
         <div className="flex items-center">
-          <Eye className="h-4 w-4 mr-1" />
+          <Eye className="mr-1 h-4 w-4" />
           {post.engagement.views.toLocaleString()}
         </div>
         <div className="flex items-center">
-          <Heart className="h-4 w-4 mr-1" />
+          <Heart className="mr-1 h-4 w-4" />
           {likeCount}
         </div>
         <div className="flex items-center">
-          <MessageCircle className="h-4 w-4 mr-1" />
+          <MessageCircle className="mr-1 h-4 w-4" />
           {post.engagement.comments}
         </div>
         <div className="flex items-center">
-          <Share2 className="h-4 w-4 mr-1" />
+          <Share2 className="mr-1 h-4 w-4" />
           {post.engagement.shares}
         </div>
       </div>
@@ -190,19 +208,19 @@ export function PostCard({ post }: PostCardProps) {
             size="sm"
             onClick={handleLike}
             className={cn(
-              "hover:bg-red-50 hover:text-red-600",
-              isLiked && "text-red-600 bg-red-50"
+              'hover:bg-red-50 hover:text-red-600',
+              isLiked && 'bg-red-50 text-red-600'
             )}
           >
-            <Heart className={cn("h-4 w-4 mr-2", isLiked && "fill-current")} />
+            <Heart className={cn('mr-2 h-4 w-4', isLiked && 'fill-current')} />
             Like
           </Button>
           <Button variant="ghost" size="sm" className="hover:bg-blue-50 hover:text-blue-600">
-            <MessageCircle className="h-4 w-4 mr-2" />
+            <MessageCircle className="mr-2 h-4 w-4" />
             Comment
           </Button>
           <Button variant="ghost" size="sm" className="hover:bg-green-50 hover:text-green-600">
-            <Share2 className="h-4 w-4 mr-2" />
+            <Share2 className="mr-2 h-4 w-4" />
             Share
           </Button>
         </div>
@@ -211,11 +229,11 @@ export function PostCard({ post }: PostCardProps) {
           size="sm"
           onClick={handleBookmark}
           className={cn(
-            "hover:bg-yellow-50 hover:text-yellow-600",
-            isBookmarked && "text-yellow-600 bg-yellow-50"
+            'hover:bg-yellow-50 hover:text-yellow-600',
+            isBookmarked && 'bg-yellow-50 text-yellow-600'
           )}
         >
-          <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current")} />
+          <Bookmark className={cn('h-4 w-4', isBookmarked && 'fill-current')} />
         </Button>
       </div>
     </Card>

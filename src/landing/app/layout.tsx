@@ -6,14 +6,11 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'TrueSharp - Verified Sports Betting Community',
-  description: 'Join the most trusted platform for sports betting analytics and strategy sharing. Seamlessly sync bets, track performance, monetize strategies, and subscribe to proven bettors.',
+  description:
+    'Join the most trusted platform for sports betting analytics and strategy sharing. Seamlessly sync bets, track performance, monetize strategies, and subscribe to proven bettors.',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>

@@ -13,9 +13,9 @@ class SharpSportsClient {
   async bettorList() {
     const response = await fetch(`${this.baseUrl}/bettors`, {
       headers: {
-        'Authorization': this.apiKey,
-        'Content-Type': 'application/json'
-      }
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
           matchedProfiles: 0,
           unmatchedBettors: 0,
           updatedProfiles: 0,
-          errors: 0
-        }
+          errors: 0,
+        },
       })
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       matchedProfiles: 0,
       unmatchedBettors: 0,
       updatedProfiles: 0,
-      errors: 0
+      errors: 0,
     }
 
     const errors = []
@@ -94,7 +94,9 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (fetchError || !profile) {
-          console.warn(`⚠️ No profile found for internal ID ${bettor.internalId} (bettor ${bettor.id})`)
+          console.warn(
+            `⚠️ No profile found for internal ID ${bettor.internalId} (bettor ${bettor.id})`
+          )
           stats.unmatchedBettors++
           continue
         }
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
           const { error: updateError } = await supabase
             .from('profiles')
             .update({
-              sharpsports_bettor_id: bettor.id
+              sharpsports_bettor_id: bettor.id,
             })
             .eq('id', bettor.internalId)
 
@@ -115,30 +117,35 @@ export async function POST(request: NextRequest) {
             stats.errors++
             errors.push(`Update profile ${bettor.internalId}: ${updateError.message}`)
           } else {
-            console.log(`✅ Updated profile ${profile.username} (${bettor.internalId}) with bettor ID ${bettor.id}`)
+            console.log(
+              `✅ Updated profile ${profile.username} (${bettor.internalId}) with bettor ID ${bettor.id}`
+            )
             stats.updatedProfiles++
             matchedProfiles.push({
               profileId: bettor.internalId,
               username: profile.username,
               bettorId: bettor.id,
-              metadata: bettor.metadata
+              metadata: bettor.metadata,
             })
           }
         } else {
-          console.log(`ℹ️ Profile ${profile.username} (${bettor.internalId}) already has correct bettor ID ${bettor.id}`)
+          console.log(
+            `ℹ️ Profile ${profile.username} (${bettor.internalId}) already has correct bettor ID ${bettor.id}`
+          )
           matchedProfiles.push({
             profileId: bettor.internalId,
             username: profile.username,
             bettorId: bettor.id,
             metadata: bettor.metadata,
-            alreadyMatched: true
+            alreadyMatched: true,
           })
         }
-
       } catch (bettorError) {
         console.error(`❌ Error processing bettor ${bettor.id}:`, bettorError)
         stats.errors++
-        errors.push(`Process bettor ${bettor.id}: ${bettorError instanceof Error ? bettorError.message : 'Unknown error'}`)
+        errors.push(
+          `Process bettor ${bettor.id}: ${bettorError instanceof Error ? bettorError.message : 'Unknown error'}`
+        )
       }
     }
 
@@ -150,17 +157,16 @@ export async function POST(request: NextRequest) {
       message,
       stats,
       matchedProfiles,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     })
-
   } catch (error) {
     console.error('❌ Error fetching bettor profiles:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: error
+        details: error,
       },
       { status: 500 }
     )

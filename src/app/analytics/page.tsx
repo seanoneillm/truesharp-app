@@ -19,18 +19,18 @@ import { RefreshCw, Link } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 // Helper functions for enhanced analytics
-function calculateCurrentStreak(bets: Bet[]): { type: 'win' | 'loss' | 'none', count: number } {
+function calculateCurrentStreak(bets: Bet[]): { type: 'win' | 'loss' | 'none'; count: number } {
   if (!bets.length) return { type: 'none', count: 0 }
-  
+
   const sortedBets = [...bets]
     .filter(bet => bet.status === 'won' || bet.status === 'lost')
     .sort((a, b) => new Date(b.placed_at || 0).getTime() - new Date(a.placed_at || 0).getTime())
-  
+
   if (!sortedBets.length) return { type: 'none', count: 0 }
-  
+
   const currentResult = sortedBets[0]?.status === 'won' ? 'win' : 'loss'
   let count = 1
-  
+
   for (let i = 1; i < sortedBets.length; i++) {
     const betResult = sortedBets[i]?.status === 'won' ? 'win' : 'loss'
     if (betResult === currentResult) {
@@ -39,24 +39,27 @@ function calculateCurrentStreak(bets: Bet[]): { type: 'win' | 'loss' | 'none', c
       break
     }
   }
-  
+
   return { type: currentResult, count }
 }
 
-function calculateTrends(monthlyData: { roi: number }[]): { trend: 'up' | 'down' | 'flat', percentage: number } {
+function calculateTrends(monthlyData: { roi: number }[]): {
+  trend: 'up' | 'down' | 'flat'
+  percentage: number
+} {
   if (monthlyData.length < 2) return { trend: 'flat', percentage: 0 }
-  
+
   const recent = monthlyData.slice(-3)
   if (recent.length < 2) return { trend: 'flat', percentage: 0 }
-  
+
   const first = recent[0]?.roi || 0
   const last = recent[recent.length - 1]?.roi || 0
   const change = last - first
-  
+
   if (Math.abs(change) < 1) return { trend: 'flat', percentage: 0 }
-  return { 
-    trend: change > 0 ? 'up' : 'down', 
-    percentage: Math.abs(change) 
+  return {
+    trend: change > 0 ? 'up' : 'down',
+    percentage: Math.abs(change),
   }
 }
 
@@ -70,22 +73,22 @@ interface UserProfile {
 // Utility function to determine pro status from various formats
 function determineProStatus(profile: any): boolean {
   if (!profile) return false
-  
+
   // Check various possible pro status fields and formats
   const proFields = [
     profile.pro,
-    profile.is_pro, 
+    profile.is_pro,
     profile.isPro,
     profile.is_premium,
-    profile.premium
+    profile.premium,
   ]
-  
+
   for (const field of proFields) {
     if (field === 'yes' || field === true || field === 1 || field === '1') {
       return true
     }
   }
-  
+
   return false
 }
 
@@ -128,13 +131,13 @@ const defaultFilters: FilterOptions = {
   isParlays: ['All'],
   sides: ['All'],
   oddsTypes: ['All'],
-  
+
   // Time and sportsbook filters
   timeRange: 'All time',
   sportsbooks: [],
-  
+
   // Legacy filters (keep for backward compatibility)
-  sports: []
+  sports: [],
 }
 
 export default function AnalyticsPage() {
@@ -150,18 +153,18 @@ export default function AnalyticsPage() {
   const [isRefreshingBets, setIsRefreshingBets] = useState(false)
   const [isLinkingSportsbooks, setIsLinkingSportsbooks] = useState(false)
   const [refreshResult, setRefreshResult] = useState<string | null>(null)
-  
+
   // Local filter state to prevent resets
   const [localFilters, setLocalFilters] = useState<FilterOptions>(defaultFilters)
 
   // Use the analytics hook
-  const { 
-    analyticsData, 
-    isLoading: analyticsLoading, 
-    error: analyticsError, 
-    filters, 
-    updateFilters, 
-    totalBets 
+  const {
+    analyticsData,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+    filters,
+    updateFilters,
+    totalBets,
   } = useAnalytics(user, userProfile?.isPro || false)
 
   // Improved user profile fetching with better error handling
@@ -176,8 +179,8 @@ export default function AnalyticsPage() {
 
       // Set immediate fallback profile while fetching
       const immediateProfile = {
-        username: user.name || (user.email?.split('@')[0]) || user.id.split('-')[0] || 'User',
-        isPro: false
+        username: user.name || user.email?.split('@')[0] || user.id.split('-')[0] || 'User',
+        isPro: false,
       }
       setUserProfile(immediateProfile)
 
@@ -186,29 +189,35 @@ export default function AnalyticsPage() {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
         })
-        
+
         console.log('📊 Analytics - Profile API response status:', response.status)
-        
+
         if (response.ok) {
           const result = await response.json()
           const profile = result.data
           console.log('📊 Analytics - Profile data received:', profile)
-          
+
           if (profile) {
             const isPro = determineProStatus(profile)
             const enhancedProfile = {
-              username: profile.username || profile.display_name || user.name || (user.email?.split('@')[0]) || user.id.substring(0, 8) || 'User',
-              isPro: isPro
+              username:
+                profile.username ||
+                profile.display_name ||
+                user.name ||
+                user.email?.split('@')[0] ||
+                user.id.substring(0, 8) ||
+                'User',
+              isPro: isPro,
             }
             console.log('📊 Analytics - Setting enhanced profile:', enhancedProfile)
-            console.log('📊 Analytics - Pro status details:', { 
-              rawPro: profile.pro, 
-              type: typeof profile.pro, 
+            console.log('📊 Analytics - Pro status details:', {
+              rawPro: profile.pro,
+              type: typeof profile.pro,
               isPro: isPro,
               is_pro: profile.is_pro,
-              allFields: { pro: profile.pro, is_pro: profile.is_pro, isPro: profile.isPro }
+              allFields: { pro: profile.pro, is_pro: profile.is_pro, isPro: profile.isPro },
             })
             setUserProfile(enhancedProfile)
           } else {
@@ -241,10 +250,10 @@ export default function AnalyticsPage() {
 
     // Show professional warning popup
     const userConfirmed = window.confirm(
-      "Bet Sync in Progress\n\n" +
-      "This process will sync all your betting data and may take several minutes to complete.\n\n" +
-      "⚠️ Please do not close this browser tab or navigate away until the sync is finished.\n\n" +
-      "Click OK to continue or Cancel to abort."
+      'Bet Sync in Progress\n\n' +
+        'This process will sync all your betting data and may take several minutes to complete.\n\n' +
+        '⚠️ Please do not close this browser tab or navigate away until the sync is finished.\n\n' +
+        'Click OK to continue or Cancel to abort.'
     )
 
     if (!userConfirmed) {
@@ -253,39 +262,40 @@ export default function AnalyticsPage() {
 
     setIsRefreshingBets(true)
     setRefreshResult(null)
-    
+
     try {
       console.log('🔄 Starting combined SharpSports refresh for user', user.id)
-      
+
       const response = await fetch('/api/sharpsports/refresh-all-bets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id
-        })
+          userId: user.id,
+        }),
       })
-      
+
       const result = await response.json()
-      
+
       if (result.success) {
         console.log('✅ Combined refresh completed:', result.message)
         setRefreshResult(`✅ ${result.message}`)
-        
+
         // Show detailed results if available
         if (result.results) {
           const { step1, step2, step3 } = result.results
-          let details = []
+          const details = []
           if (step1?.success) details.push(`✅ Fetched ${step1.stats?.totalBettors || 0} bettors`)
-          if (step2?.success) details.push(`✅ Matched ${step2.stats?.matchedProfiles || 0} profiles`)
+          if (step2?.success)
+            details.push(`✅ Matched ${step2.stats?.matchedProfiles || 0} profiles`)
           if (step3?.success) details.push(`✅ Synced ${step3.stats?.newBets || 0} new bets`)
-          
+
           if (details.length > 0) {
             setRefreshResult(`✅ Success: ${details.join(', ')}`)
           }
         }
-        
+
         // Clear result after 5 seconds
         setTimeout(() => setRefreshResult(null), 5000)
       } else {
@@ -304,21 +314,22 @@ export default function AnalyticsPage() {
     if (!user?.id) return
 
     setIsLinkingSportsbooks(true)
-    
+
     try {
       console.log('🔗 Generating SharpSports context for Booklink UI')
-      
+
       const response = await fetch('/api/sharpsports/context', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           userId: user.id,
-          redirectUrl: window.location.hostname === 'localhost' 
-            ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
-            : `${window.location.origin}/api/sharpsports/accounts`
-        })
+          redirectUrl:
+            window.location.hostname === 'localhost'
+              ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
+              : `${window.location.origin}/api/sharpsports/accounts`,
+        }),
       })
 
       if (!response.ok) {
@@ -329,11 +340,11 @@ export default function AnalyticsPage() {
       console.log('✅ Generated SharpSports context ID:', contextId)
 
       const booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
-      
+
       console.log('📋 Opening Booklink UI:', booklinkUrl)
-      
+
       const popup = window.open(
-        booklinkUrl, 
+        booklinkUrl,
         'sharpsports-booklink',
         'width=700,height=800,scrollbars=yes,resizable=yes,location=yes'
       )
@@ -349,7 +360,6 @@ export default function AnalyticsPage() {
           console.log('📝 Booklink popup closed')
         }
       }, 1000)
-
     } catch (error) {
       console.error('Error generating SharpSports context:', error)
     } finally {
@@ -365,10 +375,10 @@ export default function AnalyticsPage() {
       const effectiveUserId = userId || user?.id
       const url = effectiveUserId ? `/api/strategies?userId=${effectiveUserId}` : '/api/strategies'
       console.log('Fetching strategies with URL:', url)
-      
+
       const response = await fetch(url, {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
       })
       if (response.ok) {
         const result = await response.json()
@@ -387,41 +397,53 @@ export default function AnalyticsPage() {
     }
   }
 
-
   const loadMoreBets = async () => {
     if (loadingMoreBets || !hasMoreBets) return
-    
+
     setLoadingMoreBets(true)
-    
+
     try {
       // Simulate loading more bets by generating additional data
       const nextPage = currentPage + 1
       const additionalBets = Array.from({ length: 10 }, (_, i) => {
         const index = (nextPage - 1) * 10 + i
         const teamNames = [
-          ['Lakers', 'Warriors'], ['Cowboys', 'Giants'], ['Yankees', 'Red Sox'], 
-          ['Chiefs', 'Broncos'], ['Celtics', 'Heat'], ['Rangers', 'Devils'],
-          ['Dodgers', 'Padres'], ['Bills', 'Patriots'], ['Clippers', 'Suns'],
-          ['Astros', 'Angels'], ['49ers', 'Seahawks'], ['Knicks', 'Nets'],
-          ['Rams', 'Cardinals'], ['Packers', 'Bears'], ['Mets', 'Phillies']
+          ['Lakers', 'Warriors'],
+          ['Cowboys', 'Giants'],
+          ['Yankees', 'Red Sox'],
+          ['Chiefs', 'Broncos'],
+          ['Celtics', 'Heat'],
+          ['Rangers', 'Devils'],
+          ['Dodgers', 'Padres'],
+          ['Bills', 'Patriots'],
+          ['Clippers', 'Suns'],
+          ['Astros', 'Angels'],
+          ['49ers', 'Seahawks'],
+          ['Knicks', 'Nets'],
+          ['Rams', 'Cardinals'],
+          ['Packers', 'Bears'],
+          ['Mets', 'Phillies'],
         ]
-        
+
         const betTypes = ['Spread', 'Moneyline', 'Total Over', 'Total Under', 'Player Props']
         const sportsbooks = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'ESPN BET']
         const sports = ['NFL', 'NBA', 'MLB', 'NHL']
-        
+
         const teams = teamNames[index % teamNames.length] || ['Team A', 'Team B']
         const betType = betTypes[index % betTypes.length] || 'Moneyline'
         const sportsbook = sportsbooks[index % sportsbooks.length] || 'DraftKings'
         const sport = sports[index % sports.length] || 'NFL'
-        
+
         const stakeAmount = 50 + Math.random() * 200
-        const oddsValue = Math.random() > 0.5 ? Math.round(100 + Math.random() * 300) : Math.round(-110 - Math.random() * 200)
+        const oddsValue =
+          Math.random() > 0.5
+            ? Math.round(100 + Math.random() * 300)
+            : Math.round(-110 - Math.random() * 200)
         const isWin = Math.random() > 0.4 // 60% win rate
-        
+
         let betDescription = ''
         let lineValue = 0
-        
+
         switch (betType) {
           case 'Spread':
             lineValue = (Math.random() - 0.5) * 14
@@ -439,7 +461,13 @@ export default function AnalyticsPage() {
             betDescription = `Under ${lineValue.toFixed(1)} Total Points`
             break
           case 'Player Props':
-            const playerNames = ['LeBron James', 'Tom Brady', 'Aaron Judge', 'Connor McDavid', 'Steph Curry']
+            const playerNames = [
+              'LeBron James',
+              'Tom Brady',
+              'Aaron Judge',
+              'Connor McDavid',
+              'Steph Curry',
+            ]
             const props = ['Points', 'Yards', 'Home Runs', 'Goals', 'Assists']
             const player = playerNames[Math.floor(Math.random() * playerNames.length)]
             const prop = props[Math.floor(Math.random() * props.length)]
@@ -449,7 +477,7 @@ export default function AnalyticsPage() {
         }
 
         const placedDate = new Date(Date.now() - (index + 10) * 24 * 60 * 60 * 1000).toISOString()
-        
+
         return {
           id: `bet-${index + 11}`,
           sport: sport,
@@ -463,23 +491,24 @@ export default function AnalyticsPage() {
           odds: oddsValue > 0 ? `+${oddsValue}` : `${oddsValue}`,
           stake: Math.round(stakeAmount),
           potential_payout: Math.round(stakeAmount * (1 + Math.abs(oddsValue) / 100)),
-          status: isWin ? 'won' as const : 'lost' as const,
-          profit: isWin ? Math.round(stakeAmount * Math.abs(oddsValue) / 100) : -Math.round(stakeAmount),
+          status: isWin ? ('won' as const) : ('lost' as const),
+          profit: isWin
+            ? Math.round((stakeAmount * Math.abs(oddsValue)) / 100)
+            : -Math.round(stakeAmount),
           placed_at: placedDate,
           game_date: new Date(new Date(placedDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
           sportsbook: sportsbook,
-          settled_at: new Date(new Date(placedDate).getTime() + 3 * 60 * 60 * 1000).toISOString()
+          settled_at: new Date(new Date(placedDate).getTime() + 3 * 60 * 60 * 1000).toISOString(),
         } as Bet
       })
-      
+
       setAdditionalBets(prev => [...prev, ...additionalBets])
       setCurrentPage(nextPage)
-      
+
       // Simulate reaching the end after a few pages
       if (nextPage >= 5) {
         setHasMoreBets(false)
       }
-      
     } catch (err) {
       console.error('Error loading more bets:', err)
     } finally {
@@ -487,74 +516,90 @@ export default function AnalyticsPage() {
     }
   }
 
-  const handleFiltersChange = useCallback((newFilters: FilterOptions) => {
-    console.log('Filter change triggered:', newFilters)
-    
-    // Update local state immediately for UI responsiveness
-    setLocalFilters(newFilters)
-    
-    // Convert FilterOptions to AnalyticsFilters format for the hook
-    const sports: string[] = []
-    const leagues: string[] = []
-    const betTypes: string[] = []
-    const results: string[] = []
-    
-    // Handle leagues filter - map to database league column
-    if (newFilters.leagues && !newFilters.leagues.includes('All')) {
-      leagues.push(...newFilters.leagues)
-    }
-    
-    // Handle bet types filter - map to database bet_type column
-    if (newFilters.betTypes && !newFilters.betTypes.includes('All')) {
-      betTypes.push(...newFilters.betTypes)
-    }
-    
-    // Handle statuses filter - map to database status column
-    if (newFilters.statuses && !newFilters.statuses.includes('All')) {
-      results.push(...newFilters.statuses)
-    } else {
-      results.push('won', 'lost', 'pending', 'void', 'cancelled')
-    }
-    
-    // Include legacy filters for backward compatibility
-    if (newFilters.sports) {
-      sports.push(...newFilters.sports)
-    }
-    
-    console.log('Updating analytics filters:', { sports, leagues, betTypes })
-    
-    // Directly update filters - debouncing is now handled in the hook
-    updateFilters({
-      sports: [...new Set(sports)], // Remove duplicates
-      leagues: [...new Set(leagues)], // Remove duplicates
-      betTypes: [...new Set(betTypes)], // Remove duplicates
-      sportsbooks: newFilters.sportsbooks || [],
-      results: [...new Set(results)], // Use calculated results
-      timeframe: newFilters.timeRange === '7 days' ? '7d' : 
-                 newFilters.timeRange === '30 days' ? '30d' :
-                 newFilters.timeRange === '3 months' ? '90d' :
-                 newFilters.timeRange === 'This Year' ? 'ytd' : 'all',
-      dateRange: { 
-        start: newFilters.customStartDate || null, 
-        end: newFilters.customEndDate || null 
-      },
-      minOdds: newFilters.oddsRange?.min || null,
-      maxOdds: newFilters.oddsRange?.max || null,
-      minStake: newFilters.stakeRange?.min || null,
-      maxStake: newFilters.stakeRange?.max || null,
-      // New database-specific filters
-      isParlay: newFilters.isParlays && !newFilters.isParlays.includes('All') ? newFilters.isParlays.includes('true') : null,
-      side: newFilters.sides && !newFilters.sides.includes('All') ? newFilters.sides.join(',') : null,
-      oddsType: newFilters.oddsTypes && !newFilters.oddsTypes.includes('All') ? newFilters.oddsTypes.join(',') : null
-    })
-  }, [updateFilters])
+  const handleFiltersChange = useCallback(
+    (newFilters: FilterOptions) => {
+      console.log('Filter change triggered:', newFilters)
+
+      // Update local state immediately for UI responsiveness
+      setLocalFilters(newFilters)
+
+      // Convert FilterOptions to AnalyticsFilters format for the hook
+      const sports: string[] = []
+      const leagues: string[] = []
+      const betTypes: string[] = []
+      const results: string[] = []
+
+      // Handle leagues filter - map to database league column
+      if (newFilters.leagues && !newFilters.leagues.includes('All')) {
+        leagues.push(...newFilters.leagues)
+      }
+
+      // Handle bet types filter - map to database bet_type column
+      if (newFilters.betTypes && !newFilters.betTypes.includes('All')) {
+        betTypes.push(...newFilters.betTypes)
+      }
+
+      // Handle statuses filter - map to database status column
+      if (newFilters.statuses && !newFilters.statuses.includes('All')) {
+        results.push(...newFilters.statuses)
+      } else {
+        results.push('won', 'lost', 'pending', 'void', 'cancelled')
+      }
+
+      // Include legacy filters for backward compatibility
+      if (newFilters.sports) {
+        sports.push(...newFilters.sports)
+      }
+
+      console.log('Updating analytics filters:', { sports, leagues, betTypes })
+
+      // Directly update filters - debouncing is now handled in the hook
+      updateFilters({
+        sports: [...new Set(sports)], // Remove duplicates
+        leagues: [...new Set(leagues)], // Remove duplicates
+        betTypes: [...new Set(betTypes)], // Remove duplicates
+        sportsbooks: newFilters.sportsbooks || [],
+        results: [...new Set(results)], // Use calculated results
+        timeframe:
+          newFilters.timeRange === '7 days'
+            ? '7d'
+            : newFilters.timeRange === '30 days'
+              ? '30d'
+              : newFilters.timeRange === '3 months'
+                ? '90d'
+                : newFilters.timeRange === 'This Year'
+                  ? 'ytd'
+                  : 'all',
+        dateRange: {
+          start: newFilters.customStartDate || null,
+          end: newFilters.customEndDate || null,
+        },
+        minOdds: newFilters.oddsRange?.min || null,
+        maxOdds: newFilters.oddsRange?.max || null,
+        minStake: newFilters.stakeRange?.min || null,
+        maxStake: newFilters.stakeRange?.max || null,
+        // New database-specific filters
+        isParlay:
+          newFilters.isParlays && !newFilters.isParlays.includes('All')
+            ? newFilters.isParlays.includes('true')
+            : null,
+        side:
+          newFilters.sides && !newFilters.sides.includes('All') ? newFilters.sides.join(',') : null,
+        oddsType:
+          newFilters.oddsTypes && !newFilters.oddsTypes.includes('All')
+            ? newFilters.oddsTypes.join(',')
+            : null,
+      })
+    },
+    [updateFilters]
+  )
 
   const handleClearFilters = useCallback(() => {
     console.log('Clearing all filters')
-    
+
     // Reset local state immediately
     setLocalFilters(defaultFilters)
-    
+
     // Update analytics filters directly - debouncing is handled in the hook
     updateFilters({
       sports: [],
@@ -570,7 +615,7 @@ export default function AnalyticsPage() {
       maxStake: null,
       isParlay: null,
       side: null,
-      oddsType: null
+      oddsType: null,
     })
   }, [updateFilters])
 
@@ -593,9 +638,9 @@ export default function AnalyticsPage() {
       // Ensure statuses is always set to ['All'] for strategy creation
       const filtersWithDefaults = {
         ...strategy.filters,
-        statuses: strategy.filters.statuses || ['All']
+        statuses: strategy.filters.statuses || ['All'],
       }
-      
+
       const requestBody = {
         name: strategy.name,
         description: strategy.description,
@@ -604,7 +649,7 @@ export default function AnalyticsPage() {
         pricing_weekly: strategy.pricing_weekly,
         pricing_monthly: strategy.pricing_monthly,
         pricing_yearly: strategy.pricing_yearly,
-        userId: user?.id // Include user ID as fallback
+        userId: user?.id, // Include user ID as fallback
       }
 
       const response = await fetch('/api/strategies', {
@@ -622,7 +667,7 @@ export default function AnalyticsPage() {
 
       const result = await response.json()
       console.log('Strategy created successfully:', result)
-      
+
       // Refresh strategies list
       fetchStrategies()
     } catch (error) {
@@ -647,7 +692,7 @@ export default function AnalyticsPage() {
       }
 
       console.log('Strategy updated successfully')
-      
+
       // Refresh strategies list
       fetchStrategies()
     } catch (error) {
@@ -668,7 +713,7 @@ export default function AnalyticsPage() {
       }
 
       console.log('Strategy deleted successfully')
-      
+
       // Refresh strategies list
       fetchStrategies()
     } catch (error) {
@@ -676,7 +721,6 @@ export default function AnalyticsPage() {
       throw error
     }
   }
-
 
   // Show loading state - improved to handle user recognition better
   if (authLoading || analyticsLoading) {
@@ -695,11 +739,11 @@ export default function AnalyticsPage() {
   if (!user) {
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <p className="text-red-600">Please sign in to view your analytics</p>
-          <button 
-            onClick={() => window.location.href = '/auth/signin'}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          <button
+            onClick={() => (window.location.href = '/auth/signin')}
+            className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Sign In
           </button>
@@ -713,15 +757,11 @@ export default function AnalyticsPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white">
+          <div className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold mb-2">
-                  Loading your analytics...
-                </h1>
-                <p className="text-blue-100 text-lg">
-                  Please wait while we fetch your data
-                </p>
+                <h1 className="mb-2 text-2xl font-bold">Loading your analytics...</h1>
+                <p className="text-lg text-blue-100">Please wait while we fetch your data</p>
               </div>
             </div>
           </div>
@@ -736,11 +776,11 @@ export default function AnalyticsPage() {
     console.log('Showing error - error:', analyticsError)
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <p className="text-red-600">Error loading analytics: {analyticsError}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Retry
           </button>
@@ -748,7 +788,6 @@ export default function AnalyticsPage() {
       </DashboardLayout>
     )
   }
-
 
   console.log('Rendering main analytics content')
   console.log('Analytics data metrics:', analyticsData?.metrics)
@@ -769,7 +808,7 @@ export default function AnalyticsPage() {
     parlayBetsCount: 0,
     voidBetsCount: 0,
     streakType: 'none' as const,
-    currentStreak: 0
+    currentStreak: 0,
   }
 
   const dailyProfitData = analyticsData?.dailyProfitData || []
@@ -777,27 +816,30 @@ export default function AnalyticsPage() {
   const recentBets = [...(analyticsData?.recentBets || []), ...additionalBets]
 
   // Transform chart data for overview with enhanced calculations
-  const chartData = dailyProfitData.map((item) => ({
+  const chartData = dailyProfitData.map(item => ({
     date: item.date,
     profit: item.profit,
-    cumulative: item.cumulativeProfit
+    cumulative: item.cumulativeProfit,
   }))
 
   // Enhanced monthly data for trends
-  const enhancedMonthlyData = monthlyData.length > 0 ? monthlyData : 
-    dailyProfitData.map((item) => ({
-      month: item.date,
-      profit: item.profit,
-      roi: metrics.avgStake > 0 ? (item.profit / metrics.avgStake) * 100 : 0,
-      volume: metrics.avgStake,
-      bets: item.bets,
-      wins: item.profit > 0 ? 1 : 0
-    }))
+  const enhancedMonthlyData =
+    monthlyData.length > 0
+      ? monthlyData
+      : dailyProfitData.map(item => ({
+          month: item.date,
+          profit: item.profit,
+          roi: metrics.avgStake > 0 ? (item.profit / metrics.avgStake) * 100 : 0,
+          volume: metrics.avgStake,
+          bets: item.bets,
+          wins: item.profit > 0 ? 1 : 0,
+        }))
 
   // Calculate current streak from analytics data - map 'none' to 'loss' for compatibility
   const currentStreak = {
-    type: metrics.streakType === 'none' ? 'loss' as const : metrics.streakType as 'win' | 'loss',
-    count: metrics.streakType === 'none' ? 0 : metrics.currentStreak
+    type:
+      metrics.streakType === 'none' ? ('loss' as const) : (metrics.streakType as 'win' | 'loss'),
+    count: metrics.streakType === 'none' ? 0 : metrics.currentStreak,
   }
 
   // Use enhanced analytics data directly
@@ -820,195 +862,223 @@ export default function AnalyticsPage() {
       count: sport.bets,
       profit: sport.profit,
       winRate: sport.winRate,
-      roi: sport.roi
+      roi: sport.roi,
     })),
     betTypeBreakdown: analyticsData.betTypeBreakdown,
     sideBreakdown: analyticsData.sideBreakdown,
     monthlyData: enhancedMonthlyData,
     trends: calculateTrends(enhancedMonthlyData),
     // Enhanced CLV and line movement data (Pro features)
-    clvData: userProfile.isPro ? analyticsData.lineMovementData.map(item => ({
-      date: item.date,
-      clv: item.clv,
-      profit: item.profit
-    })) : [],
-    lineMovementData: userProfile.isPro ? analyticsData.lineMovementData.map(item => ({
-      betId: `bet-${item.date}`,
-      openingLine: item.odds,
-      closingLine: item.lineValue,
-      movement: 'sharp' as const,
-      profit: item.profit
-    })) : [],
+    clvData: userProfile.isPro
+      ? analyticsData.lineMovementData.map(item => ({
+          date: item.date,
+          clv: item.clv,
+          profit: item.profit,
+        }))
+      : [],
+    lineMovementData: userProfile.isPro
+      ? analyticsData.lineMovementData.map(item => ({
+          betId: `bet-${item.date}`,
+          openingLine: item.odds,
+          closingLine: item.lineValue,
+          movement: 'sharp' as const,
+          profit: item.profit,
+        }))
+      : [],
     // Enhanced analytics data from SQL functions
     roiOverTime: analyticsData.roiOverTime || [],
     leagueBreakdown: analyticsData.leagueBreakdown || [],
     winRateVsExpected: analyticsData.winRateVsExpected || [],
-    monthlyPerformance: analyticsData.monthlyPerformance || []
+    monthlyPerformance: analyticsData.monthlyPerformance || [],
   }
-
 
   return (
     <ProtectedRoute>
       <DashboardLayout>
         <div className="space-y-6">
-        {/* Analytics Header */}
-        <AnalyticsHeader
-          username={userProfile.username}
-          totalBets={metrics.totalBets}
-          winRate={metrics.winRate}
-          totalProfit={metrics.totalProfit}
-          roi={metrics.roi}
-        />
-
-        {/* Pro Upgrade Banner */}
-        {(() => {
-          console.log('📊 Analytics - Checking Pro banner display:', { userProfile: userProfile, isPro: userProfile.isPro, shouldShowBanner: !userProfile.isPro })
-          return !userProfile.isPro && (
-            <ProUpgradePrompt
-              variant="banner"
-              context="general"
-              onUpgrade={() => {
-                // TODO: Implement Stripe checkout
-                console.log('Upgrade to Pro clicked')
-              }}
-            />
-          )
-        })()}
-
-
-        {/* Universal Filter System */}
-        <FilterSystem
-          isPro={userProfile.isPro}
-          filters={localFilters}
-          onFiltersChange={handleFiltersChange}
-          onClearFilters={handleClearFilters}
-        />
-
-        {/* Tab Navigation */}
-        <TabNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          betCount={recentBets.length}
-          strategyCount={strategies.length}
-        />
-
-        {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <OverviewTab
-            recentBets={recentBets}
-            chartData={chartData}
-            selectedTimePeriod={filters.timeframe === '7d' ? '7 days' :
-                               filters.timeframe === '30d' ? '30 days' :
-                               filters.timeframe === '90d' ? '3 months' :
-                               filters.timeframe === 'ytd' ? 'This Year' : 'All time'}
-            onTimePeriodChange={(period) => {
-              const timeframe = period === '7 days' ? '7d' :
-                               period === '30 days' ? '30d' :
-                               period === '3 months' ? '90d' :
-                               period === 'This Year' ? 'ytd' : 'all'
-              updateFilters({...filters, timeframe})
-            }}
-            totalProfit={analyticsData?.metrics?.totalProfit || 0}
-            isLoading={analyticsLoading}
-            analyticsData={analyticsData}
-          />
-        )}
-
-        {activeTab === 'bets' && (
-          <BetsTab
-            bets={recentBets.map(bet => ({
-              ...bet,
-              odds: bet.odds.toString(),
-              status: bet.status === 'cancelled' ? 'void' as const : bet.status as 'pending' | 'won' | 'lost' | 'void'
-            }))}
+          {/* Analytics Header */}
+          <AnalyticsHeader
+            username={userProfile.username}
             totalBets={metrics.totalBets}
-            isLoading={loadingMoreBets}
-            hasMore={hasMoreBets}
-            onLoadMore={loadMoreBets}
-            onSort={(field, direction) => {
-              // TODO: Implement sorting
-              console.log('Sort:', field, direction)
-            }}
+            winRate={metrics.winRate}
+            totalProfit={metrics.totalProfit}
+            roi={metrics.roi}
           />
-        )}
 
-        {activeTab === 'analytics' && (
-          (() => {
-            console.log('📊 Analytics - Rendering AnalyticsTabComponent with isPro:', userProfile.isPro)
-            console.log('📊 Enhanced Analytics Data:', {
-              roiOverTime: transformedAnalytics.roiOverTime,
-              leagueBreakdown: transformedAnalytics.leagueBreakdown,
-              winRateVsExpected: transformedAnalytics.winRateVsExpected,
-              monthlyPerformance: transformedAnalytics.monthlyPerformance
+          {/* Pro Upgrade Banner */}
+          {(() => {
+            console.log('📊 Analytics - Checking Pro banner display:', {
+              userProfile: userProfile,
+              isPro: userProfile.isPro,
+              shouldShowBanner: !userProfile.isPro,
             })
             return (
-              <AnalyticsTabComponent
-                data={transformedAnalytics}
-                isPro={userProfile.isPro}
-                isLoading={false}
-                user={user}
-              />
+              !userProfile.isPro && (
+                <ProUpgradePrompt
+                  variant="banner"
+                  context="general"
+                  onUpgrade={() => {
+                    // TODO: Implement Stripe checkout
+                    console.log('Upgrade to Pro clicked')
+                  }}
+                />
+              )
             )
-          })()
-        )}
+          })()}
 
-        {activeTab === 'strategies' && (
-          <StrategiesTab
-            strategies={strategies}
-            isLoading={strategiesLoading}
-            currentFilters={localFilters}
-            onCreateStrategy={handleCreateStrategy}
-            onUpdateStrategy={handleUpdateStrategy}
-            onDeleteStrategy={handleDeleteStrategy}
+          {/* Universal Filter System */}
+          <FilterSystem
+            isPro={userProfile.isPro}
+            filters={localFilters}
             onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
           />
-        )}
 
-        {/* Floating Action Buttons */}
-        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-          {/* Refresh Result Toast */}
-          {refreshResult && (
-            <div className={`mb-3 p-3 rounded-lg shadow-lg max-w-sm text-sm ${
-              refreshResult.startsWith('✅') 
-                ? 'bg-green-50 border border-green-200 text-green-800'
-                : 'bg-red-50 border border-red-200 text-red-800'
-            }`}>
-              {refreshResult}
-            </div>
+          {/* Tab Navigation */}
+          <TabNavigation
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            betCount={recentBets.length}
+            strategyCount={strategies.length}
+          />
+
+          {/* Tab Content */}
+          {activeTab === 'overview' && (
+            <OverviewTab
+              recentBets={recentBets}
+              chartData={chartData}
+              selectedTimePeriod={
+                filters.timeframe === '7d'
+                  ? '7 days'
+                  : filters.timeframe === '30d'
+                    ? '30 days'
+                    : filters.timeframe === '90d'
+                      ? '3 months'
+                      : filters.timeframe === 'ytd'
+                        ? 'This Year'
+                        : 'All time'
+              }
+              onTimePeriodChange={period => {
+                const timeframe =
+                  period === '7 days'
+                    ? '7d'
+                    : period === '30 days'
+                      ? '30d'
+                      : period === '3 months'
+                        ? '90d'
+                        : period === 'This Year'
+                          ? 'ytd'
+                          : 'all'
+                updateFilters({ ...filters, timeframe })
+              }}
+              totalProfit={analyticsData?.metrics?.totalProfit || 0}
+              isLoading={analyticsLoading}
+              analyticsData={analyticsData}
+            />
           )}
-          
-          {/* Link Sportsbooks Button */}
-          <Button
-            onClick={handleLinkSportsbooks}
-            disabled={isLinkingSportsbooks}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-          >
-            {isLinkingSportsbooks ? (
-              <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <Link className="h-5 w-5 mr-2" />
+
+          {activeTab === 'bets' && (
+            <BetsTab
+              bets={recentBets.map(bet => ({
+                ...bet,
+                odds: bet.odds.toString(),
+                status:
+                  bet.status === 'cancelled'
+                    ? ('void' as const)
+                    : (bet.status as 'pending' | 'won' | 'lost' | 'void'),
+              }))}
+              totalBets={metrics.totalBets}
+              isLoading={loadingMoreBets}
+              hasMore={hasMoreBets}
+              onLoadMore={loadMoreBets}
+              onSort={(field, direction) => {
+                // TODO: Implement sorting
+                console.log('Sort:', field, direction)
+              }}
+            />
+          )}
+
+          {activeTab === 'analytics' &&
+            (() => {
+              console.log(
+                '📊 Analytics - Rendering AnalyticsTabComponent with isPro:',
+                userProfile.isPro
+              )
+              console.log('📊 Enhanced Analytics Data:', {
+                roiOverTime: transformedAnalytics.roiOverTime,
+                leagueBreakdown: transformedAnalytics.leagueBreakdown,
+                winRateVsExpected: transformedAnalytics.winRateVsExpected,
+                monthlyPerformance: transformedAnalytics.monthlyPerformance,
+              })
+              return (
+                <AnalyticsTabComponent
+                  data={transformedAnalytics}
+                  isPro={userProfile.isPro}
+                  isLoading={false}
+                  user={user}
+                />
+              )
+            })()}
+
+          {activeTab === 'strategies' && (
+            <StrategiesTab
+              strategies={strategies}
+              isLoading={strategiesLoading}
+              currentFilters={localFilters}
+              onCreateStrategy={handleCreateStrategy}
+              onUpdateStrategy={handleUpdateStrategy}
+              onDeleteStrategy={handleDeleteStrategy}
+              onFiltersChange={handleFiltersChange}
+            />
+          )}
+
+          {/* Floating Action Buttons */}
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+            {/* Refresh Result Toast */}
+            {refreshResult && (
+              <div
+                className={`mb-3 max-w-sm rounded-lg p-3 text-sm shadow-lg ${
+                  refreshResult.startsWith('✅')
+                    ? 'border border-green-200 bg-green-50 text-green-800'
+                    : 'border border-red-200 bg-red-50 text-red-800'
+                }`}
+              >
+                {refreshResult}
+              </div>
             )}
-            Link Sportsbooks
-          </Button>
-          
-          {/* Refresh Bets Button */}
-          <Button
-            onClick={handleRefreshAllBets}
-            disabled={isRefreshingBets}
-            size="lg"
-            className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
-          >
-            {isRefreshingBets ? (
-              <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-5 w-5 mr-2" />
-            )}
-            Refresh Bets
-          </Button>
+
+            {/* Link Sportsbooks Button */}
+            <Button
+              onClick={handleLinkSportsbooks}
+              disabled={isLinkingSportsbooks}
+              size="lg"
+              className="bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+            >
+              {isLinkingSportsbooks ? (
+                <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Link className="mr-2 h-5 w-5" />
+              )}
+              Link Sportsbooks
+            </Button>
+
+            {/* Refresh Bets Button */}
+            <Button
+              onClick={handleRefreshAllBets}
+              disabled={isRefreshingBets}
+              size="lg"
+              className="bg-green-600 text-white shadow-lg hover:bg-green-700"
+            >
+              {isRefreshingBets ? (
+                <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-5 w-5" />
+              )}
+              Refresh Bets
+            </Button>
+          </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
     </ProtectedRoute>
   )
 }

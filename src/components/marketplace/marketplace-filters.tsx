@@ -18,14 +18,14 @@ const sports = [
   { value: 'mlb', label: 'MLB' },
   { value: 'nhl', label: 'NHL' },
   { value: 'soccer', label: 'Soccer' },
-  { value: 'tennis', label: 'Tennis' }
+  { value: 'tennis', label: 'Tennis' },
 ]
 
 const priceRanges = [
   { value: 'all', label: 'All Prices' },
   { value: 'low', label: '$1 - $25' },
   { value: 'mid', label: '$26 - $75' },
-  { value: 'high', label: '$76+' }
+  { value: 'high', label: '$76+' },
 ]
 
 const tiers = [
@@ -33,7 +33,7 @@ const tiers = [
   { value: 'standard', label: 'Standard' },
   { value: 'rising', label: 'Rising Star' },
   { value: 'pro', label: 'Professional' },
-  { value: 'elite', label: 'Elite' }
+  { value: 'elite', label: 'Elite' },
 ]
 
 export function MarketplaceFilters({
@@ -42,7 +42,7 @@ export function MarketplaceFilters({
   selectedPriceRange,
   setSelectedPriceRange,
   selectedTier,
-  setSelectedTier
+  setSelectedTier,
 }: MarketplaceFiltersProps) {
   const clearFilters = () => {
     setSelectedSport('all')
@@ -50,21 +50,20 @@ export function MarketplaceFilters({
     setSelectedTier('all')
   }
 
-  const hasActiveFilters = selectedSport !== 'all' || selectedPriceRange !== 'all' || selectedTier !== 'all'
+  const hasActiveFilters =
+    selectedSport !== 'all' || selectedPriceRange !== 'all' || selectedTier !== 'all'
 
   return (
-    <Card className="p-6 mb-6">
+    <Card className="mb-6 p-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sport
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Sport</label>
           <select
             value={selectedSport}
-            onChange={(e) => setSelectedSport(e.target.value)}
+            onChange={e => setSelectedSport(e.target.value)}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            {sports.map((sport) => (
+            {sports.map(sport => (
               <option key={sport.value} value={sport.value}>
                 {sport.label}
               </option>
@@ -73,15 +72,13 @@ export function MarketplaceFilters({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Price Range
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Price Range</label>
           <select
             value={selectedPriceRange}
-            onChange={(e) => setSelectedPriceRange(e.target.value)}
+            onChange={e => setSelectedPriceRange(e.target.value)}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            {priceRanges.map((range) => (
+            {priceRanges.map(range => (
               <option key={range.value} value={range.value}>
                 {range.label}
               </option>
@@ -90,15 +87,13 @@ export function MarketplaceFilters({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Seller Tier
-          </label>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Seller Tier</label>
           <select
             value={selectedTier}
-            onChange={(e) => setSelectedTier(e.target.value)}
+            onChange={e => setSelectedTier(e.target.value)}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            {tiers.map((tier) => (
+            {tiers.map(tier => (
               <option key={tier.value} value={tier.value}>
                 {tier.label}
               </option>
@@ -107,8 +102,8 @@ export function MarketplaceFilters({
         </div>
 
         <div className="flex items-end">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={clearFilters}
             disabled={!hasActiveFilters}
             className="w-full"

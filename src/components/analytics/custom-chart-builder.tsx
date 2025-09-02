@@ -1,23 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Checkbox } from "@/components/ui/checkbox"
-import { 
-  Plus, 
-  X, 
-  BarChart3, 
-  LineChart, 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Plus,
+  X,
+  BarChart3,
+  LineChart,
   PieChart as PieChartIcon,
   Calendar as CalendarIcon,
-  Settings
+  Settings,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -63,14 +75,14 @@ export function CustomChartBuilder({
   onSaveChart,
   availableLeagues,
   availableBetTypes,
-  availableSportsbooks
+  availableSportsbooks,
 }: CustomChartBuilderProps) {
   const [open, setOpen] = useState(false)
   const [config, setConfig] = useState<Partial<ChartConfig>>({
     chartType: 'bar',
     xAxis: 'league',
     yAxis: 'count',
-    filters: {}
+    filters: {},
   })
 
   const generateChartTitle = () => {
@@ -88,7 +100,7 @@ export function CustomChartBuilder({
       chartType: config.chartType,
       xAxis: config.xAxis,
       yAxis: config.yAxis,
-      filters: config.filters || {}
+      filters: config.filters || {},
     }
 
     onSaveChart(chartConfig)
@@ -97,7 +109,7 @@ export function CustomChartBuilder({
       chartType: 'bar',
       xAxis: 'league',
       yAxis: 'count',
-      filters: {}
+      filters: {},
     })
   }
 
@@ -106,8 +118,8 @@ export function CustomChartBuilder({
       ...prev,
       filters: {
         ...prev.filters,
-        [filterKey]: value
-      }
+        [filterKey]: value,
+      },
     }))
   }
 
@@ -120,8 +132,8 @@ export function CustomChartBuilder({
         ...prev,
         filters: {
           ...prev.filters,
-          [filterKey]: currentFilter.filter(item => item !== value)
-        }
+          [filterKey]: currentFilter.filter(item => item !== value),
+        },
       }
     })
   }
@@ -130,20 +142,20 @@ export function CustomChartBuilder({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Custom Chart
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5" />
+              <BarChart3 className="h-5 w-5" />
               <span>Create Custom Chart</span>
             </div>
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Chart Title */}
           <div className="space-y-2">
@@ -152,7 +164,7 @@ export function CustomChartBuilder({
               id="title"
               placeholder={generateChartTitle()}
               value={config.title || ''}
-              onChange={(e) => setConfig(prev => ({ ...prev, title: e.target.value }))}
+              onChange={e => setConfig(prev => ({ ...prev, title: e.target.value }))}
             />
           </div>
 
@@ -160,16 +172,16 @@ export function CustomChartBuilder({
           <div className="space-y-2">
             <Label>Chart Type</Label>
             <div className="grid grid-cols-3 gap-2">
-              {CHART_TYPE_OPTIONS.map((option) => {
+              {CHART_TYPE_OPTIONS.map(option => {
                 const Icon = option.icon
                 return (
                   <Button
                     key={option.value}
-                    variant={config.chartType === option.value ? "default" : "outline"}
-                    className="flex flex-col h-16 text-xs"
+                    variant={config.chartType === option.value ? 'default' : 'outline'}
+                    className="flex h-16 flex-col text-xs"
                     onClick={() => setConfig(prev => ({ ...prev, chartType: option.value as any }))}
                   >
-                    <Icon className="w-4 h-4 mb-1" />
+                    <Icon className="mb-1 h-4 w-4" />
                     {option.label}
                   </Button>
                 )
@@ -182,16 +194,16 @@ export function CustomChartBuilder({
             <Label>X-Axis (Categories)</Label>
             <Select
               value={config.xAxis}
-              onValueChange={(value) => setConfig(prev => ({ ...prev, xAxis: value as any }))}
+              onValueChange={value => setConfig(prev => ({ ...prev, xAxis: value as any }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select X-axis" />
               </SelectTrigger>
               <SelectContent>
-                {X_AXIS_OPTIONS.map((option) => (
+                {X_AXIS_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center space-x-2">
-                      <option.icon className="w-4 h-4" />
+                      <option.icon className="h-4 w-4" />
                       <span>{option.label}</span>
                     </div>
                   </SelectItem>
@@ -205,13 +217,13 @@ export function CustomChartBuilder({
             <Label>Y-Axis (Values)</Label>
             <Select
               value={config.yAxis}
-              onValueChange={(value) => setConfig(prev => ({ ...prev, yAxis: value as any }))}
+              onValueChange={value => setConfig(prev => ({ ...prev, yAxis: value as any }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Y-axis" />
               </SelectTrigger>
               <SelectContent>
-                {Y_AXIS_OPTIONS.map((option) => (
+                {Y_AXIS_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -224,14 +236,16 @@ export function CustomChartBuilder({
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <Label className="text-base font-semibold">Filters</Label>
-              <Badge variant="secondary" className="text-xs">Optional</Badge>
+              <Badge variant="secondary" className="text-xs">
+                Optional
+              </Badge>
             </div>
 
             {/* League Filter */}
             <div className="space-y-2">
               <Label className="text-sm">Leagues</Label>
               <Select
-                onValueChange={(value) => {
+                onValueChange={value => {
                   const currentLeagues = config.filters?.leagues || []
                   if (!currentLeagues.includes(value)) {
                     updateFilter('leagues', [...currentLeagues, value])
@@ -244,19 +258,19 @@ export function CustomChartBuilder({
                 <SelectContent>
                   {availableLeagues
                     .filter(league => !(config.filters?.leagues || []).includes(league))
-                    .map((league) => (
-                    <SelectItem key={league} value={league}>
-                      {league}
-                    </SelectItem>
-                  ))}
+                    .map(league => (
+                      <SelectItem key={league} value={league}>
+                        {league}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <div className="flex flex-wrap gap-1">
-                {(config.filters?.leagues || []).map((league) => (
+                {(config.filters?.leagues || []).map(league => (
                   <Badge key={league} variant="secondary" className="text-xs">
                     {league}
                     <X
-                      className="w-3 h-3 ml-1 cursor-pointer"
+                      className="ml-1 h-3 w-3 cursor-pointer"
                       onClick={() => removeFilter('leagues', league)}
                     />
                   </Badge>
@@ -268,21 +282,24 @@ export function CustomChartBuilder({
             <div className="space-y-2">
               <Label className="text-sm">Bet Status</Label>
               <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map((status) => (
+                {STATUS_OPTIONS.map(status => (
                   <div key={status.value} className="flex items-center space-x-2">
                     <Checkbox
                       id={status.value}
                       checked={(config.filters?.status || []).includes(status.value as any)}
-                      onCheckedChange={(checked) => {
+                      onCheckedChange={checked => {
                         const currentStatus = config.filters?.status || []
                         if (checked) {
                           updateFilter('status', [...currentStatus, status.value])
                         } else {
-                          updateFilter('status', currentStatus.filter(s => s !== status.value))
+                          updateFilter(
+                            'status',
+                            currentStatus.filter(s => s !== status.value)
+                          )
                         }
                       }}
                     />
-                    <Label htmlFor={status.value} className="text-sm cursor-pointer">
+                    <Label htmlFor={status.value} className="cursor-pointer text-sm">
                       {status.label}
                     </Label>
                   </div>
@@ -294,7 +311,7 @@ export function CustomChartBuilder({
             <div className="space-y-2">
               <Label className="text-sm">Bet Types</Label>
               <Select
-                onValueChange={(value) => {
+                onValueChange={value => {
                   const currentBetTypes = config.filters?.bet_types || []
                   if (!currentBetTypes.includes(value)) {
                     updateFilter('bet_types', [...currentBetTypes, value])
@@ -307,19 +324,19 @@ export function CustomChartBuilder({
                 <SelectContent>
                   {availableBetTypes
                     .filter(betType => !(config.filters?.bet_types || []).includes(betType))
-                    .map((betType) => (
-                    <SelectItem key={betType} value={betType}>
-                      {betType}
-                    </SelectItem>
-                  ))}
+                    .map(betType => (
+                      <SelectItem key={betType} value={betType}>
+                        {betType}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <div className="flex flex-wrap gap-1">
-                {(config.filters?.bet_types || []).map((betType) => (
+                {(config.filters?.bet_types || []).map(betType => (
                   <Badge key={betType} variant="secondary" className="text-xs">
                     {betType}
                     <X
-                      className="w-3 h-3 ml-1 cursor-pointer"
+                      className="ml-1 h-3 w-3 cursor-pointer"
                       onClick={() => removeFilter('bet_types', betType)}
                     />
                   </Badge>
@@ -331,7 +348,7 @@ export function CustomChartBuilder({
             <div className="space-y-2">
               <Label className="text-sm">Sportsbooks</Label>
               <Select
-                onValueChange={(value) => {
+                onValueChange={value => {
                   const currentSportsbooks = config.filters?.sportsbooks || []
                   if (!currentSportsbooks.includes(value)) {
                     updateFilter('sportsbooks', [...currentSportsbooks, value])
@@ -344,19 +361,19 @@ export function CustomChartBuilder({
                 <SelectContent>
                   {availableSportsbooks
                     .filter(sportsbook => !(config.filters?.sportsbooks || []).includes(sportsbook))
-                    .map((sportsbook) => (
-                    <SelectItem key={sportsbook} value={sportsbook}>
-                      {sportsbook}
-                    </SelectItem>
-                  ))}
+                    .map(sportsbook => (
+                      <SelectItem key={sportsbook} value={sportsbook}>
+                        {sportsbook}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <div className="flex flex-wrap gap-1">
-                {(config.filters?.sportsbooks || []).map((sportsbook) => (
+                {(config.filters?.sportsbooks || []).map(sportsbook => (
                   <Badge key={sportsbook} variant="secondary" className="text-xs">
                     {sportsbook}
                     <X
-                      className="w-3 h-3 ml-1 cursor-pointer"
+                      className="ml-1 h-3 w-3 cursor-pointer"
                       onClick={() => removeFilter('sportsbooks', sportsbook)}
                     />
                   </Badge>
@@ -373,13 +390,13 @@ export function CustomChartBuilder({
                     <Button
                       variant="outline"
                       className={cn(
-                        "justify-start text-left font-normal",
-                        !config.filters?.date_range?.start && "text-muted-foreground"
+                        'justify-start text-left font-normal',
+                        !config.filters?.date_range?.start && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {config.filters?.date_range?.start ? (
-                        format(config.filters.date_range.start, "PPP")
+                        format(config.filters.date_range.start, 'PPP')
                       ) : (
                         <span>Start date</span>
                       )}
@@ -389,10 +406,12 @@ export function CustomChartBuilder({
                     <Calendar
                       mode="single"
                       selected={config.filters?.date_range?.start || undefined}
-                      onSelect={(date) => updateFilter('date_range', {
-                        ...config.filters?.date_range,
-                        start: date || null
-                      })}
+                      onSelect={date =>
+                        updateFilter('date_range', {
+                          ...config.filters?.date_range,
+                          start: date || null,
+                        })
+                      }
                       initialFocus
                     />
                   </PopoverContent>
@@ -403,13 +422,13 @@ export function CustomChartBuilder({
                     <Button
                       variant="outline"
                       className={cn(
-                        "justify-start text-left font-normal",
-                        !config.filters?.date_range?.end && "text-muted-foreground"
+                        'justify-start text-left font-normal',
+                        !config.filters?.date_range?.end && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {config.filters?.date_range?.end ? (
-                        format(config.filters.date_range.end, "PPP")
+                        format(config.filters.date_range.end, 'PPP')
                       ) : (
                         <span>End date</span>
                       )}
@@ -419,10 +438,12 @@ export function CustomChartBuilder({
                     <Calendar
                       mode="single"
                       selected={config.filters?.date_range?.end || undefined}
-                      onSelect={(date) => updateFilter('date_range', {
-                        ...config.filters?.date_range,
-                        end: date || null
-                      })}
+                      onSelect={date =>
+                        updateFilter('date_range', {
+                          ...config.filters?.date_range,
+                          end: date || null,
+                        })
+                      }
                       initialFocus
                     />
                   </PopoverContent>
@@ -432,7 +453,7 @@ export function CustomChartBuilder({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-2 pt-4 border-t">
+          <div className="flex justify-end space-x-2 border-t pt-4">
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>

@@ -18,7 +18,7 @@ const globalAuthState = {
   user: null as User | null,
   loading: true,
   initPromise: null as Promise<void> | null,
-  listeners: new Set<() => void>()
+  listeners: new Set<() => void>(),
 }
 
 const notifyListeners = () => {
@@ -35,25 +35,33 @@ const initializeAuth = async () => {
   globalAuthState.initPromise = (async () => {
     try {
       console.log('Initializing auth globally')
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      console.log('Auth session result:', { 
-        hasSession: !!session, 
+      const {
+        data: { session },
         error,
-        sessionDetails: session ? {
-          user_id: session.user.id,
-          email: session.user.email,
-          expires_at: session.expires_at
-        } : null
+      } = await supabase.auth.getSession()
+
+      console.log('Auth session result:', {
+        hasSession: !!session,
+        error,
+        sessionDetails: session
+          ? {
+              user_id: session.user.id,
+              email: session.user.email,
+              expires_at: session.expires_at,
+            }
+          : null,
       })
-      
+
       let currentUser = null
       if (!error && session?.user) {
         // Check if session is expired
         if (session.expires_at && session.expires_at * 1000 < Date.now()) {
           console.log('Session has expired, refreshing...')
-          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
-          
+          const {
+            data: { session: refreshedSession },
+            error: refreshError,
+          } = await supabase.auth.refreshSession()
+
           if (refreshError || !refreshedSession) {
             console.log('Failed to refresh session, signing out')
             await supabase.auth.signOut()
@@ -68,10 +76,10 @@ const initializeAuth = async () => {
           currentUser = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email
+            name: session.user.user_metadata?.full_name || session.user.email,
           }
           console.log('User found:', currentUser.email, 'User ID:', currentUser.id)
-          
+
           // Verify the session is still valid by making a test query
           try {
             const { error: testError } = await supabase
@@ -79,7 +87,7 @@ const initializeAuth = async () => {
               .select('id')
               .eq('id', session.user.id)
               .single()
-              
+
             if (testError) {
               console.error('Session validation failed:', testError)
               console.log('Clearing invalid session...')
@@ -98,11 +106,11 @@ const initializeAuth = async () => {
       } else {
         console.log('No user session found')
       }
-      
+
       globalAuthState.user = currentUser
       globalAuthState.loading = false
       globalAuthState.initialized = true
-      
+
       console.log('Auth initialization complete:', { hasUser: !!currentUser, loading: false })
       notifyListeners()
     } catch (error) {
@@ -125,13 +133,13 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     currentUser = {
       id: session.user.id,
       email: session.user.email || '',
-      name: session.user.user_metadata?.full_name || session.user.email
+      name: session.user.user_metadata?.full_name || session.user.email,
     }
     console.log('Auth state change - User ID:', currentUser.id, 'Email:', currentUser.email)
   } else {
     console.log('Auth state change - No user found')
   }
-  
+
   globalAuthState.user = currentUser
   globalAuthState.loading = false
   notifyListeners()
@@ -142,7 +150,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(globalAuthState.user)
   const [loading, setLoading] = useState(globalAuthState.loading)
   const [, forceUpdate] = useState({})
-  
+
   // Force re-render when global state changes
   useEffect(() => {
     const listener = () => {
@@ -151,29 +159,25 @@ export function useAuth() {
       setLoading(globalAuthState.loading)
       forceUpdate({}) // Force re-render
     }
-    
+
     globalAuthState.listeners.add(listener)
     return () => {
       globalAuthState.listeners.delete(listener)
     }
   }, [])
-  
+
   // Initialize auth if not already done
   if (!globalAuthState.initialized && !globalAuthState.initPromise) {
     console.log('Starting auth initialization')
     initializeAuth()
   }
 
-  const signIn = async (userData: {
-    email: string
-    password: string
-    rememberMe?: boolean
-  }) => {
+  const signIn = async (userData: { email: string; password: string; rememberMe?: boolean }) => {
     try {
       // Ensure we have clean string values
       const email = String(userData.email || '').trim()
       const password = String(userData.password || '')
-      
+
       // Validate inputs
       if (!email || !password) {
         return { error: 'Email and password are required' }
@@ -181,21 +185,22 @@ export function useAuth() {
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       })
 
       if (error) {
         // Provide more user-friendly error messages
         let errorMessage = error.message
-        
+
         if (error.message === 'Email not confirmed') {
-          errorMessage = 'Please check your email and click the confirmation link before signing in.'
+          errorMessage =
+            'Please check your email and click the confirmation link before signing in.'
         } else if (error.message === 'Invalid login credentials') {
           errorMessage = 'Invalid email or password. Please try again.'
         } else if (error.message.includes('Email rate limit exceeded')) {
           errorMessage = 'Too many login attempts. Please try again later.'
         }
-        
+
         return { error: errorMessage }
       }
 
@@ -218,12 +223,12 @@ export function useAuth() {
       console.log('Starting signup with data:', {
         email: userData.email,
         username: userData.username,
-        displayName: userData.displayName
+        displayName: userData.displayName,
       })
 
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        password: userData.password
+        password: userData.password,
         // Temporarily remove metadata to see if that's causing the issue
       })
 
@@ -236,7 +241,7 @@ export function useAuth() {
 
       if (data.user) {
         console.log('User created successfully, creating profile for:', data.user.id)
-        
+
         // Create user profile via API route to use service role securely
         try {
           const profileResponse = await fetch('/api/auth/create-profile', {
@@ -247,8 +252,8 @@ export function useAuth() {
             body: JSON.stringify({
               userId: data.user.id,
               username: userData.username,
-              email: userData.email
-            })
+              email: userData.email,
+            }),
           })
 
           console.log('Profile API response status:', profileResponse.status)
@@ -313,7 +318,7 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
-    refreshAuth
+    refreshAuth,
   }
 }
 

@@ -26,11 +26,8 @@ interface BetFilters {
 
 // Get comprehensive performance metrics
 export async function getPerformanceMetrics(filters: BetFilters = {}) {
-  return authenticatedRequest(async (userId) => {
-    let query = supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
+  return authenticatedRequest(async userId => {
+    let query = supabase.from('bets').select('*').eq('user_id', userId)
 
     // Apply filters
     if (filters.sports?.length) {
@@ -61,7 +58,7 @@ export async function getPerformanceMetrics(filters: BetFilters = {}) {
 
     // Calculate comprehensive metrics
     const metrics = calculatePerformanceMetrics(bets)
-    
+
     return { data: metrics, error: null }
   })
 }
@@ -71,16 +68,16 @@ function calculatePerformanceMetrics(bets: any[]): PerformanceMetrics {
   const totalBets = bets.length
   const settledBets = bets.filter(bet => ['won', 'lost'].includes(bet.status))
   const wonBets = bets.filter(bet => bet.status === 'won')
-  
+
   const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0
-  
+
   const totalStaked = bets.reduce((sum, bet) => sum + (bet.stake || 0), 0)
   const totalReturned = wonBets.reduce((sum, bet) => sum + (bet.actual_payout || 0), 0)
   const profit = totalReturned - totalStaked
   const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0
-  
+
   const avgBetSize = totalBets > 0 ? totalStaked / totalBets : 0
-  
+
   // Calculate variance
   const returns = settledBets.map(bet => {
     if (bet.status === 'won') {
@@ -89,14 +86,17 @@ function calculatePerformanceMetrics(bets: any[]): PerformanceMetrics {
       return -1 // Lost 100% of stake
     }
   })
-  
-  const avgReturn = returns.length > 0 ? returns.reduce((sum, ret) => sum + ret, 0) / returns.length : 0
-  const variance = returns.length > 0 ? 
-    returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length : 0
-  
+
+  const avgReturn =
+    returns.length > 0 ? returns.reduce((sum, ret) => sum + ret, 0) / returns.length : 0
+  const variance =
+    returns.length > 0
+      ? returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length
+      : 0
+
   // Calculate streaks
   const streaks = calculateStreaks(settledBets)
-  
+
   return {
     totalBets,
     winRate,
@@ -104,14 +104,16 @@ function calculatePerformanceMetrics(bets: any[]): PerformanceMetrics {
     profit,
     avgBetSize,
     variance,
-    streaks
+    streaks,
   }
 }
 
 // Calculate win/loss streaks
 function calculateStreaks(bets: any[]) {
-  const sortedBets = bets.sort((a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime())
-  
+  const sortedBets = bets.sort(
+    (a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
+  )
+
   let currentStreakCount = 0
   let currentStreakType: 'win' | 'loss' = 'win'
   let longestWinStreak = 0
@@ -122,8 +124,10 @@ function calculateStreaks(bets: any[]) {
 
     // Calculate current streak
     for (const bet of sortedBets) {
-      if ((currentStreakType === 'win' && bet.status === 'won') ||
-          (currentStreakType === 'loss' && bet.status === 'lost')) {
+      if (
+        (currentStreakType === 'win' && bet.status === 'won') ||
+        (currentStreakType === 'loss' && bet.status === 'lost')
+      ) {
         currentStreakCount++
       } else {
         break
@@ -164,13 +168,13 @@ function calculateStreaks(bets: any[]) {
 
   return {
     current: { type: currentStreakType, count: currentStreakCount },
-    longest
+    longest,
   }
 }
 
 // Get sport-specific performance breakdown
 export async function getSportBreakdown(filters: BetFilters = {}) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     let query = supabase
       .from('bets')
       .select('sport, stake, actual_payout, status, placed_at')
@@ -192,20 +196,23 @@ export async function getSportBreakdown(filters: BetFilters = {}) {
     }
 
     // Group by sport and calculate metrics
-    const sportGroups = bets.reduce((groups, bet) => {
-      const sport = bet.sport || 'Unknown'
-      if (!groups[sport]) {
-        groups[sport] = []
-      }
-      groups[sport].push(bet)
-      return groups
-    }, {} as Record<string, any[]>)
+    const sportGroups = bets.reduce(
+      (groups, bet) => {
+        const sport = bet.sport || 'Unknown'
+        if (!groups[sport]) {
+          groups[sport] = []
+        }
+        groups[sport].push(bet)
+        return groups
+      },
+      {} as Record<string, any[]>
+    )
 
     const breakdown = Object.entries(sportGroups).map(([sport, sportBets]) => {
       const metrics = calculatePerformanceMetrics(sportBets)
       return {
         sport,
-        ...metrics
+        ...metrics,
       }
     })
 
@@ -215,7 +222,7 @@ export async function getSportBreakdown(filters: BetFilters = {}) {
 
 // Get bet type performance breakdown
 export async function getBetTypeBreakdown(filters: BetFilters = {}) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     let query = supabase
       .from('bets')
       .select('bet_type, stake, actual_payout, status, placed_at')
@@ -241,20 +248,23 @@ export async function getBetTypeBreakdown(filters: BetFilters = {}) {
     }
 
     // Group by bet type and calculate metrics
-    const betTypeGroups = bets.reduce((groups, bet) => {
-      const betType = bet.bet_type || 'Unknown'
-      if (!groups[betType]) {
-        groups[betType] = []
-      }
-      groups[betType].push(bet)
-      return groups
-    }, {} as Record<string, any[]>)
+    const betTypeGroups = bets.reduce(
+      (groups, bet) => {
+        const betType = bet.bet_type || 'Unknown'
+        if (!groups[betType]) {
+          groups[betType] = []
+        }
+        groups[betType].push(bet)
+        return groups
+      },
+      {} as Record<string, any[]>
+    )
 
     const breakdown = Object.entries(betTypeGroups).map(([betType, typeBets]) => {
       const metrics = calculatePerformanceMetrics(typeBets)
       return {
         betType,
-        ...metrics
+        ...metrics,
       }
     })
 
@@ -263,8 +273,11 @@ export async function getBetTypeBreakdown(filters: BetFilters = {}) {
 }
 
 // Get profit over time data for charts
-export async function getProfitOverTime(filters: BetFilters = {}, interval: 'daily' | 'weekly' | 'monthly' = 'daily') {
-  return authenticatedRequest(async (userId) => {
+export async function getProfitOverTime(
+  filters: BetFilters = {},
+  interval: 'daily' | 'weekly' | 'monthly' = 'daily'
+) {
+  return authenticatedRequest(async userId => {
     let query = supabase
       .from('bets')
       .select('stake, actual_payout, status, placed_at, settled_at')
@@ -309,12 +322,12 @@ export async function getProfitOverTime(filters: BetFilters = {}, interval: 'dai
       }, 0)
 
       cumulativeProfit += dayProfit
-      
+
       profitData.push({
         date,
         profit: dayProfit,
         cumulativeProfit,
-        bets: betsArray.length
+        bets: betsArray.length,
       })
     }
 
@@ -324,37 +337,40 @@ export async function getProfitOverTime(filters: BetFilters = {}, interval: 'dai
 
 // Group bets by time interval
 function groupBetsByInterval(bets: any[], interval: 'daily' | 'weekly' | 'monthly') {
-  return bets.reduce((groups, bet) => {
-    const date = new Date(bet.placed_at)
-    let key: string
+  return bets.reduce(
+    (groups, bet) => {
+      const date = new Date(bet.placed_at)
+      let key: string
 
-    switch (interval) {
-      case 'daily':
-        key = date.toISOString().split('T')[0] ?? ''
-        break
-      case 'weekly':
-        const weekStart = new Date(date)
-        weekStart.setDate(date.getDate() - date.getDay())
-        key = weekStart.toISOString().split('T')[0] ?? ''
-        break
-      case 'monthly':
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        break
-      default:
-        key = date.toISOString().split('T')[0] ?? ''
-    }
+      switch (interval) {
+        case 'daily':
+          key = date.toISOString().split('T')[0] ?? ''
+          break
+        case 'weekly':
+          const weekStart = new Date(date)
+          weekStart.setDate(date.getDate() - date.getDay())
+          key = weekStart.toISOString().split('T')[0] ?? ''
+          break
+        case 'monthly':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          break
+        default:
+          key = date.toISOString().split('T')[0] ?? ''
+      }
 
-    if (!groups[key]) {
-      groups[key] = []
-    }
-    (groups[key] ?? []).push(bet)
-    return groups
-  }, {} as Record<string, any[]>)
+      if (!groups[key]) {
+        groups[key] = []
+      }
+      ;(groups[key] ?? []).push(bet)
+      return groups
+    },
+    {} as Record<string, any[]>
+  )
 }
 
 // Get advanced analytics (Pro feature)
 export async function getAdvancedAnalytics(filters: BetFilters = {}) {
-  return authenticatedRequest(async (userId) => {
+  return authenticatedRequest(async userId => {
     // Check if user has Pro subscription
     const { data: subscription } = await supabase
       .from('subscriptions')
@@ -367,15 +383,12 @@ export async function getAdvancedAnalytics(filters: BetFilters = {}) {
     if (!subscription) {
       return {
         data: null,
-        error: 'Pro subscription required for advanced analytics'
+        error: 'Pro subscription required for advanced analytics',
       }
     }
 
     // Get comprehensive bet data
-    let query = supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
+    let query = supabase.from('bets').select('*').eq('user_id', userId)
 
     // Apply filters
     if (filters.sports?.length) {
@@ -408,7 +421,7 @@ export async function getAdvancedAnalytics(filters: BetFilters = {}) {
       profitDistribution: calculateProfitDistribution(bets),
       timeAnalysis: calculateTimeAnalysis(bets),
       streakAnalysis: calculateStreakAnalysis(bets),
-      riskMetrics: calculateRiskMetrics(bets)
+      riskMetrics: calculateRiskMetrics(bets),
     }
 
     return { data: analytics, error: null }
@@ -417,30 +430,36 @@ export async function getAdvancedAnalytics(filters: BetFilters = {}) {
 
 // Helper functions for advanced analytics
 function calculateSportBreakdown(bets: any[]) {
-  const sportGroups = bets.reduce((groups, bet) => {
-    const sport = bet.sport || 'Unknown'
-    if (!groups[sport]) groups[sport] = []
-    groups[sport].push(bet)
-    return groups
-  }, {} as Record<string, any[]>)
+  const sportGroups = bets.reduce(
+    (groups, bet) => {
+      const sport = bet.sport || 'Unknown'
+      if (!groups[sport]) groups[sport] = []
+      groups[sport].push(bet)
+      return groups
+    },
+    {} as Record<string, any[]>
+  )
 
   return Object.entries(sportGroups).map(([sport, sportBets]) => ({
     sport,
-    ...calculatePerformanceMetrics(sportBets as any[])
+    ...calculatePerformanceMetrics(sportBets as any[]),
   }))
 }
 
 function calculateBetTypeBreakdown(bets: any[]) {
-  const betTypeGroups = bets.reduce((groups, bet) => {
-    const betType = bet.bet_type || 'Unknown'
-    if (!groups[betType]) groups[betType] = []
-    groups[betType].push(bet)
-    return groups
-  }, {} as Record<string, any[]>)
+  const betTypeGroups = bets.reduce(
+    (groups, bet) => {
+      const betType = bet.bet_type || 'Unknown'
+      if (!groups[betType]) groups[betType] = []
+      groups[betType].push(bet)
+      return groups
+    },
+    {} as Record<string, any[]>
+  )
 
   return Object.entries(betTypeGroups).map(([betType, typeBets]) => ({
     betType,
-    ...calculatePerformanceMetrics(typeBets as any[])
+    ...calculatePerformanceMetrics(typeBets as any[]),
   }))
 }
 
@@ -458,7 +477,7 @@ function calculateProfitDistribution(bets: any[]) {
     max: length > 0 ? sorted[length - 1] : 0,
     median: length > 0 ? sorted[Math.floor(length / 2)] : 0,
     q1: length > 0 ? sorted[Math.floor(length * 0.25)] : 0,
-    q3: length > 0 ? sorted[Math.floor(length * 0.75)] : 0
+    q3: length > 0 ? sorted[Math.floor(length * 0.75)] : 0,
   }
 }
 
@@ -470,8 +489,12 @@ function calculateTimeAnalysis(bets: any[]) {
     const date = new Date(bet.placed_at)
     const day = date.getDay()
     const hour = date.getHours()
-    const profit = bet.status === 'won' ? (bet.actual_payout || 0) - bet.stake : 
-                   bet.status === 'lost' ? -bet.stake : 0
+    const profit =
+      bet.status === 'won'
+        ? (bet.actual_payout || 0) - bet.stake
+        : bet.status === 'lost'
+          ? -bet.stake
+          : 0
 
     if (dayOfWeek[day]) {
       dayOfWeek[day].bets++
@@ -492,12 +515,17 @@ function calculateStreakAnalysis(bets: any[]) {
     .filter(bet => ['won', 'lost'].includes(bet.status))
     .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime())
 
-  const streaks: { type: boolean | null, count: number, startDate: any, endDate: any }[] = []
-  let currentStreak: { type: boolean | null, count: number, startDate: any, endDate: any } = { type: null, count: 0, startDate: null, endDate: null }
+  const streaks: { type: boolean | null; count: number; startDate: any; endDate: any }[] = []
+  let currentStreak: { type: boolean | null; count: number; startDate: any; endDate: any } = {
+    type: null,
+    count: 0,
+    startDate: null,
+    endDate: null,
+  }
 
   settledBets.forEach(bet => {
     const isWin = bet.status === 'won'
-    
+
     if (currentStreak.type === null || currentStreak.type === isWin) {
       if (currentStreak.type === null) {
         currentStreak.startDate = bet.placed_at
@@ -511,7 +539,7 @@ function calculateStreakAnalysis(bets: any[]) {
         type: isWin,
         count: 1,
         startDate: bet.placed_at,
-        endDate: bet.placed_at
+        endDate: bet.placed_at,
       }
     }
   })
@@ -530,12 +558,23 @@ function calculateRiskMetrics(bets: any[]) {
     return bet.status === 'won' ? (bet.actual_payout || 0) - bet.stake : -bet.stake
   })
 
-  const avgStake = stakes.length > 0 ? stakes.reduce((sum, stake) => sum + stake, 0) / stakes.length : 0
+  const avgStake =
+    stakes.length > 0 ? stakes.reduce((sum, stake) => sum + stake, 0) / stakes.length : 0
   // const avgReturn = returns.length > 0 ? returns.reduce((sum, ret) => sum + ret, 0) / returns.length : 0 // unused
-  // const stakeVariance = stakes.length > 0 ? 
+  // const stakeVariance = stakes.length > 0 ?
   //   stakes.reduce((sum, stake) => sum + Math.pow(stake - avgStake, 2), 0) / stakes.length : 0 // unused
-  const returnVariance = returns.length > 0 ?
-    returns.reduce((sum, ret) => sum + Math.pow(ret - (returns.length > 0 ? returns.reduce((s, r) => s + r, 0) / returns.length : 0), 2), 0) / returns.length : 0
+  const returnVariance =
+    returns.length > 0
+      ? returns.reduce(
+          (sum, ret) =>
+            sum +
+            Math.pow(
+              ret - (returns.length > 0 ? returns.reduce((s, r) => s + r, 0) / returns.length : 0),
+              2
+            ),
+          0
+        ) / returns.length
+      : 0
 
   return {
     avgStake,
@@ -543,6 +582,10 @@ function calculateRiskMetrics(bets: any[]) {
     // stakeVariance, // removed unused
     returnVariance,
     standardDeviation: Math.sqrt(returnVariance),
-    sharpeRatio: returnVariance > 0 ? (returns.length > 0 ? returns.reduce((s, r) => s + r, 0) / returns.length : 0) / Math.sqrt(returnVariance) : 0
+    sharpeRatio:
+      returnVariance > 0
+        ? (returns.length > 0 ? returns.reduce((s, r) => s + r, 0) / returns.length : 0) /
+          Math.sqrt(returnVariance)
+        : 0,
   }
 }

@@ -1,6 +1,6 @@
 // clv-calculator.ts
 
-import { Bet } from './free-tier-engine';
+import { Bet } from './free-tier-engine'
 
 /**
  * Calculates Closing Line Value (CLV) for a given bet.
@@ -8,10 +8,9 @@ import { Bet } from './free-tier-engine';
  * Returns a decimal (e.g., 0.05 = +5% CLV)
  */
 export function calculateCLV(bet: Bet & { betOdds: number; closingOdds: number }): number {
-  const { betOdds, closingOdds } = bet;
+  const { betOdds, closingOdds } = bet
 
-  if (!betOdds || !closingOdds || betOdds === 0) return 0;
+  if (!betOdds || !closingOdds || betOdds === 0) return 0
 
-  return (closingOdds - betOdds) / betOdds;
+  return (closingOdds - betOdds) / betOdds
 }
-

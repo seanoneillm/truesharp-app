@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       if (profileError || !profile) {
         return NextResponse.json({
           success: false,
-          error: `User not found with email: ${userEmail}`
+          error: `User not found with email: ${userEmail}`,
         })
       }
       targetUserId = profile.id
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (!targetUserId) {
       return NextResponse.json({
         success: false,
-        error: 'Either userId or userEmail must be provided'
+        error: 'Either userId or userEmail must be provided',
       })
     }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (pendingError || !pendingBets) {
       return NextResponse.json({
         success: false,
-        error: `Error fetching pending bets: ${pendingError?.message}`
+        error: `Error fetching pending bets: ${pendingError?.message}`,
       })
     }
 
@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < pendingBets.length; i++) {
       const bet = pendingBets[i]
       if (!bet) continue
-      
+
       const willWin = Math.random() < 0.55 // 55% win rate
-      
+
       let newStatus: string
       let profit: number
-      
+
       if (willWin) {
         newStatus = 'won'
         // Calculate profit as potential_payout minus stake
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         .update({
           status: newStatus,
           profit: profit,
-          settled_at: new Date().toISOString()
+          settled_at: new Date().toISOString(),
         })
         .eq('id', bet.id)
         .select('id, status, profit, stake')
@@ -111,23 +111,22 @@ export async function POST(request: NextRequest) {
       message: `Settled ${updatedBets.length} pending bets for user ${targetUserId}`,
       user: {
         id: targetUserId,
-        email: userEmail || 'unknown'
+        email: userEmail || 'unknown',
       },
       stats: {
         totalUpdated: updatedBets.length,
         wonBets,
         lostBets,
         totalProfitFromUpdates: totalProfit,
-        winRate: updatedBets.length > 0 ? (wonBets / updatedBets.length * 100).toFixed(1) : 0
+        winRate: updatedBets.length > 0 ? ((wonBets / updatedBets.length) * 100).toFixed(1) : 0,
       },
-      errors: errors.slice(0, 3)
+      errors: errors.slice(0, 3),
     })
-
   } catch (err) {
     console.error('Unexpected error:', err)
     return NextResponse.json({
       success: false,
-      error: 'Unexpected error settling bets'
+      error: 'Unexpected error settling bets',
     })
   }
 }

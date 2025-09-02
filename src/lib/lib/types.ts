@@ -144,8 +144,8 @@ export interface PerformanceMetrics {
   sharpeRatio?: number
   closingLineValue?: number
   streaks: {
-    current: { type: 'win' | 'loss', count: number }
-    longest: { type: 'win' | 'loss', count: number }
+    current: { type: 'win' | 'loss'; count: number }
+    longest: { type: 'win' | 'loss'; count: number }
   }
 }
 
