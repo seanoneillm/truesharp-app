@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
 
     // Format the response to match the expected structure
     const formattedSubscriptions = (subscriptions || []).map(sub => {
-      const strategy = sub.strategies
-      const profile = sub.profiles
+      const strategy = Array.isArray(sub.strategies) ? sub.strategies[0] : sub.strategies
+      const profile = Array.isArray(sub.profiles) ? sub.profiles[0] : sub.profiles
 
       return {
         id: sub.id,

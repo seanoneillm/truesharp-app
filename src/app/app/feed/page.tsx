@@ -73,7 +73,6 @@ export default function EnhancedFeedPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('forYou')
-  const [showCreatePost, setShowCreatePost] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
   const feedFilters = [
@@ -378,7 +377,6 @@ export default function EnhancedFeedPage() {
                     Refresh
                   </button>
                   <button
-                    onClick={() => setShowCreatePost(true)}
                     className="inline-flex items-center rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-500 hover:to-cyan-500"
                   >
                     <Plus className="mr-2 h-4 w-4" />

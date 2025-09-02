@@ -21,7 +21,7 @@ export async function GET() {
     const results = []
 
     for (const profile of profiles || []) {
-      const { data: bets, error: betsError } = await serviceSupabase
+      const { data: bets } = await serviceSupabase
         .from('bets')
         .select('id, sport, bet_type, status')
         .eq('user_id', profile.id)

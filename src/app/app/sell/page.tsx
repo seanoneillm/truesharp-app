@@ -198,7 +198,7 @@ export default function MonetizeStrategyPage() {
     },
   }
 
-  const getTierColor = tier => {
+  const getTierColor = (tier: string) => {
     switch (tier) {
       case 'premium':
         return 'bg-purple-100 text-purple-800 border-purple-200'

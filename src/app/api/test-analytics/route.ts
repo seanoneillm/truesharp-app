@@ -93,17 +93,18 @@ export async function GET(request: Request) {
     )
 
     const sportBreakdown = Object.entries(sportGroups).map(([sport, data]) => {
-      const wonCount = data.bets.filter((bet: any) => bet.status === 'won').length
-      const lostCount = data.bets.filter((bet: any) => bet.status === 'lost').length
+      const typedData = data as { bets: any[]; totalStake: number; totalProfit: number }
+      const wonCount = typedData.bets.filter((bet: any) => bet.status === 'won').length
+      const lostCount = typedData.bets.filter((bet: any) => bet.status === 'lost').length
       const sportWinRate = wonCount + lostCount > 0 ? (wonCount / (wonCount + lostCount)) * 100 : 0
-      const sportROI = data.totalStake > 0 ? (data.totalProfit / data.totalStake) * 100 : 0
+      const sportROI = typedData.totalStake > 0 ? (typedData.totalProfit / typedData.totalStake) * 100 : 0
 
       return {
         sport,
-        totalBets: data.bets.length,
+        totalBets: typedData.bets.length,
         winRate: sportWinRate,
         roi: sportROI,
-        netProfit: data.totalProfit,
+        netProfit: typedData.totalProfit,
       }
     })
 

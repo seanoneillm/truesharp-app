@@ -12,11 +12,7 @@ import {
   Clock,
   DollarSign,
   Filter,
-  Home,
-  MessageSquare,
   Plus,
-  Settings,
-  Store,
   Target,
   TrendingUp,
   Trophy,
@@ -25,7 +21,6 @@ import {
   Zap,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
 
 // Shield SVG Component
 const TrueSharpShield = ({ className = 'h-6 w-6', variant = 'default' }) => (
@@ -54,9 +49,6 @@ const TrueSharpShield = ({ className = 'h-6 w-6', variant = 'default' }) => (
 )
 
 export default function EnhancedDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-
   // ✅ NOW USING REAL DATA HOOKS!
   const { profile, metrics, bets, connections, isLoading } = useDashboardData()
 
@@ -67,16 +59,6 @@ export default function EnhancedDashboard() {
   console.log('Bets:', bets)
   console.log('Connections:', connections)
   console.log('Is Loading:', isLoading)
-
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home, current: true },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3, current: false },
-    { name: 'Feed', href: '/feed', icon: MessageSquare, current: false },
-    { name: 'Marketplace', href: '/marketplace', icon: Store, current: false },
-    { name: 'Subscriptions', href: '/subscriptions', icon: Users, current: false },
-    { name: 'Monetize', href: '/sell', icon: DollarSign, current: false },
-    { name: 'Settings', href: '/settings', icon: Settings, current: false },
-  ]
 
   // ✅ STATS NOW FROM REAL DATA
   const stats = [
@@ -163,7 +145,7 @@ export default function EnhancedDashboard() {
 
   if (isLoading) {
     return (
-      <DashboardLayout current="Dashboard">
+      <DashboardLayout>
         <div className="flex h-64 items-center justify-center">
           <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-blue-600"></div>
         </div>
@@ -172,7 +154,7 @@ export default function EnhancedDashboard() {
   }
 
   return (
-    <DashboardLayout current="Dashboard">
+    <DashboardLayout>
       {/* Welcome Header */}
       <div className="mb-8">
         <div className="rounded-3xl bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 p-8 text-white shadow-xl">
@@ -290,7 +272,7 @@ export default function EnhancedDashboard() {
           </div>
           <div className="space-y-4">
             {bets && bets.length > 0 ? (
-              bets.slice(0, 3).map((bet, index) => (
+              bets.slice(0, 3).map((bet) => (
                 <div
                   key={bet.id}
                   className="flex items-center space-x-3 rounded-xl bg-slate-50/50 p-3"

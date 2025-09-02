@@ -1,15 +1,14 @@
-import { createClient } from '@/lib/auth/supabase'
+import { supabase } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use the pre-configured supabase client
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const sport = searchParams.get('sport')
     const sortBy = searchParams.get('sort') || 'roi'
-    const priceRange = searchParams.get('price_range')
     const verified = searchParams.get('verified')
 
     let query = supabase

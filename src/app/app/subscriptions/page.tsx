@@ -77,7 +77,7 @@ export default function SubscriptionsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedTimeframe, setSelectedTimeframe] = useState('7d')
   const [showCancelModal, setShowCancelModal] = useState(false)
-  const [cancelingSubscription, setCancelingSubscription] = useState(null)
+  const [cancelingSubscription, setCancelingSubscription] = useState<any>(null)
 
   const activeSubscriptions = [
     {
@@ -258,7 +258,7 @@ export default function SubscriptionsPage() {
     winRate: '66.2%',
   }
 
-  const getTierColor = tier => {
+  const getTierColor = (tier: string) => {
     switch (tier) {
       case 'premium':
         return 'bg-purple-100 text-purple-800 border-purple-200'
@@ -271,7 +271,7 @@ export default function SubscriptionsPage() {
     }
   }
 
-  const handleCancelSubscription = subscription => {
+  const handleCancelSubscription = (subscription: any) => {
     setCancelingSubscription(subscription)
     setShowCancelModal(true)
   }
@@ -564,7 +564,7 @@ export default function SubscriptionsPage() {
                     Active Subscriptions
                   </h2>
                   <div className="space-y-4">
-                    {activeSubscriptions.map(subscription => (
+                    {activeSubscriptions.map((subscription: any) => (
                       <div
                         key={subscription.id}
                         className="rounded-2xl border border-slate-200/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl"
@@ -615,7 +615,7 @@ export default function SubscriptionsPage() {
                                     <Calendar className="mr-1 h-4 w-4" />
                                     <span>
                                       Next billing:{' '}
-                                      {new Date(subscription.nextBilling).toLocaleDateString()}
+                                      {subscription.nextBilling ? new Date(subscription.nextBilling).toLocaleDateString() : 'N/A'}
                                     </span>
                                   </div>
                                 )}
@@ -884,8 +884,8 @@ export default function SubscriptionsPage() {
                   <div className="rounded-2xl border border-slate-200/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm">
                     <div className="space-y-4">
                       {activeSubscriptions
-                        .filter(sub => sub.nextBilling)
-                        .map(subscription => (
+                        .filter((sub: any) => sub.nextBilling)
+                        .map((subscription: any) => (
                           <div
                             key={subscription.id}
                             className="flex items-center justify-between border-b border-slate-200 py-3 last:border-b-0"
@@ -900,7 +900,7 @@ export default function SubscriptionsPage() {
                                 </p>
                                 <p className="text-sm text-slate-500">
                                   Next billing:{' '}
-                                  {new Date(subscription.nextBilling).toLocaleDateString()}
+                                  {subscription.nextBilling ? new Date(subscription.nextBilling).toLocaleDateString() : 'N/A'}
                                 </p>
                               </div>
                             </div>
@@ -919,8 +919,8 @@ export default function SubscriptionsPage() {
                         <p className="text-base font-medium text-slate-900">
                           $
                           {activeSubscriptions
-                            .filter(sub => sub.status === 'active')
-                            .reduce((sum, sub) => sum + sub.price, 0)}
+                            .filter((sub: any) => sub.status === 'active')
+                            .reduce((sum: number, sub: any) => sum + sub.price, 0)}
                         </p>
                       </div>
                     </div>

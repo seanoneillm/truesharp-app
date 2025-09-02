@@ -128,8 +128,8 @@ const SubscriptionCard = ({
     return freq.charAt(0).toUpperCase() + freq.slice(1)
   }
 
-  const formatPercentage = (value: number | null) => {
-    if (value === null) return '0.0%'
+  const formatPercentage = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return '0.0%'
     return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
   }
 
@@ -224,7 +224,7 @@ const SubscriptionCard = ({
             <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 p-4">
               <p className="mb-1 text-xs font-medium text-blue-700">Win Rate</p>
               <p className="text-xl font-bold text-blue-600">
-                {subscription.strategy_performance_win_rate !== null
+                {subscription.strategy_performance_win_rate !== null && subscription.strategy_performance_win_rate !== undefined
                   ? `${subscription.strategy_performance_win_rate.toFixed(1)}%`
                   : 'N/A'}
               </p>

@@ -741,7 +741,7 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
 
     if (betsWithGameId.length > 0) {
       console.log('Sample pending bets:')
-      betsWithGameId.slice(0, 5).forEach((bet, i) => {
+      betsWithGameId.slice(0, 5).forEach((bet: any, i: number) => {
         console.log(
           `  ${i + 1}. id=${bet.id}, game_id=${bet.game_id}, type=${bet.bet_type}, side=${bet.side}, oddid=${bet.oddid}`
         )

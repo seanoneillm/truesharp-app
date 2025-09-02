@@ -13,10 +13,13 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // Test 2: Check what auth.uid() returns in a query
-    const { data: authTest } = await supabase
-      .rpc('get_auth_uid')
-      .single()
-      .catch(() => null)
+    try {
+      await supabase
+        .rpc('get_auth_uid')
+        .single()
+    } catch (error) {
+      // Ignore error for test purposes
+    }
 
     // Test 3: Try a simple select to see if RLS works
     const { data: profileSelect, error: selectError } = await supabase

@@ -3,7 +3,7 @@
 import { gamesDataService } from '@/lib/services/games-data'
 import { createClient } from '@/lib/supabase'
 import { convertDatabaseGamesToGames } from '@/lib/utils/database-to-game-converter'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface DebugInfo {
   rawGames: unknown[]
@@ -21,14 +21,12 @@ interface DebugInfo {
   }
 }
 
-export default function DebugOddsPage() {
+export default function DebugOddsPage(): React.ReactElement {
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [logs, setLogs] = useState<string[]>([])
 
   const addLog = (message: string) => {
-    setLogs(prev => [...prev, `${new Date().toISOString()}: ${message}`])
     console.log(message)
   }
 
@@ -84,9 +82,9 @@ export default function DebugOddsPage() {
 
         if (convertedGames.length > 0) {
           addLog(`📊 First game bookmakers: ${convertedGames[0]?.bookmakers?.length || 0}`)
-          if (convertedGames[0]?.bookmakers?.length > 0) {
+          if (convertedGames[0]?.bookmakers?.length && convertedGames[0].bookmakers.length > 0) {
             addLog(
-              `📊 First bookmaker markets: ${convertedGames[0].bookmakers[0]?.markets?.length || 0}`
+              `📊 First bookmaker markets: ${convertedGames[0]?.bookmakers?.[0]?.markets?.length || 0}`
             )
           }
         }
@@ -197,7 +195,7 @@ export default function DebugOddsPage() {
       <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
         <h2 className="mb-4 text-xl font-semibold">Raw Odds from Database (First 10)</h2>
         <pre className="max-h-64 overflow-auto rounded border bg-white p-4 text-xs">
-          {JSON.stringify((debugInfo.rawOdds as unknown[]).slice(0, 10), null, 2)}
+          {debugInfo.rawOdds ? JSON.stringify((debugInfo.rawOdds as unknown[]).slice(0, 10), null, 2) : 'No data'}
         </pre>
       </div>
 
@@ -227,5 +225,5 @@ export default function DebugOddsPage() {
         </div>
       )}
     </div>
-  )
+  ) as React.ReactElement
 }

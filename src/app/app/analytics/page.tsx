@@ -25,29 +25,6 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-// Add the AnalyticsData type definition with bets property
-type AnalyticsData = {
-  bets: Bet[]
-  dailyProfitData: any[]
-  metrics: {
-    roi: number
-    winRate: number
-    totalProfit: number
-    totalBets: number
-    totalStaked: number
-    currentStreak: number
-    streakType: string
-    avgClv?: number
-  }
-  sportBreakdown: Array<{
-    sport: string
-    bets: number
-    winRate: number
-    roi: number
-    profit: number
-    clv?: number
-  }>
-}
 
 // Import the new components
 import { AdvancedProfitChart } from '@/components/analytics/charts/advanced-profit-chart'
@@ -118,15 +95,15 @@ type Bet = {
   odds?: number
   stake?: number
   potential_payout?: number
-  actual_payout?: number
+  actual_payout?: number | null
   status?: string
   sportsbook?: string
   teams?: string | string[] | null
   game_date?: string
-  clv?: number
-  closing_line?: number
-  line_movement?: number
-  expected_value?: number
+  clv?: number | null
+  closing_line?: number | null
+  line_movement?: number | null
+  expected_value?: number | null
 }
 
 interface BetsTableProps {
@@ -160,16 +137,6 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
     )
   }
 
-  // Define which columns are Pro-only
-  const proColumns = [
-    'clv',
-    'line_movement',
-    'steam_move',
-    'market_consensus',
-    'sharp_money',
-    'closing_line',
-    'expected_value',
-  ]
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (amount === null || amount === undefined) return 'N/A'
@@ -422,7 +389,7 @@ export default function EnhancedAnalyticsPage() {
   const [activeView, setActiveView] = useState('overview')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
-  const { analyticsData, isLoading, error, filters, updateFilters, totalBets, filteredBetsCount } =
+  const { analyticsData, isLoading, error, updateFilters, totalBets, filteredBetsCount } =
     useAnalytics(user, isPro)
   // Extract bets array from analyticsData, fallback to empty array if not available
   const bets = analyticsData?.bets || []
@@ -498,7 +465,7 @@ export default function EnhancedAnalyticsPage() {
   // Show loading if auth is still loading
   if (authLoading || profileLoading) {
     return (
-      <DashboardLayout current="Analytics">
+      <DashboardLayout>
         <div className="px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex min-h-screen items-center justify-center">
             <div className="text-center">
@@ -521,17 +488,9 @@ export default function EnhancedAnalyticsPage() {
     bets: day.bets,
   }))
 
-  const mockCLVData = analyticsData.dailyProfitData.map(day => ({
-    date: day.date,
-    clv: analyticsData.metrics.avgClv || 0.02,
-    clvPositive: Math.floor(day.bets * 0.6),
-    clvNegative: Math.floor(day.bets * 0.4),
-    averageClv: analyticsData.metrics.avgClv || 0.025,
-    sharpRatio: 0.65,
-  }))
 
   return (
-    <DashboardLayout current="Analytics">
+    <DashboardLayout>
       <div className="px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -547,9 +506,8 @@ export default function EnhancedAnalyticsPage() {
                   >
                     Free
                   </span>
-                  <button
-                    onClick={() => setIsPro(!isPro)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  <div
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full ${
                       isPro ? 'bg-blue-600' : 'bg-slate-200'
                     }`}
                   >
@@ -558,7 +516,7 @@ export default function EnhancedAnalyticsPage() {
                         isPro ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
-                  </button>
+                  </div>
                   <span
                     className={`text-sm font-medium ${isPro ? 'text-blue-600' : 'text-slate-500'}`}
                   >
@@ -1058,7 +1016,7 @@ export default function EnhancedAnalyticsPage() {
                   Advanced Analytics
                 </h2>
 
-                <CLVChart data={mockCLVData} isPro={isPro} />
+                <CLVChart />
 
                 <HeatMapChart
                   data={[]} // Add mock heat map data
@@ -1122,7 +1080,6 @@ export default function EnhancedAnalyticsPage() {
                       <div className="text-sm text-blue-200">/month</div>
                     </div>
                     <button
-                      onClick={() => setIsPro(true)}
                       className="inline-flex items-center rounded-xl border border-transparent bg-white px-6 py-3 text-base font-medium text-blue-600 shadow-lg transition-all duration-200 hover:scale-105 hover:bg-blue-50"
                     >
                       Try Pro Mode
@@ -1187,7 +1144,6 @@ export default function EnhancedAnalyticsPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setIsPro(true)
                       setShowProUpgrade(false)
                     }}
                     className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-500 hover:to-cyan-500"

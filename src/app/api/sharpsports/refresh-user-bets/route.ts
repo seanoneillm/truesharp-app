@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
   transformSharpSportsBet,
-  normalizeSide,
-  normalizeBetType,
-  normalizeBetStatus,
-  computeProfit,
 } from '@/lib/utils/sharpsports-helpers'
 
 // Create a simple SharpSports client following the SDK pattern
@@ -47,7 +43,7 @@ function processBetsFromSlip(
   profileId: string,
   isParlay: boolean,
   parlayId: string | null,
-  isFirstSlip: boolean
+  _isFirstSlip: boolean
 ): any[] {
   const processedBets: any[] = []
 
@@ -177,13 +173,13 @@ export async function POST(request: NextRequest) {
       errors: 0,
     }
 
-    const errors = []
-    const processedBets = []
+    const errors: string[] = []
+    const processedBets: any[] = []
     const parlayGroups = new Map() // Track parlay groups by parlay identifier
 
     // First pass: Group bet slips by parlay
-    const parlaySlips = betSlips.filter(slip => slip.type === 'parlay')
-    const singleSlips = betSlips.filter(slip => slip.type !== 'parlay')
+    const parlaySlips = betSlips.filter((slip: any) => slip.type === 'parlay')
+    const singleSlips = betSlips.filter((slip: any) => slip.type !== 'parlay')
 
     // For parlay slips, group them by parlayId or other shared identifier
     for (const parlaySlip of parlaySlips) {

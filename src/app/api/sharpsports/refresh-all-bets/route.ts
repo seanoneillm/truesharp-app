@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       step2: null,
       step3: null,
       success: false,
-      errors: [],
+      errors: [] as string[],
     }
 
     // Step 1: Fetch All Bettors

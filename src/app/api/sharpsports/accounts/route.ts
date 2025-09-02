@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
     const bettorAccountId = params.get('bettorAccountId') || params.get('accountId')
     const contextId = params.get('contextId') || params.get('cid')
     const userId = params.get('userId')
+    console.log('Processing for userId:', userId)
 
     if (bettorAccountId || contextId) {
       console.log(
@@ -215,7 +216,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle SharpSports callback and fetch account data
-async function handleSharpSportsCallback(request: NextRequest, params: URLSearchParams) {
+async function handleSharpSportsCallback(_request: NextRequest, params: URLSearchParams) {
   try {
     console.log('🔄 SharpSports Callback - Processing account link callback')
 
@@ -306,6 +307,8 @@ async function handleSharpSportsCallback(request: NextRequest, params: URLSearch
       })
       .select()
       .single()
+      
+    console.log('Inserted account:', insertedAccount)
 
     if (insertError) {
       console.error('SharpSports Callback - Error storing account:', insertError)

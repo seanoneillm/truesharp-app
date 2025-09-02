@@ -1,12 +1,11 @@
-import { createClient } from '@/lib/auth/supabase'
+import { supabase } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use the pre-configured supabase client
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser()
 
     const { searchParams } = new URL(request.url)

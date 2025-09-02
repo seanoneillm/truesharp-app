@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Bookmark,
   Camera,
-  Flame,
   Globe,
   Heart,
   Loader2,

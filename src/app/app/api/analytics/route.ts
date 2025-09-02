@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/auth/supabase'
+import { supabase } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface Bet {
@@ -13,7 +13,7 @@ interface Bet {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use the pre-configured supabase client
     const {
       data: { user },
       error: authError,
@@ -25,8 +25,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const timeframe = searchParams.get('timeframe') || '30d'
-    const sport = searchParams.get('sport')
-    const betType = searchParams.get('bet_type')
 
     // Calculate date range based on timeframe
     const now = new Date()
@@ -54,7 +52,6 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .gte('placed_at', startDate.toISOString())
       .order('placed_at', { ascending: false })
-      .maybeSingle(false)
 
     const bets = (data ?? []) as Bet[]
 
@@ -66,11 +63,9 @@ export async function GET(request: NextRequest) {
     const totalBets = bets.length
     const settledBets = bets.filter(bet => ['won', 'lost'].includes(bet.status))
     const wonBets = bets.filter(bet => bet.status === 'won')
-    const lostBets = bets.filter(bet => bet.status === 'lost')
 
     const totalStake = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
     const totalPayout = wonBets.reduce((sum, bet) => sum + (bet.actual_payout || 0), 0)
-    const totalLoss = lostBets.reduce((sum, bet) => sum + bet.stake, 0)
     const netProfit = totalPayout - totalStake
 
     const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0

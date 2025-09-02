@@ -11,7 +11,7 @@ import { useBetSlipToast } from '@/lib/hooks/use-bet-slip-toast'
 import { gamesDataService } from '@/lib/services/games-data'
 import { Game } from '@/lib/types/games'
 import { convertDatabaseGamesToGames } from '@/lib/utils/database-to-game-converter'
-import { Calendar, Clock, RefreshCw } from 'lucide-react'
+import { Calendar, Clock } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 function GamesPageContent() {
@@ -21,8 +21,6 @@ function GamesPageContent() {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('MLB')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(false)
-  const [retryCount, setRetryCount] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   // Toast notifications for bet slip actions
@@ -298,9 +296,6 @@ function GamesPageContent() {
       }
     }
   }
-
-  // Wrapper function for backward compatibility
-  const handleManualFetch = () => handleManualFetchWithRetry(0)
 
   // Map league to sport key helper function
   const getSportKey = (league: LeagueType): string => {

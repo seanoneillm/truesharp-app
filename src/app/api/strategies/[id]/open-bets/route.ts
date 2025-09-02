@@ -3,7 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
     const strategyId = params.id
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     console.log('Strategy owner query:', { strategy, strategyError })
 
-    let openBets = []
+    let openBets: any[] = []
 
     if (strategy && strategy.user_id) {
       // Use the exact same logic as professional strategy cards

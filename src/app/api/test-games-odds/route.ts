@@ -19,18 +19,20 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 })
     }
 
-    let oddsResults = []
+    let oddsResults: any[] = []
     if (games && games.length > 0) {
       // Check odds for first game
       const firstGame = games[0]
-      const { data: odds, error: oddsError } = await supabase
-        .from('odds')
-        .select('eventid, oddid, marketname, bookodds')
-        .eq('eventid', firstGame.id)
-        .limit(10)
+      if (firstGame) {
+        const { data: odds, error: oddsError } = await supabase
+          .from('odds')
+          .select('eventid, oddid, marketname, bookodds')
+          .eq('eventid', firstGame.id)
+          .limit(10)
 
-      if (!oddsError && odds) {
-        oddsResults = odds
+        if (!oddsError && odds) {
+          oddsResults = odds
+        }
       }
     }
 

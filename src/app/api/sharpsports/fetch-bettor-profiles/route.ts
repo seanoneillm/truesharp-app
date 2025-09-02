@@ -35,7 +35,7 @@ const supabase = createClient(
 )
 
 // POST /api/sharpsports/fetch-bettor-profiles - Fetch bettor profiles and match to user profiles
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🔄 Fetching bettor profiles from SharpSports and matching to user profiles')
 

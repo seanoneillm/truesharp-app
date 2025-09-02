@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
     // Fetch from our existing API
     const apiUrl = new URL('/api/games/sportsgameodds', request.url)
     apiUrl.searchParams.set('sport', sport)
-    apiUrl.searchParams.set('date', dateStr)
+    if (dateStr) {
+      apiUrl.searchParams.set('date', dateStr)
+    }
     apiUrl.searchParams.set('forceRefresh', 'true')
 
     const response = await fetch(apiUrl.toString())

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Also test for all 2024 data without date filtering
-    const { data: all2024Bets, error: all2024Error } = await serviceSupabase
+    const { data: all2024Bets } = await serviceSupabase
       .from('bets')
       .select('placed_at, stake, profit, status')
       .eq('user_id', profile.id)

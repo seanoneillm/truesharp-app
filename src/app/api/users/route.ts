@@ -1,9 +1,8 @@
-import { createClient } from '@/lib/auth/supabase'
+import { supabase } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const supabase = createClient()
     const {
       data: { user },
       error: authError,
@@ -31,7 +30,6 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient()
     const {
       data: { user },
       error: authError,

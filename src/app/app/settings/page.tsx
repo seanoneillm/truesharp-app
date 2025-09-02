@@ -27,49 +27,8 @@ export default function SettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false)
 
-  const connectedSportsbooks = [
-    {
-      id: 1,
-      name: 'DraftKings',
-      logo: 'DK',
-      status: 'connected',
-      lastSync: '2 minutes ago',
-      betsTracked: 124,
-      connectionDate: '2024-11-15',
-      error: null,
-    },
-    {
-      id: 2,
-      name: 'FanDuel',
-      logo: 'FD',
-      status: 'connected',
-      lastSync: '5 minutes ago',
-      betsTracked: 89,
-      connectionDate: '2024-12-01',
-      error: null,
-    },
-    {
-      id: 3,
-      name: 'BetMGM',
-      logo: 'BM',
-      status: 'error',
-      lastSync: '2 hours ago',
-      betsTracked: 56,
-      connectionDate: '2024-10-20',
-      error: 'Authentication failed. Please reconnect.',
-    },
-  ]
-
-  const availableSportsbooks = [
-    { name: 'Caesars', logo: 'CS', available: true },
-    { name: 'ESPN BET', logo: 'EB', available: true },
-    { name: 'BetRivers', logo: 'BR', available: true },
-    { name: 'Hard Rock', logo: 'HR', available: false },
-    { name: 'WynnBET', logo: 'WB', available: false },
-  ]
-
   return (
-    <DashboardLayout current="Settings">
+    <DashboardLayout>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>

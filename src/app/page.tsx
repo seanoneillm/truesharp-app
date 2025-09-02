@@ -1,21 +1,12 @@
 import {
-  ArrowRight,
   BarChart3,
   CheckCircle,
-  Crown,
   DollarSign,
   Shield,
-  Star,
-  Target,
   TrendingUp,
-  Trophy,
   Users,
-  Zap,
-  ChevronDown,
   Activity,
-  LineChart,
   Gamepad2,
-  HelpCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 

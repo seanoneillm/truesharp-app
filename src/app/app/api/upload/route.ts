@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/auth/supabase'
+import { supabase } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use the pre-configured supabase client
     const {
       data: { user },
       error: authError,
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const fileName = `${user.id}/${type}/${Date.now()}.${fileExt}`
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('uploads')
       .upload(fileName, file, {
         cacheControl: '3600',
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient()
+    // Use the pre-configured supabase client
     const {
       data: { user },
       error: authError,

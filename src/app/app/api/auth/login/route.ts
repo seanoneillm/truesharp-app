@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    const { supabase, response } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     // Sign in with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -100,12 +100,8 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
     }
 
-    // Set response headers for the updated session
-    response.headers.set('Content-Type', 'application/json')
-
     return NextResponse.json(responseData, {
       status: 200,
-      headers: response.headers,
     })
   } catch (error) {
     console.error('Login API error:', error)

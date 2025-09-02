@@ -51,7 +51,7 @@ const supabase = createClient(
 )
 
 // POST /api/sharpsports/fetch-bettors - Fetch bettors and their accounts, then save to database
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🔄 Fetching bettors and their accounts from SharpSports')
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Count bettors with and without accounts
-    const bettorIdsWithAccounts = new Set(allAccounts.map(account => account.bettor))
+    const bettorIdsWithAccounts = new Set(allAccounts.map((account: any) => account.bettor))
     stats.bettorsWithAccounts = bettorIdsWithAccounts.size
     stats.bettorsWithoutAccounts = stats.totalBettors - stats.bettorsWithAccounts
 

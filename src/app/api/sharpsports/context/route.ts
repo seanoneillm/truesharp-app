@@ -1,5 +1,4 @@
 import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/sharpsports/context - Generate context ID for Booklink UI

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { supabase, response } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     // Check if username is already taken
     const { data: existingUser, error: usernameCheckError } = await supabase
@@ -192,7 +192,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(responseData, {
       status: 201,
-      headers: response.headers,
     })
   } catch (error) {
     console.error('Signup API error:', error)

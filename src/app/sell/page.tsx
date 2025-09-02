@@ -12,16 +12,13 @@ import { SubscribersTab } from '@/components/seller/subscribers-tab'
 import { FinancialsTab } from '@/components/seller/financials-tab'
 import { AnalyticsTab } from '@/components/seller/analytics-tab'
 import { EnhancedOpenBets } from '@/components/seller/enhanced-open-bets'
-import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 import {
   DollarSign,
   Plus,
   RefreshCw,
-  Settings,
   Store,
   Target,
   TrendingUp,
-  Trophy,
   User,
   Users,
 } from 'lucide-react'
@@ -88,22 +85,6 @@ export default function SellPage() {
     setMounted(true)
   }, [])
 
-  // Memoized calculations to prevent unnecessary re-renders
-  const openBetsSummary = useMemo(() => {
-    if (!Array.isArray(openBets)) {
-      return { count: 0, totalProfit: 0 }
-    }
-
-    const totalProfit = openBets.reduce((sum, bet) => {
-      return sum + Math.max((bet?.potential_payout || 0) - (bet?.stake || 0), 0)
-    }, 0)
-
-    return {
-      count: openBets.length,
-      totalProfit: totalProfit,
-    }
-  }, [openBets])
-
   // Memoize seller data to prevent glitchy recalculations
   const stableSellerData = useMemo(() => {
     return {
@@ -127,50 +108,6 @@ export default function SellPage() {
 
     return () => clearTimeout(timer)
   }, [stableSellerData])
-
-  const fetchOpenBets = useCallback(async () => {
-    if (!user) return
-
-    try {
-      setOpenBetsLoading(true)
-      const supabase = createClient()
-
-      const { data: bets, error } = await supabase
-        .from('bets')
-        .select(
-          `
-          id,
-          sport,
-          league,
-          home_team,
-          away_team,
-          bet_type,
-          bet_description,
-          odds,
-          stake,
-          potential_payout,
-          status,
-          placed_at,
-          game_date,
-          sportsbook
-        `
-        )
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .order('placed_at', { ascending: false })
-        .limit(10)
-
-      if (error) {
-        console.error('Error fetching open bets:', error)
-      } else {
-        setOpenBets(bets || [])
-      }
-    } catch (error) {
-      console.error('Error fetching open bets:', error)
-    } finally {
-      setOpenBetsLoading(false)
-    }
-  }, [user])
 
   const fetchSellerData = useCallback(async () => {
     if (!user || fetchingRef.current) {

@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
       errors: 0,
     }
 
-    const processedBets = []
-    const errors = []
+    const processedBets: any[] = []
+    const errors: string[] = []
 
     // Process each betSlip (following your existing pattern)
     for (const betSlip of betSlips) {

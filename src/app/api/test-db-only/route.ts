@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // Generate a test UUID (proper format)
     const testUserId = '00000000-0000-4000-8000-' + Date.now().toString().slice(-12)
 
-    const { data, error } = await serviceSupabase
+    const { error } = await serviceSupabase
       .from('profiles')
       .insert({
         id: testUserId,

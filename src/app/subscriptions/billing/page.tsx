@@ -54,10 +54,10 @@ export default function BillingManagementPage() {
   >('overview')
   const [isLoading, setIsLoading] = useState(true)
   const [billingData, setBillingData] = useState({
-    paymentMethods: [],
-    upcomingCharges: [],
-    billingHistory: [],
-    preferences: {},
+    paymentMethods: [] as any[],
+    upcomingCharges: [] as any[],
+    billingHistory: [] as any[],
+    preferences: {} as any,
   })
 
   // Mock data - replace with actual API calls

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') || '/dashboard'
 
   if (code) {
-    const { supabase } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     try {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)

@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < strategies.length; i++) {
       const strategy = strategies[i]
+      if (!strategy) continue
 
       // Create 1-3 subscribers per strategy
       const subscriberCount = Math.floor(Math.random() * 3) + 1

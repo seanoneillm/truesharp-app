@@ -1,5 +1,4 @@
 import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface CreateStrategyRequest {

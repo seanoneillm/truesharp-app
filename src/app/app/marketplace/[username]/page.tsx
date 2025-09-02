@@ -139,7 +139,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                           {seller.tier.charAt(0).toUpperCase() + seller.tier.slice(1)}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-lg text-gray-600">{user.displayName}</p>
+                      <p className="mt-1 text-lg text-gray-600">{user.display_name}</p>
 
                       {/* Quick Stats */}
                       <div className="mt-3 flex items-center space-x-6 text-sm text-gray-600">

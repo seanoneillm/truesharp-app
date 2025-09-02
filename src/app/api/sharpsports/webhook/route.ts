@@ -163,6 +163,7 @@ async function syncBetSlips(supabase: any, bettorId: string, userId: string) {
 async function processBetSlip(supabase: any, betSlip: any, userId: string) {
   try {
     const { bets, book } = betSlip
+    console.log('Processing book:', book)
 
     if (!bets || bets.length === 0) {
       console.log('SharpSports Webhook - BetSlip has no bets, skipping')
