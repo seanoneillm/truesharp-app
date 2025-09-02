@@ -25,7 +25,7 @@ export const navigationRoutes: NavigationRoute[] = [
   {
     name: 'Games',
     href: '/games',
-    icon: 'Gamepad2',
+    icon: 'Trophy',
     description: 'Live odds and betting interface',
     requiresAuth: true
   },

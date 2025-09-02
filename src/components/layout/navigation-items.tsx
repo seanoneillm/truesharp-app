@@ -6,10 +6,10 @@ import {
     BarChart3,
     CreditCard,
     DollarSign,
-    Gamepad2,
     Home,
     MessageSquare,
-    Store
+    Store,
+    Trophy
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -17,7 +17,7 @@ import { usePathname } from 'next/navigation'
 const iconMap = {
   Home,
   BarChart3,
-  Gamepad2,
+  Trophy,
   Store,
   DollarSign,
   CreditCard,

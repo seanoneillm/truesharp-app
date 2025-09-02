@@ -20,7 +20,8 @@ AS $$
     WHEN odds IS NULL THEN NULL
     WHEN odds > 0 THEN 100.0 / (odds + 100.0)
     ELSE abs(odds) / (abs(odds) + 100.0)
-  END;
+  END;  git add -A
+  git commit -m "Your commit message here"
 $$;
 
 CREATE OR REPLACE FUNCTION public.analytics_net_profit_for_bet(
