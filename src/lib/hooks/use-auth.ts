@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface User {
   id: string
@@ -315,4 +315,16 @@ export function useAuth() {
     signOut,
     refreshAuth
   }
+}
+
+// AuthProvider component for layout
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Initialize auth when provider mounts
+  useEffect(() => {
+    if (!globalAuthState.initialized && !globalAuthState.initPromise) {
+      initializeAuth()
+    }
+  }, [])
+
+  return React.createElement(React.Fragment, null, children)
 }

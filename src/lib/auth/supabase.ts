@@ -384,6 +384,9 @@ export const createBrowserClient = () =>
 // Direct client (for API routes)
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
+// Export alias for backward compatibility
+export { createClient } from '@supabase/supabase-js'
+
 // Export types for use in components
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Bet = Database['public']['Tables']['bets']['Row']

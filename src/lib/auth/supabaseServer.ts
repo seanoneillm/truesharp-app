@@ -263,3 +263,6 @@ export const createMiddlewareSupabaseClient = (request: NextRequest) => {
 
   return { supabase, response }
 }
+
+// Export alias for backward compatibility
+export const createRouteHandlerSupabaseClient = createServerSupabaseClient

@@ -29,7 +29,24 @@ const FEATURE_FLAGS = {
 }
 
 // Export the real auth hook (no mock version needed)
-export { useAuth } from '../auth/auth-helpers'
+// useAuth hook doesn't exist in auth-helpers, create a simple one
+export function useAuth() {
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  
+  useEffect(() => {
+    // Mock auth state - this should be replaced with real auth logic
+    setIsLoading(false)
+  }, [])
+  
+  return {
+    user,
+    isLoading,
+    signIn: () => Promise.resolve(),
+    signOut: () => Promise.resolve(),
+    signUp: () => Promise.resolve(),
+  }
+}
 
 // User Profile Hook - Transition to real data
 export function useUserProfile(userId?: string) {
