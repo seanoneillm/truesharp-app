@@ -187,7 +187,7 @@ export const AlertModal: React.FC<{
   isOpen: boolean
   onClose: () => void
   title: string
-  description: string
+  description: string | React.ReactNode
   variant?: 'default' | 'destructive' | 'success' | 'warning'
 }> = ({
   isOpen,
