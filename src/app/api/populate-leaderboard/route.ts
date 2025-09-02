@@ -1,9 +1,8 @@
-import { createServerClient } from '@/lib/supabase'
+import { createServerClient, createClient } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 import {
   calculateLeaderboardScore,
   isStrategyEligible,
-  type StrategyLeaderboardData,
 } from '@/lib/marketplace/ranking'
 
 export async function POST() {
@@ -153,13 +152,16 @@ export async function POST() {
       const eligibleStrategies = scoredStrategies.filter(s => s.is_eligible)
 
       for (let i = 0; i < eligibleStrategies.length; i++) {
+        const strategy = eligibleStrategies[i]
+        if (!strategy) continue
+        
         const { error: rankError } = await supabase
           .from('strategy_leaderboard')
           .update({ overall_rank: i + 1 })
-          .eq('id', eligibleStrategies[i].id)
+          .eq('id', strategy.id)
 
         if (rankError) {
-          console.error(`Error updating rank for strategy ${eligibleStrategies[i].id}:`, rankError)
+          console.error(`Error updating rank for strategy ${strategy.id}:`, rankError)
         }
       }
     }
@@ -194,7 +196,7 @@ export async function GET() {
     const { data: leaderboardStats, error } = await supabase
       .from('strategy_leaderboard')
       .select('id, is_eligible, verification_status, overall_rank, last_calculated_at')
-      .order('overall_rank', { ascending: true, nullsLast: true })
+      .order('overall_rank', { ascending: true, nullsFirst: false })
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -202,16 +204,16 @@ export async function GET() {
 
     const stats = {
       totalEntries: leaderboardStats?.length || 0,
-      eligibleEntries: leaderboardStats?.filter(s => s.is_eligible).length || 0,
+      eligibleEntries: leaderboardStats?.filter((s: any) => s.is_eligible).length || 0,
       verifiedEntries:
-        leaderboardStats?.filter(s => s.verification_status === 'verified').length || 0,
+        leaderboardStats?.filter((s: any) => s.verification_status === 'verified').length || 0,
       lastCalculated: leaderboardStats?.[0]?.last_calculated_at || null,
     }
 
     return NextResponse.json({
       success: true,
       stats,
-      topStrategies: leaderboardStats?.filter(s => s.is_eligible).slice(0, 10) || [],
+      topStrategies: leaderboardStats?.filter((s: any) => s.is_eligible).slice(0, 10) || [],
     })
   } catch (error) {
     console.error('Leaderboard status error:', error)

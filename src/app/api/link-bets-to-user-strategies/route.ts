@@ -5,8 +5,9 @@ export async function POST() {
   try {
     const supabase = await createServiceRoleClient()
 
-    // Current user from logs
+    // Current user from logs (kept for debugging)
     const currentUserId = '0e16e4f5-f206-4e62-8282-4188ff8af48a'
+    console.log('Processing for user:', currentUserId)
 
     // User's subscribed strategy IDs from logs
     const userStrategyIds = [

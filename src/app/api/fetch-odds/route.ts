@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < 7; i++) {
       const fetchDate = new Date(baseDate)
       fetchDate.setDate(baseDate.getDate() + i)
-      const dateStr = fetchDate.toISOString().split('T')[0]
+      const dateStr = fetchDate.toISOString().split('T')[0] || fetchDate.toISOString()
 
       // Create promises for each sport
       for (const sportKey of sportsToFetch) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const totalGames = results.reduce((sum, result) => sum + result.gameCount, 0)
     const successfulRequests = results.filter(r => r.success).length
     const rateLimitedRequests = results.filter(
-      r => r.error && r.error.includes('rate limit')
+      r => !r.success && 'error' in r && r.error && r.error.includes('rate limit')
     ).length
 
     // Group results by sport for better reporting
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           if (result.success) {
             sportData.successfulDays += 1
           }
-          if (result.error && result.error.includes('rate limit')) {
+          if (!result.success && 'error' in result && result.error && result.error.includes('rate limit')) {
             sportData.rateLimited += 1
           }
         }

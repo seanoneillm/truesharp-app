@@ -1,5 +1,14 @@
 // FILE: src/lib/hooks/use-analytics.ts (Enhanced version)
 import type { User } from '@supabase/auth-helpers-nextjs'
+
+// Support both Supabase User and custom User from useAuth
+type CustomUser = {
+  id: string
+  email: string
+  name?: string
+}
+
+type SupportedUser = User | CustomUser
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   fetchEnhancedAnalytics,
@@ -191,7 +200,7 @@ const defaultFilters: AnalyticsFilters = {
   timeframe: '30d',
 }
 
-export function useAnalytics(user: User | null = null, isPro: boolean = false) {
+export function useAnalytics(user: SupportedUser | null = null, isPro: boolean = false) {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       // -1 = yesterday, 0 = today
       const fetchDate = new Date()
       fetchDate.setDate(fetchDate.getDate() + i)
-      const dateStr = fetchDate.toISOString().split('T')[0]
+      const dateStr = fetchDate.toISOString().split('T')[0] || fetchDate.toISOString()
 
       console.log(`📅 Processing date: ${dateStr} (${i === -1 ? 'yesterday' : 'today'})`)
 
@@ -228,7 +228,7 @@ async function updateGameOddsWithScores(supabase: any, game: any) {
         console.log(
           `📝 Found ${allOdds.length} total odds for game ${gameId} (but all appear to have scores already):`
         )
-        allOdds.forEach((odd, i) => {
+        allOdds.forEach((odd: any, i: number) => {
           console.log(`  Odd ${i + 1}: id=${odd.id}, score=${odd.score}`)
         })
       } else {
@@ -412,7 +412,7 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
     console.log(
       `📝 Found ${pendingBets.length} pending bets to potentially settle for game ${gameId}`
     )
-    pendingBets.forEach((bet, index) => {
+    pendingBets.forEach((bet: any, index: number) => {
       console.log(
         `  Bet ${index + 1}: id=${bet.id}, type=${bet.bet_type}, side=${bet.side}, oddid=${bet.oddid}, line=${bet.line_value}`
       )
@@ -662,7 +662,7 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
       console.error('❌ Error fetching all bets for debug:', allBetsError)
     } else {
       console.log(`📊 Sample of all bets (${allBets?.length || 0} found):`)
-      allBets?.forEach(bet => {
+      allBets?.forEach((bet: any) => {
         console.log(
           `  - Bet ${bet.id.substring(0, 8)}: status="${bet.status}", type="${bet.bet_type}", game_id="${bet.game_id}"`
         )
@@ -736,7 +736,7 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
     console.log(`📝 Found ${pendingBets.length} pending bets to check`)
 
     // Filter bets that have game_id
-    const betsWithGameId = pendingBets.filter(bet => bet.game_id)
+    const betsWithGameId = pendingBets.filter((bet: any) => bet.game_id)
     console.log(`📝 ${betsWithGameId.length} bets have game_id values`)
 
     if (betsWithGameId.length > 0) {

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         // Since leaderboard_score column doesn't exist, order by ROI for now
         query = query
           .order('roi_percentage', { ascending: false })
-          .order('overall_rank', { ascending: true, nullsLast: true })
+          .order('overall_rank', { ascending: true, nullsFirst: false })
         break
       case 'roi':
         query = query.order('roi_percentage', { ascending: false })
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         break
       default:
         // Default to overall rank if leaderboard score isn't available
-        query = query.order('overall_rank', { ascending: true, nullsLast: true })
+        query = query.order('overall_rank', { ascending: true, nullsFirst: false })
     }
 
     const { data: leaderboardData, error } = await query
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
         win_rate: parseFloat(item.win_rate?.toString() || '0'),
         overall_rank: item.overall_rank,
         sport_rank: item.sport_rank,
-        leaderboard_score: undefined,
+        leaderboard_score: 0,
         primary_sport: item.primary_sport,
         strategy_type: item.strategy_type,
         bet_type: item.bet_type,
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
         last_bet_date: null,
         last_updated: item.updated_at,
         created_at: item.created_at,
-        start_date: strategyDetail?.start_date || null,
+        start_date: strategyDetail?.start_date || '',
       }
     })
 

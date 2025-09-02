@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
         if (jwt && jwt.length > 100) {
           const parts = jwt.split('.')
-          if (parts.length === 3) {
+          if (parts.length === 3 && parts[1]) {
             const payload = JSON.parse(atob(parts[1]))
             const now = Math.floor(Date.now() / 1000)
 

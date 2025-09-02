@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
     const userId = '28991397-dae7-42e8-a822-0dffc6ff49b7'
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     console.log('Successfully created test bets:', insertedBets)
 
     // Verify the bets were created
-    const { data: verifyBets, error: verifyError } = await supabase
+    const { data: verifyBets } = await supabase
       .from('bets')
       .select('id, sport, bet_description, status, game_date, strategy_id')
       .eq('user_id', userId)

@@ -20,7 +20,7 @@ export async function POST() {
     }
 
     console.log('Found users:', users)
-    const userId = users[0].id
+    const userId = users[0]!.id
 
     // 2. Get existing strategies
     const { data: strategies, error: strategiesError } = await supabase
@@ -36,7 +36,7 @@ export async function POST() {
     }
 
     console.log('Found strategies:', strategies)
-    const strategyId = strategies[0].id
+    const strategyId = strategies[0]!.id
 
     // 3. Create subscription if doesn't exist
     const { data: existingSub } = await supabase
@@ -49,7 +49,7 @@ export async function POST() {
     if (!existingSub) {
       const { error: subError } = await supabase.from('subscriptions').insert({
         subscriber_id: userId,
-        seller_id: strategies[0].user_id,
+        seller_id: strategies[0]!.user_id,
         strategy_id: strategyId,
         status: 'active',
         frequency: 'monthly',

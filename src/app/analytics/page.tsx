@@ -6,7 +6,6 @@ import { BetsTab } from '@/components/analytics/bets-tab'
 import { FilterOptions, FilterSystem } from '@/components/analytics/filter-system'
 import { OverviewTab } from '@/components/analytics/overview-tab'
 import { ProUpgradePrompt } from '@/components/analytics/pro-upgrade-prompt'
-import { SharpSportsIntegration } from '@/components/analytics/sharpsports-integration'
 import { StrategiesTab } from '@/components/analytics/strategies-tab'
 import { AnalyticsTab, TabNavigation } from '@/components/analytics/tab-navigation'
 import ProtectedRoute from '@/components/auth/protected-route'
@@ -18,30 +17,6 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { RefreshCw, Link } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
-// Helper functions for enhanced analytics
-function calculateCurrentStreak(bets: Bet[]): { type: 'win' | 'loss' | 'none'; count: number } {
-  if (!bets.length) return { type: 'none', count: 0 }
-
-  const sortedBets = [...bets]
-    .filter(bet => bet.status === 'won' || bet.status === 'lost')
-    .sort((a, b) => new Date(b.placed_at || 0).getTime() - new Date(a.placed_at || 0).getTime())
-
-  if (!sortedBets.length) return { type: 'none', count: 0 }
-
-  const currentResult = sortedBets[0]?.status === 'won' ? 'win' : 'loss'
-  let count = 1
-
-  for (let i = 1; i < sortedBets.length; i++) {
-    const betResult = sortedBets[i]?.status === 'won' ? 'win' : 'loss'
-    if (betResult === currentResult) {
-      count++
-    } else {
-      break
-    }
-  }
-
-  return { type: currentResult, count }
-}
 
 function calculateTrends(monthlyData: { roi: number }[]): {
   trend: 'up' | 'down' | 'flat'
@@ -98,7 +73,8 @@ interface Strategy {
   id: string
   name: string
   description: string
-  filter_config: FilterOptions
+  filters: FilterOptions
+  filter_config?: FilterOptions // Keep for backward compatibility 
   monetized: boolean
   pricing_weekly?: number
   pricing_monthly?: number
@@ -164,7 +140,6 @@ export default function AnalyticsPage() {
     error: analyticsError,
     filters,
     updateFilters,
-    totalBets,
   } = useAnalytics(user, userProfile?.isPro || false)
 
   // Improved user profile fetching with better error handling
@@ -384,7 +359,12 @@ export default function AnalyticsPage() {
         const result = await response.json()
         console.log('✅ Strategies fetched successfully:', result.strategies?.length || 0)
         console.log('📋 Strategy data:', result.strategies)
-        setStrategies(result.strategies || [])
+        // Transform strategies to ensure filters property exists
+        const transformedStrategies = (result.strategies || []).map((strategy: any) => ({
+          ...strategy,
+          filters: strategy.filters || strategy.filter_config || defaultFilters
+        }))
+        setStrategies(transformedStrategies)
       } else {
         console.error('Failed to fetch strategies:', response.status)
         setStrategies([])
@@ -480,6 +460,7 @@ export default function AnalyticsPage() {
 
         return {
           id: `bet-${index + 11}`,
+          user_id: user?.id || '',
           sport: sport,
           league: sport,
           home_team: teams[1] || 'Home Team',
@@ -488,7 +469,7 @@ export default function AnalyticsPage() {
           bet_description: betDescription,
           description: betDescription,
           line_value: lineValue !== 0 ? lineValue : undefined,
-          odds: oddsValue > 0 ? `+${oddsValue}` : `${oddsValue}`,
+          odds: oddsValue,
           stake: Math.round(stakeAmount),
           potential_payout: Math.round(stakeAmount * (1 + Math.abs(oddsValue) / 100)),
           status: isWin ? ('won' as const) : ('lost' as const),
@@ -499,6 +480,9 @@ export default function AnalyticsPage() {
           game_date: new Date(new Date(placedDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
           sportsbook: sportsbook,
           settled_at: new Date(new Date(placedDate).getTime() + 3 * 60 * 60 * 1000).toISOString(),
+          bet_source: 'mock',
+          is_copy_bet: false,
+          is_parlay: false,
         } as Bet
       })
 
@@ -619,10 +603,6 @@ export default function AnalyticsPage() {
     })
   }, [updateFilters])
 
-  const handleExportData = async () => {
-    // TODO: Implement data export functionality
-    console.log('Exporting analytics data...')
-  }
 
   const handleCreateStrategy = async (strategy: {
     name: string
@@ -945,7 +925,11 @@ export default function AnalyticsPage() {
           {/* Tab Content */}
           {activeTab === 'overview' && (
             <OverviewTab
-              recentBets={recentBets}
+              recentBets={recentBets.map(bet => ({
+                ...bet,
+                odds: typeof bet.odds === 'number' ? bet.odds.toString() : bet.odds,
+                status: bet.status === 'cancelled' ? 'void' as const : bet.status
+              }))}
               chartData={chartData}
               selectedTimePeriod={
                 filters.timeframe === '7d'
@@ -1015,7 +999,7 @@ export default function AnalyticsPage() {
                   data={transformedAnalytics}
                   isPro={userProfile.isPro}
                   isLoading={false}
-                  user={user}
+                  user={user as any}
                 />
               )
             })()}

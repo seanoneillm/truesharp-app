@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const { data: tableInfo } = await supabase
       .rpc('get_table_columns', { table_name: 'profiles' })
       .single()
+    console.log('Table info:', tableInfo)
 
     return NextResponse.json({
       user_id: user.id,

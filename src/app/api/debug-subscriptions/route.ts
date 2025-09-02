@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,12 +23,16 @@ export async function GET(request: NextRequest) {
     const uniqueSubscribers = [...new Set(subscriberUsers?.map(s => s.subscriber_id) || [])]
 
     // Get user details for these subscribers
-    let userDetails = []
+    let userDetails: any[] = []
     if (uniqueSubscribers.length > 0) {
       const { data: users, error: profilesError } = await serviceSupabase
         .from('profiles')
         .select('id, email, username')
         .in('id', uniqueSubscribers)
+      
+      if (profilesError) {
+        console.error('Profiles error:', profilesError)
+      }
 
       userDetails = users || []
     }

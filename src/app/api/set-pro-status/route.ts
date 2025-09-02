@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
           'Set Pro Status API - Updating pro status to:',
           proStatus,
           'for user:',
-          effectiveUserId.substring(0, 8) + '...'
+          effectiveUserId ? effectiveUserId.substring(0, 8) + '...' : 'undefined'
         )
 
         const { data: profile, error } = await serviceSupabase

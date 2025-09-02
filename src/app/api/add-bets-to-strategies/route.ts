@@ -36,7 +36,7 @@ function validateBetAgainstStrategy(bet: any, strategy: any): boolean {
   }
 
   // Check bet type filter
-  if (filters.betTypes && !filters.betTypes.includes('All')) {
+  if (filters.betTypes && !filters.betTypes.includes('All') && filters.betTypes[0]) {
     const betTypeVariations = getBetTypeVariations(filters.betTypes[0])
     if (!betTypeVariations.includes(bet.bet_type)) {
       return false

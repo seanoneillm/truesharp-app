@@ -8,12 +8,17 @@ export async function GET(request: NextRequest) {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error('Auth error:', authError)
+    }
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const filter = searchParams.get('filter') || 'public' // public, subscriptions
     const sport = searchParams.get('sport')
+    console.log('Sport filter:', sport)
 
     let query = supabase
       .from('posts')

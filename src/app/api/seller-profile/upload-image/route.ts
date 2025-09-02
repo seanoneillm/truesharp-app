@@ -1,12 +1,10 @@
 import { createServerClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Upload image endpoint called')
 
-    const cookieStore = await cookies()
     const supabase = await createServerClient()
 
     // Get the current user

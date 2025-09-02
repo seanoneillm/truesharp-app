@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/auth/supabase'
+import { createBrowserClient } from '@/lib/auth/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createBrowserClient()
     const {
       data: { user },
       error: authError,
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createBrowserClient()
     const {
       data: { user },
       error: authError,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createBrowserClient()
     const {
       data: { user },
       error: authError,

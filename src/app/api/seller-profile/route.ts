@@ -24,6 +24,9 @@ export async function GET(request: NextRequest) {
       .select('id, username, email')
       .limit(5)
 
+    if (debugError) {
+      console.error('Debug error:', debugError)
+    }
     console.log('Available profiles:', allProfiles)
 
     // Get profile with seller_profiles data and strategies
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
       )
       .eq('user_id', profile.id)
       .eq('is_monetized', true)
-      .order('overall_rank', { ascending: true, nullsLast: true })
+      .order('overall_rank', { ascending: true, nullsFirst: false })
 
     if (strategiesError) {
       console.error('Error fetching strategies:', strategiesError)
@@ -98,8 +101,10 @@ export async function GET(request: NextRequest) {
 
     // Merge profile with seller_profiles data
     // Priority: seller_profiles data overrides profiles data
-    // Note: seller_profiles is a single object, not an array
-    const sellerProfileData = profile.seller_profiles
+    // Note: seller_profiles is an array, get the first element
+    const sellerProfileData = Array.isArray(profile.seller_profiles) 
+      ? profile.seller_profiles[0] 
+      : profile.seller_profiles
     const sellerProfile = {
       ...profile,
       // Use seller_profiles bio if it exists, otherwise use profiles bio, otherwise empty string

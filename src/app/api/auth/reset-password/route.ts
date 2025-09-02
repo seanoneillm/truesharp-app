@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    const { supabase } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     // Check if user exists (optional - for security, we might want to always return success)
     const { data: existingUser } = await supabase

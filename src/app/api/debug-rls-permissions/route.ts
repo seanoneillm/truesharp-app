@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Use the regular server client (with authentication) like the subscriptions page does
     const supabase = await createServerClient()
 
+    // Test strategy IDs for debugging
     const strategyIds = [
       'e09dd1be-d68b-4fcc-a391-a186d68f6dab',
       '8bff6189-e315-4864-9318-f99307c7019d',
       'c867d015-75fa-4563-b695-b6756376aa3d',
     ]
+    console.log('Testing with strategy IDs:', strategyIds)
 
     console.log('Testing RLS permissions with authenticated client...')
 

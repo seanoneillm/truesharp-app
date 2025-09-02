@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, response } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     // Get current user before logout for logging
     const {
@@ -44,17 +44,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Clear any additional session data
+    // Create response and clear any additional session data
+    const response = NextResponse.json({ message: 'Logout successful' }, { status: 200 })
     response.cookies.delete('sb-access-token')
     response.cookies.delete('sb-refresh-token')
 
-    return NextResponse.json(
-      { message: 'Logout successful' },
-      {
-        status: 200,
-        headers: response.headers,
-      }
-    )
+    return response
   } catch (error) {
     console.error('Logout API error:', error)
 
@@ -65,7 +60,7 @@ export async function POST(request: NextRequest) {
 // Handle sign out with redirect
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, response } = createRouteHandlerSupabaseClient(request)
+    const supabase = await createRouteHandlerSupabaseClient(request)
 
     // Get current user before logout for logging
     const {
@@ -96,10 +91,8 @@ export async function GET(request: NextRequest) {
     // Redirect to home page after logout
     const redirectUrl = new URL('/', request.url)
 
-    return NextResponse.redirect(redirectUrl, {
-      status: 302,
-      headers: response.headers,
-    })
+    const response = NextResponse.redirect(redirectUrl, { status: 302 })
+    return response
   } catch (error) {
     console.error('Logout redirect error:', error)
 
