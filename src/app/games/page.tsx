@@ -408,24 +408,6 @@ function GamesPageContent() {
                 </div>
               )}
               
-              <button
-                onClick={handleManualFetch}
-                disabled={isLoading || isFetching}
-                className={`
-                  flex items-center space-x-2 px-4 py-2 rounded-xl font-medium text-sm transition-all
-                  ${(isLoading || isFetching)
-                    ? 'bg-white/20 text-white/60 cursor-not-allowed'
-                    : 'bg-white text-blue-600 hover:bg-blue-50 shadow-sm'
-                  }
-                `}
-              >
-                <RefreshCw className={`w-4 h-4 ${(isLoading || isFetching) ? 'animate-spin' : ''}`} />
-                <span>
-                  {isFetching ? 
-                    (retryCount > 0 ? `Retrying... (${retryCount}/2)` : 'Fetching...') : 
-                    isLoading ? 'Loading...' : 'Fetch Odds'}
-                </span>
-              </button>
             </div>
           </div>
         </div>
@@ -470,15 +452,6 @@ function GamesPageContent() {
                   {getSeasonMessage(activeLeague, selectedDate)}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <button
-                    onClick={handleManualFetch}
-                    disabled={isLoading || isFetching}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {isFetching ? 
-                      (retryCount > 0 ? `Retrying... (${retryCount}/2)` : 'Fetching...') : 
-                      'Check for Games'}
-                  </button>
                   {!isInSeason(activeLeague) && (
                     <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
                       💡 Try MLB or MLS for current games

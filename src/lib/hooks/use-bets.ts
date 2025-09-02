@@ -101,7 +101,7 @@ export function useBets(userId?: string): UseBetsReturn {
   const [betsData, setBetsData] = useState<Bet[]>([])
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
-    limit: 1000, // Increased limit for analytics
+    limit: 10000, // Analyze all bets for complete analytics
     total: 0,
     totalPages: 0,
     hasNext: false,

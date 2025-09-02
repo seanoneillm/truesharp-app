@@ -222,34 +222,42 @@ function MultiSelectDropdown({ values, options, onChange, placeholder, disabled 
 }
 
 export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }: FilterSystemProps) {
-  const [isExpanded, setIsExpanded] = useState(false) // Start collapsed for cleaner initial view
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [localFilters, setLocalFilters] = useState<FilterOptions>(filters)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   
-  // Render counter for debugging (remove in production)
-  const renderCountRef = useState(() => ({ count: 0 }))[0]
-  renderCountRef.count++
-  
-  console.log(`FilterSystem render count: ${renderCountRef.count}`)
+  // Update local filters when prop filters change (but only if no unsaved changes)
+  useState(() => {
+    if (!hasUnsavedChanges) {
+      setLocalFilters(filters)
+    }
+  })
 
-  const updateFilters = (updates: Partial<FilterOptions>) => {
-    onFiltersChange({ ...filters, ...updates })
+  const updateLocalFilters = (updates: Partial<FilterOptions>) => {
+    const newFilters = { ...localFilters, ...updates }
+    setLocalFilters(newFilters)
+    setHasUnsavedChanges(true)
   }
 
-  // Initialize default values if not set (matching new multi-select schema)
-  const currentBetTypes = filters.betTypes || ['All']
-  const currentLeagues = filters.leagues || ['All']
-  const currentStatuses = filters.statuses || ['All']
-  const currentIsParlays = filters.isParlays || ['All']
-  const currentSides = filters.sides || ['All']
-  const currentOddsTypes = filters.oddsTypes || ['All']
+  const saveFilters = () => {
+    onFiltersChange(localFilters)
+    setHasUnsavedChanges(false)
+    setIsExpanded(false) // Collapse after saving
+  }
+
+  const resetFilters = () => {
+    setLocalFilters(filters)
+    setHasUnsavedChanges(false)
+  }
 
   const getActiveFiltersCount = () => {
     let count = 0
-    if (!currentBetTypes.includes('All')) count++
-    if (!currentLeagues.includes('All')) count++
-    if (!currentStatuses.includes('All')) count++
-    if (!currentIsParlays.includes('All')) count++
-    if (!currentSides.includes('All')) count++
-    if (!currentOddsTypes.includes('All')) count++
+    if (!(filters.betTypes || ['All']).includes('All')) count++
+    if (!(filters.leagues || ['All']).includes('All')) count++
+    if (!(filters.statuses || ['All']).includes('All')) count++
+    if (!(filters.isParlays || ['All']).includes('All')) count++
+    if (!(filters.sides || ['All']).includes('All')) count++
+    if (!(filters.oddsTypes || ['All']).includes('All')) count++
     if (isPro) {
       if (filters.oddsRange) count++
       if (filters.spreadRange) count++
@@ -297,8 +305,13 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                   Free Tier
                 </Badge>
               )}
+              {hasUnsavedChanges && (
+                <Badge variant="outline" className="text-blue-600 border-blue-600">
+                  Unsaved Changes
+                </Badge>
+              )}
               {getActiveFiltersCount() > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Button variant="ghost" size="sm" onClick={() => { clearFilters(); setHasUnsavedChanges(false) }}>
                   <X className="w-4 h-4 mr-1" />
                   Clear All
                 </Button>
@@ -313,9 +326,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Bet Types</label>
                 <MultiSelectDropdown
-                  values={currentBetTypes}
+                  values={localFilters.betTypes || ['All']}
                   options={BET_TYPES}
-                  onChange={(values) => updateFilters({ betTypes: values })}
+                  onChange={(values) => updateLocalFilters({ betTypes: values })}
                   placeholder="Select bet types"
                 />
               </div>
@@ -324,9 +337,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Leagues</label>
                 <MultiSelectDropdown
-                  values={currentLeagues}
+                  values={localFilters.leagues || ['All']}
                   options={LEAGUES}
-                  onChange={(values) => updateFilters({ leagues: values })}
+                  onChange={(values) => updateLocalFilters({ leagues: values })}
                   placeholder="Select leagues"
                 />
               </div>
@@ -336,8 +349,8 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                 <label className="block text-sm font-medium mb-2">Start Date</label>
                 <Input
                   type="date"
-                  value={filters.customStartDate || ''}
-                  onChange={e => updateFilters({ customStartDate: e.target.value })}
+                  value={localFilters.customStartDate || ''}
+                  onChange={e => updateLocalFilters({ customStartDate: e.target.value })}
                   className="text-xs"
                 />
               </div>
@@ -349,9 +362,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Status</label>
                 <MultiSelectDropdown
-                  values={currentStatuses}
+                  values={localFilters.statuses || ['All']}
                   options={STATUS_OPTIONS}
-                  onChange={(values) => updateFilters({ statuses: values })}
+                  onChange={(values) => updateLocalFilters({ statuses: values })}
                   placeholder="Select statuses"
                 />
               </div>
@@ -360,9 +373,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Parlay</label>
                 <MultiSelectDropdown
-                  values={currentIsParlays}
+                  values={localFilters.isParlays || ['All']}
                   options={IS_PARLAY_OPTIONS}
-                  onChange={(values) => updateFilters({ isParlays: values })}
+                  onChange={(values) => updateLocalFilters({ isParlays: values })}
                   placeholder="Select parlay"
                 />
               </div>
@@ -371,9 +384,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Side</label>
                 <MultiSelectDropdown
-                  values={currentSides}
+                  values={localFilters.sides || ['All']}
                   options={SIDE_OPTIONS}
-                  onChange={(values) => updateFilters({ sides: values })}
+                  onChange={(values) => updateLocalFilters({ sides: values })}
                   placeholder="Select sides"
                 />
               </div>
@@ -382,9 +395,9 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
               <div>
                 <label className="block text-sm font-medium mb-2">Odds Type</label>
                 <MultiSelectDropdown
-                  values={currentOddsTypes}
+                  values={localFilters.oddsTypes || ['All']}
                   options={ODDS_TYPE_OPTIONS}
-                  onChange={(values) => updateFilters({ oddsTypes: values })}
+                  onChange={(values) => updateLocalFilters({ oddsTypes: values })}
                   placeholder="Select odds types"
                 />
               </div>
@@ -416,12 +429,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                     <Input
                       type="number"
                       placeholder="Min (e.g. -200)"
-                      value={filters.oddsRange?.min || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.oddsRange?.min || ''}
+                      onChange={(e) => updateLocalFilters({
                         oddsRange: { 
-                          ...filters.oddsRange, 
+                          ...localFilters.oddsRange, 
                           min: parseFloat(e.target.value) || 0, 
-                          max: filters.oddsRange?.max || 0 
+                          max: localFilters.oddsRange?.max || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -430,12 +443,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                     <Input
                       type="number"
                       placeholder="Max (e.g. +300)"
-                      value={filters.oddsRange?.max || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.oddsRange?.max || ''}
+                      onChange={(e) => updateLocalFilters({
                         oddsRange: { 
-                          ...filters.oddsRange, 
+                          ...localFilters.oddsRange, 
                           max: parseFloat(e.target.value) || 0, 
-                          min: filters.oddsRange?.min || 0 
+                          min: localFilters.oddsRange?.min || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -452,12 +465,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                       type="number"
                       step="0.5"
                       placeholder="Min (e.g. -14)"
-                      value={filters.spreadRange?.min || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.spreadRange?.min || ''}
+                      onChange={(e) => updateLocalFilters({
                         spreadRange: { 
-                          ...filters.spreadRange, 
+                          ...localFilters.spreadRange, 
                           min: parseFloat(e.target.value) || 0, 
-                          max: filters.spreadRange?.max || 0 
+                          max: localFilters.spreadRange?.max || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -467,12 +480,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                       type="number"
                       step="0.5"
                       placeholder="Max (e.g. +7)"
-                      value={filters.spreadRange?.max || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.spreadRange?.max || ''}
+                      onChange={(e) => updateLocalFilters({
                         spreadRange: { 
-                          ...filters.spreadRange, 
+                          ...localFilters.spreadRange, 
                           max: parseFloat(e.target.value) || 0, 
-                          min: filters.spreadRange?.min || 0 
+                          min: localFilters.spreadRange?.min || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -489,12 +502,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                       type="number"
                       step="0.5"
                       placeholder="Min (e.g. 40.5)"
-                      value={filters.totalRange?.min || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.totalRange?.min || ''}
+                      onChange={(e) => updateLocalFilters({
                         totalRange: { 
-                          ...filters.totalRange, 
+                          ...localFilters.totalRange, 
                           min: parseFloat(e.target.value) || 0, 
-                          max: filters.totalRange?.max || 0 
+                          max: localFilters.totalRange?.max || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -504,12 +517,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                       type="number"
                       step="0.5"
                       placeholder="Max (e.g. 55.5)"
-                      value={filters.totalRange?.max || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.totalRange?.max || ''}
+                      onChange={(e) => updateLocalFilters({
                         totalRange: { 
-                          ...filters.totalRange, 
+                          ...localFilters.totalRange, 
                           max: parseFloat(e.target.value) || 0, 
-                          min: filters.totalRange?.min || 0 
+                          min: localFilters.totalRange?.min || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -525,12 +538,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                     <Input
                       type="number"
                       placeholder="Min ($)"
-                      value={filters.stakeRange?.min || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.stakeRange?.min || ''}
+                      onChange={(e) => updateLocalFilters({
                         stakeRange: { 
-                          ...filters.stakeRange, 
+                          ...localFilters.stakeRange, 
                           min: parseFloat(e.target.value) || 0, 
-                          max: filters.stakeRange?.max || 0 
+                          max: localFilters.stakeRange?.max || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -539,12 +552,12 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                     <Input
                       type="number"
                       placeholder="Max ($)"
-                      value={filters.stakeRange?.max || ''}
-                      onChange={(e) => updateFilters({
+                      value={localFilters.stakeRange?.max || ''}
+                      onChange={(e) => updateLocalFilters({
                         stakeRange: { 
-                          ...filters.stakeRange, 
+                          ...localFilters.stakeRange, 
                           max: parseFloat(e.target.value) || 0, 
-                          min: filters.stakeRange?.min || 0 
+                          min: localFilters.stakeRange?.min || 0 
                         }
                       })}
                       disabled={!isPro}
@@ -554,6 +567,18 @@ export function FilterSystem({ isPro, filters, onFiltersChange, onClearFilters }
                 </div>
               </div>
             </div>
+            
+            {/* Save/Cancel Buttons */}
+            {hasUnsavedChanges && (
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveFilters} className="bg-blue-600 hover:bg-blue-700">
+                  Save Filters
+                </Button>
+              </div>
+            )}
           </CollapsibleContent>
         </Collapsible>
       </CardContent>
