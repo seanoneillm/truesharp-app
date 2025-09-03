@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -26,45 +25,48 @@ export async function POST(request: NextRequest) {
     console.log('Attempting to subscribe:', { email, firstName })
     console.log('Using API key:', process.env.BREVO_API_KEY ? 'Present' : 'Missing')
 
-    const response = await axios.post(
-      'https://api.brevo.com/v3/contacts',
-      {
+    const response = await fetch('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         email: email,
         attributes: {
           FNAME: firstName,
         },
         listIds: [3], // Your actual Brevo list ID
-      },
-      {
-        headers: {
-          'api-key': process.env.BREVO_API_KEY,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
-
-    console.log('Brevo response status:', response.status)
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Brevo API error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
+      }),
     })
 
-    // Handle specific Brevo errors
-    if (error.response?.status === 400) {
+    console.log('Brevo response status:', response.status)
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Brevo API error:', { status: response.status, data: errorData })
+
+      // Handle specific Brevo errors
+      if (response.status === 400) {
+        return NextResponse.json(
+          { error: errorData?.message || 'Invalid request to Brevo' },
+          { status: 400 }
+        )
+      } else if (response.status === 401) {
+        return NextResponse.json({ error: 'Invalid Brevo API key' }, { status: 401 })
+      } else if (response.status === 404) {
+        return NextResponse.json({ error: 'Brevo list not found - check list ID' }, { status: 404 })
+      }
+
       return NextResponse.json(
-        { error: error.response.data?.message || 'Invalid request to Brevo' },
-        { status: 400 }
+        { error: 'Failed to subscribe - check server logs' },
+        { status: 500 }
       )
-    } else if (error.response?.status === 401) {
-      return NextResponse.json({ error: 'Invalid Brevo API key' }, { status: 401 })
-    } else if (error.response?.status === 404) {
-      return NextResponse.json({ error: 'Brevo list not found - check list ID' }, { status: 404 })
     }
 
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Subscription error:', error.message)
     return NextResponse.json({ error: 'Failed to subscribe - check server logs' }, { status: 500 })
   }
 }

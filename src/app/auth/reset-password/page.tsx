@@ -6,9 +6,9 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { AlertCircle, CheckCircle, Eye, EyeOff, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -303,5 +303,19 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div>Loading...</div>
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

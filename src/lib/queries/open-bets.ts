@@ -397,12 +397,15 @@ export async function getSubscriberStrategiesWithOpenBets(
         description: (strategyObj as unknown as { description?: string }).description || '',
         user_id: (strategyObj as unknown as { user_id: string }).user_id,
         performance_roi: (strategyObj as unknown as { performance_roi?: number }).performance_roi,
-        performance_win_rate: (strategyObj as unknown as { performance_win_rate?: number }).performance_win_rate,
-        performance_total_bets: (strategyObj as unknown as { performance_total_bets?: number }).performance_total_bets,
+        performance_win_rate: (strategyObj as unknown as { performance_win_rate?: number })
+          .performance_win_rate,
+        performance_total_bets: (strategyObj as unknown as { performance_total_bets?: number })
+          .performance_total_bets,
         pricing_weekly: (strategyObj as unknown as { pricing_weekly?: number }).pricing_weekly,
         pricing_monthly: (strategyObj as unknown as { pricing_monthly?: number }).pricing_monthly,
         pricing_yearly: (strategyObj as unknown as { pricing_yearly?: number }).pricing_yearly,
-        subscriber_count: (strategyObj as unknown as { subscriber_count?: number }).subscriber_count,
+        subscriber_count: (strategyObj as unknown as { subscriber_count?: number })
+          .subscriber_count,
         open_bets: openBets,
         open_bets_count: openBets.length,
         total_potential_profit: totalPotentialProfit,
