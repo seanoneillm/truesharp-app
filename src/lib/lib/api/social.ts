@@ -1,4 +1,27 @@
-import { apiRequest, authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect as supabase } from './client'
+
+// Helper function to wrap Supabase queries for paginatedRequest
+async function wrapSupabaseQuery(query: any, params: any) {
+  const { data, error, count } = await query.range(
+    (params.page! - 1) * params.limit!,
+    params.page! * params.limit! - 1
+  )
+  
+  if (error) throw error
+  
+  return {
+    data: data || [],
+    pagination: {
+      page: params.page!,
+      limit: params.limit!,
+      total: count || 0,
+      totalPages: Math.ceil((count || 0) / params.limit!),
+      hasNext: (count || 0) > params.page! * params.limit!,
+      hasPrev: params.page! > 1,
+    },
+    success: true,
+  }
+}
 
 // Define fallback types for FeedFilters and PostForm
 interface FeedFilters {
@@ -89,7 +112,7 @@ export async function getSocialFeed(filters: FeedFilters = {}, options = { page:
       query = query.order('created_at', { ascending: false })
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -137,7 +160,7 @@ export async function createPost(postData: PostForm) {
 
 // Get post by ID
 export async function getPostById(postId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('posts')
       .select(
@@ -194,7 +217,7 @@ export async function togglePostLike(postId: string) {
       return { data: { liked: false }, error }
     } else {
       // Like the post
-      const { data, error } = await supabase
+      const { /*data,*/ error } = await supabase
         .from('post_likes')
         .insert({
           post_id: postId,
@@ -215,7 +238,7 @@ export async function togglePostLike(postId: string) {
 
 // Get post comments
 export async function getPostComments(postId: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const query = supabase
       .from('post_comments')
       .select(
@@ -233,7 +256,7 @@ export async function getPostComments(postId: string, options = { page: 1, limit
       )
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -351,7 +374,7 @@ export async function sharePost(postId: string, content?: string) {
 
 // Get user's posts
 export async function getUserPosts(userId: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const query = supabase
       .from('posts')
       .select(
@@ -379,7 +402,7 @@ export async function getUserPosts(userId: string, options = { page: 1, limit: 2
       .eq('author_id', userId)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -437,7 +460,7 @@ export async function editPost(postId: string, updates: Partial<PostForm>) {
 
 // Get trending hashtags
 export async function getTrendingHashtags(limit = 10) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // This would typically be a database function that aggregates hashtag usage
     const { data: posts } = await supabase
       .from('posts')
@@ -476,7 +499,7 @@ export async function searchPosts(
   filters: FeedFilters = {},
   options = { page: 1, limit: 20 }
 ) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     let searchQuery = supabase
       .from('posts')
       .select(
@@ -515,7 +538,7 @@ export async function searchPosts(
 
     searchQuery = searchQuery.order('created_at', { ascending: false })
 
-    const paginated = await paginatedRequest(searchQuery, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(searchQuery, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -539,7 +562,7 @@ export async function reportPost(postId: string, reason: string, description?: s
 
 // Get post engagement stats
 export async function getPostEngagement(postId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const [likesResult, commentsResult, sharesResult] = await Promise.all([
       supabase.from('post_likes').select('*', { count: 'exact', head: true }).eq('post_id', postId),
 
@@ -589,7 +612,7 @@ export async function getUserActivityFeed(options = { page: 1, limit: 20 }) {
       )
       .eq('target_user_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }

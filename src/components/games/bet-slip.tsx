@@ -1,8 +1,8 @@
 'use client'
 
-import { BetSelection } from '@/lib/types/games'
 import { formatOdds } from '@/lib/formatters'
-import { X, ShoppingCart, Calculator } from 'lucide-react'
+import { BetSelection } from '@/lib/types/games'
+import { Calculator, ShoppingCart, X } from 'lucide-react'
 import { useState } from 'react'
 
 interface BetSlipProps {
@@ -159,7 +159,7 @@ export default function BetSlip({
                   {isParlay ? `${selections.length}-Pick Parlay` : 'Straight Bet'}
                 </span>
                 <div className="text-lg font-bold text-blue-600">
-                  {formatOdds(isParlay ? parlayOdds : selections[0].odds)}
+                  {formatOdds(isParlay ? parlayOdds : selections[0]?.odds || 0)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -265,7 +265,7 @@ export default function BetSlip({
                     {isParlay ? `${selections.length}-Pick Parlay` : 'Straight Bet'}
                   </span>
                   <div className="text-lg font-bold text-blue-600">
-                    {formatOdds(isParlay ? parlayOdds : selections[0].odds)}
+                    {formatOdds(isParlay ? parlayOdds : selections[0]?.odds || 0)}
                   </div>
                 </div>
                 <button

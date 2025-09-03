@@ -1,14 +1,14 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle, Info, X } from 'lucide-react'
+import * as React from 'react'
 
 export interface Toast {
   id: string
-  title?: string
-  description?: string
-  action?: React.ReactNode
-  variant?: 'default' | 'success' | 'destructive' | 'warning'
-  duration?: number
+  title?: string | undefined
+  description?: string | undefined
+  action?: React.ReactNode | undefined
+  variant?: 'default' | 'success' | 'destructive' | 'warning' | undefined
+  duration?: number | undefined
 }
 
 interface ToastProps extends Omit<Toast, 'id'> {
@@ -127,6 +127,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
 
       return () => clearTimeout(timer)
     }
+    
+    return undefined
   }, [toast.duration, onRemove])
 
   // Entry animation

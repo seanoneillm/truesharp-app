@@ -213,7 +213,7 @@ function generateMockPlayerProps(game: Game): PlayerProp[] {
         line: Math.round(line * 10) / 10, // Round to 1 decimal
         overPrice: overOdds,
         underPrice: underOdds,
-        sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)],
+        sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)] || 'DraftKings',
       })
     })
   })
@@ -234,7 +234,7 @@ function generateMockAlternateLines(game: Game): AlternateLine[] {
         team: game.home_team,
         line: i,
         price: -110 + Math.floor(Math.random() * 40 - 20),
-        sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)],
+        sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)] || 'DraftKings',
       })
     }
   }
@@ -247,7 +247,7 @@ function generateMockAlternateLines(game: Game): AlternateLine[] {
       type: 'total',
       line: i,
       price: -110 + Math.floor(Math.random() * 40 - 20),
-      sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)],
+      sportsbook: sportsbooks[Math.floor(Math.random() * sportsbooks.length)] || 'DraftKings',
     })
   }
 
@@ -439,7 +439,7 @@ function getGenericPlayersBySport(
     ],
   }
 
-  return genericPlayers[sportKey] || genericPlayers.default
+  return genericPlayers[sportKey] || genericPlayers.default || []
 }
 
 function getPropTypesForSport(sportKey: string): string[] {
@@ -494,7 +494,7 @@ function getPropTypesForSport(sportKey: string): string[] {
     default: ['Performance Metric A', 'Performance Metric B', 'Performance Metric C'],
   }
 
-  return propsBySort[sportKey] || propsBySort['default']
+  return propsBySort[sportKey] || propsBySort['default'] || []
 }
 
 function getBaseValueForProp(propType: string, _sportKey: string, position?: string): number {
@@ -556,7 +556,7 @@ function generateRealisticOdds(): number {
   const oddsOptions = [
     -130, -125, -120, -115, -110, -105, +100, +105, +110, +115, +120, +125, +130, +135, +140,
   ]
-  return oddsOptions[Math.floor(Math.random() * oddsOptions.length)]
+  return oddsOptions[Math.floor(Math.random() * oddsOptions.length)] || -110
 }
 
 function getBaseTotalForSport(sportKey: string): number {
@@ -568,7 +568,7 @@ function getBaseTotalForSport(sportKey: string): number {
     default: 45,
   }
 
-  return baseTotals[sportKey] || baseTotals['default']
+  return baseTotals[sportKey] || baseTotals['default'] || 45
 }
 
 function getGamePropsForSport(
@@ -636,7 +636,7 @@ function getGamePropsForSport(
     ],
   }
 
-  return propsBySort[sportKey] || propsBySort['default']
+  return propsBySort[sportKey] || propsBySort['default'] || []
 }
 
 function getFuturesForSport(
@@ -688,5 +688,5 @@ function getFuturesForSport(
     ],
   }
 
-  return futuresBySort[sportKey] || futuresBySort.default
+  return futuresBySort[sportKey] || futuresBySort.default || []
 }

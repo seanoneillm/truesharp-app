@@ -33,6 +33,7 @@ export interface Bet {
   potentialPayout: number
   actualPayout?: number
   status: 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
+  result?: 'won' | 'lost' | 'void' | 'cancelled'
   placedAt: Date
   settledAt?: Date
   gameDate: Date

@@ -33,8 +33,8 @@ interface UseNotificationsReturn {
 
 export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading] = useState(false)
+  const [error] = useState<string | null>(null)
 
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.read).length

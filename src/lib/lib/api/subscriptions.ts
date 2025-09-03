@@ -1,4 +1,27 @@
-import { authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect as supabase } from './client'
+
+// Helper function to wrap Supabase queries for paginatedRequest  
+async function wrapSupabaseQuery(query: any, params: any) {
+  const { data, error, count } = await query.range(
+    (params.page! - 1) * params.limit!,
+    params.page! * params.limit! - 1
+  )
+  
+  if (error) throw error
+  
+  return {
+    data: data || [],
+    pagination: {
+      page: params.page!,
+      limit: params.limit!,
+      total: count || 0,
+      totalPages: Math.ceil((count || 0) / params.limit!),
+      hasNext: (count || 0) > params.page! * params.limit!,
+      hasPrev: params.page! > 1,
+    },
+    success: true,
+  }
+}
 
 // Fallback type for SubscriptionForm
 interface SubscriptionForm {
@@ -33,7 +56,7 @@ export async function getUserSubscriptions(options = { page: 1, limit: 20 }) {
       )
       .eq('subscriber_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -304,7 +327,7 @@ export async function getSubscriptionPicks(options = { page: 1, limit: 20 }) {
       )
       .in('user_id', sellerIds)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -368,7 +391,7 @@ export async function getSellerSubscribers(options = { page: 1, limit: 20 }) {
       )
       .eq('seller_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }

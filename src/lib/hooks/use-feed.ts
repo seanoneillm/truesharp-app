@@ -3,7 +3,6 @@
 
 import {
   authenticatedRequest,
-  paginatedRequest,
   PaginatedResponse,
   supabaseDirect,
 } from '@/lib/api/client'
@@ -121,7 +120,7 @@ export function useFeed(): UseFeedReturn {
 
     if (filters.filter === 'live') {
       // Filter posts related to games starting soon
-      const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString()
+      // const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString()
       // TODO: Add game_time field to pick_posts or join with bets table
     }
 
@@ -144,16 +143,13 @@ export function useFeed(): UseFeedReturn {
         setError(null)
 
         const query = await buildQuery()
-        const paginationOptions = {
-          ...pagination,
-          page,
-        }
 
-        const result = await paginatedRequest<any>(query, paginationOptions)
+        // Execute query directly instead of using paginatedRequest
+        const result = await query
 
-        if (result.success) {
+        if (result.data) {
           // Transform pick_posts to feed posts
-          const transformedData: FeedPost[] = result.data.map(pick => ({
+          const transformedData: FeedPost[] = (result.data || []).map((pick: any) => ({
             id: pick.id,
             user_id: pick.seller_id,
             content: pick.analysis || pick.title,
@@ -186,11 +182,16 @@ export function useFeed(): UseFeedReturn {
           }))
 
           setPosts(prev => ({
-            ...result,
+            ...prev,
             data: append ? [...prev.data, ...transformedData] : transformedData,
+            pagination: {
+              ...prev.pagination,
+              page: page,
+            },
+            success: true,
           }))
         } else {
-          throw new Error(result.error || 'Failed to fetch posts')
+          throw new Error((result as any).error?.message || 'Failed to fetch posts')
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch feed')
@@ -250,13 +251,13 @@ export function useFeed(): UseFeedReturn {
 
       if (response.success && response.data) {
         const newPost: FeedPost = {
-          id: response.data.id,
-          user_id: response.data.seller_id,
+          id: (response.data as any).id,
+          user_id: (response.data as any).seller_id,
           content: content,
           post_type: postType,
           metadata,
-          created_at: response.data.posted_at,
-          user: response.data.seller || {
+          created_at: (response.data as any).posted_at,
+          user: (response.data as any).seller || {
             username: 'unknown',
             display_name: 'Unknown User',
             avatar_url: null,

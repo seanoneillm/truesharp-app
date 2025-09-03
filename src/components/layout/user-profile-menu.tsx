@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useProfile } from '@/lib/hooks/use-profile'
 import { cn } from '@/lib/utils'
-import { ChevronDown, HelpCircle, LogOut, Settings, User } from 'lucide-react'
+import { ChevronDown, HelpCircle, LogOut, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 

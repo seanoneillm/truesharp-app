@@ -4,7 +4,6 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { usePosts } from '@/lib/hooks/use-posts'
-import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Bookmark,
   Camera,
@@ -34,9 +33,6 @@ export default function FeedPage() {
   const [postImage, setPostImage] = useState<File | null>(null)
   const [postImagePreview, setPostImagePreview] = useState<string | null>(null)
   const [isPosting, setIsPosting] = useState(false)
-
-  // Use the auth hook to check authentication status
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
 
   // Use the posts hook
   const { posts, loading, error, hasMore, loadMore, refresh, createPost } = usePosts({

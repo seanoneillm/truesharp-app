@@ -50,20 +50,16 @@ type CelebrationPost = {
 type Post = PickPost | TextPost | CelebrationPost
 
 const fallbackUser: User = {
-  id: '',
-  username: '',
-  displayName: '',
-  avatar: '',
-  isVerified: false,
+  id: 'fallback',
+  display_name: 'Anonymous User',
+  username: 'anon',
   email: '',
+  isVerified: false,
   sellerEnabled: false,
   verificationStatus: 'unverified',
   totalFollowers: 0,
   totalFollowing: 0,
   joinDate: new Date(),
-  bio: '',
-  location: '',
-  website: '',
   createdAt: new Date(),
   updatedAt: new Date(),
 }

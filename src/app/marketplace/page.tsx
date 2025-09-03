@@ -69,7 +69,7 @@ export default function MarketplacePage() {
   }
 
   // Handle subscription modal
-  const handleSubscribeClick = (strategyId: string, sellerId: string) => {
+  const handleSubscribeClick = (strategyId: string) => {
     // Check if user is authenticated before allowing subscription
     if (!isAuthenticated || !user) {
       // Redirect to login page

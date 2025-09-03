@@ -11,7 +11,7 @@ interface ExportToolsProps {
   onExport: (format: string, options: any) => void
 }
 
-export const ExportTools: React.FC<ExportToolsProps> = ({ isPro, reportData, onExport }) => {
+export const ExportTools: React.FC<ExportToolsProps> = ({ isPro, reportData: _reportData, onExport }) => {
   const [selectedFormat, setSelectedFormat] = useState<string>('pdf')
   const [exportOptions, setExportOptions] = useState({
     includeCharts: true,

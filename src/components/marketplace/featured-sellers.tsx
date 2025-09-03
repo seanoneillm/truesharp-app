@@ -96,7 +96,7 @@ export function FeaturedSellers({ sellers }: FeaturedSellersProps) {
                           <CheckCircle className="ml-2 h-5 w-5 text-blue-500" />
                         )}
                       </div>
-                      <p className="text-sm text-gray-600">{seller.user.displayName}</p>
+                      <p className="text-sm text-gray-600">{seller.user.display_name}</p>
                     </div>
                   </div>
                   <Badge className={cn(getTierColor(seller.tier))}>

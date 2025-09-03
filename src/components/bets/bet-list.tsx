@@ -1,7 +1,7 @@
 // src/components/bets/bet-list.tsx
 import { useState } from 'react'
 import BetCard from './bet-card'
-import { Filter, Grid3X3, List, SortAsc } from 'lucide-react'
+import { Filter, Grid3X3, List } from 'lucide-react'
 
 interface Bet {
   id: string

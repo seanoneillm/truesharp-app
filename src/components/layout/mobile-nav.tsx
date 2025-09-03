@@ -1,25 +1,25 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  Menu,
-  X,
-  Home,
   BarChart3,
-  Store,
-  Users,
-  Settings,
-  DollarSign,
-  TrendingUp,
   Bell,
-  Search,
-  User,
-  LogOut,
+  // LogOut, // TS6133: unused import
   Crown,
+  DollarSign,
+  Home,
+  Menu,
+  Search,
+  Settings,
+  Store,
+  TrendingUp,
+  User,
+  Users,
+  X,
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 interface MobileNavProps {
   isOpen: boolean

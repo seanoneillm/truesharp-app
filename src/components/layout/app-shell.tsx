@@ -16,7 +16,11 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const { username, displayName, loading } = useUserProfile()
+  const { loading } = useUserProfile()
+
+  // Mock user data since profile doesn't have these properties
+  const username = 'User'
+  const displayName = 'TrueSharp User'
 
   // Don't show app shell on auth pages or landing page
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/'

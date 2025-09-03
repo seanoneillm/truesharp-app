@@ -22,7 +22,7 @@ export default function EnhancedMLBGameCard({
   useDatabaseOdds = false,
   useNewMLBOdds = false,
 }: EnhancedMLBGameCardProps) {
-  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('main')
+  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('Main Lines')
   const [activeSubTab, setActiveSubTab] = useState<string>('hitters')
 
   // Type guard to check if it's a DatabaseGame
@@ -222,7 +222,7 @@ export default function EnhancedMLBGameCard({
               <div className="mb-3">
                 <DatabaseMarketContent
                   game={gameForComponents}
-                  activeMainTab="main"
+                  activeMainTab="Main Lines"
                   activeSubTab=""
                   onBetClick={onOddsClick}
                 />

@@ -112,8 +112,8 @@ export default function MainLines({
                   gameTime,
                   marketType: 'moneyline',
                   selection: 'away',
-                  odds: moneylineOdds.away.price,
-                  sportsbook: moneylineOdds.away.sportsbook,
+                  odds: moneylineOdds.away!.price,
+                  sportsbook: moneylineOdds.away!.sportsbook,
                   description: `${awayTeam} ML`,
                 })
               }
@@ -140,10 +140,10 @@ export default function MainLines({
                   gameTime,
                   marketType: 'spread',
                   selection: 'away',
-                  line: spreadOdds.away.point,
-                  odds: spreadOdds.away.price,
-                  sportsbook: spreadOdds.away.sportsbook,
-                  description: `${awayTeam} ${spreadOdds.away.point > 0 ? '+' : ''}${spreadOdds.away.point}`,
+                  line: spreadOdds.away!.point,
+                  odds: spreadOdds.away!.price,
+                  sportsbook: spreadOdds.away!.sportsbook,
+                  description: `${awayTeam} ${spreadOdds.away!.point > 0 ? '+' : ''}${spreadOdds.away!.point}`,
                 })
               }
               size="sm"
@@ -169,10 +169,10 @@ export default function MainLines({
                   gameTime,
                   marketType: 'total',
                   selection: 'over',
-                  line: totalOdds.over.point,
-                  odds: totalOdds.over.price,
-                  sportsbook: totalOdds.over.sportsbook,
-                  description: `Over ${totalOdds.over.point}`,
+                  line: totalOdds.over!.point,
+                  odds: totalOdds.over!.price,
+                  sportsbook: totalOdds.over!.sportsbook,
+                  description: `Over ${totalOdds.over!.point}`,
                 })
               }
               size="sm"
@@ -200,8 +200,8 @@ export default function MainLines({
                   gameTime,
                   marketType: 'moneyline',
                   selection: 'home',
-                  odds: moneylineOdds.home.price,
-                  sportsbook: moneylineOdds.home.sportsbook,
+                  odds: moneylineOdds.home!.price,
+                  sportsbook: moneylineOdds.home!.sportsbook,
                   description: `${homeTeam} ML`,
                 })
               }
@@ -228,10 +228,10 @@ export default function MainLines({
                   gameTime,
                   marketType: 'spread',
                   selection: 'home',
-                  line: spreadOdds.home.point,
-                  odds: spreadOdds.home.price,
-                  sportsbook: spreadOdds.home.sportsbook,
-                  description: `${homeTeam} ${spreadOdds.home.point > 0 ? '+' : ''}${spreadOdds.home.point}`,
+                  line: spreadOdds.home!.point,
+                  odds: spreadOdds.home!.price,
+                  sportsbook: spreadOdds.home!.sportsbook,
+                  description: `${homeTeam} ${spreadOdds.home!.point > 0 ? '+' : ''}${spreadOdds.home!.point}`,
                 })
               }
               size="sm"
@@ -257,10 +257,10 @@ export default function MainLines({
                   gameTime,
                   marketType: 'total',
                   selection: 'under',
-                  line: totalOdds.under.point,
-                  odds: totalOdds.under.price,
-                  sportsbook: totalOdds.under.sportsbook,
-                  description: `Under ${totalOdds.under.point}`,
+                  line: totalOdds.under!.point,
+                  odds: totalOdds.under!.price,
+                  sportsbook: totalOdds.under!.sportsbook,
+                  description: `Under ${totalOdds.under!.point}`,
                 })
               }
               size="sm"

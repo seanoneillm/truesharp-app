@@ -265,7 +265,7 @@ export default function SettingsPage() {
           }
 
           // Upload new profile picture
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('profile-pictures')
             .upload(fileName, profileImageFile, {
               cacheControl: '3600',
@@ -314,7 +314,7 @@ export default function SettingsPage() {
       }
 
       // First, let's check if the profile exists
-      const { data: existingProfile, error: checkError } = await supabase
+      const { error: checkError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -1069,7 +1069,7 @@ export default function SettingsPage() {
                             <label className="relative inline-flex cursor-pointer items-center">
                               <input
                                 type="checkbox"
-                                checked={profile.public_profile}
+                                checked={profile.public_profile || false}
                                 onChange={async e => {
                                   const {
                                     data: { user },

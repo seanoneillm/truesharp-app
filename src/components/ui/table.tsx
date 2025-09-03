@@ -1,6 +1,6 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { ChevronUp, ChevronDown, MoreHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react'
+import * as React from 'react'
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
@@ -60,9 +60,9 @@ TableRow.displayName = 'TableRow'
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement> & {
-    sortable?: boolean
-    sortDirection?: 'asc' | 'desc' | null
-    onSort?: () => void
+    sortable?: boolean | undefined
+    sortDirection?: 'asc' | 'desc' | null | undefined
+    onSort?: (() => void) | undefined
   }
 >(({ className, sortable, sortDirection, onSort, children, ...props }, ref) => (
   <th
@@ -257,4 +257,4 @@ export const TableActions: React.FC<{
   )
 }
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption }
+export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow }

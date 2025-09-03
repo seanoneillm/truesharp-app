@@ -1,5 +1,14 @@
 // FILE: src/lib/hooks/use-analytics.ts (Enhanced version)
+import {
+  fetchEnhancedAnalytics,
+  type AnalyticsFilters as EnhancedFilters,
+  type MonthlyPerformanceData,
+  type PerformanceByLeagueData,
+  type ROIOverTimeData,
+  type WinRateVsExpectedData,
+} from '@/lib/analytics/enhanced-analytics'
 import type { User } from '@supabase/auth-helpers-nextjs'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Support both Supabase User and custom User from useAuth
 type CustomUser = {
@@ -9,15 +18,6 @@ type CustomUser = {
 }
 
 type SupportedUser = User | CustomUser
-import { useEffect, useState, useRef, useCallback } from 'react'
-import {
-  fetchEnhancedAnalytics,
-  type AnalyticsFilters as EnhancedFilters,
-  type ROIOverTimeData,
-  type PerformanceByLeagueData,
-  type WinRateVsExpectedData,
-  type MonthlyPerformanceData,
-} from '@/lib/analytics/enhanced-analytics'
 
 // Keep all your existing interfaces exactly the same
 export interface Bet {
@@ -41,6 +41,7 @@ export interface Bet {
   stake: number
   potential_payout: number
   status: 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
+  result?: 'won' | 'lost' | 'void' | 'cancelled'
   placed_at: string
   settled_at?: string
   game_date: string
@@ -200,7 +201,7 @@ const defaultFilters: AnalyticsFilters = {
   timeframe: '30d',
 }
 
-export function useAnalytics(user: SupportedUser | null = null, isPro: boolean = false) {
+export function useAnalytics(user: SupportedUser | null = null) {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

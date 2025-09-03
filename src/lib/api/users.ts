@@ -1,4 +1,4 @@
-import { apiRequest, authenticatedRequest, supabase } from './client'
+import { authenticatedRequest, supabaseDirect } from './client'
 
 // User profile interface to match your types
 interface UserProfile {
@@ -21,21 +21,21 @@ interface UserProfile {
 // Get current user profile
 export async function getCurrentUserProfile() {
   return authenticatedRequest(async userId => {
-    return await supabase.from('profiles').select('*').eq('id', userId).single()
+    return await supabaseDirect.from('profiles').select('*').eq('id', userId).single()
   })
 }
 
 // Update user profile
 export async function updateUserProfile(updates: Partial<UserProfile>) {
   return authenticatedRequest(async userId => {
-    return await supabase.from('profiles').update(updates).eq('id', userId).select().single()
+    return await supabaseDirect.from('profiles').update(updates).eq('id', userId).select().single()
   })
 }
 
 // Get public user profile by username
 export async function getUserProfileByUsername(username: string) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('profiles')
       .select(
         `
@@ -58,8 +58,8 @@ export async function getUserProfileByUsername(username: string) {
 
 // Get user profile by ID
 export async function getUserProfileById(userId: string) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('profiles')
       .select(
         `
@@ -88,19 +88,19 @@ export async function followUser(targetUserId: string) {
     }
 
     // Check if already following
-    const { data: existing } = await supabase
+    const { data: existingFollow } = await supabaseDirect
       .from('follows')
       .select('id')
       .eq('follower_id', userId)
       .eq('following_id', targetUserId)
       .single()
 
-    if (existing) {
+    if (existingFollow) {
       throw new Error('Already following this user')
     }
 
     // Create follow relationship
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('follows')
       .insert({
         follower_id: userId,
@@ -112,8 +112,8 @@ export async function followUser(targetUserId: string) {
     if (!error) {
       // Update follower counts
       await Promise.all([
-        supabase.rpc('increment_follower_count', { user_id: targetUserId }),
-        supabase.rpc('increment_following_count', { user_id: userId }),
+        supabaseDirect.rpc('increment_follower_count', { user_id: targetUserId }),
+        supabaseDirect.rpc('increment_following_count', { user_id: userId }),
       ])
     }
 
@@ -123,7 +123,7 @@ export async function followUser(targetUserId: string) {
 
 export async function unfollowUser(targetUserId: string) {
   return authenticatedRequest(async userId => {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('follows')
       .delete()
       .eq('follower_id', userId)
@@ -132,8 +132,8 @@ export async function unfollowUser(targetUserId: string) {
     if (!error) {
       // Update follower counts
       await Promise.all([
-        supabase.rpc('decrement_follower_count', { user_id: targetUserId }),
-        supabase.rpc('decrement_following_count', { user_id: userId }),
+        supabaseDirect.rpc('decrement_follower_count', { user_id: targetUserId }),
+        supabaseDirect.rpc('decrement_following_count', { user_id: userId }),
       ])
     }
 
@@ -144,7 +144,7 @@ export async function unfollowUser(targetUserId: string) {
 // Check if user is following another user
 export async function isFollowing(targetUserId: string) {
   return authenticatedRequest(async userId => {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('follows')
       .select('id')
       .eq('follower_id', userId)
@@ -161,8 +161,8 @@ export async function getUserFollowers(userId: string, options = { page: 1, limi
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('follows')
       .select(
         `
@@ -187,8 +187,8 @@ export async function getUserFollowing(userId: string, options = { page: 1, limi
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('follows')
       .select(
         `
@@ -213,8 +213,8 @@ export async function searchUsers(query: string, options = { page: 1, limit: 20 
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('profiles')
       .select(
         `
@@ -237,7 +237,7 @@ export async function searchUsers(query: string, options = { page: 1, limit: 20 
 // Enable seller account
 export async function enableSeller() {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('profiles')
       .update({ seller_enabled: true })
       .eq('id', userId)
@@ -248,12 +248,15 @@ export async function enableSeller() {
 
 // Get user stats
 export async function getUserStats(userId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // This would typically call a database function that aggregates user statistics
     const [betsResult, picksResult, subscriptionsResult] = await Promise.all([
-      supabase.from('bets').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-      supabase.from('picks').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-      supabase
+      supabaseDirect.from('bets').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+      supabaseDirect
+        .from('picks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabaseDirect
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('seller_id', userId)
@@ -279,7 +282,7 @@ export async function uploadAvatar(file: File) {
     const filePath = `avatars/${fileName}`
 
     // Upload file to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseDirect.storage
       .from('avatars')
       .upload(filePath, file, { upsert: true })
 
@@ -290,10 +293,10 @@ export async function uploadAvatar(file: File) {
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from('avatars').getPublicUrl(filePath)
+    } = supabaseDirect.storage.from('avatars').getPublicUrl(filePath)
 
     // Update profile with new avatar URL
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('profiles')
       .update({ avatar_url: publicUrl })
       .eq('id', userId)

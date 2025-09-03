@@ -1,4 +1,4 @@
-import { apiRequest, authenticatedRequest, supabase } from './client'
+import { authenticatedRequest, supabaseDirect as supabase } from './client'
 
 // User profile interface to match your types
 interface UserProfile {
@@ -34,7 +34,7 @@ export async function updateUserProfile(updates: Partial<UserProfile>) {
 
 // Get public user profile by username
 export async function getUserProfileByUsername(username: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('profiles')
       .select(
@@ -58,7 +58,7 @@ export async function getUserProfileByUsername(username: string) {
 
 // Get user profile by ID
 export async function getUserProfileById(userId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('profiles')
       .select(
@@ -161,7 +161,7 @@ export async function getUserFollowers(userId: string, options = { page: 1, limi
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('follows')
       .select(
@@ -187,7 +187,7 @@ export async function getUserFollowing(userId: string, options = { page: 1, limi
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('follows')
       .select(
@@ -213,7 +213,7 @@ export async function searchUsers(query: string, options = { page: 1, limit: 20 
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('profiles')
       .select(
@@ -248,7 +248,7 @@ export async function enableSeller() {
 
 // Get user stats
 export async function getUserStats(userId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // This would typically call a database function that aggregates user statistics
     const [betsResult, picksResult, subscriptionsResult] = await Promise.all([
       supabase.from('bets').select('*', { count: 'exact', head: true }).eq('user_id', userId),
@@ -279,7 +279,7 @@ export async function uploadAvatar(file: File) {
     const filePath = `avatars/${fileName}`
 
     // Upload file to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { /*data: uploadData,*/ error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { upsert: true })
 

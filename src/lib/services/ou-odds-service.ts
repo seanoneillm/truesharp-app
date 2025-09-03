@@ -22,6 +22,7 @@ export function parseOddId(oddId: string): ParsedOddId | null {
   const m = oddId.match(OURE)
   if (!m) return null
   const [, metric, subject, scope, side] = m
+  if (!metric || !subject || !scope || !side) return null
   return { metric, subject, scope, side: side as 'over' | 'under' }
 }
 
@@ -32,7 +33,7 @@ type NormalizedOUOdd = {
   row2: string // subtab
   row3: string // sub-subtab (market label)
   entityType: 'player' | 'team' | 'game'
-  entityId?: string // playerId or "home"/"away"/"all"
+  entityId: string // playerId or "home"/"away"/"all"
   entityLabel: string // "Mac Jones", "Home Team Total", etc.
   side: 'over' | 'under'
   line: number // from `line`
@@ -98,12 +99,12 @@ const MLB_OU_MAP: Record<
   pitching_outs: { row1: 'Player Props', row2: 'Pitchers', row3: 'Outs Recorded' },
 
   // Team Props
-  batting_homeRuns: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Home Runs' },
+  team_batting_homeRuns: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Home Runs' },
 
   // Game Props
-  batting_homeRuns: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Home Runs' },
-  pitching_strikeouts: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Strikeouts' },
-  pitching_hits: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Hits' },
+  game_batting_homeRuns: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Home Runs' },
+  game_pitching_strikeouts: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Strikeouts' },
+  game_pitching_hits: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Hits' },
 }
 
 const NFL_OU_MAP: Record<
@@ -188,20 +189,20 @@ const NFL_OU_MAP: Record<
   defense_tackles: { row1: 'Player Props', row2: 'Kicker/Defense', row3: 'Tackles' },
 
   fantasyScore: { row1: 'Player Props', row2: 'Any Player', row3: 'Fantasy Score' },
-  turnovers: { row1: 'Player Props', row2: 'Any Player', row3: 'Turnovers' },
+  player_turnovers: { row1: 'Player Props', row2: 'Any Player', row3: 'Turnovers' },
 
   // Team Props
-  touchdowns: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Touchdowns' },
-  fieldGoals_made: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Field Goals' },
-  turnovers: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Turnovers' },
-  defense_sacks: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Sacks' },
-  defense_tackles: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Tackles' },
+  team_touchdowns: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Touchdowns' },
+  team_fieldGoals_made: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Field Goals' },
+  team_turnovers: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Turnovers' },
+  team_defense_sacks: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Sacks' },
+  team_defense_tackles: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Tackles' },
 
   // Game Props
-  touchdowns: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Touchdowns' },
-  fieldGoals_made: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Field Goals' },
-  turnovers: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Turnovers' },
-  defense_sacks: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Sacks' },
+  game_touchdowns: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Touchdowns' },
+  game_fieldGoals_made: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Field Goals' },
+  game_turnovers: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Turnovers' },
+  game_defense_sacks: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Sacks' },
   longestTouchdown: { row1: 'Game Props', row2: 'Game Totals', row3: 'Longest TD' },
   timesTied: { row1: 'Game Props', row2: 'Game Totals', row3: 'Times Tied' },
 }
@@ -259,18 +260,18 @@ const NBA_OU_MAP: Record<
   'blocks+steals': { row1: 'Player Props', row2: 'Combo Props', row3: 'Blocks + Steals' },
 
   // Team Props
-  rebounds: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Rebounds' },
-  assists: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Assists' },
-  threePointers_made: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team 3-Pointers' },
-  turnovers: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Turnovers' },
+  team_rebounds: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Rebounds' },
+  team_assists: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Assists' },
+  team_threePointers_made: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team 3-Pointers' },
+  team_turnovers: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Turnovers' },
 
   // Game Props
-  rebounds: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Rebounds' },
-  assists: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Assists' },
-  threePointers_made: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total 3-Pointers' },
-  turnovers: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Turnovers' },
-  steals: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Steals' },
-  blocks: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Blocks' },
+  game_rebounds: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Rebounds' },
+  game_assists: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Assists' },
+  game_threePointers_made: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total 3-Pointers' },
+  game_turnovers: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Turnovers' },
+  game_steals: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Steals' },
+  game_blocks: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Blocks' },
 }
 
 const NHL_OU_MAP: Record<
@@ -313,16 +314,16 @@ const NHL_OU_MAP: Record<
   savePercentage: { row1: 'Player Props', row2: 'Goalies', row3: 'Save Percentage' },
 
   // Team Props
-  shots_onGoal: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Shots' },
-  hits: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Hits' },
-  penaltyMinutes: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Penalty Minutes' },
+  team_shots_onGoal: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Shots' },
+  team_hits: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Hits' },
+  team_penaltyMinutes: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Penalty Minutes' },
   powerPlayGoals: { row1: 'Team Props', row2: 'Team Totals', row3: 'Power Play Goals' },
   shortHandedGoals: { row1: 'Team Props', row2: 'Team Totals', row3: 'Short Handed Goals' },
 
   // Game Props
-  shots_onGoal: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Shots' },
-  hits: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Hits' },
-  penaltyMinutes: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Penalty Minutes' },
+  game_shots_onGoal: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Shots' },
+  game_hits: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Hits' },
+  game_penaltyMinutes: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Penalty Minutes' },
   powerPlays: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Power Plays' },
   firstGoalTime: { row1: 'Game Props', row2: 'Game Totals', row3: 'First Goal Time' },
 }
@@ -377,18 +378,18 @@ const SOCCER_OU_MAP: Record<
   punchesCatches: { row1: 'Player Props', row2: 'Goalkeepers', row3: 'Punches/Catches' },
 
   // Team Props
-  shots: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Shots' },
-  corners: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Corners' },
-  cards: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Cards' },
-  fouls: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Fouls' },
-  offsides: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Offsides' },
+  team_shots: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Shots' },
+  team_corners: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Corners' },
+  team_cards: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Cards' },
+  team_fouls: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Fouls' },
+  team_offsides: { row1: 'Team Props', row2: 'Team Totals', row3: 'Team Offsides' },
 
   // Game Props
-  shots: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Shots' },
-  corners: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Corners' },
-  cards: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Cards' },
-  fouls: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Fouls' },
-  offsides: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Offsides' },
+  game_shots: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Shots' },
+  game_corners: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Corners' },
+  game_cards: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Cards' },
+  game_fouls: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Fouls' },
+  game_offsides: { row1: 'Game Props', row2: 'Game Totals', row3: 'Total Offsides' },
   firstGoalTime: { row1: 'Game Props', row2: 'Game Totals', row3: 'First Goal Time' },
 }
 
@@ -451,7 +452,7 @@ export class OUOddsService {
         return null
       }
 
-      const { metric, subject, scope, side } = parsed
+      const { metric, subject, side } = parsed
 
       // Get metric mapping for this league
       const metricMap = getMetricMap(league)
@@ -495,7 +496,7 @@ export class OUOddsService {
         row2: mapping.row2,
         row3: mapping.row3,
         entityType,
-        entityId,
+        entityId: entityId || 'unknown',
         entityLabel,
         side,
         line,
@@ -664,14 +665,14 @@ export class OUOddsService {
       if (!organized[odd.row1]) {
         organized[odd.row1] = {}
       }
-      if (!organized[odd.row1][odd.row2]) {
-        organized[odd.row1][odd.row2] = {}
+      if (!organized[odd.row1]![odd.row2]) {
+        organized[odd.row1]![odd.row2] = {}
       }
-      if (!organized[odd.row1][odd.row2][odd.row3]) {
-        organized[odd.row1][odd.row2][odd.row3] = []
+      if (!organized[odd.row1]![odd.row2]![odd.row3]) {
+        organized[odd.row1]![odd.row2]![odd.row3] = []
       }
 
-      organized[odd.row1][odd.row2][odd.row3].push(odd)
+      organized[odd.row1]![odd.row2]![odd.row3]!.push(odd)
     }
 
     return organized

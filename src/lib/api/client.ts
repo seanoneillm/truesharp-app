@@ -3,6 +3,22 @@ import { createClient } from '@/lib/supabase'
 
 export const supabaseDirect = createClient()
 
+export class ApiError extends Error {
+  public status?: number
+  public code?: string
+  public type?: string
+  public userMessage?: string
+
+  constructor(message: string, status?: number, code?: string, type?: string) {
+    super(message)
+    this.name = 'ApiError'
+    if (status !== undefined) this.status = status
+    if (code !== undefined) this.code = code
+    if (type !== undefined) this.type = type
+    this.userMessage = message
+  }
+}
+
 export interface PaginatedResponse<T> {
   data: T[]
   pagination: {
@@ -94,7 +110,7 @@ export interface AuthApi {
 }
 
 export const authApi: AuthApi = {
-  async login(email: string, password: string, rememberMe?: boolean) {
+  async login(email: string, password: string) {
     try {
       const { data, error } = await supabaseDirect.auth.signInWithPassword({
         email,

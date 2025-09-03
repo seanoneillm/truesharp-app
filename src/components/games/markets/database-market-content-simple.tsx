@@ -16,7 +16,7 @@ function DatabaseMarketContent({
   activeMainTab,
   activeSubTab,
   activeSubSubTab,
-  onBetClick,
+  // onBetClick,
 }: DatabaseMarketContentProps) {
   return (
     <div className="space-y-4">

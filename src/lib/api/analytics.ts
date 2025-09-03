@@ -1,5 +1,5 @@
 import type { PerformanceMetrics } from '@/lib/types'
-import { authenticatedRequest, supabase } from './client'
+import { authenticatedRequest, supabaseDirect as supabase } from './client'
 
 // Define BetFilters interface for analytics
 interface BetFilters {

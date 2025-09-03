@@ -1,5 +1,5 @@
 // src/components/feed/index.ts
-export { CreatePost } from './create-post'
+export { default as CreatePost } from './create-post'
 export { FeedContainer } from './feed-container'
 export { FeedFilters } from './feed-filters'
 export { PostCard } from './post-card'

@@ -1,32 +1,29 @@
 'use client'
 
-import React, { useState } from 'react'
-import {
-  User,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  Calendar,
-  DollarSign,
-  Settings,
-  X,
-  Check,
-  AlertTriangle,
-  Star,
-  Award,
-  BarChart3,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  MoreVertical,
-  Eye,
-  CreditCard,
-  UserCheck,
-} from 'lucide-react'
-import { SubscriptionCardProps } from '@/types/subscriptions'
 import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
-import { OpenBet } from '@/lib/queries/open-bets'
+import { SubscriptionCardProps } from '@/types/subscriptions'
+import {
+  AlertTriangle,
+  // Star, // TS6133: unused import
+  // Award, // TS6133: unused import
+  BarChart3,
+  Check,
+  Clock,
+  CreditCard,
+  Eye,
+  MoreVertical,
+  // User, // TS6133: unused import
+  // TrendingUp, // TS6133: unused import
+  // TrendingDown, // TS6133: unused import
+  Target,
+  UserCheck,
+  // Calendar, // TS6133: unused import
+  // DollarSign, // TS6133: unused import
+  // Settings, // TS6133: unused import
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
+// import { OpenBet } from '@/lib/queries/open-bets' // TS6133: unused import
 
 export function SubscriptionCard({
   subscription,
@@ -82,9 +79,9 @@ export function SubscriptionCard({
     }
   }
 
-  const formatFrequency = (freq: string) => {
-    return freq.charAt(0).toUpperCase() + freq.slice(1)
-  }
+  // const formatFrequency = (freq: string) => { // TS6133: unused function
+  //   return freq.charAt(0).toUpperCase() + freq.slice(1)
+  // }
 
   const calculateMonthlyEquivalent = () => {
     switch (subscription.frequency) {
@@ -109,11 +106,11 @@ export function SubscriptionCard({
     return 'text-red-600'
   }
 
-  const getPerformanceIcon = (value: number) => {
-    if (value > 0) return <ArrowUpRight className="h-4 w-4" />
-    if (value < 0) return <ArrowDownRight className="h-4 w-4" />
-    return <Minus className="h-4 w-4" />
-  }
+  // const getPerformanceIcon = (value: number) => { // TS6133: unused function
+  //   if (value > 0) return <ArrowUpRight className="h-4 w-4" />
+  //   if (value < 0) return <ArrowDownRight className="h-4 w-4" />
+  //   return <Minus className="h-4 w-4" />
+  // }
 
   if (isLoading) {
     return <SubscriptionCardSkeleton />

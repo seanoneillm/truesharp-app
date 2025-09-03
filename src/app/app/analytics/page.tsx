@@ -390,7 +390,7 @@ export default function EnhancedAnalyticsPage() {
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
   const { analyticsData, isLoading, error, updateFilters, totalBets, filteredBetsCount } =
-    useAnalytics(user, isPro)
+    useAnalytics(user)
   // Extract bets array from analyticsData, fallback to empty array if not available
   const bets = analyticsData?.bets || []
 

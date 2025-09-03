@@ -18,25 +18,16 @@ export * from './hooks'
 // Re-export commonly used functions for convenience
 export {
   calculateROI,
-  calculateWinRate,
   cn,
   formatCurrency,
   formatOdds,
   formatPercentage,
+  isValidEmail,
+  isValidUsername,
   timeAgo,
-  validateEmail,
-  validatePassword,
-  validateUsername,
 } from './utils'
 
-export {
-  americanToDecimal,
-  calculateCLV,
-  calculateKellyCriterion,
-  calculatePayout,
-  calculateProfit,
-  oddsToImpliedProbability,
-} from './analytics/calculations'
+export { calculateKellyCriterion } from './analytics/calculations'
 
 export {
   formatBetStatus,
@@ -46,7 +37,8 @@ export {
   formatStreak,
 } from './formatters'
 
-export { validateForm, validateOdds, validateStake, ValidationResult } from './validations'
+export { validateForm, validateOdds, validateStake } from './validations'
+export type { ValidationResult } from './validations'
 
 // Type guards and utility functions
 // (Add more exports here as needed)

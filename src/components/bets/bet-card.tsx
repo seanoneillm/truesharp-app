@@ -103,7 +103,7 @@ function getBetTypeDisplay(betType: string) {
 }
 
 export default function BetCard({
-  id,
+  id: _id,
   description,
   odds,
   stake,

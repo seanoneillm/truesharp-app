@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { useEffect, useState } from 'react'
 
 export interface Post {
   id: string
@@ -153,6 +153,7 @@ export function usePosts(options: UsePostsOptions = {}) {
       const interval = setInterval(refresh, 30000) // Refresh every 30 seconds
       return () => clearInterval(interval)
     }
+    return undefined
   }, [autoRefresh])
 
   return {

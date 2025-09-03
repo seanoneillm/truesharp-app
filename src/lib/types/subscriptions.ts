@@ -136,8 +136,6 @@ export interface SubscriptionPick {
     placed_at: string
     settled_at?: string
     confidence?: number
-    prop_type?: string
-    Player_name?: string
   }
   copyBetStatus?: {
     isCopyBet: boolean
@@ -212,21 +210,6 @@ export interface PerformanceAnalysis {
     roi: number
     winRate: number
     subscriptionValue: number
-    totalBets: number
-    copiedBets: number
-    profit: number
-    subscriptionCost: number
-    netValue: number
-    last30DaysPerformance: {
-      bets: number
-      winRate: number
-      profit: number
-    }
-    allTimePerformance: {
-      bets: number
-      winRate: number
-      profit: number
-    }
     copiedVsOriginalPerformance: {
       copied: {
         bets: number

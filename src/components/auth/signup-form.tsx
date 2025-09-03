@@ -122,13 +122,13 @@ export function SignUpForm() {
     // Email validation
     const emailValidation = validateEmail(formData.email)
     if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error
+      newErrors.email = emailValidation.error ?? ''
     }
 
     // Username validation
     const usernameValidation = validateUsername(formData.username)
     if (!usernameValidation.isValid) {
-      newErrors.username = usernameValidation.error
+      newErrors.username = usernameValidation.error ?? ''
     } else if (usernameAvailable === false) {
       newErrors.username = 'Username is already taken'
     }
@@ -136,7 +136,7 @@ export function SignUpForm() {
     // Password validation
     const passwordValidation = validatePassword(formData.password)
     if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.error
+      newErrors.password = passwordValidation.error ?? ''
     }
 
     // Confirm password validation

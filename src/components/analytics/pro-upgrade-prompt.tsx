@@ -5,14 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Crown,
-  Zap,
   TrendingUp,
   BarChart3,
-  Target,
   Activity,
-  PieChart,
   LineChart,
-  Settings,
   Lock,
   CheckCircle,
   ArrowRight,
@@ -229,7 +225,6 @@ export function ProUpgradePrompt({
 
           <div className="space-y-2">
             {features.slice(0, 3).map((feature, index) => {
-              const Icon = feature.icon
               return (
                 <div key={index} className="flex items-center space-x-3 text-sm">
                   <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" />

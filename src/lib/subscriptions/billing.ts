@@ -1,4 +1,4 @@
-import { BillingHistory, BillingTransaction, SubscriptionManagement } from '@/types/subscriptions'
+import { BillingHistory } from '@/types/subscriptions'
 
 export interface StripeCustomerPortalOptions {
   return_url?: string
@@ -51,7 +51,7 @@ export class SubscriptionBillingManager {
   }
 
   async getBillingHistory(
-    userId: string,
+    _userId: string,
     page: number = 1,
     limit: number = 20
   ): Promise<BillingHistory> {
@@ -77,7 +77,7 @@ export class SubscriptionBillingManager {
     }
   }
 
-  async getPaymentMethods(userId: string): Promise<PaymentMethodInfo[]> {
+  async getPaymentMethods(_userId: string): Promise<PaymentMethodInfo[]> {
     try {
       const response = await fetch(`${this.apiBaseUrl}/billing/payment-methods`, {
         method: 'GET',

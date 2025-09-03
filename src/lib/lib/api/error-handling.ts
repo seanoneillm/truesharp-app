@@ -1,4 +1,4 @@
-import { ApiError } from './client'
+import { ApiError } from '../../api/client'
 
 // Error types enum
 export enum ErrorTypes {
@@ -300,12 +300,12 @@ export function reportError(error: EnhancedApiError, context?: Record<string, an
   // In a real app, this would send to error tracking service like Sentry
   console.error('API Error:', {
     type: error.type,
-    message: error.message,
+    message: (error as any).message,
     userMessage: error.userMessage,
-    status: error.status,
-    code: error.code,
+    status: (error as any).status,
+    code: (error as any).code,
     context,
-    stack: error.stack,
+    stack: (error as any).stack,
     timestamp: new Date().toISOString(),
   })
 
@@ -337,7 +337,7 @@ export const ErrorHandlers = {
       // Could trigger upgrade modal
       return new EnhancedApiError(
         ErrorTypes.SUBSCRIPTION_REQUIRED,
-        classifiedError.message,
+        (classifiedError as any).message,
         'Upgrade to Pro to access this feature'
       )
     }
@@ -349,7 +349,7 @@ export const ErrorHandlers = {
     if (classifiedError.type === ErrorTypes.INSUFFICIENT_FUNDS) {
       return new EnhancedApiError(
         ErrorTypes.INSUFFICIENT_FUNDS,
-        classifiedError.message,
+        (classifiedError as any).message,
         'Payment failed. Please check your payment method and try again'
       )
     }

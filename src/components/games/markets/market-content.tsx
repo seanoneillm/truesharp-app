@@ -84,7 +84,7 @@ export default function MarketContent({
       <div className="space-y-3">
         <div className="px-2 text-sm font-medium text-slate-700">{subcategory.label} Props</div>
         <div className="grid gap-2">
-          {subcategory.markets.slice(0, 6).map((market, index) => (
+          {subcategory.markets?.slice(0, 6).map((market, index) => (
             <div
               key={index}
               className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/50 p-2"
@@ -100,7 +100,7 @@ export default function MarketContent({
               </div>
             </div>
           ))}
-          {subcategory.markets.length > 6 && (
+          {subcategory.markets && subcategory.markets.length > 6 && (
             <div className="pt-2 text-center">
               <button className="text-xs font-medium text-blue-600 hover:text-blue-700">
                 View {subcategory.markets.length - 6} more props
@@ -166,7 +166,7 @@ export default function MarketContent({
       <div className="space-y-3">
         <div className="px-2 text-sm font-medium text-slate-700">{subTabLabel}</div>
         <div className="grid gap-2">
-          {markets.slice(0, 6).map((market, index) => (
+          {markets?.slice(0, 6).map((market, index) => (
             <div
               key={index}
               className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/50 p-2"
@@ -182,7 +182,7 @@ export default function MarketContent({
               </div>
             </div>
           ))}
-          {markets.length > 6 && (
+          {markets && markets.length > 6 && (
             <div className="pt-2 text-center">
               <button className="text-xs font-medium text-green-600 hover:text-green-700">
                 View {markets.length - 6} more props
@@ -248,7 +248,7 @@ export default function MarketContent({
       <div className="space-y-3">
         <div className="px-2 text-sm font-medium text-slate-700">{subTabLabel}</div>
         <div className="grid gap-2">
-          {markets.slice(0, 6).map((market, index) => (
+          {markets?.slice(0, 6).map((market, index) => (
             <div
               key={index}
               className="flex items-center justify-between rounded border border-slate-100 bg-slate-50/50 p-2"
@@ -264,7 +264,7 @@ export default function MarketContent({
               </div>
             </div>
           ))}
-          {markets.length > 6 && (
+          {markets && markets.length > 6 && (
             <div className="pt-2 text-center">
               <button className="text-xs font-medium text-purple-600 hover:text-purple-700">
                 View {markets.length - 6} more props
@@ -277,13 +277,13 @@ export default function MarketContent({
   }
 
   switch (activeMainTab) {
-    case 'main':
+    case 'Main Lines':
       return renderMainLines()
-    case 'player-props':
+    case 'Player Props':
       return renderPlayerProps()
-    case 'team-props':
+    case 'Team Props':
       return renderTeamProps()
-    case 'game-props':
+    case 'Game Props':
       return renderGameProps()
     default:
       return <div className="p-4 text-center text-slate-500">Select a tab to view markets</div>

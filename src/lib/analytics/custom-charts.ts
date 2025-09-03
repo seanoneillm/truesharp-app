@@ -127,11 +127,13 @@ function groupDataByXAxis(data: any[], xAxis: string): Record<string, any[]> {
       switch (xAxis) {
         case 'placed_at':
           // Group by date (YYYY-MM-DD)
-          key = new Date(bet.placed_at).toISOString().split('T')[0]
+          key = bet.placed_at
+            ? (new Date(bet.placed_at).toISOString().split('T')[0] ?? 'Unknown')
+            : 'Unknown'
           break
 
         case 'league':
-          key = bet.league || 'Unknown'
+          key = bet.league ?? 'Unknown'
           break
 
         case 'bet_type':

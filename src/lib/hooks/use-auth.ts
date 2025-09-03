@@ -53,30 +53,32 @@ const initializeAuth = async () => {
       })
 
       let currentUser = null
+      let refreshedSession = null
       if (!error && session?.user) {
         // Check if session is expired
         if (session.expires_at && session.expires_at * 1000 < Date.now()) {
           console.log('Session has expired, refreshing...')
           const {
-            data: { session: refreshedSession },
+            data: { session: newSession },
             error: refreshError,
           } = await supabase.auth.refreshSession()
 
-          if (refreshError || !refreshedSession) {
+          if (refreshError || !newSession) {
             console.log('Failed to refresh session, signing out')
             await supabase.auth.signOut()
             currentUser = null
           } else {
             console.log('Session refreshed successfully')
-            session = refreshedSession
+            refreshedSession = newSession
           }
         }
 
-        if (session?.user) {
+        const currentSession = refreshedSession || session
+        if (currentSession?.user) {
           currentUser = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email,
+            id: currentSession.user.id,
+            email: currentSession.user.email || '',
+            name: currentSession.user.user_metadata?.full_name || currentSession.user.email,
           }
           console.log('User found:', currentUser.email, 'User ID:', currentUser.id)
 

@@ -1,4 +1,4 @@
-import { SubscriptionPick, CopyBetDetection } from '@/types/subscriptions'
+import { SubscriptionPick } from '@/types/subscriptions'
 
 export interface CopyBetMatch {
   originalBet: SubscriptionPick

@@ -37,7 +37,7 @@ export function useUserProfile(userId?: string) {
   const realProfile = useRealUserProfile(userId)
   const [mockProfile, setMockProfile] = useState<User | null>(null)
   const [mockLoading, setMockLoading] = useState(true)
-  const [mockError, setMockError] = useState<string | null>(null)
+  const [mockError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!FEATURE_FLAGS.USE_REAL_PROFILE) {
@@ -48,6 +48,7 @@ export function useUserProfile(userId?: string) {
       }, 800)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [userId])
 
   const mockUpdateProfile = useCallback(

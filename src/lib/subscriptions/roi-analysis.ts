@@ -1,4 +1,4 @@
-import { Subscription, SubscriptionPerformance } from '@/types/subscriptions'
+import { Subscription } from '@/types/subscriptions'
 import { BetData } from './performance-calc'
 
 export interface ROIAnalysis {
@@ -257,7 +257,6 @@ function calculateConfidenceInterval(
   const lowerWinRate = Math.max(0, winRate - marginOfError)
   const upperWinRate = Math.min(1, winRate + marginOfError)
 
-  const totalStake = bets.reduce((sum, bet) => sum + bet.stake, 0)
   const lowerROI =
     totalCost > 0 ? ((lowerWinRate * avgOdds * bets.length - totalCost) / totalCost) * 100 : 0
   const upperROI =
@@ -392,7 +391,7 @@ function analyzeTrends(
   const n = recentMonths.length
   const sumX = xValues.reduce((a, b) => a + b, 0)
   const sumY = yValues.reduce((a, b) => a + b, 0)
-  const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0)
+  const sumXY = xValues.reduce((sum, x, i) => sum + x * (yValues[i] || 0), 0)
   const sumXX = xValues.reduce((sum, x) => sum + x * x, 0)
 
   const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
@@ -411,8 +410,8 @@ function analyzeTrends(
 }
 
 function projectFutureROI(
-  subscriptions: Subscription[],
-  userBets: BetData[],
+  _subscriptions: Subscription[],
+  _userBets: BetData[],
   historicalData: ROIHistoricalData
 ): ROIProjections {
   const recentPerformance = historicalData.monthlyROI.slice(-3) // Last 3 months

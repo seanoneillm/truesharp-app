@@ -29,7 +29,7 @@ const FEATURE_FLAGS = {
 }
 
 // Export the real auth hook (no mock version needed)
-export { useAuth } from '../auth/auth-helpers'
+export { useAuth } from '../auth/AuthProvider'
 
 // User Profile Hook - Transition to real data
 export function useUserProfile(userId?: string) {
@@ -40,7 +40,6 @@ export function useUserProfile(userId?: string) {
   // Mock version for gradual transition
   const [profile, setProfile] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Simulate loading
@@ -67,7 +66,7 @@ export function useUserProfile(userId?: string) {
   return {
     profile,
     isLoading,
-    error,
+    error: null,
     refetch: () => setProfile(mockData.users[0] ?? null),
     updateProfile,
   }

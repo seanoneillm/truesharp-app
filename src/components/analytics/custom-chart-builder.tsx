@@ -193,7 +193,7 @@ export function CustomChartBuilder({
           <div className="space-y-2">
             <Label>X-Axis (Categories)</Label>
             <Select
-              value={config.xAxis}
+              value={config.xAxis ?? ''}
               onValueChange={value => setConfig(prev => ({ ...prev, xAxis: value as any }))}
             >
               <SelectTrigger>
@@ -216,7 +216,7 @@ export function CustomChartBuilder({
           <div className="space-y-2">
             <Label>Y-Axis (Values)</Label>
             <Select
-              value={config.yAxis}
+              value={config.yAxis ?? ''}
               onValueChange={value => setConfig(prev => ({ ...prev, yAxis: value as any }))}
             >
               <SelectTrigger>

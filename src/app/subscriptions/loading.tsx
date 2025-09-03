@@ -67,7 +67,7 @@ export default function SubscriptionsLoading() {
         {/* Tabs Loading */}
         <div className="mb-8">
           <div className="flex w-fit space-x-2 rounded-2xl border border-slate-200/50 bg-white/70 p-2 shadow-lg backdrop-blur-sm">
-            {['overview', 'picks', 'billing'].map((tab, index) => (
+            {['overview', 'picks', 'billing'].map((_, index) => (
               <div
                 key={index}
                 className={`h-12 rounded-xl px-6 py-3 ${

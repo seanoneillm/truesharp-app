@@ -52,25 +52,6 @@ const IS_PARLAY_OPTIONS = ['All', 'true', 'false']
 const SIDE_OPTIONS = ['All', 'over', 'under', 'home', 'away']
 const ODDS_TYPE_OPTIONS = ['All', 'favorite', 'underdog'] // Based on odds +/-
 
-// Common sports and leagues that are likely in your database
-const SPORTS = [
-  'All',
-  'NFL',
-  'NBA',
-  'MLB',
-  'NHL',
-  'NCAAF',
-  'NCAAB',
-  'MLS',
-  'Premier League',
-  'Champions League',
-  'ATP',
-  'WTA',
-  'PGA Tour',
-  'UFC',
-  'Formula 1',
-  'NASCAR',
-]
 
 const LEAGUES = [
   'All',
@@ -98,79 +79,10 @@ const LEAGUES = [
   'IndyCar',
 ]
 
-const TIME_RANGES = ['All time', '7 days', '30 days', '3 months', 'This year', 'Custom']
-const SPORTSBOOKS = [
-  'All',
-  'DraftKings',
-  'FanDuel',
-  'BetMGM',
-  'Caesars',
-  'ESPN BET',
-  'BetRivers',
-  'Fanatics',
-]
 
-// Sport to leagues mapping
-const SPORT_LEAGUES: { [key: string]: string[] } = {
-  Football: ['NFL', 'NCAAF'],
-  Basketball: ['NBA', 'NCAAB'],
-  Baseball: ['MLB'],
-  Hockey: ['NHL'],
-  Soccer: [
-    'MLS',
-    'Premier League',
-    'Champions League',
-    'La Liga',
-    'Serie A',
-    'Bundesliga',
-    'Ligue 1',
-  ],
-  Tennis: ['ATP', 'WTA'],
-  Golf: ['PGA Tour', 'European Tour'],
-  MMA: ['UFC', 'Bellator'],
-  Racing: ['Formula 1', 'NASCAR', 'IndyCar'],
-}
 
-// Market categories based on sport
-const MARKET_CATEGORIES: { [key: string]: string[] } = {
-  All: ['All', 'Game Lines', 'Player Props', 'Game Props', 'Futures'],
-  Football: ['All', 'Game Lines', 'Player Props', 'Team Props', 'Futures'],
-  Basketball: ['All', 'Game Lines', 'Player Props', 'Team Props', 'Futures'],
-  Baseball: ['All', 'Game Lines', 'Player Props', 'Team Props', 'Futures'],
-  Hockey: ['All', 'Game Lines', 'Player Props', 'Team Props', 'Futures'],
-  Soccer: ['All', 'Match Lines', 'Player Props', 'Team Props', 'Tournament Futures'],
-  Tennis: ['All', 'Match Lines', 'Set Props', 'Game Props', 'Tournament Futures'],
-  Golf: ['All', 'Tournament Winner', 'Top 5/10/20', 'Head to Head', 'Props'],
-  MMA: ['All', 'Fight Lines', 'Method Props', 'Round Props', 'Fight Props'],
-  Racing: ['All', 'Race Winner', 'Podium Finish', 'Head to Head', 'Props'],
-}
 
-// Specific markets based on category
-const SPECIFIC_MARKETS: { [key: string]: string[] } = {
-  'Game Lines': ['All', 'Spread', 'Moneyline', 'Total', 'First Half', 'First Quarter'],
-  'Player Props': [
-    'All',
-    'Points',
-    'Rebounds',
-    'Assists',
-    'Passing Yards',
-    'Rushing Yards',
-    'Receiving Yards',
-  ],
-  'Team Props': ['All', 'Team Total', 'First to Score', 'Highest Scoring Quarter'],
-  'Game Props': ['All', 'First Touchdown', 'Longest TD', 'Safety', 'Pick Six'],
-  Futures: ['All', 'Championship Winner', 'Division Winner', 'Playoff Berth', 'Season Win Total'],
-  'Match Lines': ['All', 'Match Winner', 'Draw No Bet', 'Both Teams to Score'],
-  'Set Props': ['All', 'Set Winner', 'Games in Set', 'Tiebreak in Set'],
-  'Tournament Winner': ['All', 'Outright Winner', 'Top Amateur'],
-  'Fight Lines': ['All', 'Fight Winner', 'Method of Victory', 'Round Betting'],
-  'Race Winner': ['All', 'Race Winner', 'Fastest Lap', 'Constructor Winner'],
-}
 
-// Helper function to determine if odds represent favorite or underdog
-const getOddsType = (odds: number): 'favorite' | 'underdog' => {
-  return odds < 0 ? 'favorite' : 'underdog'
-}
 
 // Multi-Select Dropdown Component
 interface MultiSelectDropdownProps {
@@ -188,7 +100,6 @@ function MultiSelectDropdown({
   onChange,
   placeholder,
   disabled = false,
-  label,
 }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -294,7 +205,6 @@ export function FilterSystem({
   isPro,
   filters,
   onFiltersChange,
-  onClearFilters,
 }: FilterSystemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [localFilters, setLocalFilters] = useState<FilterOptions>(filters)
@@ -350,10 +260,10 @@ export function FilterSystem({
       isParlays: ['All'],
       sides: ['All'],
       oddsTypes: ['All'],
-      oddsRange: undefined,
-      spreadRange: undefined,
-      totalRange: undefined,
-      stakeRange: undefined,
+      oddsRange: { min: 0, max: 0 },
+      spreadRange: { min: 0, max: 0 },
+      totalRange: { min: 0, max: 0 },
+      stakeRange: { min: 0, max: 0 },
     })
   }
 

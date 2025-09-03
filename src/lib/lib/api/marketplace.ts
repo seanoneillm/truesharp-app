@@ -1,4 +1,4 @@
-import { apiRequest, authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect } from './client'
 // import type { Seller } from '@/lib/types'
 
 // Define SellerFilters interface
@@ -21,8 +21,8 @@ export async function getMarketplaceSellers(
   filters: SellerFilters = {},
   options = { page: 1, limit: 20 }
 ) {
-  return apiRequest(async () => {
-    let query = supabase
+  return authenticatedRequest(async () => {
+    let query = supabaseDirect
       .from('seller_profiles')
       .select(
         `
@@ -94,15 +94,35 @@ export async function getMarketplaceSellers(
         query = query.order('created_at', { ascending: false })
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(async (params) => {
+      const { data, error, count } = await query.range(
+        (params.page! - 1) * params.limit!,
+        params.page! * params.limit! - 1
+      )
+      
+      if (error) throw error
+      
+      return {
+        data: data || [],
+        pagination: {
+          page: params.page!,
+          limit: params.limit!,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / params.limit!),
+          hasNext: (count || 0) > params.page! * params.limit!,
+          hasPrev: params.page! > 1,
+        },
+        success: true,
+      }
+    }, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Get featured sellers
 export async function getFeaturedSellers(limit = 6) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('seller_profiles')
       .select(
         `
@@ -126,8 +146,8 @@ export async function getFeaturedSellers(limit = 6) {
 
 // Get seller profile by username
 export async function getSellerByUsername(username: string) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('seller_profiles')
       .select(
         `
@@ -153,27 +173,30 @@ export async function getSellerByUsername(username: string) {
 
 // Get seller statistics
 export async function getSellerStats(sellerId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // Get comprehensive seller statistics
     const [performanceResult, subscriptionResult, pickResult, revenueResult] = await Promise.all([
       // Performance stats
-      supabase
+      supabaseDirect
         .from('picks')
         .select('status, confidence, created_at')
         .eq('user_id', sellerId)
         .in('status', ['won', 'lost']),
 
       // Subscription stats
-      supabase
+      supabaseDirect
         .from('subscriptions')
         .select('tier, price, status, created_at')
         .eq('seller_id', sellerId),
 
       // Pick counts
-      supabase.from('picks').select('*', { count: 'exact', head: true }).eq('user_id', sellerId),
+      supabaseDirect
+        .from('picks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', sellerId),
 
       // Revenue (this would be calculated from subscriptions)
-      supabase
+      supabaseDirect
         .from('revenue_events')
         .select('amount_cents')
         .eq('seller_id', sellerId)
@@ -186,21 +209,21 @@ export async function getSellerStats(sellerId: string) {
     const revenue = revenueResult.data || []
 
     // Calculate performance metrics
-    const wonPicks = performance.filter(p => p.status === 'won').length
+    const wonPicks = performance.filter((p: any) => p.status === 'won').length
     const winRate = performance.length > 0 ? (wonPicks / performance.length) * 100 : 0
 
     // Calculate subscriber metrics
-    const activeSubscribers = subscriptions.filter(s => s.status === 'active').length
-    const totalRevenue = revenue.reduce((sum, r) => sum + r.amount_cents, 0) / 100
+    const activeSubscribers = subscriptions.filter((s: any) => s.status === 'active').length
+    const totalRevenue = revenue.reduce((sum: number, r: any) => sum + r.amount_cents, 0) / 100
 
     // Calculate recent performance (last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const recentPicks = performance.filter(p => new Date(p.created_at) >= thirtyDaysAgo)
+    const recentPicks = performance.filter((p: any) => new Date(p.created_at) >= thirtyDaysAgo)
     const recentWinRate =
       recentPicks.length > 0
-        ? (recentPicks.filter(p => p.status === 'won').length / recentPicks.length) * 100
+        ? (recentPicks.filter((p: any) => p.status === 'won').length / recentPicks.length) * 100
         : 0
 
     return {
@@ -213,7 +236,7 @@ export async function getSellerStats(sellerId: string) {
         totalRevenue,
         avgConfidence:
           performance.length > 0
-            ? performance.reduce((sum, p) => sum + (p.confidence || 0), 0) / performance.length
+            ? performance.reduce((sum: number, p: any) => sum + (p.confidence || 0), 0) / performance.length
             : 0,
       },
       error: null,
@@ -223,8 +246,8 @@ export async function getSellerStats(sellerId: string) {
 
 // Get seller's recent picks (public view)
 export async function getSellerRecentPicks(sellerId: string, options = { page: 1, limit: 10 }) {
-  return apiRequest(async () => {
-    const query = supabase
+  return authenticatedRequest(async () => {
+    const query = supabaseDirect
       .from('picks')
       .select(
         `
@@ -244,15 +267,36 @@ export async function getSellerRecentPicks(sellerId: string, options = { page: 1
       .eq('user_id', sellerId)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    
+    const paginated = await paginatedRequest(async (params) => {
+      const { data, error, count } = await query.range(
+        (params.page! - 1) * params.limit!,
+        params.page! * params.limit! - 1
+      )
+      
+      if (error) throw error
+      
+      return {
+        data: data || [],
+        pagination: {
+          page: params.page!,
+          limit: params.limit!,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / params.limit!),
+          hasNext: (count || 0) > params.page! * params.limit!,
+          hasPrev: params.page! > 1,
+        },
+        success: true,
+      }
+    }, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Search sellers
 export async function searchSellers(query: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
-    const searchQuery = supabase
+  return authenticatedRequest(async () => {
+    const searchQuery = supabaseDirect
       .from('seller_profiles')
       .select(
         `
@@ -273,15 +317,36 @@ export async function searchSellers(query: string, options = { page: 1, limit: 2
         bio.ilike.%${query}%,
         specialization.cs.{${query}}
       `)
-    const paginated = await paginatedRequest(searchQuery, options)
+    
+    const paginated = await paginatedRequest(async (params) => {
+      const { data, error, count } = await searchQuery.range(
+        (params.page! - 1) * params.limit!,
+        params.page! * params.limit! - 1
+      )
+      
+      if (error) throw error
+      
+      return {
+        data: data || [],
+        pagination: {
+          page: params.page!,
+          limit: params.limit!,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / params.limit!),
+          hasNext: (count || 0) > params.page! * params.limit!,
+          hasPrev: params.page! > 1,
+        },
+        success: true,
+      }
+    }, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Get seller subscription tiers
 export async function getSellerSubscriptionTiers(sellerId: string) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('seller_subscription_tiers')
       .select('*')
       .eq('seller_id', sellerId)
@@ -293,7 +358,7 @@ export async function getSellerSubscriptionTiers(sellerId: string) {
 // Check if user is subscribed to seller
 export async function checkSubscriptionStatus(sellerId: string) {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('subscriptions')
       .select('id, tier, status, expires_at')
       .eq('subscriber_id', userId)
@@ -309,8 +374,8 @@ export async function getSellerLeaderboard(
   _timeframe: 'week' | 'month' | 'all' = 'month',
   limit = 50
 ) {
-  return apiRequest(async () => {
-    let query = supabase
+  return authenticatedRequest(async () => {
+    let query = supabaseDirect
       .from('seller_profiles')
       .select(
         `
@@ -342,8 +407,8 @@ export async function getSellerLeaderboard(
 
 // Get seller performance by sport
 export async function getSellerSportPerformance(sellerId: string) {
-  return apiRequest(async () => {
-    const { data: picks, error } = await supabase
+  return authenticatedRequest(async () => {
+    const { data: picks, error } = await supabaseDirect
       .from('picks')
       .select('sport, status, confidence, created_at')
       .eq('user_id', sellerId)
@@ -355,7 +420,7 @@ export async function getSellerSportPerformance(sellerId: string) {
 
     // Group by sport and calculate performance
     const sportGroups = picks.reduce(
-      (groups, pick) => {
+      (groups: any, pick: any) => {
         const sport = pick.sport || 'Unknown'
         if (!groups[sport]) {
           groups[sport] = []
@@ -366,12 +431,12 @@ export async function getSellerSportPerformance(sellerId: string) {
       {} as Record<string, any[]>
     )
 
-    const sportPerformance = Object.entries(sportGroups).map(([sport, sportPicks]) => {
-      const wonPicks = sportPicks.filter(p => p.status === 'won').length
+    const sportPerformance = Object.entries(sportGroups).map(([sport, sportPicks]: [string, any]) => {
+      const wonPicks = sportPicks.filter((p: any) => p.status === 'won').length
       const winRate = sportPicks.length > 0 ? (wonPicks / sportPicks.length) * 100 : 0
       const avgConfidence =
         sportPicks.length > 0
-          ? sportPicks.reduce((sum, p) => sum + (p.confidence || 0), 0) / sportPicks.length
+          ? sportPicks.reduce((sum: number, p: any) => sum + (p.confidence || 0), 0) / sportPicks.length
           : 0
 
       return {
@@ -388,28 +453,31 @@ export async function getSellerSportPerformance(sellerId: string) {
 
 // Get marketplace statistics
 export async function getMarketplaceStats() {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const [sellersResult, activeSubscriptionsResult, totalRevenueResult, picksResult] =
       await Promise.all([
-        supabase
+        supabaseDirect
           .from('seller_profiles')
           .select('*', { count: 'exact', head: true })
           .eq('is_active', true),
 
-        supabase
+        supabaseDirect
           .from('subscriptions')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'active'),
 
-        supabase.from('revenue_events').select('amount_cents').eq('status', 'completed'),
+        supabaseDirect
+          .from('revenue_events')
+          .select('amount_cents')
+          .eq('status', 'completed'),
 
-        supabase.from('picks').select('*', { count: 'exact', head: true }),
+        supabaseDirect.from('picks').select('*', { count: 'exact', head: true }),
       ])
 
     const totalSellers = sellersResult.count || 0
     const activeSubscriptions = activeSubscriptionsResult.count || 0
     const totalRevenue =
-      (totalRevenueResult.data || []).reduce((sum, r) => sum + r.amount_cents, 0) / 100
+      (totalRevenueResult.data || []).reduce((sum: number, r: any) => sum + r.amount_cents, 0) / 100
     const totalPicks = picksResult.count || 0
 
     return {
@@ -427,7 +495,7 @@ export async function getMarketplaceStats() {
 // Report seller (content moderation)
 export async function reportSeller(sellerId: string, reason: string, description?: string) {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('seller_reports')
       .insert({
         reporter_id: userId,

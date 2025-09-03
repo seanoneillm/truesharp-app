@@ -6,15 +6,25 @@ import { useUserProfile } from '@/lib/hooks/use-user-profile'
 import { ImageIcon, MessageSquare, Star, TrendingUp, Trophy, X } from 'lucide-react'
 import { useState } from 'react'
 
+interface UserProfile {
+  username?: string
+  displayName?: string
+}
+
 interface CreatePostProps {
   onClose: () => void
 }
 
 export default function CreatePost({ onClose }: CreatePostProps) {
-  const [postType, setPostType] = useState<'text' | 'pick'>('text')
+  const [postType, setPostType] = useState<'text' | 'pick' | 'celebration'>('text')
   const [content, setContent] = useState('')
-  const { username, displayName, loading } = useUserProfile()
+  const { profile, loading } = useUserProfile()
   const [isPosting, setIsPosting] = useState(false)
+
+  // Extract user info from profile with fallbacks
+  const userProfile = profile as UserProfile | null
+  const username = userProfile?.username || 'User'
+  const displayName = userProfile?.displayName || userProfile?.username || 'User'
 
   // Pick-specific state
   const [pickData, setPickData] = useState({
@@ -22,18 +32,28 @@ export default function CreatePost({ onClose }: CreatePostProps) {
     title: '',
     confidence: 3,
     odds: '',
-    tier: 'free' as const,
+    tier: 'free' as 'free' | 'bronze' | 'silver' | 'premium',
   })
 
   const postTypes = [
     {
-      id: 'text',
+      id: 'text' as const,
       label: 'General Post',
       icon: MessageSquare,
       description: 'Share thoughts or analysis',
     },
-    { id: 'pick', label: 'Share Pick', icon: TrendingUp, description: 'Post a betting pick' },
-    { id: 'celebration', label: 'Celebrate Win', icon: Trophy, description: 'Share a big win' },
+    {
+      id: 'pick' as const,
+      label: 'Share Pick',
+      icon: TrendingUp,
+      description: 'Post a betting pick',
+    },
+    {
+      id: 'celebration' as const,
+      label: 'Celebrate Win',
+      icon: Trophy,
+      description: 'Share a big win',
+    },
   ]
 
   const sports = ['NFL', 'NBA', 'MLB', 'NHL', 'Soccer', 'Tennis']
@@ -85,7 +105,7 @@ export default function CreatePost({ onClose }: CreatePostProps) {
               {postTypes.map(type => (
                 <button
                   key={type.id}
-                  onClick={() => setPostType(type.id as any)}
+                  onClick={() => setPostType(type.id)}
                   className={`rounded-lg border p-4 text-left transition-colors ${
                     postType === type.id
                       ? 'border-blue-500 bg-blue-50'
@@ -125,7 +145,9 @@ export default function CreatePost({ onClose }: CreatePostProps) {
                   <label className="mb-2 block text-sm font-medium text-gray-700">Tier</label>
                   <select
                     value={pickData.tier}
-                    onChange={e => setPickData({ ...pickData, tier: e.target.value as any })}
+                    onChange={e =>
+                      setPickData({ ...pickData, tier: e.target.value as typeof pickData.tier })
+                    }
                     className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   >
                     {tiers.map(tier => (

@@ -10,10 +10,10 @@ class ApiCache {
   private defaultTTL = 5 * 60 * 1000 // 5 minutes
 
   // Generate cache key from function name and arguments
-  private generateKey(fn: string, args: any[] = []): string {
-    const argsString = JSON.stringify(args)
-    return `${fn}:${argsString}`
-  }
+  // private generateKey(fn: string, args: any[] = []): string {
+  //   const argsString = JSON.stringify(args)
+  //   return `${fn}:${argsString}`
+  // }
 
   // Check if cache entry is still valid
   private isValid<T>(entry: CacheEntry<T>): boolean {
@@ -193,7 +193,7 @@ export const CacheInvalidation = {
   },
 
   // Invalidate social caches when new post is created
-  invalidateSocialFeed: (userId?: string) => {
+  invalidateSocialFeed: () => {
     const stats = apiCache.getStats()
     stats.keys
       .filter(key => key.includes('social_feed') || key.includes('trending_hashtags'))

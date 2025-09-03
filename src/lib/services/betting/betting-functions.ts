@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { Bet, DatabaseBet, ParlayStatus, BetSubmissionResult } from './types'
-import { calculateSingleBetPayout, calculateParlayPayout, calculateProfit } from './odds-utils'
 import { mapBetToDatabase } from './bet-mapping'
+import { calculateParlayPayout, calculateSingleBetPayout } from './odds-utils'
+import { Bet, BetSubmissionResult, DatabaseBet, ParlayStatus } from './types'
 
 /**
  * Insert a single bet into the database
@@ -105,7 +105,7 @@ export async function insertParlayBet(
     })
 
     // Insert all bets in a transaction
-    const { data, error } = await supabase.from('bets').insert(dbBets).select('id')
+    const { error } = await supabase.from('bets').insert(dbBets).select('id')
 
     if (error) {
       console.error('Error inserting parlay bet:', error)
@@ -134,7 +134,7 @@ export async function insertParlayBet(
  */
 export function calculateParlayPayoutForUI(bets: Bet[], stake: number): number {
   if (bets.length === 0) return 0
-  if (bets.length === 1) return calculateSingleBetPayout(stake, bets[0].odds)
+  if (bets.length === 1 && bets[0]) return calculateSingleBetPayout(stake, bets[0].odds)
 
   const odds = bets.map(bet => bet.odds)
   return calculateParlayPayout(stake, odds)
@@ -238,7 +238,7 @@ export async function submitBet(
       }
     }
 
-    if (bets.length === 1) {
+    if (bets.length === 1 && bets[0]) {
       return await insertSingleBet(supabase, userId, bets[0], stake)
     } else {
       return await insertParlayBet(supabase, userId, bets, stake)

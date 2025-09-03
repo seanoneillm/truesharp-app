@@ -34,7 +34,7 @@ export default function SupabaseTestPage() {
       }
 
       // Test 2: Try to get session (should work even without auth)
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      const { error: sessionError } = await supabase.auth.getSession()
 
       if (sessionError) {
         console.error('🧪 Session error:', sessionError)

@@ -95,15 +95,15 @@ export class GamesDataService {
         .lt('game_time', endTime.toISOString())
         .order('game_time', { ascending: true })
 
+      if (gamesError) {
+        console.error('❌ Error fetching games:', gamesError)
+        throw new Error(`Failed to fetch games: ${gamesError.message || 'Unknown error'}`)
+      }
+
       // No fallback - only show games for the specific date
       if (!games || games.length === 0) {
         console.log(`⚠️ No games found for ${date}`)
         return []
-      }
-
-      if (gamesError) {
-        console.error('❌ Error fetching games:', gamesError)
-        throw new Error(`Failed to fetch games: ${gamesError.message || 'Unknown error'}`)
       }
 
       if (!games || games.length === 0) {

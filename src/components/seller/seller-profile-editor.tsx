@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Dialog,
   DialogContent,
@@ -10,10 +8,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Upload, X, Camera, Loader2, CheckCircle, User, Image as ImageIcon } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import {
+  CheckCircle,
+  Image as ImageIcon,
+  /* Camera, */ Loader2,
+  Upload,
+  User,
+  X,
+} from 'lucide-react'
+import { useRef, useState } from 'react'
 
 interface SellerProfileEditorProps {
   isOpen: boolean
@@ -145,7 +152,7 @@ export function SellerProfileEditor({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] w-full max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Seller Profile</DialogTitle>
+          <DialogTitle>Seller Profile</DialogTitle> {/* TS2322: remove className */}
           <DialogDescription>Customize your profile to attract subscribers</DialogDescription>
         </DialogHeader>
 

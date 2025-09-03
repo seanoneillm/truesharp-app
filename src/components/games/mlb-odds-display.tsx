@@ -1,14 +1,14 @@
 'use client'
 
-import { BetSelection } from '@/lib/types/games'
 import {
+  GameProp,
   MLBGameOdds,
   OddsData,
   PlayerProp,
   TeamProp,
-  GameProp,
   formatOddsDisplay,
 } from '@/lib/games/mlb-odds-processor'
+import { BetSelection } from '@/lib/types/games'
 import { useState } from 'react'
 export type MainTabType =
   | 'main'
@@ -52,10 +52,16 @@ export default function MLBOddsDisplay({
   ) => {
     onBetClick({
       gameId: gameOdds.gameId,
-      marketType,
+      sport: 'baseball_mlb',
+      homeTeam,
+      awayTeam,
+      gameTime: new Date().toISOString(), // Mock game time
+      marketType: marketType as 'moneyline' | 'spread' | 'total' | 'prop',
       selection,
       odds,
-      line,
+      line: typeof line === 'string' ? parseFloat(line) || undefined : line,
+      sportsbook: 'DraftKings',
+      description: `${selection} - ${marketType}`,
     })
   }
 
@@ -184,7 +190,7 @@ export default function MLBOddsDisplay({
       if (!grouped[prop.market]) {
         grouped[prop.market] = []
       }
-      grouped[prop.market].push(prop)
+      grouped[prop.market]!.push(prop) // Non-null assertion since we just checked
     })
     return grouped
   }
@@ -271,7 +277,7 @@ export default function MLBOddsDisplay({
         if (!acc[prop.market]) {
           acc[prop.market] = []
         }
-        acc[prop.market].push(prop)
+        acc[prop.market]!.push(prop) // Non-null assertion since we just checked
         return acc
       },
       {} as Record<string, TeamProp[]>

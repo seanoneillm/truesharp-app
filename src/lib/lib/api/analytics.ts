@@ -1,5 +1,5 @@
 import type { PerformanceMetrics } from '@/lib/types'
-import { authenticatedRequest, supabase } from './client'
+import { authenticatedRequest, supabaseDirect as supabase } from './client'
 
 // Define BetFilters interface for analytics
 interface BetFilters {
@@ -197,7 +197,7 @@ export async function getSportBreakdown(filters: BetFilters = {}) {
 
     // Group by sport and calculate metrics
     const sportGroups = bets.reduce(
-      (groups, bet) => {
+      (groups: Record<string, any[]>, bet: any) => {
         const sport = bet.sport || 'Unknown'
         if (!groups[sport]) {
           groups[sport] = []
@@ -209,7 +209,7 @@ export async function getSportBreakdown(filters: BetFilters = {}) {
     )
 
     const breakdown = Object.entries(sportGroups).map(([sport, sportBets]) => {
-      const metrics = calculatePerformanceMetrics(sportBets)
+      const metrics = calculatePerformanceMetrics(sportBets as any[])
       return {
         sport,
         ...metrics,
@@ -249,7 +249,7 @@ export async function getBetTypeBreakdown(filters: BetFilters = {}) {
 
     // Group by bet type and calculate metrics
     const betTypeGroups = bets.reduce(
-      (groups, bet) => {
+      (groups: Record<string, any[]>, bet: any) => {
         const betType = bet.bet_type || 'Unknown'
         if (!groups[betType]) {
           groups[betType] = []
@@ -261,7 +261,7 @@ export async function getBetTypeBreakdown(filters: BetFilters = {}) {
     )
 
     const breakdown = Object.entries(betTypeGroups).map(([betType, typeBets]) => {
-      const metrics = calculatePerformanceMetrics(typeBets)
+      const metrics = calculatePerformanceMetrics(typeBets as any[])
       return {
         betType,
         ...metrics,

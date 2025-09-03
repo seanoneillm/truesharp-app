@@ -1,7 +1,7 @@
 // FILE: src/lib/hooks/use-marketplace.ts
 // Marketplace data hook for sellers and marketplace browsing
 
-import { paginatedRequest, PaginatedResponse, supabaseDirect } from '@/lib/api/client'
+import { PaginatedResponse, supabaseDirect } from '@/lib/api/client'
 import { Profile } from '@/lib/auth/supabase'
 import { PaginationParams } from '@/lib/types'
 import { useCallback, useEffect, useState } from 'react'
@@ -45,7 +45,16 @@ interface UseMarketplaceReturn {
   loadMore: () => Promise<void>
   refresh: () => Promise<void>
   getSeller: (username: string) => Promise<MarketplaceSeller | null>
-  getSellerPerformance: (sellerId: string) => Promise<any>
+  getSellerPerformance: (sellerId: string) => Promise<{
+    performance: {
+      total_bets: number
+      win_rate: number
+      roi: number
+      profit: number
+    }
+    recentBets: unknown[]
+    subscriberCount: number
+  } | null>
 }
 
 export function useMarketplace(): UseMarketplaceReturn {
@@ -120,35 +129,40 @@ export function useMarketplace(): UseMarketplaceReturn {
         setError(null)
 
         const query = buildQuery()
-        const paginationOptions = {
-          ...pagination,
-          page,
+
+        // Execute query directly
+        const result = await query
+
+        if (result.error) {
+          throw new Error(result.error.message || 'Failed to fetch sellers')
         }
 
-        const result = await paginatedRequest<any>(query, paginationOptions)
+        // Transform the data to include performance metrics
+        const transformedData: MarketplaceSeller[] = (result.data || []).map(seller => ({
+          ...seller,
+          seller_settings: seller.seller_settings?.[0] || null,
+          performance: {
+            total_bets: seller.user_performance_cache?.[0]?.total_bets || 0,
+            win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
+            roi: seller.user_performance_cache?.[0]?.roi || 0,
+            profit: seller.user_performance_cache?.[0]?.profit || 0,
+            subscribers: 0, // TODO: Calculate from subscriptions table
+            rating: 4.5, // TODO: Calculate from reviews/ratings
+          },
+        }))
 
-        if (result.success) {
-          // Transform the data to include performance metrics
-          const transformedData: MarketplaceSeller[] = result.data.map(seller => ({
-            ...seller,
-            seller_settings: seller.seller_settings?.[0] || null,
-            performance: {
-              total_bets: seller.user_performance_cache?.[0]?.total_bets || 0,
-              win_rate: seller.user_performance_cache?.[0]?.win_rate || 0,
-              roi: seller.user_performance_cache?.[0]?.roi || 0,
-              profit: seller.user_performance_cache?.[0]?.profit || 0,
-              subscribers: 0, // TODO: Calculate from subscriptions table
-              rating: 4.5, // TODO: Calculate from reviews/ratings
-            },
-          }))
-
-          setSellers(prev => ({
-            ...result,
-            data: append ? [...prev.data, ...transformedData] : transformedData,
-          }))
-        } else {
-          throw new Error(result.error || 'Failed to fetch sellers')
-        }
+        setSellers(prev => ({
+          data: append ? [...prev.data, ...transformedData] : transformedData,
+          pagination: {
+            page,
+            limit: pagination.limit || 20,
+            total: result.count || 0,
+            totalPages: Math.ceil((result.count || 0) / (pagination.limit || 20)),
+            hasNext: page * (pagination.limit || 20) < (result.count || 0),
+            hasPrev: page > 1,
+          },
+          success: true,
+        }))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch sellers')
       } finally {
@@ -327,7 +341,7 @@ export function useMarketplace(): UseMarketplaceReturn {
   // Initial load and filter/pagination changes
   useEffect(() => {
     fetchSellers(pagination.page || 1, false)
-  }, [filters, pagination])
+  }, [fetchSellers, filters, pagination])
 
   // Load featured sellers on mount
   useEffect(() => {

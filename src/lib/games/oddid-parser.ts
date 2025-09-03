@@ -95,10 +95,10 @@ export function parseOddID(oddID: string): ParsedOddID | null {
   const side = parts[4]
 
   // Get display name
-  const displayName = MARKET_DISPLAY_NAMES[marketType] || marketType.replace('_', ' ')
+  const displayName = marketType ? (MARKET_DISPLAY_NAMES[marketType] || marketType.replace('_', ' ')) : 'Unknown'
 
   // Determine if this is a player prop (identifier is not 'home', 'away', 'all')
-  const isPlayerProp = !['home', 'away', 'all'].includes(identifier)
+  const isPlayerProp = identifier ? !['home', 'away', 'all'].includes(identifier) : false
 
   // Determine category
   let category: ParsedOddID['category']
@@ -116,9 +116,9 @@ export function parseOddID(oddID: string): ParsedOddID | null {
     }
   } else if (isPlayerProp) {
     // Player props - categorize by hitting vs pitching
-    if (HITTING_MARKETS.includes(marketType)) {
+    if (marketType && HITTING_MARKETS.includes(marketType)) {
       category = 'hitters'
-    } else if (PITCHING_MARKETS.includes(marketType)) {
+    } else if (marketType && PITCHING_MARKETS.includes(marketType)) {
       category = 'pitchers'
     } else if (marketType === 'points' || marketType === 'fantasyScore') {
       // Player runs or fantasy score - usually hitting
@@ -133,13 +133,13 @@ export function parseOddID(oddID: string): ParsedOddID | null {
   }
 
   return {
-    marketType,
+    marketType: marketType || 'unknown',
     displayName,
-    identifier,
+    identifier: identifier || 'unknown',
     isPlayerProp,
-    period,
-    betType,
-    side,
+    period: period || 'unknown',
+    betType: betType || 'unknown',
+    side: side || 'unknown',
     category,
   }
 }

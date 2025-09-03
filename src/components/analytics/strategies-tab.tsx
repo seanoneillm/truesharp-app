@@ -152,7 +152,7 @@ export function StrategiesTab({
   console.log('StrategiesTab - isLoading:', isLoading)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
+  const [_editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
   const [createForm, setCreateForm] = useState<CreateStrategyForm>({
     name: '',
     description: '',
@@ -230,9 +230,6 @@ export function StrategiesTab({
     await onDeleteStrategy(strategyId)
   }
 
-  const formatCurrency = (amount: number) => {
-    return `$${amount >= 0 ? '+' : ''}${amount.toFixed(2)}`
-  }
 
   const getFilterSummary = (filters: FilterOptions) => {
     if (!filters) return 'No filters applied'
@@ -279,9 +276,8 @@ export function StrategiesTab({
           </DialogTrigger>
           <DialogContent
             className="max-h-[80vh] max-w-3xl overflow-y-auto sm:max-w-3xl"
-            style={{ transform: 'translateX(200px)' }}
           >
-            <DialogHeader className="pb-6 text-center">
+            <DialogHeader>
               <div className="mb-4 flex justify-center">
                 <TrueSharpShield className="h-12 w-12" />
               </div>

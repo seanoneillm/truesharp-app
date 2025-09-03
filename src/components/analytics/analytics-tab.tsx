@@ -22,8 +22,6 @@ import {
   Copy,
   DollarSign,
   Download,
-  Edit3,
-  Filter,
   LineChart,
   PieChart as PieChartIcon,
   Plus,
@@ -43,7 +41,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { CustomChartBuilder } from './custom-chart-builder'
 import type { ChartConfig } from '@/lib/types/custom-charts'
 import { CustomChartRenderer } from './custom-chart-renderer'
 import { getFilterOptions } from '@/lib/analytics/custom-charts'
@@ -97,7 +94,7 @@ interface AnalyticsTabProps {
 export function AnalyticsTab({ data, isPro, isLoading = false, user }: AnalyticsTabProps) {
   // Custom charts state
   const [customCharts, setCustomCharts] = useState<ChartConfig[]>([])
-  const [filterOptions, setFilterOptions] = useState({
+  const [, setFilterOptions] = useState({
     leagues: [] as string[],
     betTypes: [] as string[],
     sportsbooks: [] as string[],
@@ -128,7 +125,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
   useEffect(() => {
     const loadFilterOptions = async () => {
       if (user?.id) {
-        const options = await getFilterOptions(user.id)
+        const options = await getFilterOptions(user.id!)
         setFilterOptions(options)
       }
     }
@@ -191,14 +188,6 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       default:
         return { start: startOfMonth, end: endOfMonth }
     }
-  }
-
-  const filterDataByTimeRange = (data: any[], dateKey: string = 'day') => {
-    const { start, end } = getDateRange()
-    return data.filter(item => {
-      const itemDate = new Date(item[dateKey] || item.month || item.date)
-      return itemDate >= start && itemDate <= end
-    })
   }
 
   // Data processing for Performance Over Time chart (ROI + Profit)
@@ -400,11 +389,6 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
     varianceData: data?.varianceData || [],
   }
 
-  // Custom chart handlers
-  const handleAddCustomChart = (config: ChartConfig) => {
-    setCustomCharts(prev => [...prev, config])
-  }
-
   const handleDeleteCustomChart = (chartId: string) => {
     setCustomCharts(prev => prev.filter(chart => chart.id !== chartId))
   }
@@ -459,10 +443,10 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         bet_types: chartConfig.filters.betTypes,
         date_range: chartConfig.filters.dateRange
           ? {
-              start: new Date(chartConfig.filters.dateRange.start),
-              end: new Date(chartConfig.filters.dateRange.end),
+              start: new Date(chartConfig.filters.dateRange.start) || null,
+              end: new Date(chartConfig.filters.dateRange.end) || null,
             }
-          : undefined,
+          : { start: null, end: null },
       },
     }
 
@@ -1303,14 +1287,13 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                           config={chart}
                           userId={user?.id || ''}
                           onDelete={() => handleDeleteCustomChart(chart.id)}
-                          className="h-full w-full"
                         />
                       </div>
 
                       {/* Compact Actions Footer */}
                       <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
                         <div className="text-xs text-gray-400">
-                          {new Date(parseInt(chart.id.split('-')[1])).toLocaleDateString()}
+                          {new Date(parseInt(chart.id.split('-')[1] || '0')).toLocaleDateString()}
                         </div>
                         <Button
                           variant="ghost"
@@ -1440,20 +1423,24 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
         }}
       >
         <DialogContent className="border-gradient-to-r fixed left-[50%] top-[6vh] max-h-[85vh] translate-x-[-50%] overflow-hidden rounded-xl border-2 bg-white/95 from-blue-200 to-indigo-200 shadow-2xl backdrop-blur-sm sm:max-w-[600px]">
-          <DialogHeader className="-m-6 mb-4 rounded-t-xl border-b border-gray-200/50 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 pb-4">
-            <DialogTitle className="flex items-center space-x-3 text-xl">
-              <div className="rounded-lg border border-blue-200/30 bg-gradient-to-r from-blue-100 to-indigo-100 p-2">
-                <TrueSharpShield className="h-6 w-6" variant="light" />
+          <DialogHeader>
+            <div className="-m-6 mb-4 rounded-t-xl border-b border-gray-200/50 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 pb-4">
+              <DialogTitle>
+                  <div className="flex items-center space-x-3 text-xl">
+                    <div className="rounded-lg border border-blue-200/30 bg-gradient-to-r from-blue-100 to-indigo-100 p-2">
+                      <TrueSharpShield className="h-6 w-6" variant="light" />
+                    </div>
+                    <div className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 p-2">
+                      <BarChart3 className="h-5 w-5 text-white" />
+                    </div>
+                    <span>Create Custom Chart</span>
+                  </div>
+                </DialogTitle>
+                <div className="mt-2 text-sm text-gray-500">
+                  Build personalized analytics views with advanced filtering and visualization options
+                </div>
               </div>
-              <div className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 p-2">
-                <BarChart3 className="h-5 w-5 text-white" />
-              </div>
-              <span>Create Custom Chart</span>
-            </DialogTitle>
-            <div className="mt-2 text-sm text-gray-500">
-              Build personalized analytics views with advanced filtering and visualization options
-            </div>
-          </DialogHeader>
+            </DialogHeader>
 
           {/* Step Indicator - Now 2 Steps */}
           <div className="flex items-center justify-center space-x-4 py-4">

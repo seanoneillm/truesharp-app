@@ -189,9 +189,9 @@ export function getTeamAbbreviation(teamName: string): string {
   if (words.length === 1) {
     return teamName.slice(0, 3).toUpperCase()
   } else if (words.length === 2) {
-    return (words[0][0] + words[1][0]).toUpperCase()
+    return ((words[0]?.[0] || '') + (words[1]?.[0] || '')).toUpperCase()
   } else {
-    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase()
+    return ((words[0]?.[0] || '') + (words[1]?.[0] || '') + (words[2]?.[0] || '')).toUpperCase()
   }
 }
 

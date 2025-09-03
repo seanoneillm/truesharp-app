@@ -159,39 +159,58 @@ export default function MockGameCard({ game, league }: MockGameCardProps) {
         {/* Level 2: Subtabs (show first main tab's subtabs) */}
         <div className="border-l-3 mt-4 border-slate-200 pl-3 opacity-40">
           <div className="flex flex-wrap gap-2">
-            {tabs.subTabs[tabs.mainTabs[0]].map((subTab, index) => (
-              <div
-                key={subTab}
-                className={`rounded-xl border-2 border-transparent px-4 py-2 text-xs font-semibold ${
-                  index === 0
-                    ? 'border-slate-200 bg-slate-100 text-slate-600 shadow-sm'
-                    : 'bg-slate-50 text-slate-500'
-                } `}
-              >
-                {subTab}
-              </div>
-            ))}
+            {(() => {
+              const firstMainTab = tabs.mainTabs[0]
+              const subTabsForFirst = firstMainTab
+                ? (tabs.subTabs as Record<string, string[]>)[firstMainTab]
+                : null
+              return subTabsForFirst
+                ? subTabsForFirst.map((subTab: string, index: number) => (
+                    <div
+                      key={subTab}
+                      className={`rounded-xl border-2 border-transparent px-4 py-2 text-xs font-semibold ${
+                        index === 0
+                          ? 'border-slate-200 bg-slate-100 text-slate-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-500'
+                      } `}
+                    >
+                      {subTab}
+                    </div>
+                  ))
+                : null
+            })()}
           </div>
 
           {/* Level 3: Sub-subtabs (show first subtab's options if available) */}
-          {tabs.subSubTabs[tabs.subTabs[tabs.mainTabs[0]][0]] && (
-            <div className="border-l-3 mt-3 border-slate-200 pl-4 opacity-70">
-              <div className="flex flex-wrap gap-1.5">
-                {tabs.subSubTabs[tabs.subTabs[tabs.mainTabs[0]][0]].map((subSubTab, index) => (
-                  <div
-                    key={subSubTab}
-                    className={`rounded-lg border-2 border-transparent px-3 py-1.5 text-xs font-semibold ${
-                      index === 0
-                        ? 'border-slate-200 bg-slate-100 text-slate-600 shadow-sm'
-                        : 'bg-slate-50 text-slate-500'
-                    } `}
-                  >
-                    {subSubTab}
-                  </div>
-                ))}
+          {(() => {
+            const firstMainTab = tabs.mainTabs[0]
+            const subTabsForFirst = firstMainTab
+              ? (tabs.subTabs as Record<string, string[]>)[firstMainTab]
+              : null
+            const firstSubTab = subTabsForFirst?.[0]
+            const subSubTabsForFirst = firstSubTab
+              ? (tabs.subSubTabs as Record<string, string[]>)[firstSubTab]
+              : null
+
+            return subSubTabsForFirst ? (
+              <div className="border-l-3 mt-3 border-slate-200 pl-4 opacity-70">
+                <div className="flex flex-wrap gap-1.5">
+                  {subSubTabsForFirst.map((subSubTab: string, index: number) => (
+                    <div
+                      key={subSubTab}
+                      className={`rounded-lg border-2 border-transparent px-3 py-1.5 text-xs font-semibold ${
+                        index === 0
+                          ? 'border-slate-200 bg-slate-100 text-slate-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-500'
+                      } `}
+                    >
+                      {subSubTab}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ) : null
+          })()}
         </div>
       </div>
 

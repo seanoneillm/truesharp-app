@@ -26,16 +26,14 @@ import {
   BarChart3,
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
-  TrendingUp,
   AlertCircle,
 } from 'lucide-react'
-import type { ChartConfig } from '@/lib/types/custom-charts'
+import type { ChartConfig, CustomChartData } from '@/lib/types/custom-charts'
 import {
   fetchCustomChartData,
   formatCurrency,
   formatPercentage,
   getValueColor,
-  type CustomChartData,
 } from '@/lib/analytics/custom-charts'
 
 interface CustomChartRendererProps {
@@ -85,7 +83,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
     }
   }
 
-  const formatTooltipValue = (value: number, name: string) => {
+  const formatTooltipValue = (value: number) => {
     switch (config.yAxis) {
       case 'profit':
         return formatCurrency(value)
@@ -266,7 +264,7 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
                 dataKey={config.yAxis}
                 nameKey={config.xAxis}
               >
-                {data.map((entry, index) => (
+                {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>

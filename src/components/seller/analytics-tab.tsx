@@ -1,25 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
 import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  Trophy,
   Activity,
-  PieChart,
-  LineChart,
-  Calendar,
-  Star,
+  // LineChart, // TS6133: unused import
+  // Calendar, // TS6133: unused import
+  // Star, // TS6133: unused import
   Award,
+  BarChart3,
+  PieChart,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
   Zap,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useCallback, useEffect, useState } from 'react'
 
 interface StrategyAnalytics {
   strategy_id: string
@@ -113,7 +113,7 @@ export function AnalyticsTab() {
       }
 
       // Get subscriber counts for each strategy
-      const { data: subscriptionCounts, error: subscriptionError } = await supabase
+      const { data: subscriptionCounts } = await supabase // TS6133: remove unused subscriptionError
         .from('subscriptions')
         .select(
           `
@@ -188,7 +188,8 @@ export function AnalyticsTab() {
       // Normalize sport breakdown
       Object.keys(sportBreakdown).forEach(sport => {
         const data = sportBreakdown[sport]
-        if (data.bets > 0) {
+        if (data && data.bets > 0) {
+          // TS18048: Add null check
           data.roi = data.roi / data.bets
           data.win_rate = data.win_rate / data.bets
         }

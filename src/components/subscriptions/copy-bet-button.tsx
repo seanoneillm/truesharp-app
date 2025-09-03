@@ -1,26 +1,26 @@
 'use client'
 
-import React, { useState } from 'react'
-import {
-  Copy,
-  Check,
-  Loader2,
-  AlertCircle,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  Star,
-  Info,
-  Calculator,
-  Target,
-} from 'lucide-react'
 import { CopyBetButtonProps } from '@/types/subscriptions'
+import {
+  AlertCircle,
+  Calculator,
+  Check,
+  Clock,
+  Copy,
+  DollarSign,
+  Info,
+  Loader2,
+  Star,
+  Target,
+  TrendingUp,
+} from 'lucide-react'
+import { useState } from 'react'
 
 export function CopyBetButton({
   pick,
   onCopy,
   disabled = false,
-  isLoading = false,
+  // isLoading = false, // TS6133: unused parameter
 }: CopyBetButtonProps) {
   const [showDetails, setShowDetails] = useState(false)
   const [copying, setCopying] = useState(false)
@@ -199,7 +199,7 @@ export function CopyBetButton({
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i < bet.confidence ? 'fill-current text-yellow-400' : 'text-gray-300'
+                        i < (bet.confidence || 0) ? 'fill-current text-yellow-400' : 'text-gray-300'
                       }`}
                     />
                   ))}
@@ -264,17 +264,17 @@ export function CopyBetButton({
                 </div>
               )}
 
-              {bet.prop_type && (
+              {(bet as any).prop_type && (
                 <div className="mt-1 flex justify-between text-sm">
                   <span className="text-gray-500">Prop Type:</span>
-                  <span className="text-gray-900">{bet.prop_type}</span>
+                  <span className="text-gray-900">{(bet as any).prop_type}</span>
                 </div>
               )}
 
-              {bet.Player_name && (
+              {(bet as any).Player_name && (
                 <div className="mt-1 flex justify-between text-sm">
                   <span className="text-gray-500">Player:</span>
-                  <span className="text-gray-900">{bet.Player_name}</span>
+                  <span className="text-gray-900">{(bet as any).Player_name}</span>
                 </div>
               )}
             </div>

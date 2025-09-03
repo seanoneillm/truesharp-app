@@ -293,7 +293,6 @@ export default function ShareStrategyModal({
         logging: false, // Disable logging for cleaner console
         width: element.scrollWidth,
         height: element.scrollHeight,
-        letterRendering: true, // Better text rendering
         removeContainer: true, // Clean up temporary elements
         imageTimeout: 15000, // Longer timeout for complex images
         onclone: function (clonedDoc) {
@@ -301,9 +300,9 @@ export default function ShareStrategyModal({
           const clonedElement =
             clonedDoc.querySelector('[data-html2canvas-clone]') || clonedDoc.body
           if (clonedElement) {
-            clonedElement.style.fontSmooth = 'always'
-            clonedElement.style.webkitFontSmoothing = 'antialiased'
-            clonedElement.style.textRendering = 'optimizeLegibility'
+            const elementWithStyle = clonedElement as HTMLElement
+            elementWithStyle.style.setProperty('-webkit-font-smoothing', 'antialiased')
+            elementWithStyle.style.setProperty('text-rendering', 'optimizeLegibility')
           }
         },
       })

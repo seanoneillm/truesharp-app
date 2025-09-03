@@ -31,7 +31,7 @@ const FEATURE_FLAGS = {
 // Export the real auth hook (no mock version needed)
 // useAuth hook doesn't exist in auth-helpers, create a simple one
 export function useAuth() {
-  const [user, setUser] = useState(null)
+  const [user] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function useUserProfile(userId?: string) {
   // Mock version for gradual transition
   const [profile, setProfile] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error] = useState<string | null>(null)
 
   useEffect(() => {
     // Simulate loading

@@ -318,7 +318,9 @@ export const mockGamesData: Record<string, Game[]> = {
         ['Colorado Rockies', 'San Diego Padres'],
       ]
 
-      const [homeTeam, awayTeam] = teams[i] || ['Team A', 'Team B']
+      const teamPair = teams[i % teams.length]!
+      const homeTeam = teamPair[0]!
+      const awayTeam = teamPair[1]!
       const gameNum = i + 3
 
       return {
@@ -330,8 +332,8 @@ export const mockGamesData: Record<string, Game[]> = {
         away_team: awayTeam,
         bookmakers: [
           {
-            key: ['draftkings', 'fanduel', 'betmgm', 'caesars'][i % 4],
-            title: ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars'][i % 4],
+            key: ['draftkings', 'fanduel', 'betmgm', 'caesars'][i % 4]!,
+            title: ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars'][i % 4]!,
             last_update: new Date().toISOString(),
             markets: [
               {

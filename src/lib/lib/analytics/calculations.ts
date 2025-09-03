@@ -26,7 +26,7 @@ export interface SportPerformance {
   roi: number
   avgOdds: number
   totalStaked: number
-  clv?: number
+  clv: number | undefined
 }
 
 export interface BetTypePerformance {
@@ -144,7 +144,10 @@ export function calculateCurrentStreak(bets: Bet[]): {
     return { streak: 0, streakType: 'none' }
   }
 
-  const latestResult = settledBets[0].result
+  const latestResult = settledBets[0]?.result
+  if (!latestResult) {
+    return { streak: 0, streakType: 'none' as const }
+  }
   const streakType: 'win' | 'loss' = latestResult === 'won' ? 'win' : 'loss'
 
   let streak = 0
@@ -313,14 +316,17 @@ export function calculateDailyProfitData(bets: Bet[]): Array<{
     .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime())
 
   settledBets.forEach(bet => {
-    const date = bet.placed_at.split('T')[0]
+    const placedAt = bet.placed_at
+    if (!placedAt) return
+    const date = placedAt.split('T')[0]
+    if (!date) return
     dailyStats.set(date, (dailyStats.get(date) || 0) + (bet.profit_loss || 0))
   })
 
   let cumulativeProfit = 0
   return Array.from(dailyStats.entries()).map(([date, profit]) => {
     cumulativeProfit += profit
-    const dayBets = settledBets.filter(bet => bet.placed_at.startsWith(date)).length
+    const dayBets = settledBets.filter(bet => bet.placed_at?.startsWith(date)).length
     return {
       date,
       profit,
@@ -465,7 +471,7 @@ export function calculateBankrollGrowth(
     const roi = ((currentBankroll - initialBankroll) / initialBankroll) * 100
 
     bankrollHistory.push({
-      date: bet.placed_at.split('T')[0],
+      date: bet.placed_at?.split('T')[0] || 'unknown',
       bankroll: currentBankroll,
       roi,
     })

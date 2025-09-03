@@ -50,7 +50,7 @@ export const createServerSupabaseClient = async (request?: NextRequest) => {
           // Simple JWT validation - check if it has 3 parts and isn't expired
           const parts = jwt.split('.')
           if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]))
+            const payload = JSON.parse(atob(parts[1] || ''))
             const now = Math.floor(Date.now() / 1000)
 
             if (payload.exp && payload.exp > now) {

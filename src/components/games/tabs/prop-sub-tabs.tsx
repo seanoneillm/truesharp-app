@@ -1,5 +1,9 @@
 'use client'
 
+type SubTabConfig = {
+  [key: string]: { label: string; icon: string; description: string }
+}
+
 interface PropSubTabsProps {
   sport: string
   activeSubTab: string
@@ -15,7 +19,7 @@ export default function PropSubTabs({
   availableSubTabs,
   propCounts = {},
 }: PropSubTabsProps) {
-  const getSubTabConfig = (sport: string) => {
+  const getSubTabConfig = (sport: string): SubTabConfig => {
     switch (sport) {
       case 'americanfootball_nfl':
       case 'americanfootball_ncaaf':
@@ -101,6 +105,7 @@ export default function PropSubTabs({
         <div className="flex flex-wrap gap-2">
           {validSubTabs.map(subTab => {
             const config = subTabConfig[subTab]
+            if (!config) return null // Handle undefined case
             const isActive = activeSubTab === subTab
             const count = propCounts[subTab] || 0
 

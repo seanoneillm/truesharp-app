@@ -101,7 +101,7 @@ export function PostCard({ post }: PostCardProps) {
               {post.author.sellerEnabled && <Crown className="h-4 w-4 text-yellow-500" />}
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <span>{post.author.displayName}</span>
+              <span>{post.author.display_name}</span>
               <span>•</span>
               <span>{timeAgo(post.timestamp)}</span>
             </div>

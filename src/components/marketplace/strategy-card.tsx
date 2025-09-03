@@ -1,16 +1,16 @@
 'use client'
 
 import {
-  TrendingUp,
-  TrendingDown,
-  Users,
+  Activity,
+  Badge as BadgeIcon,
+  Clock,
   Shield,
   ShieldCheck,
   Star,
-  Activity,
   Target,
-  Clock,
-  Badge as BadgeIcon,
+  TrendingDown,
+  TrendingUp,
+  Users,
 } from 'lucide-react'
 
 interface StrategyData {
@@ -53,9 +53,9 @@ interface StrategyCardProps {
 
 export function StrategyCard({
   strategy,
-  index,
+  // index, // TS6133: unused parameter
   isSubscribed = false,
-  subscription,
+  // subscription, // TS6133: unused parameter
   onSubscribe,
   isLoading = false,
 }: StrategyCardProps) {

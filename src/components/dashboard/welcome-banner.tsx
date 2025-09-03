@@ -1,8 +1,12 @@
-// src/components/dashboard/welcome-banner.tsx
 import { useUserProfile } from '@/lib/hooks/use-user-profile'
 import { CheckCircle, TrendingUp, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+
+interface UserProfile {
+  username?: string
+  displayName?: string
+}
 
 interface WelcomeBannerProps {
   isNewUser?: boolean
@@ -13,12 +17,16 @@ interface WelcomeBannerProps {
 
 export default function WelcomeBanner({
   isNewUser = false,
-  hasBets = true,
   hasConnectedSportsbooks = true,
   dismissible = true,
 }: WelcomeBannerProps) {
   const [dismissed, setDismissed] = useState(false)
-  const { username, displayName, loading } = useUserProfile()
+  const { profile, loading } = useUserProfile()
+
+  // Extract user info from profile with fallbacks
+  const userProfile = profile as UserProfile | null
+  const username = userProfile?.username || 'User'
+  const displayName = userProfile?.displayName || userProfile?.username || 'User'
 
   if (dismissed) return null
 
@@ -42,7 +50,7 @@ export default function WelcomeBanner({
           <div className="ml-4 flex-1">
             <h3 className="text-lg font-semibold">Welcome to TrueSharp, {username}!</h3>
             <p className="mt-1 text-blue-100">
-              Let's get you started with tracking your betting performance. Connect your first
+              Let&apos;s get you started with tracking your betting performance. Connect your first
               sportsbook to begin.
             </p>
 
@@ -83,7 +91,7 @@ export default function WelcomeBanner({
         Welcome back, {loading ? 'User' : displayName || username}!
       </h1>
       <p className="mt-1 text-sm text-gray-600">
-        Here's what's happening with your betting performance today.
+        Here&apos;s what&apos;s happening with your betting performance today.
       </p>
     </div>
   )

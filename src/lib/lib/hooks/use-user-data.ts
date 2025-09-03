@@ -61,7 +61,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
   // Fetch user performance metrics
   const fetchPerformance = useCallback(async (targetUserId?: string) => {
     try {
-      let query = supabaseDirect.from('user_performance_cache').select('*').single()
+      let query = supabaseDirect.from('user_performance_cache').select('*')
 
       if (targetUserId) {
         query = query.eq('user_id', targetUserId)
@@ -73,7 +73,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
         query = query.eq('user_id', user.id)
       }
 
-      const { data, error } = await query
+      const { data, error } = await query.single()
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = no rows
@@ -163,7 +163,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
       if (profileError) throw profileError
 
       // Create seller settings record
-      const { data: settingsData, error: settingsError } = await supabaseDirect
+      const { error: settingsError } = await supabaseDirect
         .from('seller_settings')
         .upsert({
           user_id: currentUserId,
@@ -206,7 +206,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
     if (response.success && response.data) {
       setUserData(prev => ({
         ...prev,
-        profile: response.data,
+        profile: response.data as Profile,
       }))
       return true
     } else {

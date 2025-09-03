@@ -1,12 +1,7 @@
 // FILE: src/lib/hooks/use-picks.ts
 // Pick data hook for managing and viewing picks
 
-import {
-  authenticatedRequest,
-  paginatedRequest,
-  PaginatedResponse,
-  supabaseDirect,
-} from '@/lib/api/client'
+import { authenticatedRequest, PaginatedResponse, supabaseDirect } from '@/lib/api/client'
 import { PaginationParams, Pick } from '@/lib/types'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -128,38 +123,43 @@ export function usePicks(sellerId?: string): UsePicksReturn {
         setError(null)
 
         const query = buildQuery()
-        const paginationOptions = {
-          ...pagination,
-          page,
+
+        // Execute query directly
+        const result = await query
+
+        if (result.error) {
+          throw new Error(result.error.message || 'Failed to fetch picks')
         }
 
-        const result = await paginatedRequest<any>(query, paginationOptions)
+        // Transform the data to match our interface
+        const transformedData: PickWithSeller[] = (result.data || []).map(pick => ({
+          ...pick,
+          seller: pick.seller || {
+            username: 'unknown',
+            display_name: 'Unknown User',
+            avatar_url: null,
+            is_verified: false,
+          },
+          engagement: {
+            views: 0, // TODO: Implement engagement tracking
+            likes: 0,
+            comments: 0,
+            shares: 0,
+          },
+        }))
 
-        if (result.success) {
-          // Transform the data to match our interface
-          const transformedData: PickWithSeller[] = result.data.map(pick => ({
-            ...pick,
-            seller: pick.seller || {
-              username: 'unknown',
-              display_name: 'Unknown User',
-              avatar_url: null,
-              is_verified: false,
-            },
-            engagement: {
-              views: 0, // TODO: Implement engagement tracking
-              likes: 0,
-              comments: 0,
-              shares: 0,
-            },
-          }))
-
-          setPicks(prev => ({
-            ...result,
-            data: append ? [...prev.data, ...transformedData] : transformedData,
-          }))
-        } else {
-          throw new Error(result.error || 'Failed to fetch picks')
-        }
+        setPicks(prev => ({
+          data: append ? [...prev.data, ...transformedData] : transformedData,
+          pagination: {
+            page,
+            limit: pagination.limit || 20,
+            total: result.count || 0,
+            totalPages: Math.ceil((result.count || 0) / (pagination.limit || 20)),
+            hasNext: page * (pagination.limit || 20) < (result.count || 0),
+            hasPrev: page > 1,
+          },
+          success: true,
+        }))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch picks')
       } finally {
@@ -411,7 +411,7 @@ export function usePicks(sellerId?: string): UsePicksReturn {
   // Initial load and filter/pagination changes
   useEffect(() => {
     fetchPicks(pagination.page || 1, false)
-  }, [filters, pagination])
+  }, [fetchPicks, filters, pagination])
 
   // Set up real-time subscription for pick changes
   useEffect(() => {

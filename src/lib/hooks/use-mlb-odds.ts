@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MLBGameOdds, processMLBOdds, DatabaseOdd } from '@/lib/games/mlb-odds-processor'
+import { DatabaseOdd, MLBGameOdds, processMLBOdds } from '@/lib/games/mlb-odds-processor'
+import { useEffect, useState } from 'react'
 
 interface UseMLBOddsProps {
   gameId: string
@@ -150,7 +150,7 @@ export function useMLBGameOdds({
 
 // Hook for real-time odds updates (if needed)
 export function useMLBOddsSubscription(gameId: string) {
-  const [gameOdds, setGameOdds] = useState<MLBGameOdds | null>(null)
+  const [gameOdds] = useState<MLBGameOdds | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {

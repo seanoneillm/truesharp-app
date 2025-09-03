@@ -1,4 +1,4 @@
-import { authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect } from './client'
 
 // Fallback type for SubscriptionForm
 interface SubscriptionForm {
@@ -11,7 +11,7 @@ interface SubscriptionForm {
 // Get user's active subscriptions
 export async function getUserSubscriptions(options = { page: 1, limit: 20 }) {
   return authenticatedRequest(async userId => {
-    const query = supabase
+    const query = supabaseDirect
       .from('subscriptions')
       .select(
         `
@@ -33,7 +33,7 @@ export async function getUserSubscriptions(options = { page: 1, limit: 20 }) {
       )
       .eq('subscriber_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -41,7 +41,7 @@ export async function getUserSubscriptions(options = { page: 1, limit: 20 }) {
 // Get active subscriptions only
 export async function getActiveSubscriptions() {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('subscriptions')
       .select(
         `
@@ -70,7 +70,7 @@ export async function getActiveSubscriptions() {
 export async function createSubscription(subscriptionData: SubscriptionForm) {
   return authenticatedRequest(async userId => {
     // Check if user is already subscribed to this seller
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseDirect
       .from('subscriptions')
       .select('id, status')
       .eq('subscriber_id', userId)
@@ -97,7 +97,7 @@ export async function createSubscription(subscriptionData: SubscriptionForm) {
       expires_at: subscriptionData.expiresAt?.toISOString() || null,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('subscriptions')
       .insert(subscription)
       .select(
@@ -116,7 +116,9 @@ export async function createSubscription(subscriptionData: SubscriptionForm) {
 
     if (!error) {
       // Increment seller's subscriber count
-      await supabase.rpc('increment_seller_subscribers', { seller_id: subscriptionData.sellerId })
+      await supabaseDirect.rpc('increment_seller_subscribers', {
+        seller_id: subscriptionData.sellerId,
+      })
     }
 
     return { data, error }
@@ -127,7 +129,7 @@ export async function createSubscription(subscriptionData: SubscriptionForm) {
 export async function cancelSubscription(subscriptionId: string, reason?: string) {
   return authenticatedRequest(async userId => {
     // Get subscription details first
-    const { data: subscription } = await supabase
+    const { data: subscription } = await supabaseDirect
       .from('subscriptions')
       .select('seller_id, status')
       .eq('id', subscriptionId)
@@ -148,7 +150,7 @@ export async function cancelSubscription(subscriptionId: string, reason?: string
       cancellation_reason: reason || null,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('subscriptions')
       .update(updates)
       .eq('id', subscriptionId)
@@ -158,7 +160,9 @@ export async function cancelSubscription(subscriptionId: string, reason?: string
 
     if (!error) {
       // Decrement seller's subscriber count
-      await supabase.rpc('decrement_seller_subscribers', { seller_id: subscription.seller_id })
+      await supabaseDirect.rpc('decrement_seller_subscribers', {
+        seller_id: subscription.seller_id,
+      })
     }
 
     return { data, error }
@@ -169,7 +173,7 @@ export async function cancelSubscription(subscriptionId: string, reason?: string
 export async function reactivateSubscription(subscriptionId: string) {
   return authenticatedRequest(async userId => {
     // Get subscription details
-    const { data: subscription } = await supabase
+    const { data: subscription } = await supabaseDirect
       .from('subscriptions')
       .select('seller_id, status')
       .eq('id', subscriptionId)
@@ -191,7 +195,7 @@ export async function reactivateSubscription(subscriptionId: string) {
       reactivated_at: new Date().toISOString(),
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('subscriptions')
       .update(updates)
       .eq('id', subscriptionId)
@@ -201,7 +205,9 @@ export async function reactivateSubscription(subscriptionId: string) {
 
     if (!error) {
       // Increment seller's subscriber count
-      await supabase.rpc('increment_seller_subscribers', { seller_id: subscription.seller_id })
+      await supabaseDirect.rpc('increment_seller_subscribers', {
+        seller_id: subscription.seller_id,
+      })
     }
 
     return { data, error }
@@ -221,7 +227,7 @@ export async function updateSubscriptionTier(
       updated_at: new Date().toISOString(),
     }
 
-    return await supabase
+    return await supabaseDirect
       .from('subscriptions')
       .update(updates)
       .eq('id', subscriptionId)
@@ -246,7 +252,7 @@ export async function updateSubscriptionTier(
 // Get subscription by ID
 export async function getSubscriptionById(subscriptionId: string) {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('subscriptions')
       .select(
         `
@@ -276,7 +282,7 @@ export async function getSubscriptionById(subscriptionId: string) {
 export async function getSubscriptionPicks(options = { page: 1, limit: 20 }) {
   return authenticatedRequest(async userId => {
     // Get user's active subscriptions
-    const { data: subscriptions } = await supabase
+    const { data: subscriptions } = await supabaseDirect
       .from('subscriptions')
       .select('seller_id, tier')
       .eq('subscriber_id', userId)
@@ -288,7 +294,7 @@ export async function getSubscriptionPicks(options = { page: 1, limit: 20 }) {
 
     // Build query for picks user has access to
     const sellerIds = subscriptions.map(sub => sub.seller_id)
-    const query = supabase
+    const query = supabaseDirect
       .from('picks')
       .select(
         `
@@ -304,7 +310,7 @@ export async function getSubscriptionPicks(options = { page: 1, limit: 20 }) {
       )
       .in('user_id', sellerIds)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -314,24 +320,28 @@ export async function getSubscriptionStats() {
   return authenticatedRequest(async userId => {
     const [activeResult, totalResult, monthlySpendResult, totalSpendResult] = await Promise.all([
       // Active subscriptions count
-      supabase
+      supabaseDirect
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('subscriber_id', userId)
         .eq('status', 'active'),
       // Total subscriptions count
-      supabase
+      supabaseDirect
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('subscriber_id', userId),
       // Monthly spending
-      supabase
+      supabaseDirect
         .from('subscriptions')
         .select('price')
         .eq('subscriber_id', userId)
         .eq('status', 'active'),
       // Total spending (from billing records)
-      supabase.from('billing_records').select('amount').eq('user_id', userId).eq('status', 'paid'),
+      supabaseDirect
+        .from('billing_records')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('status', 'paid'),
     ])
     const activeCount = activeResult.count || 0
     const totalCount = totalResult.count || 0
@@ -352,7 +362,7 @@ export async function getSubscriptionStats() {
 // Get seller's subscribers (for sellers)
 export async function getSellerSubscribers(options = { page: 1, limit: 20 }) {
   return authenticatedRequest(async userId => {
-    const query = supabase
+    const query = supabaseDirect
       .from('subscriptions')
       .select(
         `
@@ -368,7 +378,7 @@ export async function getSellerSubscribers(options = { page: 1, limit: 20 }) {
       )
       .eq('seller_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -377,7 +387,7 @@ export async function getSellerSubscribers(options = { page: 1, limit: 20 }) {
 export async function getSubscriptionPerformance(subscriptionId: string) {
   return authenticatedRequest(async userId => {
     // Get subscription details
-    const { data: subscription, error: subError } = await supabase
+    const { data: subscription, error: subError } = await supabaseDirect
       .from('subscriptions')
       .select('seller_id, started_at, tier')
       .eq('id', subscriptionId)
@@ -389,7 +399,7 @@ export async function getSubscriptionPerformance(subscriptionId: string) {
     }
 
     // Get picks from this seller since subscription started
-    const { data: picks, error: picksError } = await supabase
+    const { data: picks, error: picksError } = await supabaseDirect
       .from('picks')
       .select('status, confidence, tier, created_at, result')
       .eq('user_id', subscription.seller_id)
@@ -443,7 +453,7 @@ export async function getSubscriptionPerformance(subscriptionId: string) {
 export async function checkPickAccess(pickId: string) {
   return authenticatedRequest(async userId => {
     // Get pick details
-    const { data: pick } = await supabase
+    const { data: pick } = await supabaseDirect
       .from('picks')
       .select('user_id, tier')
       .eq('id', pickId)
@@ -462,7 +472,7 @@ export async function checkPickAccess(pickId: string) {
     }
 
     // Check if user is subscribed to the pick's author
-    const { data: subscription } = await supabase
+    const { data: subscription } = await supabaseDirect
       .from('subscriptions')
       .select('tier')
       .eq('subscriber_id', userId)

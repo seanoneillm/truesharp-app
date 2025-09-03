@@ -1,22 +1,22 @@
 'use client'
 
-import React, { useState } from 'react'
 import {
-  Download,
-  Calendar,
-  CreditCard,
-  Check,
-  X,
-  RefreshCw,
-  Filter,
-  ChevronDown,
-  FileText,
-  DollarSign,
   AlertTriangle,
-  ExternalLink,
+  Calendar,
+  // CreditCard, // TS6133: unused import
+  Check,
+  ChevronDown,
+  // FileText, // TS6133: unused import
+  DollarSign,
+  Download,
+  Filter,
+  // ExternalLink, // TS6133: unused import
   Receipt,
+  RefreshCw,
+  X,
 } from 'lucide-react'
-import { BillingHistoryProps, BillingTransaction } from '@/types/subscriptions'
+import { useState } from 'react'
+import { BillingHistoryProps, BillingTransaction } from '../../types/subscriptions'
 
 export function BillingHistory({
   transactions,
@@ -66,35 +66,35 @@ export function BillingHistory({
         }
       }) || []
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <Check className="h-4 w-4 text-green-500" />
-      case 'pending':
-        return <RefreshCw className="h-4 w-4 text-yellow-500" />
-      case 'failed':
-        return <X className="h-4 w-4 text-red-500" />
-      case 'refunded':
-        return <RefreshCw className="h-4 w-4 text-blue-500" />
-      default:
-        return <AlertTriangle className="h-4 w-4 text-gray-500" />
-    }
-  }
+  // const getStatusIcon = (status: string) => { // TS6133: unused function
+  //   switch (status) {
+  //     case 'paid':
+  //       return <Check className="h-4 w-4 text-green-500" />
+  //     case 'pending':
+  //       return <RefreshCw className="h-4 w-4 text-yellow-500" />
+  //     case 'failed':
+  //       return <X className="h-4 w-4 text-red-500" />
+  //     case 'refunded':
+  //       return <RefreshCw className="h-4 w-4 text-blue-500" />
+  //     default:
+  //       return <AlertTriangle className="h-4 w-4 text-gray-500" />
+  //   }
+  // }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-50 text-green-800 border-green-200'
-      case 'pending':
-        return 'bg-yellow-50 text-yellow-800 border-yellow-200'
-      case 'failed':
-        return 'bg-red-50 text-red-800 border-red-200'
-      case 'refunded':
-        return 'bg-blue-50 text-blue-800 border-blue-200'
-      default:
-        return 'bg-gray-50 text-gray-800 border-gray-200'
-    }
-  }
+  // const getStatusColor = (status: string) => { // TS6133: unused function
+  //   switch (status) {
+  //     case 'paid':
+  //       return 'bg-green-50 text-green-800 border-green-200'
+  //     case 'pending':
+  //       return 'bg-yellow-50 text-yellow-800 border-yellow-200'
+  //     case 'failed':
+  //       return 'bg-red-50 text-red-800 border-red-200'
+  //     case 'refunded':
+  //       return 'bg-blue-50 text-blue-800 border-blue-200'
+  //     default:
+  //       return 'bg-gray-50 text-gray-800 border-gray-200'
+  //   }
+  // }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

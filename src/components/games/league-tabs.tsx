@@ -74,7 +74,16 @@ export default function LeagueTabs({
   onLeagueChange,
   availableLeagues,
   gameCounts = {},
-  seasonStatus = {},
+  seasonStatus = {
+    NFL: false,
+    NBA: false,
+    MLB: false,
+    NHL: false,
+    NCAAF: false,
+    NCAAB: false,
+    'Champions League': false,
+    MLS: false,
+  },
 }: LeagueTabsProps) {
   return (
     <div className="rounded-2xl border border-slate-200/50 bg-white p-6 shadow-sm">

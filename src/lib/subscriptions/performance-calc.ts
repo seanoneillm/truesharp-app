@@ -86,7 +86,6 @@ export function calculateSubscriptionPerformance(
 
   // Last 30 days performance
   const last30DaysBets = getTimeframeBets(copiedBets, 'last30days')
-  const last30DaysSettled = last30DaysBets.filter(bet => ['won', 'lost'].includes(bet.status))
   const last30DaysWon = last30DaysBets.filter(bet => bet.status === 'won')
   const last30DaysProfit = last30DaysBets.reduce((sum, bet) => {
     if (bet.status === 'won') return sum + (bet.profit || bet.potential_payout - bet.stake)
@@ -96,7 +95,6 @@ export function calculateSubscriptionPerformance(
 
   // All time performance
   const allTimeBets = copiedBets
-  const allTimeSettled = allTimeBets.filter(bet => ['won', 'lost'].includes(bet.status))
   const allTimeWon = allTimeBets.filter(bet => bet.status === 'won')
   const allTimeProfit = allTimeBets.reduce((sum, bet) => {
     if (bet.status === 'won') return sum + (bet.profit || bet.potential_payout - bet.stake)
@@ -166,7 +164,7 @@ export function calculateAggregatePerformance(
   let worstPerformer: string | null = null
 
   // Calculate performance for each subscription
-  const subscriptionPerformances = subscriptions.map(subscription => {
+  subscriptions.forEach(subscription => {
     const performance = calculateSubscriptionPerformance(subscription, userBets)
     totalCost += performance.subscriptionCost
     totalProfit += performance.profit
@@ -180,8 +178,6 @@ export function calculateAggregatePerformance(
       worstROI = performance.roi
       worstPerformer = subscription.seller?.username || subscription.strategy?.name || 'Unknown'
     }
-
-    return { subscription, performance }
   })
 
   const overallROI = totalCost > 0 ? ((totalProfit - totalCost) / totalCost) * 100 : 0

@@ -1,4 +1,4 @@
-import { apiRequest, authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect } from './client'
 
 // Define fallback types for FeedFilters and PostForm
 interface FeedFilters {
@@ -18,7 +18,7 @@ interface PostForm {
 // Get social feed with filtering
 export async function getSocialFeed(filters: FeedFilters = {}, options = { page: 1, limit: 20 }) {
   return authenticatedRequest(async userId => {
-    let query = supabase.from('posts').select(`
+    let query = supabaseDirect.from('posts').select(`
         *,
         author:profiles(
           id,
@@ -44,7 +44,7 @@ export async function getSocialFeed(filters: FeedFilters = {}, options = { page:
     switch (filters.feedType) {
       case 'following': {
         // Only show posts from users the current user follows
-        const { data: following } = await supabase
+        const { data: following } = await supabaseDirect
           .from('follows')
           .select('following_id')
           .eq('follower_id', userId)
@@ -89,7 +89,7 @@ export async function getSocialFeed(filters: FeedFilters = {}, options = { page:
       query = query.order('created_at', { ascending: false })
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -107,7 +107,7 @@ export async function createPost(postData: PostForm) {
       is_public: postData.isPublic !== false, // Default to public
     }
 
-    return await supabase
+    return await supabaseDirect
       .from('posts')
       .insert(post)
       .select(
@@ -137,8 +137,8 @@ export async function createPost(postData: PostForm) {
 
 // Get post by ID
 export async function getPostById(postId: string) {
-  return apiRequest(async () => {
-    return await supabase
+  return authenticatedRequest(async () => {
+    return await supabaseDirect
       .from('posts')
       .select(
         `
@@ -171,7 +171,7 @@ export async function getPostById(postId: string) {
 export async function togglePostLike(postId: string) {
   return authenticatedRequest(async userId => {
     // Check if user already liked the post
-    const { data: existingLike } = await supabase
+    const { data: existingLike } = await supabaseDirect
       .from('post_likes')
       .select('id')
       .eq('post_id', postId)
@@ -180,7 +180,7 @@ export async function togglePostLike(postId: string) {
 
     if (existingLike) {
       // Unlike the post
-      const { error } = await supabase
+      const { error } = await supabaseDirect
         .from('post_likes')
         .delete()
         .eq('post_id', postId)
@@ -188,13 +188,13 @@ export async function togglePostLike(postId: string) {
 
       if (!error) {
         // Decrement like count
-        await supabase.rpc('decrement_post_likes', { post_id: postId })
+        await supabaseDirect.rpc('decrement_post_likes', { post_id: postId })
       }
 
       return { data: { liked: false }, error }
     } else {
       // Like the post
-      const { data, error } = await supabase
+      const { error } = await supabaseDirect
         .from('post_likes')
         .insert({
           post_id: postId,
@@ -205,7 +205,7 @@ export async function togglePostLike(postId: string) {
 
       if (!error) {
         // Increment like count
-        await supabase.rpc('increment_post_likes', { post_id: postId })
+        await supabaseDirect.rpc('increment_post_likes', { post_id: postId })
       }
 
       return { data: { liked: true }, error }
@@ -215,8 +215,8 @@ export async function togglePostLike(postId: string) {
 
 // Get post comments
 export async function getPostComments(postId: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
-    const query = supabase
+  return authenticatedRequest(async () => {
+    const query = supabaseDirect
       .from('post_comments')
       .select(
         `
@@ -233,7 +233,7 @@ export async function getPostComments(postId: string, options = { page: 1, limit
       )
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -247,7 +247,7 @@ export async function addPostComment(postId: string, content: string) {
       content: content.trim(),
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('post_comments')
       .insert(comment)
       .select(
@@ -266,7 +266,7 @@ export async function addPostComment(postId: string, content: string) {
 
     if (!error) {
       // Increment comment count on the post
-      await supabase.rpc('increment_post_comments', { post_id: postId })
+      await supabaseDirect.rpc('increment_post_comments', { post_id: postId })
     }
 
     return { data, error }
@@ -277,7 +277,7 @@ export async function addPostComment(postId: string, content: string) {
 export async function deleteComment(commentId: string) {
   return authenticatedRequest(async userId => {
     // Get the comment to check ownership and get post_id
-    const { data: comment } = await supabase
+    const { data: comment } = await supabaseDirect
       .from('post_comments')
       .select('post_id, author_id')
       .eq('id', commentId)
@@ -287,7 +287,7 @@ export async function deleteComment(commentId: string) {
       return { data: null, error: 'Unauthorized to delete this comment' }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('post_comments')
       .delete()
       .eq('id', commentId)
@@ -295,7 +295,7 @@ export async function deleteComment(commentId: string) {
 
     if (!error) {
       // Decrement comment count
-      await supabase.rpc('decrement_post_comments', { post_id: comment.post_id })
+      await supabaseDirect.rpc('decrement_post_comments', { post_id: comment.post_id })
     }
 
     return { data, error }
@@ -313,7 +313,7 @@ export async function sharePost(postId: string, content?: string) {
       is_public: true,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseDirect
       .from('posts')
       .insert(sharePost)
       .select(
@@ -342,7 +342,7 @@ export async function sharePost(postId: string, content?: string) {
 
     if (!error) {
       // Increment share count on original post
-      await supabase.rpc('increment_post_shares', { post_id: postId })
+      await supabaseDirect.rpc('increment_post_shares', { post_id: postId })
     }
 
     return { data, error }
@@ -351,8 +351,8 @@ export async function sharePost(postId: string, content?: string) {
 
 // Get user's posts
 export async function getUserPosts(userId: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
-    const query = supabase
+  return authenticatedRequest(async () => {
+    const query = supabaseDirect
       .from('posts')
       .select(
         `
@@ -379,7 +379,7 @@ export async function getUserPosts(userId: string, options = { page: 1, limit: 2
       .eq('author_id', userId)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -387,7 +387,7 @@ export async function getUserPosts(userId: string, options = { page: 1, limit: 2
 // Delete post
 export async function deletePost(postId: string) {
   return authenticatedRequest(async userId => {
-    return await supabase.from('posts').delete().eq('id', postId).eq('author_id', userId)
+    return await supabaseDirect.from('posts').delete().eq('id', postId).eq('author_id', userId)
   })
 }
 
@@ -405,7 +405,7 @@ export async function editPost(postId: string, updates: Partial<PostForm>) {
       Object.entries(allowedUpdates).filter(([_, value]) => value !== undefined)
     )
 
-    return await supabase
+    return await supabaseDirect
       .from('posts')
       .update(cleanUpdates)
       .eq('id', postId)
@@ -437,9 +437,9 @@ export async function editPost(postId: string, updates: Partial<PostForm>) {
 
 // Get trending hashtags
 export async function getTrendingHashtags(limit = 10) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // This would typically be a database function that aggregates hashtag usage
-    const { data: posts } = await supabase
+    const { data: posts } = await supabaseDirect
       .from('posts')
       .select('hashtags')
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
@@ -476,8 +476,8 @@ export async function searchPosts(
   filters: FeedFilters = {},
   options = { page: 1, limit: 20 }
 ) {
-  return apiRequest(async () => {
-    let searchQuery = supabase
+  return authenticatedRequest(async () => {
+    let searchQuery = supabaseDirect
       .from('posts')
       .select(
         `
@@ -515,7 +515,7 @@ export async function searchPosts(
 
     searchQuery = searchQuery.order('created_at', { ascending: false })
 
-    const paginated = await paginatedRequest(searchQuery, options)
+    const paginated = await paginatedRequest(searchQuery as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -523,7 +523,7 @@ export async function searchPosts(
 // Report post
 export async function reportPost(postId: string, reason: string, description?: string) {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('post_reports')
       .insert({
         reporter_id: userId,
@@ -539,16 +539,19 @@ export async function reportPost(postId: string, reason: string, description?: s
 
 // Get post engagement stats
 export async function getPostEngagement(postId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const [likesResult, commentsResult, sharesResult] = await Promise.all([
-      supabase.from('post_likes').select('*', { count: 'exact', head: true }).eq('post_id', postId),
+      supabaseDirect
+        .from('post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId),
 
-      supabase
+      supabaseDirect
         .from('post_comments')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', postId),
 
-      supabase
+      supabaseDirect
         .from('posts')
         .select('*', { count: 'exact', head: true })
         .eq('shared_post_id', postId),
@@ -568,7 +571,7 @@ export async function getPostEngagement(postId: string) {
 // Get user's activity feed (notifications)
 export async function getUserActivityFeed(options = { page: 1, limit: 20 }) {
   return authenticatedRequest(async userId => {
-    const query = supabase
+    const query = supabaseDirect
       .from('user_activities')
       .select(
         `
@@ -589,7 +592,7 @@ export async function getUserActivityFeed(options = { page: 1, limit: 20 }) {
       )
       .eq('target_user_id', userId)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -597,7 +600,7 @@ export async function getUserActivityFeed(options = { page: 1, limit: 20 }) {
 // Mark activity as read
 export async function markActivityAsRead(activityId: string) {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('user_activities')
       .update({ is_read: true })
       .eq('id', activityId)
@@ -608,7 +611,7 @@ export async function markActivityAsRead(activityId: string) {
 // Mark all activities as read
 export async function markAllActivitiesAsRead() {
   return authenticatedRequest(async userId => {
-    return await supabase
+    return await supabaseDirect
       .from('user_activities')
       .update({ is_read: true })
       .eq('target_user_id', userId)

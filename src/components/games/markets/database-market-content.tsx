@@ -20,7 +20,7 @@ function DatabaseMarketContent({
   game,
   activeMainTab,
   activeSubTab,
-  activeSubSubTab, // eslint-disable-line @typescript-eslint/no-unused-vars
+  // activeSubSubTab, // eslint-disable-line @typescript-eslint/no-unused-vars
   onBetClick,
 }: DatabaseMarketContentProps) {
   const [databaseOdds, setDatabaseOdds] = useState<DatabaseOdds[]>([])
@@ -727,13 +727,13 @@ function DatabaseMarketContent({
 
   // Render content based on active tab
   switch (activeMainTab) {
-    case 'main':
+    case 'Main Lines':
       return renderMainLines(organizedOdds)
-    case 'player-props':
+    case 'Player Props':
       return renderPlayerProps(organizedOdds)
-    case 'team-props':
+    case 'Team Props':
       return renderTeamProps(organizedOdds)
-    case 'game-props':
+    case 'Game Props':
       return renderGameProps(organizedOdds)
     default:
       return renderMainLines(organizedOdds)

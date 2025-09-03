@@ -20,7 +20,7 @@ export default function EnhancedDatabaseGameCard({
   onOddsClick,
   useDatabaseOdds = false,
 }: EnhancedDatabaseGameCardProps) {
-  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('player-props')
+  const [activeMainTab, setActiveMainTab] = useState<MainTabType>('Player Props')
   const [activeSubTab, setActiveSubTab] = useState<string>('hitters')
   const [showPropsSection, setShowPropsSection] = useState<boolean>(false)
 
@@ -80,61 +80,63 @@ export default function EnhancedDatabaseGameCard({
 
     let moneylineOdds, spreadOdds, totalOdds
 
-    bookmaker.markets.forEach(market => {
-      if (market.key === 'h2h') {
-        moneylineOdds = {
-          home: market.outcomes.find(o => o.name === game.home_team)
-            ? {
-                price: market.outcomes.find(o => o.name === game.home_team)!.price,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
-          away: market.outcomes.find(o => o.name === game.away_team)
-            ? {
-                price: market.outcomes.find(o => o.name === game.away_team)!.price,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
-        }
-      } else if (market.key === 'spreads') {
-        spreadOdds = {
-          home: market.outcomes.find(o => o.name === game.home_team)
-            ? {
-                price: market.outcomes.find(o => o.name === game.home_team)!.price,
-                point: market.outcomes.find(o => o.name === game.home_team)!.point || 0,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
-          away: market.outcomes.find(o => o.name === game.away_team)
-            ? {
-                price: market.outcomes.find(o => o.name === game.away_team)!.price,
-                point: market.outcomes.find(o => o.name === game.away_team)!.point || 0,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
-        }
-      } else if (market.key === 'totals') {
-        const overOutcome = market.outcomes.find(o => o.name === 'Over')
-        const underOutcome = market.outcomes.find(o => o.name === 'Under')
+    if (bookmaker) {
+      bookmaker.markets.forEach(market => {
+        if (market.key === 'h2h') {
+          moneylineOdds = {
+            home: market.outcomes.find(o => o.name === game.home_team)
+              ? {
+                  price: market.outcomes.find(o => o.name === game.home_team)!.price,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+            away: market.outcomes.find(o => o.name === game.away_team)
+              ? {
+                  price: market.outcomes.find(o => o.name === game.away_team)!.price,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+          }
+        } else if (market.key === 'spreads') {
+          spreadOdds = {
+            home: market.outcomes.find(o => o.name === game.home_team)
+              ? {
+                  price: market.outcomes.find(o => o.name === game.home_team)!.price,
+                  point: market.outcomes.find(o => o.name === game.home_team)!.point || 0,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+            away: market.outcomes.find(o => o.name === game.away_team)
+              ? {
+                  price: market.outcomes.find(o => o.name === game.away_team)!.price,
+                  point: market.outcomes.find(o => o.name === game.away_team)!.point || 0,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+          }
+        } else if (market.key === 'totals') {
+          const overOutcome = market.outcomes.find(o => o.name === 'Over')
+          const underOutcome = market.outcomes.find(o => o.name === 'Under')
 
-        totalOdds = {
-          over: overOutcome
-            ? {
-                price: overOutcome.price,
-                point: overOutcome.point || 0,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
-          under: underOutcome
-            ? {
-                price: underOutcome.price,
-                point: underOutcome.point || 0,
-                sportsbook: bookmaker.title,
-              }
-            : undefined,
+          totalOdds = {
+            over: overOutcome
+              ? {
+                  price: overOutcome.price,
+                  point: overOutcome.point || 0,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+            under: underOutcome
+              ? {
+                  price: underOutcome.price,
+                  point: underOutcome.point || 0,
+                  sportsbook: bookmaker.title,
+                }
+              : undefined,
+          }
         }
-      }
-    })
+      })
+    }
 
     return { moneylineOdds, spreadOdds, totalOdds }
   }
@@ -197,22 +199,22 @@ export default function EnhancedDatabaseGameCard({
             {useDatabaseOdds ? (
               <DatabaseMarketContent
                 game={game}
-                activeMainTab="main"
+                activeMainTab="Main Lines"
                 activeSubTab=""
                 onBetClick={onOddsClick}
               />
             ) : (
               <MarketContent
                 sportKey={game.sport_key}
-                activeMainTab="main"
+                activeMainTab="Main Lines"
                 activeSubTab=""
                 gameId={game.id}
                 homeTeam={game.home_team}
                 awayTeam={game.away_team}
                 gameTime={game.commence_time}
-                moneylineOdds={moneylineOdds}
-                spreadOdds={spreadOdds}
-                totalOdds={totalOdds}
+                moneylineOdds={moneylineOdds || {}}
+                spreadOdds={spreadOdds || {}}
+                totalOdds={totalOdds || {}}
                 onBetClick={onOddsClick}
               />
             )}
@@ -265,9 +267,9 @@ export default function EnhancedDatabaseGameCard({
                     homeTeam={game.home_team}
                     awayTeam={game.away_team}
                     gameTime={game.commence_time}
-                    moneylineOdds={moneylineOdds}
-                    spreadOdds={spreadOdds}
-                    totalOdds={totalOdds}
+                    moneylineOdds={moneylineOdds || {}}
+                    spreadOdds={spreadOdds || {}}
+                    totalOdds={totalOdds || {}}
                     onBetClick={onOddsClick}
                   />
                 )}

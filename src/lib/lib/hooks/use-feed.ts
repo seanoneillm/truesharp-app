@@ -90,7 +90,7 @@ export function useFeed(): UseFeedReturn {
   })
 
   // Build query with filters
-  const buildQuery = useCallback(async () => {
+  const buildQuery = useCallback(() => {
     // Note: This is a simplified implementation
     // In a real app, you'd have a posts table with proper relationships
 
@@ -121,7 +121,6 @@ export function useFeed(): UseFeedReturn {
 
     if (filters.filter === 'live') {
       // Filter posts related to games starting soon
-      const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString()
       // TODO: Add game_time field to pick_posts or join with bets table
     }
 
@@ -143,17 +142,47 @@ export function useFeed(): UseFeedReturn {
         setIsLoading(true)
         setError(null)
 
-        const query = await buildQuery()
+        const query = buildQuery()
         const paginationOptions = {
           ...pagination,
           page,
         }
 
-        const result = await paginatedRequest<any>(query, paginationOptions)
+        const fetchFunction = async (params: PaginationParams): Promise<PaginatedResponse<any>> => {
+          const from = ((params.page || 1) - 1) * (params.limit || 20)
+          const to = from + (params.limit || 20) - 1
+
+          const { data, error, count } = await query
+            .order(params.sortBy || 'posted_at', { ascending: params.sortOrder === 'asc' })
+            .range(from, to)
+
+          if (error) {
+            throw new Error(error.message)
+          }
+
+          const total = count || 0
+          const totalPages = Math.ceil(total / (params.limit || 20))
+          const currentPage = params.page || 1
+
+          return {
+            data: data || [],
+            pagination: {
+              page: currentPage,
+              limit: params.limit || 20,
+              total,
+              totalPages,
+              hasNext: currentPage < totalPages,
+              hasPrev: currentPage > 1,
+            },
+            success: true,
+          }
+        }
+
+        const result = await paginatedRequest<any>(fetchFunction, paginationOptions)
 
         if (result.success) {
           // Transform pick_posts to feed posts
-          const transformedData: FeedPost[] = result.data.map(pick => ({
+          const transformedData: FeedPost[] = result.data.map((pick: any) => ({
             id: pick.id,
             user_id: pick.seller_id,
             content: pick.analysis || pick.title,
@@ -249,14 +278,15 @@ export function useFeed(): UseFeedReturn {
       })
 
       if (response.success && response.data) {
+        const insertedData = response.data as InsertedPickPost
         const newPost: FeedPost = {
-          id: response.data.id,
-          user_id: response.data.seller_id,
+          id: insertedData.id,
+          user_id: insertedData.seller_id,
           content: content,
           post_type: postType,
           metadata,
-          created_at: response.data.posted_at,
-          user: response.data.seller || {
+          created_at: insertedData.posted_at,
+          user: insertedData.seller || {
             username: 'unknown',
             display_name: 'Unknown User',
             avatar_url: null,

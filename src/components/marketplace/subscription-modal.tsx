@@ -1,16 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import {
-  X,
-  Crown,
-  Users,
-  TrendingUp,
-  Shield,
-  Calendar,
-  DollarSign,
+  // Calendar, // TS6133: unused import
+  // DollarSign, // TS6133: unused import
   CheckCircle,
+  Crown,
+  // Users, // TS6133: unused import
+  // TrendingUp, // TS6133: unused import
+  Shield,
+  X,
 } from 'lucide-react'
+import { useState } from 'react'
 
 interface StrategyData {
   id: string

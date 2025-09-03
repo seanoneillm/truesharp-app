@@ -60,7 +60,7 @@ export function timeAgo(date: Date): string {
 // Generate username from email
 export function generateUsername(email: string): string {
   const localPart = email.split('@')[0]
-  const cleaned = localPart.replace(/[^a-zA-Z0-9]/g, '')
+  const cleaned = localPart?.replace(/[^a-zA-Z0-9]/g, '') || ''
   return cleaned.toLowerCase()
 }
 

@@ -93,7 +93,7 @@ export interface AuthApi {
 }
 
 export const authApi: AuthApi = {
-  async login(email: string, password: string, rememberMe?: boolean) {
+  async login(email: string, password: string) {
     try {
       const { data, error } = await supabaseDirect.auth.signInWithPassword({
         email,

@@ -1,5 +1,5 @@
 import type { Bet, BetForm } from '@/lib/types'
-import { apiRequest, authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect as supabase } from './client'
 
 // Define BetFilters based on your FilterOptions type
 interface BetFilters {
@@ -75,7 +75,7 @@ export async function getUserBets(filters: BetFilters = {}, options = { page: 1,
       query = query.lte('odds', filters.odds.max)
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -192,7 +192,7 @@ export async function settleBet(
 
 // Get user's bet summary statistics
 export async function getUserBetStats(userId: string, filters: BetFilters = {}) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // This would typically call a database function for complex aggregations
     // For now, we'll do basic client-side calculations
     let query = supabase
@@ -304,7 +304,7 @@ export async function getUserBetStats(userId: string, filters: BetFilters = {}) 
 
 // Get public bets for leaderboards (anonymized)
 export async function getPublicBets(filters: BetFilters = {}, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     let query = supabase
       .from('bets')
       .select(
@@ -335,7 +335,7 @@ export async function getPublicBets(filters: BetFilters = {}, options = { page: 
       query = query.in('status', filters.status)
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }

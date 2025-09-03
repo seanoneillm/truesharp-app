@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useProfile } from '@/lib/hooks/use-profile'
-import { Check, Crown, Sparkles, X } from 'lucide-react'
+import { Check, Crown, /* Sparkles, */ X } from 'lucide-react'
 import { useState } from 'react'
 
 interface ProSubscriptionModalProps {

@@ -1,24 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
 import {
-  Users,
-  Mail,
-  Calendar,
+  // Mail, // TS6133: unused import
+  // Calendar, // TS6133: unused import
   DollarSign,
   TrendingUp,
-  Star,
-  Filter,
-  Search,
+  // Star, // TS6133: unused import
+  // Filter, // TS6133: unused import
+  // Search, // TS6133: unused import
   UserPlus,
-  UserMinus,
-  Clock,
+  Users,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useCallback, useEffect, useState } from 'react'
 
 interface Subscriber {
   id: string
@@ -104,9 +102,9 @@ export function SubscribersTab() {
         id: sub.id,
         subscriber_id: sub.subscriber_id,
         strategy_id: sub.strategy_id,
-        strategy_name: sub.strategies?.name || 'Unknown Strategy',
-        subscriber_email: sub.profiles?.email || 'N/A',
-        subscriber_username: sub.profiles?.username || 'Anonymous',
+        strategy_name: (sub.strategies as any)?.name || 'Unknown Strategy', // TS2339: fix property access
+        subscriber_email: (sub.profiles as any)?.email || 'N/A', // TS2339: fix property access
+        subscriber_username: (sub.profiles as any)?.username || 'Anonymous', // TS2339: fix property access
         frequency: sub.frequency,
         price: sub.price,
         status: sub.status,

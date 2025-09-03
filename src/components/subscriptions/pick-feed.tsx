@@ -1,30 +1,29 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { PickFeedProps, SubscriptionPick } from '@/types/subscriptions'
 import {
-  Target,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  Star,
+  // ExternalLink, // TS6133: unused import
+  AlertTriangle,
+  BarChart3,
   Calendar,
   CheckCircle,
-  XCircle,
-  RefreshCw,
-  Filter,
-  Eye,
+  Clock,
   Copy,
-  ExternalLink,
-  AlertTriangle,
   DollarSign,
+  Eye,
+  // RefreshCw, // TS6133: unused import
+  Filter,
   Percent,
-  BarChart3,
-  Timer,
+  // TrendingDown, // TS6133: unused import
+  Star,
+  Target,
+  TrendingUp,
+  XCircle,
 } from 'lucide-react'
-import { PickFeedProps, SubscriptionPick } from '@/types/subscriptions'
+import { useState /*, useEffect*/ } from 'react' // TS6133: useEffect unused
 
 export function PickFeed({
-  subscriptionId,
+  // subscriptionId, // TS6133: unused parameter
   picks,
   isLoading = false,
   onCopyBet,
@@ -81,74 +80,74 @@ export function PickFeed({
     setExpandedPicks(newExpanded)
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'won':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      case 'lost':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      case 'void':
-        return <AlertTriangle className="h-5 w-5 text-gray-500" />
-      case 'pending':
-      default:
-        return <Clock className="h-5 w-5 text-yellow-500" />
-    }
-  }
+  // const getStatusIcon = (status: string) => { // TS6133: unused function
+  //   switch (status) {
+  //     case 'won':
+  //       return <CheckCircle className="h-5 w-5 text-green-500" />
+  //     case 'lost':
+  //       return <XCircle className="h-5 w-5 text-red-500" />
+  //     case 'void':
+  //       return <AlertTriangle className="h-5 w-5 text-gray-500" />
+  //     case 'pending':
+  //     default:
+  //       return <Clock className="h-5 w-5 text-yellow-500" />
+  //   }
+  // }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'won':
-        return 'bg-green-50 text-green-800 border-green-200'
-      case 'lost':
-        return 'bg-red-50 text-red-800 border-red-200'
-      case 'void':
-        return 'bg-gray-50 text-gray-800 border-gray-200'
-      case 'pending':
-      default:
-        return 'bg-yellow-50 text-yellow-800 border-yellow-200'
-    }
-  }
+  // const getStatusColor = (status: string) => { // TS6133: unused function
+  //   switch (status) {
+  //     case 'won':
+  //       return 'bg-green-50 text-green-800 border-green-200'
+  //     case 'lost':
+  //       return 'bg-red-50 text-red-800 border-red-200'
+  //     case 'void':
+  //       return 'bg-gray-50 text-gray-800 border-gray-200'
+  //     case 'pending':
+  //     default:
+  //       return 'bg-yellow-50 text-yellow-800 border-yellow-200'
+  //   }
+  // }
 
-  const formatOdds = (odds: number) => {
-    if (odds > 0) return `+${odds}`
-    return odds.toString()
-  }
+  // const formatOdds = (odds: number) => { // TS6133: unused function
+  //   if (odds > 0) return `+${odds}`
+  //   return odds.toString()
+  // }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
-  }
+  // const formatCurrency = (amount: number) => { // TS6133: unused function
+  //   return new Intl.NumberFormat('en-US', {
+  //     style: 'currency',
+  //     currency: 'USD',
+  //     minimumFractionDigits: 2,
+  //   }).format(amount)
+  // }
 
-  const getSportIcon = (sport: string) => {
-    // This could be expanded with actual sport icons
-    switch (sport.toLowerCase()) {
-      case 'nfl':
-      case 'football':
-        return '🏈'
-      case 'nba':
-      case 'basketball':
-        return '🏀'
-      case 'mlb':
-      case 'baseball':
-        return '⚾'
-      case 'nhl':
-      case 'hockey':
-        return '🏒'
-      case 'soccer':
-        return '⚽'
-      case 'tennis':
-        return '🎾'
-      case 'golf':
-        return '⛳'
-      case 'mma':
-        return '🥊'
-      default:
-        return '🎯'
-    }
-  }
+  // const getSportIcon = (sport: string) => { // TS6133: unused function
+  //   // This could be expanded with actual sport icons
+  //   switch (sport.toLowerCase()) {
+  //     case 'nfl':
+  //     case 'football':
+  //       return '🏈'
+  //     case 'nba':
+  //     case 'basketball':
+  //       return '🏀'
+  //     case 'mlb':
+  //     case 'baseball':
+  //       return '⚾'
+  //     case 'nhl':
+  //     case 'hockey':
+  //       return '🏒'
+  //     case 'soccer':
+  //       return '⚽'
+  //     case 'tennis':
+  //       return '🎾'
+  //     case 'golf':
+  //       return '⛳'
+  //     case 'mma':
+  //       return '🥊'
+  //     default:
+  //       return '🎯'
+  //   }
+  // }
 
   if (isLoading) {
     return <PickFeedLoading />
@@ -499,17 +498,17 @@ function PickCard({
               )}
             </div>
 
-            {bet.prop_type && (
+            {(bet as any).prop_type && (
               <div>
                 <span className="text-gray-500">Prop Type:</span>
-                <p className="text-gray-900">{bet.prop_type}</p>
+                <p className="text-gray-900">{(bet as any).prop_type}</p>
               </div>
             )}
 
-            {bet.Player_name && (
+            {(bet as any).Player_name && (
               <div>
                 <span className="text-gray-500">Player:</span>
-                <p className="text-gray-900">{bet.Player_name}</p>
+                <p className="text-gray-900">{(bet as any).Player_name}</p>
               </div>
             )}
           </div>

@@ -342,7 +342,11 @@ export function useSubscriptions(): UseSubscriptionsReturn {
         setSubscriptions(prev =>
           prev.map((sub: SubscriptionWithSeller) =>
             sub.id === subscriptionId
-              ? { ...sub, tier: newTier, price: response.data?.price ?? sub.price }
+              ? {
+                  ...sub,
+                  tier: newTier,
+                  price: (response.data as unknown as { price?: number })?.price ?? sub.price,
+                }
               : sub
           )
         )

@@ -17,6 +17,7 @@ export interface Bet {
   actual_payout: number | null
   profit_loss: number | null
   status: 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
+  result?: 'won' | 'lost' | 'void' | 'cancelled'
   placed_at: string
   game_date: string
   sportsbook: string

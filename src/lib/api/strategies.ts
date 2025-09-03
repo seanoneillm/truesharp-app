@@ -9,12 +9,12 @@ export interface Strategy {
 }
 
 export interface StrategyUpdateData {
-  name?: string
-  description?: string
-  monetized?: boolean
-  pricing_weekly?: number | null
-  pricing_monthly?: number | null
-  pricing_yearly?: number | null
+  name?: string | undefined
+  description?: string | undefined
+  monetized?: boolean | undefined
+  pricing_weekly?: number | null | undefined
+  pricing_monthly?: number | null | undefined
+  pricing_yearly?: number | null | undefined
 }
 
 export async function getStrategies(): Promise<Strategy[]> {

@@ -1,21 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Target, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
-import { useAuth } from '@/lib/hooks/use-auth'
-import { ProfessionalStrategyCard, type StrategyData } from './professional-strategy-card'
 import {
+  createStrategy,
+  deleteStrategy,
   fetchUserStrategies,
   updateStrategy,
-  deleteStrategy,
-  createStrategy,
   type StrategyUpdateData,
 } from '@/lib/api/strategies'
-import { createClient } from '@/lib/supabase'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
+import { createClient } from '@/lib/supabase'
+import { Loader2, Plus, Target } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ProfessionalStrategyCard, type StrategyData } from './professional-strategy-card'
 
 export function StrategiesTab() {
   const { user, loading: authLoading } = useAuth()
@@ -44,7 +44,13 @@ export function StrategiesTab() {
 
         // Merge the data - use regular strategies as base, enhance with open bets where available
         const enhancedStrategies = regularStrategies.map(strategy => {
-          const strategyWithBets = strategiesWithBets.find(s => s.id === strategy.id)
+          const strategyWithBets = strategiesWithBets.find(
+            (s: unknown) => (s as { id: string }).id === strategy.id
+          ) as {
+            open_bets?: unknown[]
+            open_bets_count?: number
+            total_potential_profit?: number
+          }
           if (strategyWithBets) {
             return {
               ...strategy,
@@ -56,7 +62,7 @@ export function StrategiesTab() {
           return strategy
         })
 
-        setStrategies(enhancedStrategies)
+        setStrategies(enhancedStrategies as StrategyData[])
       } catch (openBetsError) {
         console.warn('Failed to fetch open bets, using regular strategies:', openBetsError)
         setStrategies(regularStrategies)
@@ -71,7 +77,7 @@ export function StrategiesTab() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [user?.id, addToast])
 
   useEffect(() => {
     if (!authLoading && user?.id) {

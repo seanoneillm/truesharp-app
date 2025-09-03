@@ -2,7 +2,7 @@
 
 import { Game } from '@/lib/types/games'
 import { Clock, TrendingUp, Users } from 'lucide-react'
-import CompactGameCard from './CompactGameCard'
+// import CompactGameCard from './CompactGameCard'
 
 interface GamesListProps {
   games: Game[]
@@ -140,7 +140,9 @@ export default function GamesList({
       {/* Games Grid */}
       <div className="space-y-3">
         {sortedGames.map(game => (
-          <CompactGameCard key={game.id} game={game} marketFilter={marketFilter} />
+          <div key={game.id}>
+            Game: {game.home_team} vs {game.away_team}
+          </div>
         ))}
       </div>
 

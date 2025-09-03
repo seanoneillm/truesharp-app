@@ -3,7 +3,6 @@
 import { ProSubscriptionModal } from '@/components/subscription/pro-subscription-modal'
 import { useProfile } from '@/lib/hooks/use-profile'
 import { ArrowRight, Check, Crown } from 'lucide-react'
-import Link from 'next/link'
 import { useState } from 'react'
 
 export default function ProPrompt() {

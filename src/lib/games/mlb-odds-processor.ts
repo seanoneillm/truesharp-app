@@ -4,7 +4,7 @@ import { isOverUnderMarket, isYesNoMarket, parseOddID } from './oddid-parser'
 export interface OddsData {
   odds: number
   sportsbook: string
-  line?: number | string
+  line?: number | string | undefined
 }
 
 export interface PlayerProp {
@@ -119,13 +119,13 @@ export function processMLBOdds(odds: DatabaseOdd[]): MLBGameOdds[] {
 
     // Process based on category
     if (parsed.category === 'main_lines') {
-      processMainLines(gameOdds, parsed, bestOdds, odd)
+      processMainLines(gameOdds, parsed, bestOdds)
     } else if (parsed.category === 'hitters' || parsed.category === 'pitchers') {
-      processPlayerProps(gameOdds, parsed, bestOdds, odd)
+      processPlayerProps(gameOdds, parsed, bestOdds)
     } else if (parsed.category === 'team_props') {
-      processTeamProps(gameOdds, parsed, bestOdds, odd)
+      processTeamProps(gameOdds, parsed, bestOdds)
     } else if (parsed.category === 'game_props') {
-      processGameProps(gameOdds, parsed, bestOdds, odd)
+      processGameProps(gameOdds, parsed, bestOdds)
     }
   }
 
@@ -186,12 +186,7 @@ function isBetterOdds(newOdds: number, currentOdds: number): boolean {
   return false
 }
 
-function processMainLines(
-  gameOdds: MLBGameOdds,
-  parsed: any,
-  bestOdds: OddsData,
-  odd: DatabaseOdd
-) {
+function processMainLines(gameOdds: MLBGameOdds, parsed: any, bestOdds: OddsData) {
   const { betType, side } = parsed
 
   if (betType === 'ml') {
@@ -218,12 +213,7 @@ function processMainLines(
   }
 }
 
-function processPlayerProps(
-  gameOdds: MLBGameOdds,
-  parsed: any,
-  bestOdds: OddsData,
-  odd: DatabaseOdd
-) {
+function processPlayerProps(gameOdds: MLBGameOdds, parsed: any, bestOdds: OddsData) {
   const { category, identifier, displayName, side } = parsed
 
   if (!parsed.isPlayerProp) return
@@ -242,26 +232,19 @@ function processPlayerProps(
       playerId,
       playerName,
       market: displayName,
-      over: undefined,
-      under: undefined,
     }
     gameOdds.playerProps[propCategory].push(playerProp)
   }
 
   // Assign odds to over/under
   if (side === 'over') {
-    playerProp.over = bestOdds
+    playerProp!.over = bestOdds
   } else if (side === 'under') {
-    playerProp.under = bestOdds
+    playerProp!.under = bestOdds
   }
 }
 
-function processTeamProps(
-  gameOdds: MLBGameOdds,
-  parsed: any,
-  bestOdds: OddsData,
-  odd: DatabaseOdd
-) {
+function processTeamProps(gameOdds: MLBGameOdds, parsed: any, bestOdds: OddsData) {
   const { identifier, displayName, side } = parsed
 
   if (identifier !== 'home' && identifier !== 'away') return
@@ -277,26 +260,19 @@ function processTeamProps(
       team,
       teamName,
       market: displayName,
-      over: undefined,
-      under: undefined,
     }
     gameOdds.teamProps.push(teamProp)
   }
 
   // Assign odds to over/under
   if (side === 'over') {
-    teamProp.over = bestOdds
+    teamProp!.over = bestOdds
   } else if (side === 'under') {
-    teamProp.under = bestOdds
+    teamProp!.under = bestOdds
   }
 }
 
-function processGameProps(
-  gameOdds: MLBGameOdds,
-  parsed: any,
-  bestOdds: OddsData,
-  odd: DatabaseOdd
-) {
+function processGameProps(gameOdds: MLBGameOdds, parsed: any, bestOdds: OddsData) {
   const { displayName, side } = parsed
 
   // Find or create game prop
@@ -305,17 +281,15 @@ function processGameProps(
   if (!gameProp) {
     gameProp = {
       market: displayName,
-      over: undefined,
-      under: undefined,
     }
     gameOdds.gameProps.push(gameProp)
   }
 
   // Assign odds to over/under
   if (side === 'over') {
-    gameProp.over = bestOdds
+    gameProp!.over = bestOdds
   } else if (side === 'under') {
-    gameProp.under = bestOdds
+    gameProp!.under = bestOdds
   }
 }
 

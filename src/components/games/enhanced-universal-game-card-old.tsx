@@ -19,7 +19,7 @@ export default function EnhancedUniversalGameCard({
   league,
   onOddsClick = () => {},
 }: EnhancedUniversalGameCardProps) {
-  const [activeTab, setActiveTab] = useState<MainTabType>('main')
+  const [activeTab, setActiveTab] = useState<MainTabType>('Main Lines')
   const [activeSubTab, setActiveSubTab] = useState<string>('')
   const [activeSubSubTab, setActiveSubSubTab] = useState<string>('')
 
@@ -76,10 +76,10 @@ export default function EnhancedUniversalGameCard({
 
   // Get available tabs based on game data
   const getAvailableTabs = (): MainTabType[] => {
-    const baseTabs: MainTabType[] = ['main']
+    const baseTabs: MainTabType[] = ['Main Lines']
 
     // Add other tabs - in a real implementation, you'd check if the game has these markets
-    baseTabs.push('player-props', 'team-props', 'game-props')
+    baseTabs.push('Player Props', 'Team Props', 'Game Props')
 
     return baseTabs
   }
@@ -91,12 +91,12 @@ export default function EnhancedUniversalGameCard({
 
     // Set default subtab when changing main tabs
     if (
-      tab === 'player-props' &&
+      tab === 'Player Props' &&
       marketConfig?.playerProps &&
       marketConfig.playerProps.length > 0
     ) {
       setActiveSubTab(marketConfig.playerProps[0]?.id || '')
-    } else if (tab === 'team-props') {
+    } else if (tab === 'Team Props') {
       if (
         marketConfig?.teamProps?.subcategories &&
         marketConfig.teamProps.subcategories.length > 0
@@ -105,7 +105,7 @@ export default function EnhancedUniversalGameCard({
       } else {
         setActiveSubTab('team-basic')
       }
-    } else if (tab === 'game-props') {
+    } else if (tab === 'Game Props') {
       if (
         marketConfig?.gameProps?.subcategories &&
         marketConfig.gameProps.subcategories.length > 0
@@ -143,9 +143,9 @@ export default function EnhancedUniversalGameCard({
     if (!marketConfig) return []
 
     switch (activeTab) {
-      case 'player-props':
+      case 'Player Props':
         return marketConfig.playerProps || []
-      case 'team-props':
+      case 'Team Props':
         return (
           marketConfig.teamProps?.subcategories || [
             { id: 'team-basic', label: 'Basic Stats', markets: [] },
@@ -153,7 +153,7 @@ export default function EnhancedUniversalGameCard({
             { id: 'team-special', label: 'Special', markets: [] },
           ]
         )
-      case 'game-props':
+      case 'Game Props':
         return (
           marketConfig.gameProps?.subcategories || [
             { id: 'game-basic', label: 'Game Flow', markets: [] },
@@ -168,7 +168,7 @@ export default function EnhancedUniversalGameCard({
 
   // Get subsubtabs for the current active subtab (only for player props)
   const getSubSubTabs = () => {
-    if (activeTab !== 'player-props' || !marketConfig?.playerProps) return []
+    if (activeTab !== 'Player Props' || !marketConfig?.playerProps) return []
 
     const currentSubTab = marketConfig.playerProps.find(prop => prop.id === activeSubTab)
     return currentSubTab?.subcategories || []
@@ -180,18 +180,14 @@ export default function EnhancedUniversalGameCard({
   // Map tab types to display names
   const getTabDisplayName = (tab: MainTabType): string => {
     switch (tab) {
-      case 'main':
+      case 'Main Lines':
         return 'Main Lines'
-      case 'player-props':
+      case 'Player Props':
         return 'Player Props'
-      case 'team-props':
+      case 'Team Props':
         return 'Team Props'
-      case 'game-props':
+      case 'Game Props':
         return 'Game Props'
-      case 'period-props':
-        return 'Period Props'
-      case 'alt-lines':
-        return 'Alt Lines'
       default:
         return tab
     }

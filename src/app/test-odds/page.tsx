@@ -28,7 +28,7 @@ export default function TestOddsPage() {
         const supabase = createClient()
 
         addDebugLog('Testing connection with simple query...')
-        const { data: testData, error: testError } = await supabase
+        const { error: testError } = await supabase
           .from('games')
           .select('count')
           .limit(1)

@@ -1,4 +1,4 @@
-import { apiRequest, authenticatedRequest, paginatedRequest, supabase } from './client'
+import { authenticatedRequest, paginatedRequest, supabaseDirect as supabase } from './client'
 // import type { Seller } from '@/lib/types'
 
 // Define SellerFilters interface
@@ -21,7 +21,7 @@ export async function getMarketplaceSellers(
   filters: SellerFilters = {},
   options = { page: 1, limit: 20 }
 ) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     let query = supabase
       .from('seller_profiles')
       .select(
@@ -94,14 +94,14 @@ export async function getMarketplaceSellers(
         query = query.order('created_at', { ascending: false })
     }
 
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Get featured sellers
 export async function getFeaturedSellers(limit = 6) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('seller_profiles')
       .select(
@@ -126,7 +126,7 @@ export async function getFeaturedSellers(limit = 6) {
 
 // Get seller profile by username
 export async function getSellerByUsername(username: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('seller_profiles')
       .select(
@@ -153,7 +153,7 @@ export async function getSellerByUsername(username: string) {
 
 // Get seller statistics
 export async function getSellerStats(sellerId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     // Get comprehensive seller statistics
     const [performanceResult, subscriptionResult, pickResult, revenueResult] = await Promise.all([
       // Performance stats
@@ -223,7 +223,7 @@ export async function getSellerStats(sellerId: string) {
 
 // Get seller's recent picks (public view)
 export async function getSellerRecentPicks(sellerId: string, options = { page: 1, limit: 10 }) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const query = supabase
       .from('picks')
       .select(
@@ -244,14 +244,14 @@ export async function getSellerRecentPicks(sellerId: string, options = { page: 1
       .eq('user_id', sellerId)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-    const paginated = await paginatedRequest(query, options)
+    const paginated = await paginatedRequest(query as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Search sellers
 export async function searchSellers(query: string, options = { page: 1, limit: 20 }) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const searchQuery = supabase
       .from('seller_profiles')
       .select(
@@ -273,14 +273,14 @@ export async function searchSellers(query: string, options = { page: 1, limit: 2
         bio.ilike.%${query}%,
         specialization.cs.{${query}}
       `)
-    const paginated = await paginatedRequest(searchQuery, options)
+    const paginated = await paginatedRequest(searchQuery as any, options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
 
 // Get seller subscription tiers
 export async function getSellerSubscriptionTiers(sellerId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     return await supabase
       .from('seller_subscription_tiers')
       .select('*')
@@ -309,7 +309,7 @@ export async function getSellerLeaderboard(
   _timeframe: 'week' | 'month' | 'all' = 'month',
   limit = 50
 ) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     let query = supabase
       .from('seller_profiles')
       .select(
@@ -342,7 +342,7 @@ export async function getSellerLeaderboard(
 
 // Get seller performance by sport
 export async function getSellerSportPerformance(sellerId: string) {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const { data: picks, error } = await supabase
       .from('picks')
       .select('sport, status, confidence, created_at')
@@ -388,7 +388,7 @@ export async function getSellerSportPerformance(sellerId: string) {
 
 // Get marketplace statistics
 export async function getMarketplaceStats() {
-  return apiRequest(async () => {
+  return authenticatedRequest(async () => {
     const [sellersResult, activeSubscriptionsResult, totalRevenueResult, picksResult] =
       await Promise.all([
         supabase

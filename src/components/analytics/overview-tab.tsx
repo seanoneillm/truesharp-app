@@ -72,14 +72,13 @@ interface OverviewTabProps {
   analyticsData?: AnalyticsData
 }
 
-const TIME_PERIODS = ['This Week', 'This Month', 'This Year']
 
 export function OverviewTab({
   recentBets,
   chartData,
-  selectedTimePeriod,
-  onTimePeriodChange,
-  totalProfit,
+  selectedTimePeriod: _selectedTimePeriod,
+  onTimePeriodChange: _onTimePeriodChange,
+  totalProfit: _totalProfit,
   isLoading = false,
   analyticsData,
 }: OverviewTabProps) {
@@ -162,13 +161,13 @@ export function OverviewTab({
       return Object.keys(monthlyData)
         .sort()
         .map(monthKey => {
-          const monthProfit = monthlyData[monthKey].dailyProfits.reduce(
+          const monthProfit = monthlyData[monthKey]?.dailyProfits?.reduce(
             (sum, profit) => sum + profit,
             0
-          )
+          ) ?? 0
           cumulativeProfit += monthProfit
           return {
-            dateLabel: monthlyData[monthKey].dateLabel,
+            dateLabel: monthlyData[monthKey]?.dateLabel ?? '',
             profit: cumulativeProfit,
           }
         })

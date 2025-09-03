@@ -1,15 +1,15 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 interface ToggleProps {
-  checked?: boolean
-  onCheckedChange?: (checked: boolean) => void
-  disabled?: boolean
-  size?: 'sm' | 'default' | 'lg'
-  className?: string
-  id?: string
-  'aria-label'?: string
-  'aria-describedby'?: string
+  checked?: boolean | undefined
+  onCheckedChange?: ((checked: boolean) => void) | undefined
+  disabled?: boolean | undefined
+  size?: 'sm' | 'default' | 'lg' | undefined
+  className?: string | undefined
+  id?: string | undefined
+  'aria-label'?: string | undefined
+  'aria-describedby'?: string | undefined
 }
 
 const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
@@ -190,4 +190,4 @@ const ToggleGroup: React.FC<ToggleGroupProps> = ({
   )
 }
 
-export { Toggle, LabeledToggle, ToggleGroup }
+export { LabeledToggle, Toggle, ToggleGroup }

@@ -163,7 +163,7 @@ export default function SellPage() {
       }
 
       // Fetch strategies created by this user with fallback
-      let strategies = []
+      let strategies: any[] = []
       try {
         const { data, error: strategiesError } = await supabase
           .from('strategies')
@@ -194,7 +194,7 @@ export default function SellPage() {
       }
 
       // Fetch active subscriptions for this seller with fallback
-      let subscriptions = []
+      let subscriptions: any[] = []
       try {
         const { data, error: subscriptionsError } = await supabase
           .from('subscriptions')

@@ -21,7 +21,7 @@ export default function EnhancedUniversalGameCard({
   league,
   onOddsClick = () => {},
 }: EnhancedUniversalGameCardProps) {
-  const [activeTab, setActiveTab] = useState<MainTabType>('main')
+  const [activeTab, setActiveTab] = useState<MainTabType>('Main Lines')
   const [activeSubTab, setActiveSubTab] = useState<string>('')
   const [activeSubSubTab, setActiveSubSubTab] = useState<string>('')
   const [databaseOdds, setDatabaseOdds] = useState<DatabaseOdds[]>([])
@@ -137,13 +137,13 @@ export default function EnhancedUniversalGameCard({
   // Get display names for tabs
   const getTabDisplayName = (tab: MainTabType): string => {
     switch (tab) {
-      case 'main':
+      case 'Main Lines':
         return 'Main Lines'
-      case 'player-props':
+      case 'Player Props':
         return 'Player Props'
-      case 'team-props':
+      case 'Team Props':
         return 'Team Props'
-      case 'game-props':
+      case 'Game Props':
         return 'Game Props'
       default:
         return tab
@@ -244,14 +244,14 @@ export default function EnhancedUniversalGameCard({
           {availableTabs.mainTabs.map(tab => (
             <button
               key={tab}
-              onClick={() => handleTabChange(tab)}
+              onClick={() => handleTabChange(tab as MainTabType)}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               } `}
             >
-              {getTabDisplayName(tab)}
+              {getTabDisplayName(tab as MainTabType)}
             </button>
           ))}
         </div>

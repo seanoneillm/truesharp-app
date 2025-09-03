@@ -4,9 +4,9 @@ import { gamesDataService } from '@/lib/services/games-data'
 import { DatabaseOdds } from '@/lib/types/database'
 import { BetSelection, Game } from '@/lib/types/games'
 import {
+  generateMarketDisplayName,
   getAvailableTabs,
   organizeOddsByHierarchy,
-  generateMarketDisplayName,
 } from '@/lib/utils/odds-hierarchy'
 import { Calendar, CircleDot, Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -23,7 +23,7 @@ export default function ProfessionalGameCard({
   game,
   league,
   onOddsClick = () => {},
-  selectedBets = [],
+  // selectedBets = [], // TS6133: unused variable
 }: ProfessionalGameCardProps) {
   const [activeTab, setActiveTab] = useState<MainTabType>('Main Lines')
   const [activeSubTab, setActiveSubTab] = useState<string>('')
@@ -55,12 +55,34 @@ export default function ProfessionalGameCard({
                     marketname: market.key,
                     oddid: baseOddId,
                     bookodds: convertDecimalToAmericanOdds(outcome.price),
-                    line: outcome.point || null,
+                    line: outcome.point ? String(outcome.point) : null,
                     closebookodds: null,
                     created_at: market.last_update,
                     hometeam: game.home_team,
                     awayteam: game.away_team,
                     sideid: outcome.name.toLowerCase(),
+                    // Fill required fields with defaults
+                    statid: null,
+                    bettypeid: null,
+                    odds_type: 'current',
+                    fetched_at: new Date().toISOString(),
+                    updated_at: null,
+                    leagueid: game.sport_key,
+                    playerid: null,
+                    periodid: null,
+                    fanduelodds: null,
+                    fanduellink: null,
+                    espnbetodds: null,
+                    espnbetlink: null,
+                    ceasarsodds: null,
+                    ceasarslink: null,
+                    mgmodds: null,
+                    mgmlink: null,
+                    fanaticsodds: null,
+                    fanaticslink: null,
+                    draftkingsodds: null,
+                    draftkingslink: null,
+                    score: null,
                   })
                 }
               })
@@ -89,14 +111,18 @@ export default function ProfessionalGameCard({
       }
     }
 
-    if (game.id) {
+    if (game?.id) {
       fetchOdds()
     }
-  }, [game.id, league])
+  }, [game, league]) // Include game as dependency
 
   // Helper function to generate oddID from market data
-  const getOddIdFromMarket = (marketKey: string, outcome: any, game: Game): string | null => {
-    const sportKey = game.sport_key
+  const getOddIdFromMarket = (
+    marketKey: string,
+    outcome: { name: string; point?: number },
+    game: Game
+  ): string | null => {
+    // const sportKey = game.sport_key // TS6133: unused variable
 
     if (marketKey === 'totals' || marketKey === 'Over/Under') {
       const side = outcome.name.toLowerCase() === 'over' ? 'over' : 'under'

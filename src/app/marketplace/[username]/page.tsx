@@ -109,7 +109,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
   }
 
   // Handle subscription modal
-  const handleSubscribeClick = (strategyId: string, sellerId: string) => {
+  const handleSubscribeClick = (strategyId: string) => {
     // Check if user is authenticated before allowing subscription
     if (!isAuthenticated || !user) {
       // Redirect to login page
@@ -128,7 +128,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
         strategy_description: '', // Not provided by API
         username: strategy.username,
         display_name: strategy.username,
-        profile_picture_url: sellerProfile.profile_img,
+        profile_picture_url: sellerProfile?.profile_img || null,
         total_bets: strategy.total_bets,
         roi_percentage: strategy.roi_percentage,
         win_rate: strategy.win_rate,

@@ -59,7 +59,7 @@ export function SellerCard({ seller, viewMode = 'grid' }: SellerCardProps) {
                   {seller.tier}
                 </Badge>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{seller.user.displayName}</p>
+              <p className="mt-1 text-sm text-gray-500">{seller.user.display_name}</p>
               <p className="mt-2 line-clamp-2 max-w-2xl text-sm text-gray-600">{seller.user.bio}</p>
               <div className="mt-3 flex items-center space-x-6">
                 <div className="flex items-center text-sm text-gray-500">
@@ -128,7 +128,7 @@ export function SellerCard({ seller, viewMode = 'grid' }: SellerCardProps) {
                 <h3 className="text-lg font-medium text-gray-900">@{seller.user.username}</h3>
                 {seller.user.isVerified && <CheckCircle className="ml-2 h-5 w-5 text-blue-500" />}
               </div>
-              <p className="text-sm text-gray-500">{seller.user.displayName}</p>
+              <p className="text-sm text-gray-500">{seller.user.display_name}</p>
             </div>
           </div>
           <Badge className={cn(getTierColor(seller.tier))}>

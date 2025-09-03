@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
     error: analyticsError,
     filters,
     updateFilters,
-  } = useAnalytics(user, userProfile?.isPro || false)
+  } = useAnalytics(user)
 
   // Improved user profile fetching with better error handling
   useEffect(() => {

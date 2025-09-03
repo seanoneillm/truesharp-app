@@ -1,5 +1,5 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
+import * as React from 'react'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: boolean
@@ -69,7 +69,8 @@ const FormField = React.forwardRef<
   }
 >(({ className, label, error, required, children, ...props }, ref) => (
   <div ref={ref} className={cn('space-y-2', className)} {...props}>
-    {label && <Label required={required}>{label}</Label>}
+    {label && <Label required={required ?? false}>{label}</Label>}{' '}
+    {/* TS2375: fix exactOptionalPropertyTypes */}
     {children}
     {error && (
       <p className="flex items-center text-sm text-red-500">
@@ -87,4 +88,4 @@ const FormField = React.forwardRef<
 ))
 FormField.displayName = 'FormField'
 
-export { Input, Label, FormField }
+export { FormField, Input, Label }

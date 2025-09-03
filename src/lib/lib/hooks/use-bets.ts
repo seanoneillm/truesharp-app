@@ -118,13 +118,44 @@ export function useBets(userId?: string): UseBetsReturn {
           throw new Error('No user ID available')
         }
 
-        const query = buildQuery(targetUserId)
+        const fetchFunction = async (params: PaginationParams): Promise<PaginatedResponse<Bet>> => {
+          const query = buildQuery(targetUserId)
+          
+          const from = ((params.page || 1) - 1) * (params.limit || 20)
+          const to = from + (params.limit || 20) - 1
+
+          const { data, error, count } = await query
+            .order(params.sortBy || 'placed_at', { ascending: params.sortOrder === 'asc' })
+            .range(from, to)
+
+          if (error) {
+            throw new Error(error.message)
+          }
+
+          const total = count || 0
+          const totalPages = Math.ceil(total / (params.limit || 20))
+          const currentPage = params.page || 1
+
+          return {
+            data: data || [],
+            pagination: {
+              page: currentPage,
+              limit: params.limit || 20,
+              total,
+              totalPages,
+              hasNext: currentPage < totalPages,
+              hasPrev: currentPage > 1,
+            },
+            success: true,
+          }
+        }
+
         const paginationOptions = {
           ...pagination,
           page,
         }
 
-        const result = await paginatedRequest<Bet>(query, paginationOptions)
+        const result = await paginatedRequest<Bet>(fetchFunction, paginationOptions)
 
         if (result.success) {
           setBets(prev => ({
@@ -225,7 +256,7 @@ export function useBets(userId?: string): UseBetsReturn {
       if (response.success && response.data) {
         setBets(prev => ({
           ...prev,
-          data: response.data ? [response.data, ...prev.data] : prev.data,
+          data: [response.data as Bet, ...prev.data],
           pagination: {
             ...prev.pagination,
             total: prev.pagination.total + 1,

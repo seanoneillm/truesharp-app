@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 export function useSellerSetup() {
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false)
 
   return { loading }
 }

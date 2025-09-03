@@ -1,6 +1,6 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { ChevronDown, Check } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
+import * as React from 'react'
 
 interface DropdownProps {
   trigger: React.ReactNode
@@ -166,7 +166,7 @@ const Select: React.FC<SelectProps> = ({
         <DropdownItem
           key={option.value}
           onClick={() => onValueChange?.(option.value)}
-          disabled={option.disabled}
+          disabled={option.disabled ?? false} // TS2375: fix exactOptionalPropertyTypes
           className="flex items-center justify-between"
         >
           {option.label}
@@ -209,12 +209,15 @@ export const UserMenu: React.FC<{
     <Dropdown trigger={trigger} align="end">
       <DropdownLabel>My Account</DropdownLabel>
       <DropdownSeparator />
-      <DropdownItem onClick={onProfileClick}>Profile</DropdownItem>
-      <DropdownItem onClick={onSettingsClick}>Settings</DropdownItem>
+      <DropdownItem onClick={onProfileClick || (() => {})}>Profile</DropdownItem>{' '}
+      {/* TS2375: fix undefined */}
+      <DropdownItem onClick={onSettingsClick || (() => {})}>Settings</DropdownItem>{' '}
+      {/* TS2375: fix undefined */}
       <DropdownSeparator />
-      <DropdownItem onClick={onLogoutClick}>Log out</DropdownItem>
+      <DropdownItem onClick={onLogoutClick || (() => {})}>Log out</DropdownItem>{' '}
+      {/* TS2375: fix undefined */}
     </Dropdown>
   )
 }
 
-export { Dropdown, DropdownItem, DropdownSeparator, DropdownLabel, Select }
+export { Dropdown, DropdownItem, DropdownLabel, DropdownSeparator, Select }

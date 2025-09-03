@@ -1,25 +1,25 @@
 'use client'
 
-import React from 'react'
+import { PerformanceTrackingProps } from '@/types/subscriptions'
 import {
-  TrendingUp,
-  TrendingDown,
-  Target,
-  BarChart3,
-  PieChart,
-  Calendar,
-  DollarSign,
-  Percent,
-  Award,
-  AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
   Activity,
-  Clock,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Award,
+  BarChart3,
+  // PieChart, // TS6133: unused import
+  Calendar,
+  Copy,
+  DollarSign,
+  Minus,
+  Percent,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  // Clock, // TS6133: unused import
   Zap,
 } from 'lucide-react'
-import { PerformanceTrackingProps } from '@/types/subscriptions'
 
 export function PerformanceTracking({
   subscription,
@@ -29,11 +29,11 @@ export function PerformanceTracking({
 }: PerformanceTrackingProps) {
   const roi = performance.roi
   const winRate = performance.winRate
-  const totalBets = performance.totalBets
-  const copiedBets = performance.copiedBets
-  const profit = performance.profit
-  const subscriptionCost = performance.subscriptionCost
-  const netValue = performance.netValue
+  const totalBets = (performance as any).totalBets || (performance.copiedVsOriginalPerformance?.copied?.bets || 0) + (performance.copiedVsOriginalPerformance?.original?.bets || 0)
+  const copiedBets = (performance as any).copiedBets || performance.copiedVsOriginalPerformance?.copied?.bets || 0
+  const profit = (performance as any).profit || (performance.copiedVsOriginalPerformance?.copied?.profit || 0) + (performance.copiedVsOriginalPerformance?.original?.profit || 0)
+  const subscriptionCost = (performance as any).subscriptionCost || performance.subscriptionValue || 0
+  const netValue = (performance as any).netValue || profit - subscriptionCost
 
   const getROIColor = (value: number) => {
     if (value > 15) return 'text-green-600'
@@ -369,14 +369,14 @@ export function PerformanceTracking({
                 <span className="text-sm text-gray-600">Last 30 Days:</span>
                 <div className="text-right">
                   <div className="text-sm font-medium text-gray-900">
-                    {performance.last30DaysPerformance.bets} bets,{' '}
-                    {performance.last30DaysPerformance.wins} wins
+                    {(performance as any).last30DaysPerformance?.bets || 0} bets,{' '}
+                    {(performance as any).last30DaysPerformance?.wins || 0} wins
                   </div>
                   <div
-                    className={`text-sm font-bold ${performance.last30DaysPerformance.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-sm font-bold ${((performance as any).last30DaysPerformance?.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
-                    {performance.last30DaysPerformance.profit >= 0 ? '+' : ''}
-                    {formatCurrency(performance.last30DaysPerformance.profit)}
+                    {((performance as any).last30DaysPerformance?.profit || 0) >= 0 ? '+' : ''}
+                    {formatCurrency((performance as any).last30DaysPerformance?.profit || 0)}
                   </div>
                 </div>
               </div>
@@ -385,14 +385,14 @@ export function PerformanceTracking({
                 <span className="text-sm text-gray-600">All Time:</span>
                 <div className="text-right">
                   <div className="text-sm font-medium text-gray-900">
-                    {performance.allTimePerformance.bets} bets,{' '}
-                    {performance.allTimePerformance.wins} wins
+                    {(performance as any).allTimePerformance?.bets || 0} bets,{' '}
+                    {(performance as any).allTimePerformance?.wins || 0} wins
                   </div>
                   <div
-                    className={`text-sm font-bold ${performance.allTimePerformance.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-sm font-bold ${((performance as any).allTimePerformance?.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
-                    {performance.allTimePerformance.profit >= 0 ? '+' : ''}
-                    {formatCurrency(performance.allTimePerformance.profit)}
+                    {((performance as any).allTimePerformance?.profit || 0) >= 0 ? '+' : ''}
+                    {formatCurrency((performance as any).allTimePerformance?.profit || 0)}
                   </div>
                 </div>
               </div>

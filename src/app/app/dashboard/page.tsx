@@ -136,11 +136,11 @@ export default function EnhancedDashboard() {
   // ✅ REAL DATA: Transform connections data for display
   const connectedSportsbooks =
     connections?.map(conn => ({
-      name: conn.sportsbooks?.display_name || conn.sportsbook_id,
+      name: conn.sportsbookId,
       status: conn.status,
-      lastSync: conn.last_sync ? new Date(conn.last_sync).toLocaleString() : 'Never',
+      lastSync: conn.lastSync ? new Date(conn.lastSync).toLocaleString() : 'Never',
       color: conn.status === 'connected' ? 'green' : 'red',
-      logo: conn.sportsbooks?.display_name?.substring(0, 2) || conn.sportsbook_id?.substring(0, 2),
+      logo: conn.sportsbookId?.substring(0, 2),
     })) || []
 
   if (isLoading) {

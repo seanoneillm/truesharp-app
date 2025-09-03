@@ -35,7 +35,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch user profile
-  const fetchProfile = useCallback(async (targetUserId?: string) => {
+  const fetchProfile = useCallback(async (targetUserId?: string): Promise<Profile> => {
     try {
       let query = supabaseDirect.from('profiles').select('*')
 
@@ -52,7 +52,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
       const { data, error } = await query.single()
 
       if (error) throw error
-      return data
+      return data as Profile
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to fetch profile')
     }
@@ -64,13 +64,13 @@ export function useUserData(userId?: string): UseUserDataReturn {
       let query = supabaseDirect.from('user_performance_cache').select('*').single()
 
       if (targetUserId) {
-        query = query.eq('user_id', targetUserId)
+        query = (query as any).eq('user_id', targetUserId)
       } else {
         const {
           data: { user },
         } = await supabaseDirect.auth.getUser()
         if (!user) throw new Error('Not authenticated')
-        query = query.eq('user_id', user.id)
+        query = (query as any).eq('user_id', user.id)
       }
 
       const { data, error } = await query
@@ -163,7 +163,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
       if (profileError) throw profileError
 
       // Create seller settings record
-      const { data: settingsData, error: settingsError } = await supabaseDirect
+      const { error: settingsError } = await supabaseDirect
         .from('seller_settings')
         .upsert({
           user_id: currentUserId,
@@ -206,7 +206,7 @@ export function useUserData(userId?: string): UseUserDataReturn {
     if (response.success && response.data) {
       setUserData(prev => ({
         ...prev,
-        profile: response.data,
+        profile: response.data as Profile,
       }))
       return true
     } else {

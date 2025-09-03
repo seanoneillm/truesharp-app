@@ -37,7 +37,6 @@ export const AdvancedProfitChart: React.FC<ProfitChartProps> = ({
   onTimeframeChange,
 }) => {
   const [viewType, setViewType] = useState<'cumulative' | 'daily'>('cumulative')
-  const [showAnnotations, setShowAnnotations] = useState(true)
 
   const timeframes = [
     { value: '7d', label: '7 Days' },

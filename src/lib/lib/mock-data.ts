@@ -1,11 +1,11 @@
-import { User, Bet, Pick, Seller, Subscription, PerformanceMetrics } from './types'
+import { Bet, PerformanceMetrics, Pick, Seller, Subscription, User } from './types'
 
 // Mock Users
 export const mockUsers: User[] = [
   {
     id: '1',
     username: 'sharpbettor',
-    displayName: 'Mike Johnson',
+    display_name: 'Mike Johnson',
     email: 'mike@example.com',
     avatar: 'MJ',
     bio: 'Former Vegas insider with 15+ years experience. Specializing in NFL spreads and NBA totals with proven long-term results.',
@@ -23,7 +23,7 @@ export const mockUsers: User[] = [
   {
     id: '2',
     username: 'mlbmaster',
-    displayName: 'Sarah Chen',
+    display_name: 'Sarah Chen',
     email: 'sarah@example.com',
     avatar: 'SC',
     bio: 'MLB analytics expert with proprietary models. Focus on player props and team totals during regular season.',
@@ -40,7 +40,7 @@ export const mockUsers: User[] = [
   {
     id: '3',
     username: 'nflkings',
-    displayName: 'Tony Rodriguez',
+    display_name: 'Tony Rodriguez',
     email: 'tony@example.com',
     avatar: 'TR',
     bio: 'Rising star with incredible football instincts. Strong record on primetime games and playoff predictions.',

@@ -119,13 +119,44 @@ export function useMarketplace(): UseMarketplaceReturn {
         setIsLoading(true)
         setError(null)
 
-        const query = buildQuery()
+        const fetchFunction = async (params: PaginationParams): Promise<PaginatedResponse<any>> => {
+          const query = buildQuery()
+          
+          const from = ((params.page || 1) - 1) * (params.limit || 20)
+          const to = from + (params.limit || 20) - 1
+
+          const { data, error, count } = await query
+            .order(params.sortBy || 'created_at', { ascending: params.sortOrder === 'asc' })
+            .range(from, to)
+
+          if (error) {
+            throw new Error(error.message)
+          }
+
+          const total = count || 0
+          const totalPages = Math.ceil(total / (params.limit || 20))
+          const currentPage = params.page || 1
+
+          return {
+            data: data || [],
+            pagination: {
+              page: currentPage,
+              limit: params.limit || 20,
+              total,
+              totalPages,
+              hasNext: currentPage < totalPages,
+              hasPrev: currentPage > 1,
+            },
+            success: true,
+          }
+        }
+
         const paginationOptions = {
           ...pagination,
           page,
         }
 
-        const result = await paginatedRequest<any>(query, paginationOptions)
+        const result = await paginatedRequest<any>(fetchFunction, paginationOptions)
 
         if (result.success) {
           // Transform the data to include performance metrics

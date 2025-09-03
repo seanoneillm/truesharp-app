@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { createClient } from '@/lib/supabase'
 // Note: Using API endpoint /api/subscriptions-open-bets instead of direct query
 import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
 import {
@@ -17,16 +16,10 @@ import {
   Calendar,
   DollarSign,
   TrendingUp,
-  Users,
   X,
-  Pause,
-  Play,
   AlertTriangle,
   CheckCircle,
   Clock,
-  Filter,
-  Search,
-  MoreHorizontal,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
@@ -398,7 +391,7 @@ export default function SubscriptionsPage() {
             const openBetsByStrategy = openBetsData.openBetsByStrategy
 
             // Map open bets to subscriptions
-            const enhancedSubscriptions = subscriptionData.map(sub => {
+            const enhancedSubscriptions = subscriptionData.map((sub: any) => {
               const openBets = openBetsByStrategy[sub.strategy_id] || []
 
               return {
@@ -410,7 +403,7 @@ export default function SubscriptionsPage() {
 
             // Log summary of open bets found
             const totalOpenBets = enhancedSubscriptions.reduce(
-              (sum, sub) => sum + (sub.open_bets_count || 0),
+              (sum: number, sub: any) => sum + (sub.open_bets_count || 0),
               0
             )
             console.log(

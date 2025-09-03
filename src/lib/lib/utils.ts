@@ -60,8 +60,9 @@ export function timeAgo(date: Date): string {
 // Generate username from email
 export function generateUsername(email: string): string {
   const localPart = email.split('@')[0]
+  if (!localPart) return 'user'
   const cleaned = localPart.replace(/[^a-zA-Z0-9]/g, '')
-  return cleaned.toLowerCase()
+  return cleaned.toLowerCase() || 'user'
 }
 
 // Validate email
@@ -155,10 +156,7 @@ export function round(value: number, decimals = 2): number {
   return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
 }
 
-// Date helpers
-export function formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat('en-US', options).format(date)
-}
+// Date helpers - formatDate removed, use the one from formatters.ts instead
 
 export function isToday(date: Date): boolean {
   const today = new Date()

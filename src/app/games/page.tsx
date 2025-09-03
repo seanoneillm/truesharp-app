@@ -21,6 +21,8 @@ function GamesPageContent() {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('MLB')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [, setIsFetching] = useState(false)
+  const [, setRetryCount] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   // Toast notifications for bet slip actions
