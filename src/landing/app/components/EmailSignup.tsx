@@ -1,6 +1,5 @@
 'use client'
 
-import axios from 'axios'
 import { useState } from 'react'
 
 export default function EmailSignup() {
@@ -16,20 +15,29 @@ export default function EmailSignup() {
 
     try {
       console.log('Submitting form:', { email, firstName })
-      const response = await axios.post('/api/subscribe', {
-        email,
-        firstName,
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          firstName,
+        }),
       })
 
-      console.log('Response:', response.data)
-      if (response.data.success) {
+      const data = await response.json()
+      console.log('Response:', data)
+
+      if (response.ok && data.success) {
         setMessage("Success! You're on the list for early access and launch updates.")
         setEmail('')
         setFirstName('')
+      } else {
+        setMessage(data.error || 'Something went wrong. Please try again.')
       }
     } catch (error: any) {
       console.error('Form submission error:', error)
-      console.error('Error response:', error.response?.data)
       setMessage('Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
