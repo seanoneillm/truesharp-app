@@ -1,4 +1,4 @@
-import { createMiddlewareSupabaseClient } from '@/lib/auth/supabaseServer'
+import { createServerClient } from '@supabase/ssr'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
@@ -23,6 +23,83 @@ const adminRoutes = ['/admin']
 
 // Define seller routes
 const sellerRoutes = ['/sell']
+
+// Create middleware-compatible Supabase client
+function createMiddlewareSupabaseClient(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          const value = request.cookies.get(name)?.value
+
+          // Handle array format cookies - extract the JWT from ["jwt"] format
+          if (
+            name.includes('auth-token') &&
+            !name.includes('code-verifier') &&
+            value &&
+            value.startsWith('[') &&
+            value.endsWith(']')
+          ) {
+            try {
+              const parsed = JSON.parse(value)
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed[0]
+              }
+            } catch (e) {
+              console.log(`⚠️ Failed to parse array cookie in middleware:`, e)
+            }
+          }
+
+          return value
+        },
+        set(name: string, value: string, options: Record<string, unknown>) {
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
+
+  return { supabase, response }
+}
 
 export async function middleware(request: NextRequest) {
   try {
