@@ -1,0 +1,6 @@
+import { NextResponse } from 'next/server'
+
+export async function middleware() {
+  // Ultra-minimal middleware - just pass through everything
+  return NextResponse.next()
+}
