@@ -56,17 +56,15 @@ export function LoginForm() {
             const { createClient } = await import('@/lib/supabase')
             const supabase = createClient()
             
-            // Use getSessionFromUrl to process the token and store the session
-            const { data, error } = await supabase.auth.getSessionFromUrl({
-              storeSession: true
-            })
+            // Get the current session to check if user is authenticated
+            const { data, error } = await supabase.auth.getSession()
             
             if (error) {
-              console.error('Token processing error:', error)
-              setUrlMessage('Invalid or expired verification link.')
+              console.error('Session check error:', error)
+              setUrlMessage('Authentication error occurred.')
               setUrlMessageType('error')
             } else if (data.session) {
-              console.log('Token processed successfully, redirecting to dashboard')
+              console.log('User authenticated successfully, redirecting to dashboard')
               setUrlMessage('Successfully authenticated! Redirecting...')
               setUrlMessageType('success')
               

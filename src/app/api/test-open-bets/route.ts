@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, strategyId, sampleData } = await request.json()
+    const { userId, strategyId } = await request.json()
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
