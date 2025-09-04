@@ -1,3 +1,5 @@
+'use client'
+
 import {
   BarChart3,
   CheckCircle,
@@ -9,6 +11,9 @@ import {
   Gamepad2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
+import { PrivacyPolicyDialog } from '@/components/legal/privacy-policy-dialog'
+import { TermsOfServiceDialog } from '@/components/legal/terms-of-service-dialog'
 
 // Shield SVG Component based on your logo
 const TrueSharpShield = ({ className = 'h-8 w-8', variant = 'default' }) => (
@@ -37,6 +42,9 @@ const TrueSharpShield = ({ className = 'h-8 w-8', variant = 'default' }) => (
 )
 
 export default function TrueSharpLandingPage() {
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header Navigation */}
@@ -607,10 +615,20 @@ export default function TrueSharpLandingPage() {
                   </a>
                 </li>
                 <li>
-                  <span className="text-sm text-gray-400">Privacy Policy</span>
+                  <button
+                    onClick={() => setPrivacyOpen(true)}
+                    className="text-sm text-gray-400 transition-colors hover:text-white"
+                  >
+                    Privacy Policy
+                  </button>
                 </li>
                 <li>
-                  <span className="text-sm text-gray-400">Terms of Service</span>
+                  <button
+                    onClick={() => setTermsOpen(true)}
+                    className="text-sm text-gray-400 transition-colors hover:text-white"
+                  >
+                    Terms of Service
+                  </button>
                 </li>
               </ul>
             </div>
@@ -621,6 +639,10 @@ export default function TrueSharpLandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Legal Dialogs */}
+      <PrivacyPolicyDialog open={privacyOpen} onOpenChange={setPrivacyOpen} />
+      <TermsOfServiceDialog open={termsOpen} onOpenChange={setTermsOpen} />
     </div>
   )
 }

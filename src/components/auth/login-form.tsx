@@ -37,20 +37,78 @@ export function LoginForm() {
   const { signIn } = useAuth()
   const router = useRouter()
 
-  // Check for URL parameters (verification success/error messages)
+  // Check for URL parameters (verification success/error messages) and handle tokens
   useEffect(() => {
-    const error = searchParams.get('error')
-    const message = searchParams.get('message')
-    const verified = searchParams.get('verified')
+    const handleAuthCallback = async () => {
+      // Check if there's a token in the URL hash (for email verification and magic links)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const type = hashParams.get('type')
+        
+        if (accessToken && type) {
+          setIsLoading(true)
+          setUrlMessage('Processing authentication...')
+          setUrlMessageType('success')
+          
+          try {
+            // Import supabase client
+            const { createClient } = await import('@/lib/supabase')
+            const supabase = createClient()
+            
+            // Use getSessionFromUrl to process the token and store the session
+            const { data, error } = await supabase.auth.getSessionFromUrl({
+              storeSession: true
+            })
+            
+            if (error) {
+              console.error('Token processing error:', error)
+              setUrlMessage('Invalid or expired verification link.')
+              setUrlMessageType('error')
+            } else if (data.session) {
+              console.log('Token processed successfully, redirecting to dashboard')
+              setUrlMessage('Successfully authenticated! Redirecting...')
+              setUrlMessageType('success')
+              
+              // Clear the hash from URL
+              window.history.replaceState(null, '', window.location.pathname)
+              
+              // Redirect to dashboard after a short delay
+              setTimeout(() => {
+                router.push('/dashboard')
+              }, 1000)
+              return
+            } else {
+              setUrlMessage('Authentication failed. Please try again.')
+              setUrlMessageType('error')
+            }
+          } catch (error) {
+            console.error('Authentication processing error:', error)
+            setUrlMessage('An error occurred during authentication.')
+            setUrlMessageType('error')
+          } finally {
+            setIsLoading(false)
+          }
+          return
+        }
+      }
 
-    if (verified === 'true') {
-      setUrlMessage('Email verified successfully! You can now sign in.')
-      setUrlMessageType('success')
-    } else if (error && message) {
-      setUrlMessage(message)
-      setUrlMessageType('error')
+      // Handle regular URL parameters (existing logic)
+      const error = searchParams.get('error')
+      const message = searchParams.get('message')
+      const verified = searchParams.get('verified')
+
+      if (verified === 'true') {
+        setUrlMessage('Email verified successfully! You can now sign in.')
+        setUrlMessageType('success')
+      } else if (error && message) {
+        setUrlMessage(message)
+        setUrlMessageType('error')
+      }
     }
-  }, [searchParams])
+
+    handleAuthCallback()
+  }, [searchParams, router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target

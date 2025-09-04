@@ -172,6 +172,11 @@ export async function GET(request: NextRequest) {
     const forceRefresh = searchParams.get('refresh') === 'true'
 
     console.log('🔍 API called with:', { sport, dateParam, customStartDate, forceRefresh })
+    console.log('🔑 API Key check:', { 
+      hasKey: !!API_KEY, 
+      keyLength: API_KEY?.length, 
+      keyPrefix: API_KEY?.substring(0, 8) 
+    })
 
     if (!API_KEY) {
       return NextResponse.json({ error: 'SportsGameOdds API key not configured' }, { status: 500 })
@@ -205,10 +210,12 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Local midnight
 
-      // If customStartDate is provided, use it as the lower bound, otherwise use today
+      // If customStartDate is provided, use it as the lower bound, otherwise use dateParam or today
       let startDate: Date
       if (customStartDate) {
         startDate = new Date(customStartDate + 'T00:00:00.000Z')
+      } else if (dateParam) {
+        startDate = new Date(dateParam + 'T00:00:00.000Z')
       } else {
         startDate = today
       }
@@ -260,6 +267,13 @@ export async function GET(request: NextRequest) {
               customStartDate || dateParam || ''
             )
           }
+          
+          // If pagination fails (like 404 on cursor), break the loop but continue with data we have
+          if (nextCursor && allEvents.length > 0) {
+            console.log(`⚠️ Pagination failed with ${response.status} ${response.statusText}, continuing with ${allEvents.length} events collected so far`)
+            break
+          }
+          
           throw new Error(`SportsGameOdds API error: ${response.status} ${response.statusText}`)
         }
 
@@ -674,10 +688,12 @@ async function saveOddsDataSportsGameOdds(gameId: string, odds: Record<string, u
         updated_at: new Date().toISOString(),
       }))
 
-      const { error } = await supabase.from('odds').upsert(recordsWithTimestamp, {
-        onConflict: 'eventid,oddid,sportsbook',
-        ignoreDuplicates: false,
-      })
+      const { error } = await supabase
+        .from('odds')
+        .upsert(recordsWithTimestamp, { 
+          onConflict: 'eventid,oddid',
+          ignoreDuplicates: false 
+        })
 
       if (error) {
         console.error('❌ Error saving odds:', error)

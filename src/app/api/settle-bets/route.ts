@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🏆 Starting bet settlement process')
 
-    // Calculate date range: yesterday and today (same as fetch-odds but backwards)
+    // Calculate date range: yesterday and today to get completed games with scores
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(today.getDate() - 1)
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // Define all sports to fetch (same exact list as fetch-odds)
     const sportsToFetch = ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
 
-    // Fetch historical results for yesterday and today (2 days instead of 7)
+    // Fetch historical results for yesterday and today (focus on completed games)
     for (let i = -1; i <= 0; i++) {
       // -1 = yesterday, 0 = today
       const fetchDate = new Date()

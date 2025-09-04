@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Manual odds fetch requested for:', { sport, date })
 
-    // Fetch odds for current date through next week (7 days)
+    // Fetch odds for 1 day before through 7 days after the base date (8 days total)
     const baseDate = new Date(date || new Date().toISOString().split('T')[0])
     const promises = []
 
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
         ? [sport]
         : ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = -1; i <= 6; i++) {
       const fetchDate = new Date(baseDate)
       fetchDate.setDate(baseDate.getDate() + i)
       const dateStr = fetchDate.toISOString().split('T')[0] || fetchDate.toISOString()
@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Manual odds fetch completed:', {
       sports: sportsToFetch,
       baseDate: baseDate.toISOString().split('T')[0],
+      dateRange: `${new Date(baseDate.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} to ${new Date(baseDate.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`,
       totalGames,
       successfulRequests,
       rateLimitedRequests,
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
       successfulRequests,
       rateLimitedRequests,
       totalRequests: promises.length,
-      daysProcessed: 7,
+      daysProcessed: 8,
       sportResults,
       results,
       message,
