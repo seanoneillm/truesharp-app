@@ -57,6 +57,13 @@ export const navigationRoutes: NavigationRoute[] = [
     description: 'Social community features',
     requiresAuth: true,
   },
+  {
+    name: 'Feedback',
+    href: '/feedback',
+    icon: 'MessageCircle',
+    description: 'Share your feedback with us',
+    requiresAuth: false,
+  },
 ]
 
 export function getRouteByPath(path: string): NavigationRoute | undefined {
@@ -66,6 +73,13 @@ export function getRouteByPath(path: string): NavigationRoute | undefined {
 export function isActiveRoute(currentPath: string, routePath: string): boolean {
   if (routePath === '/dashboard') {
     return currentPath === '/dashboard' || currentPath === '/'
+  }
+  // Handle special cases where paths might conflict
+  if (routePath === '/feed') {
+    return currentPath === '/feed' || (currentPath.startsWith('/feed/') && !currentPath.startsWith('/feedback'))
+  }
+  if (routePath === '/feedback') {
+    return currentPath === '/feedback' || currentPath.startsWith('/feedback/')
   }
   return currentPath.startsWith(routePath)
 }

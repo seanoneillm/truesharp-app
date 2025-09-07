@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useAnalytics, type Bet } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { RefreshCw, Link } from 'lucide-react'
+import { RefreshCw, Link, X, BarChart3 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 
@@ -129,6 +129,7 @@ export default function AnalyticsPage() {
   const [isRefreshingBets, setIsRefreshingBets] = useState(false)
   const [isLinkingSportsbooks, setIsLinkingSportsbooks] = useState(false)
   const [refreshResult, setRefreshResult] = useState<string | null>(null)
+  const [showBankrollGuide, setShowBankrollGuide] = useState(false)
 
   // Local filter state to prevent resets
   const [localFilters, setLocalFilters] = useState<FilterOptions>(defaultFilters)
@@ -865,8 +866,14 @@ export default function AnalyticsPage() {
           profit: item.profit,
         }))
       : [],
-    // Enhanced analytics data from SQL functions
-    roiOverTime: analyticsData.roiOverTime || [],
+    // Enhanced analytics data from filtered chartData (actual profit, not potential)
+    roiOverTime: chartData.map(item => ({
+      day: item.date,
+      net_profit: item.profit, // Use daily profit change, not cumulative
+      roi_pct: item.cumulative > 0 ? (item.profit / (metrics.avgStake || 100)) * 100 : 0,
+      bets: 1, // Default to 1 bet per day since ChartDataPoint doesn't include bet count
+      total_stake: metrics.avgStake || 0,
+    })) || [],
     leagueBreakdown: analyticsData.leagueBreakdown || [],
     winRateVsExpected: analyticsData.winRateVsExpected || [],
     monthlyPerformance: analyticsData.monthlyPerformance || [],
@@ -883,6 +890,7 @@ export default function AnalyticsPage() {
             winRate={metrics.winRate}
             totalProfit={metrics.totalProfit}
             roi={metrics.roi}
+            onShowBankrollGuide={() => setShowBankrollGuide(true)}
           />
 
           {/* Pro Upgrade Banner */}
@@ -996,7 +1004,7 @@ export default function AnalyticsPage() {
               })
               return (
                 <AnalyticsTabComponent
-                  data={transformedAnalytics}
+                  data={transformedAnalytics as any}
                   isPro={userProfile.isPro}
                   isLoading={false}
                   user={user as any}
@@ -1062,6 +1070,90 @@ export default function AnalyticsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Bankroll Guide Modal */}
+        {showBankrollGuide && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 p-2">
+                    <BarChart3 className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">📊 Bankroll Basics & Finding Your Edge</h3>
+                    <p className="text-sm text-green-700">Essential guide for responsible betting</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBankrollGuide(false)}
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/50 hover:text-slate-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="max-h-[70vh] overflow-y-auto p-8">
+                <div className="prose max-w-none">
+                  <div className="mb-8">
+                    <h2 className="mb-4 flex items-center text-2xl font-bold text-slate-900">
+                      What is a Bankroll?
+                    </h2>
+                    <p className="text-slate-700">
+                      Your bankroll is the amount of money you've set aside strictly for sports betting. Think of it as your "betting budget." The most important rule is simple: <strong>never bet money you can't afford to lose</strong>. Your bankroll should be separate from bills, savings, or everyday spending.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">How Big Should Your Bankroll Be?</h2>
+                    <p className="text-slate-700">
+                      There's no universal number. Some bettors set aside $500, others $5,000. The key is comfort — you should be fine if it all disappeared tomorrow. Start small and grow your bankroll with consistent discipline.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Units & Bet Sizing</h2>
+                    <p className="text-slate-700">
+                      To stay consistent, bettors use "units." One unit is usually 1–2% of your bankroll. For example, if your bankroll is $1,000, one unit might be $10–20. Betting in units makes your results easy to track, compare, and analyze — no matter the size of your bankroll.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Why Small Bets Win Long-Term</h2>
+                    <p className="text-slate-700">
+                      It's tempting to chase a big win by betting more, but large swings wipe out bankrolls quickly. By sticking to flat betting (same unit size every time) or a small variation (1–3 units depending on confidence), you protect yourself from losing streaks.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Analyzing Your Bet History</h2>
+                    <p className="text-slate-700 mb-4">
+                      Your analytics dashboard shows you more than just wins and losses. By looking deeper into your performance, you can identify:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-slate-700">
+                      <li><strong>Your ROI (Return on Investment):</strong> How much you're earning per dollar risked.</li>
+                      <li><strong>Best & Worst Sports/Markets:</strong> Maybe you crush NBA totals but struggle with MLB moneylines.</li>
+                      <li><strong>Bet Types That Work:</strong> Some bettors thrive on spreads, others on props.</li>
+                    </ul>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Tracking Bets = Finding Your Edge</h2>
+                    <p className="text-slate-700">
+                      Tracking every wager is what separates disciplined bettors from casual gamblers. Over time, patterns emerge. Maybe you're profitable when betting underdogs but lose when you back heavy favorites. With data, you can double down on what works and cut out what doesn't.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 p-6">
+                    <p className="text-lg font-semibold text-green-900">
+                      👉 <strong>Bottom line:</strong> Your bankroll is your foundation, your units are your safety net, and your data is your roadmap. Respect those three, and you give yourself the best chance to succeed while betting responsibly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </DashboardLayout>
     </ProtectedRoute>
   )

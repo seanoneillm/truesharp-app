@@ -98,6 +98,15 @@ const ProfessionalStrategyCardComponent = ({
   }
 
   const handleEdit = () => {
+    // Reset edited strategy to current database values to ensure accurate display
+    setEditedStrategy({
+      name: strategy.name,
+      description: strategy.description,
+      monetized: strategy.monetized,
+      pricing_weekly: strategy.pricing_weekly,
+      pricing_monthly: strategy.pricing_monthly,
+      pricing_yearly: strategy.pricing_yearly,
+    })
     setIsEditing(true)
   }
 
@@ -119,8 +128,17 @@ const ProfessionalStrategyCardComponent = ({
       await onSave(strategy.id, editedStrategy)
       setIsEditing(false)
       onSuccess?.('Strategy updated successfully')
-    } catch (error) {
-      onError?.('Failed to update strategy')
+    } catch (error: any) {
+      // Show more helpful error messages
+      const errorMessage = error?.message || 'Failed to update strategy'
+      
+      if (errorMessage.includes('Stripe Connect account required')) {
+        onError?.('Complete your seller setup in Settings to enable monetization')
+      } else if (errorMessage.includes('Seller account setup incomplete')) {
+        onError?.('Complete your Stripe onboarding process to enable monetization')
+      } else {
+        onError?.(errorMessage)
+      }
     } finally {
       setIsSaving(false)
     }
@@ -543,7 +561,7 @@ const ProfessionalStrategyCardComponent = ({
       </Card>
 
       {/* Monetization Warning Modal */}
-      <Modal isOpen={showMonetizationModal} onClose={() => setShowMonetizationModal(false)}>
+      <Modal isOpen={showMonetizationModal} onClose={() => setShowMonetizationModal(false)} size="lg">
         <div className="p-6">
           <div className="mb-4 flex items-center space-x-3">
             <div className="rounded-full bg-blue-100 p-2">
@@ -619,7 +637,7 @@ const ProfessionalStrategyCardComponent = ({
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} size="lg">
         <div className="p-6">
           <div className="mb-4 flex items-center space-x-3">
             <div className="rounded-full bg-red-100 p-2">

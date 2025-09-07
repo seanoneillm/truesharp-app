@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
+import { useStripeSellerData } from '@/lib/hooks/use-stripe-data'
 import {
   ArrowUpRight,
   BarChart3,
@@ -48,8 +49,7 @@ interface FinancialMetrics {
 
 export function FinancialsTab() {
   const { user } = useAuth()
-  // const [revenueData, setRevenueData] = useState<RevenueData[]>([]) // TS6133: unused state
-  const [metrics /*, setMetrics*/] = useState<FinancialMetrics>({
+  const [metrics, setMetrics] = useState<FinancialMetrics>({
     totalGrossRevenue: 0,
     totalNetRevenue: 0,
     totalPlatformFees: 0,
@@ -65,6 +65,9 @@ export function FinancialsTab() {
   })
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
+  
+  // Use Stripe seller data for accurate financial metrics
+  const { data: stripeData, loading: stripeLoading } = useStripeSellerData()
 
   const loadFinancialData = useCallback(async () => {
     if (!user) return
@@ -101,42 +104,78 @@ export function FinancialsTab() {
 
       const subscriptions = subscriptionsData || []
 
-      // Calculate metrics
-      // let totalGrossRevenue = 0 // TS6133: unused
+      // Calculate metrics - prioritize Stripe data when available
+      let totalGrossRevenue = 0
+      let totalNetRevenue = 0
+      let totalPlatformFees = 0
+      let totalSubscribers = 0
       const revenueByFrequency = { weekly: 0, monthly: 0, yearly: 0 }
       const strategyRevenue = new Map()
 
-      subscriptions.forEach(sub => {
-        const monthlyPrice =
-          sub.frequency === 'weekly'
-            ? sub.price * 4.33
-            : sub.frequency === 'yearly'
-              ? sub.price / 12
-              : sub.price
+      if (stripeData) {
+        // Use Stripe data for accurate financial metrics
+        totalNetRevenue = stripeData.totalRevenue
+        totalGrossRevenue = totalNetRevenue / 0.82 // Reverse calculate gross from net (82% take rate)
+        totalPlatformFees = totalGrossRevenue - totalNetRevenue
+        totalSubscribers = stripeData.subscriberCount
 
-        // totalGrossRevenue += monthlyPrice // TS6133: unused variable usage
-        revenueByFrequency[sub.frequency as keyof typeof revenueByFrequency] += monthlyPrice // TS7053: fix index access
+        // Process Stripe subscription data for frequency breakdown
+        stripeData.subscriptions.forEach(sub => {
+          const monthlyAmount = sub.amount / 100 // Convert from cents
+          const interval = sub.interval
+          
+          if (interval === 'week') {
+            revenueByFrequency.weekly += monthlyAmount * 4.33
+          } else if (interval === 'year') {
+            revenueByFrequency.yearly += monthlyAmount / 12
+          } else {
+            revenueByFrequency.monthly += monthlyAmount
+          }
 
-        // Track strategy performance
-        const strategyName = (sub.strategies as any)?.name || 'Unknown Strategy' // TS2339: fix property access
-        const current = strategyRevenue.get(strategyName) || { revenue: 0, subscriber_count: 0 }
-        strategyRevenue.set(strategyName, {
-          strategy_name: strategyName,
-          revenue: current.revenue + monthlyPrice,
-          subscriber_count: current.subscriber_count + 1,
+          // Track strategy performance from Stripe metadata
+          const strategyId = sub.strategy_id || 'default'
+          const current = strategyRevenue.get(strategyId) || { revenue: 0, subscriber_count: 0 }
+          strategyRevenue.set(strategyId, {
+            strategy_name: sub.product_name,
+            revenue: current.revenue + (monthlyAmount * 0.82), // Apply seller take rate
+            subscriber_count: current.subscriber_count + 1,
+          })
         })
-      })
+      } else {
+        // Fallback to Supabase calculations
+        subscriptions.forEach(sub => {
+          const monthlyPrice =
+            sub.frequency === 'weekly'
+              ? sub.price * 4.33
+              : sub.frequency === 'yearly'
+                ? sub.price / 12
+                : sub.price
 
-      // const totalPlatformFees = totalGrossRevenue * 0.18 // 18% platform fee // TS6133: unused
-      // const totalNetRevenue = totalGrossRevenue * 0.82 // TS6133: unused
+          totalGrossRevenue += monthlyPrice
+          revenueByFrequency[sub.frequency as keyof typeof revenueByFrequency] += monthlyPrice
+
+          // Track strategy performance
+          const strategyName = (sub.strategies as any)?.name || 'Unknown Strategy'
+          const current = strategyRevenue.get(strategyName) || { revenue: 0, subscriber_count: 0 }
+          strategyRevenue.set(strategyName, {
+            strategy_name: strategyName,
+            revenue: current.revenue + monthlyPrice * 0.82,
+            subscriber_count: current.subscriber_count + 1,
+          })
+        })
+
+        totalPlatformFees = totalGrossRevenue * 0.18
+        totalNetRevenue = totalGrossRevenue * 0.82
+        totalSubscribers = subscriptions.length
+      }
 
       // Get top performing strategies
-      // const topPerformingStrategies = Array.from(strategyRevenue.values()) // TS6133: unused
-      //   .sort((a, b) => b.revenue - a.revenue)
-      //   .slice(0, 5)
+      const topPerformingStrategies = Array.from(strategyRevenue.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5)
 
       // Calculate growth rate (mock data for now - would need historical data)
-      // const monthlyGrowthRate = subscriptions.length > 0 ? 12.5 : 0 // TS6133: unused
+      const monthlyGrowthRate = totalSubscribers > 0 ? 12.5 : 0
 
       // Generate mock historical data for the chart
       /* TS6133: Commented out unused function
@@ -169,25 +208,22 @@ export function FinancialsTab() {
       }
       */
 
-      // setRevenueData(generateRevenueData()) // TS: commented out since setRevenueData was removed
-      // Mock metrics for now
-      // Mock metrics - functionality preserved but simplified for TS compliance
-      // setMetrics({
-      //   totalGrossRevenue,
-      //   totalNetRevenue,
-      //   totalPlatformFees,
-      //   monthlyGrowthRate,
-      //   averageRevenuePerUser: subscriptions.length > 0 ? totalNetRevenue / subscriptions.length : 0,
-      //   totalSubscribers: subscriptions.length,
-      //   revenueByFrequency,
-      //   topPerformingStrategies,
-      // })
+      setMetrics({
+        totalGrossRevenue,
+        totalNetRevenue,
+        totalPlatformFees,
+        monthlyGrowthRate,
+        averageRevenuePerUser: totalSubscribers > 0 ? totalNetRevenue / totalSubscribers : 0,
+        totalSubscribers,
+        revenueByFrequency,
+        topPerformingStrategies,
+      })
     } catch (error) {
       console.error('Error loading financial data:', error)
     } finally {
       setLoading(false)
     }
-  }, [user, timeRange])
+  }, [user, timeRange, stripeData])
 
   useEffect(() => {
     loadFinancialData()
@@ -205,7 +241,7 @@ export function FinancialsTab() {
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
   }
 
-  if (loading) {
+  if (loading || stripeLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

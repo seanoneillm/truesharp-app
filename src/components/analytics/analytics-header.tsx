@@ -1,7 +1,8 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { TrendingUp, Users, DollarSign, Target } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { TrendingUp, Users, DollarSign, Target, BarChart3 } from 'lucide-react'
 
 interface AnalyticsHeaderProps {
   username?: string
@@ -9,6 +10,7 @@ interface AnalyticsHeaderProps {
   winRate: number
   totalProfit: number
   roi: number
+  onShowBankrollGuide?: () => void
 }
 
 export function AnalyticsHeader({
@@ -17,6 +19,7 @@ export function AnalyticsHeader({
   winRate = 0,
   totalProfit = 0,
   roi = 0,
+  onShowBankrollGuide,
 }: AnalyticsHeaderProps) {
   return (
     <div className="mb-8 space-y-6">
@@ -29,8 +32,20 @@ export function AnalyticsHeader({
               Track your betting performance and discover insights to improve your strategy
             </p>
           </div>
-          <div className="hidden md:block">
-            <TrendingUp className="h-16 w-16 text-blue-200" />
+          <div className="flex items-center space-x-4">
+            {onShowBankrollGuide && (
+              <Button
+                onClick={onShowBankrollGuide}
+                variant="outline"
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Bankroll Guide
+              </Button>
+            )}
+            <div className="hidden md:block">
+              <TrendingUp className="h-16 w-16 text-blue-200" />
+            </div>
           </div>
         </div>
       </div>

@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useProfile } from '@/lib/hooks/use-profile'
-import { Check, Crown, /* Sparkles, */ X } from 'lucide-react'
+import { useProSubscription } from '@/lib/hooks/use-pro-subscription'
+import { Check, Crown, X } from 'lucide-react'
 import { useState } from 'react'
 
 interface ProSubscriptionModalProps {
@@ -14,50 +15,39 @@ interface ProSubscriptionModalProps {
 }
 
 export function ProSubscriptionModal({ isOpen, onClose, onSuccess }: ProSubscriptionModalProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly')
   const { user } = useAuth()
-  const { refreshProfile } = useProfile()
+  const { } = useProfile()
+  const { subscribeToPro, isLoading, error } = useProSubscription()
 
   if (!isOpen) return null
 
   const handleSubscribe = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+    if (!user) {
+      return
+    }
 
-      // Check if user is authenticated
-      if (!user) {
-        throw new Error('User not authenticated')
-      }
-
-      // Use the API endpoint to update pro status
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pro: 'yes',
-        }),
-      })
-
-      const responseData = await response.json()
-
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to upgrade to Pro')
-      }
-
-      // Refresh profile data to update the UI
-      await refreshProfile()
-
+    const result = await subscribeToPro({ plan: selectedPlan })
+    
+    if (result.success) {
+      // The hook will redirect to Stripe Checkout
+      // When the user returns, the webhook will have updated their profile
       onSuccess?.()
       onClose()
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to upgrade to Pro')
-    } finally {
-      setIsLoading(false)
     }
+  }
+
+  const plans = {
+    monthly: {
+      price: '$20',
+      period: 'month',
+      savings: null,
+    },
+    yearly: {
+      price: '$200',
+      period: 'year',
+      savings: 'Save $40/year',
+    },
   }
 
   const proFeatures = [
@@ -88,17 +78,46 @@ export function ProSubscriptionModal({ isOpen, onClose, onSuccess }: ProSubscrip
           <p className="text-gray-600">Unlock the full potential of your betting analytics</p>
         </div>
 
-        {/* Pricing */}
-        <div className="mb-6 text-center">
-          <div className="mb-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
-            <div className="text-3xl font-bold">$20/month</div>
-            <div className="text-sm text-blue-200">Cancel anytime</div>
+        {/* Plan Selection */}
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {Object.entries(plans).map(([planKey, planData]) => (
+              <button
+                key={planKey}
+                onClick={() => setSelectedPlan(planKey as 'monthly' | 'yearly')}
+                className={`relative p-4 rounded-xl border-2 transition-all ${
+                  selectedPlan === planKey
+                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-opacity-20'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-lg font-bold text-gray-900">
+                    {planData.price}/{planData.period}
+                  </div>
+                  {planData.savings && (
+                    <div className="text-xs font-medium text-green-600 mt-1">
+                      {planData.savings}
+                    </div>
+                  )}
+                </div>
+                {selectedPlan === planKey && (
+                  <div className="absolute top-2 right-2">
+                    <Check className="h-4 w-4 text-blue-500" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+          
+          <div className="text-center text-sm text-gray-600 mb-4">
+            Cancel anytime • Secure payment with Stripe
           </div>
         </div>
 
         {/* Features */}
         <div className="mb-6">
-          <h3 className="mb-3 font-semibold text-gray-900">What's included:</h3>
+          <h3 className="mb-3 font-semibold text-gray-900">What&apos;s included:</h3>
           <div className="grid grid-cols-1 gap-2">
             {proFeatures.map((feature, index) => (
               <div key={index} className="flex items-center text-sm text-gray-700">

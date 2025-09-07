@@ -37,6 +37,8 @@ interface Bet {
   sport: string
   bet_description: string
   description?: string
+  side?: string | null
+  line_value?: number | null
   odds: string
   stake: number
   potential_payout: number
@@ -80,14 +82,14 @@ export function OverviewTab({
   onTimePeriodChange: _onTimePeriodChange,
   totalProfit: _totalProfit,
   isLoading = false,
-  analyticsData,
+  analyticsData: _analyticsData,
 }: OverviewTabProps) {
   // Independent time period state for this chart only
   const [chartTimePeriod, setChartTimePeriod] = useState<'week' | 'month' | 'year'>('month')
 
-  // Process data using chart's own time period but respect other page filters through recentBets
+  // Use the filtered chartData passed from parent instead of analyticsData.roiOverTime
   const getProfitChartData = () => {
-    if (!analyticsData?.roiOverTime) return []
+    if (!chartData || chartData.length === 0) return []
 
     const now = new Date()
     const currentYear = now.getFullYear()
@@ -112,37 +114,31 @@ export function OverviewTab({
         break
     }
 
-    // Filter data by time period
-    const sourceData = analyticsData.roiOverTime
+    // Filter the already-filtered chartData by time period
+    const sourceData = chartData
       .filter(item => {
-        const itemDate = new Date(item.day)
+        const itemDate = new Date(item.date)
         return itemDate >= start && itemDate <= end
       })
-      .sort((a, b) => new Date(a.day).getTime() - new Date(b.day).getTime())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     if (sourceData.length === 0) return []
 
-    // Calculate cumulative profit over time
-    let cumulativeProfit = 0
-
     if (chartTimePeriod === 'week' || chartTimePeriod === 'month') {
-      // Daily view with cumulative profit
-      return sourceData.map(item => {
-        cumulativeProfit += item.net_profit
-        return {
-          dateLabel: new Date(item.day).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          }),
-          profit: cumulativeProfit,
-        }
-      })
+      // Daily view - use cumulative profit from chartData which should be actual profit
+      return sourceData.map(item => ({
+        dateLabel: new Date(item.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        profit: item.cumulative, // This should be actual cumulative profit, not potential
+      }))
     } else {
-      // Monthly view with cumulative profit
-      const monthlyData: { [key: string]: { dateLabel: string; dailyProfits: number[] } } = {}
+      // Monthly view - group by month and use cumulative at end of each month
+      const monthlyData: { [key: string]: { dateLabel: string; items: typeof sourceData } } = {}
 
       sourceData.forEach(item => {
-        const date = new Date(item.day)
+        const date = new Date(item.date)
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
 
         if (!monthlyData[monthKey]) {
@@ -150,25 +146,22 @@ export function OverviewTab({
             dateLabel: date.toLocaleDateString('en-US', {
               month: 'short',
             }),
-            dailyProfits: [],
+            items: [],
           }
         }
 
-        monthlyData[monthKey].dailyProfits.push(item.net_profit)
+        monthlyData[monthKey].items.push(item)
       })
 
-      // Convert to cumulative monthly totals
+      // Use the last cumulative value for each month
       return Object.keys(monthlyData)
         .sort()
         .map(monthKey => {
-          const monthProfit = monthlyData[monthKey]?.dailyProfits?.reduce(
-            (sum, profit) => sum + profit,
-            0
-          ) ?? 0
-          cumulativeProfit += monthProfit
+          const monthItems = monthlyData[monthKey]?.items ?? []
+          const lastItem = monthItems[monthItems.length - 1]
           return {
             dateLabel: monthlyData[monthKey]?.dateLabel ?? '',
-            profit: cumulativeProfit,
+            profit: lastItem?.cumulative ?? 0,
           }
         })
     }
@@ -352,9 +345,26 @@ export function OverviewTab({
                           {getStatusBadge(bet.status)}
                         </div>
 
-                        <p className="line-clamp-2 text-sm font-medium">
-                          {bet.bet_description || bet.description}
-                        </p>
+                        <div className="space-y-1">
+                          <p className="line-clamp-2 text-sm font-medium">
+                            {bet.bet_description || bet.description}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-600">
+                            {bet.home_team && bet.away_team && (
+                              <span className="font-medium">{bet.away_team} @ {bet.home_team}</span>
+                            )}
+                            {bet.side && (
+                              <span className="rounded bg-blue-100 px-1 py-0.5 text-blue-700 font-medium text-xs">
+                                {bet.side.toUpperCase()}
+                              </span>
+                            )}
+                            {bet.line_value !== undefined && bet.line_value !== null && (
+                              <span className="rounded bg-gray-100 px-1 py-0.5 font-medium text-xs">
+                                {bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
                         {/* Parlay legs display */}
                         {bet.is_parlay && bet.legs && bet.legs.length > 0 && (
@@ -407,7 +417,7 @@ export function OverviewTab({
                   <p className="text-sm">Your recent betting activity will appear here</p>
                   <Link href="/games">
                     <Button size="sm" className="mt-4">
-                      Browse Games
+                      Recent Bets
                       <ExternalLink className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>

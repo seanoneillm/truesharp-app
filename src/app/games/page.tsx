@@ -2,16 +2,19 @@
 
 import BetSlip from '@/components/bet-slip/BetSlip'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
+import ComplianceDisclaimerModal from '@/components/games/compliance-disclaimer-modal'
 import DateSelector from '@/components/games/date-selector'
 import EnhancedGamesList from '@/components/games/enhanced-games-list'
+import HowToUseModal from '@/components/games/how-to-use-modal'
 import LeagueTabs, { LeagueType } from '@/components/games/league-tabs'
 import { BetSlipProvider } from '@/contexts/BetSlipContext'
 import { AuthProvider } from '@/lib/auth/AuthProvider'
 import { useBetSlipToast } from '@/lib/hooks/use-bet-slip-toast'
+import { useComplianceDisclaimer } from '@/lib/hooks/use-compliance-disclaimer'
 import { gamesDataService } from '@/lib/services/games-data'
 import { Game } from '@/lib/types/games'
 import { convertDatabaseGamesToGames } from '@/lib/utils/database-to-game-converter'
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock, HelpCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 function GamesPageContent() {
@@ -27,6 +30,12 @@ function GamesPageContent() {
 
   // Toast notifications for bet slip actions
   const { ToastContainer } = useBetSlipToast()
+
+  // Compliance disclaimer logic
+  const { shouldShowDisclaimer, dismissDisclaimer, isClient } = useComplianceDisclaimer()
+
+  // How to Use modal state
+  const [showHowToUse, setShowHowToUse] = useState(false)
 
   // Initialize date safely after hydration
   useEffect(() => {
@@ -431,6 +440,15 @@ function GamesPageContent() {
                   <span>Updated {lastUpdated.toLocaleTimeString()}</span>
                 </div>
               )}
+              
+              <button
+                onClick={() => setShowHowToUse(true)}
+                className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                aria-label="How to use the Games Page"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">How to Use</span>
+              </button>
             </div>
           </div>
         </div>
@@ -491,6 +509,20 @@ function GamesPageContent() {
 
         {/* Toast Notifications */}
         <ToastContainer />
+
+        {/* Modals */}
+        {isClient && (
+          <>
+            <ComplianceDisclaimerModal
+              isOpen={shouldShowDisclaimer}
+              onClose={dismissDisclaimer}
+            />
+            <HowToUseModal
+              isOpen={showHowToUse}
+              onClose={() => setShowHowToUse(false)}
+            />
+          </>
+        )}
       </div>
     </DashboardLayout>
   )

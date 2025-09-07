@@ -115,15 +115,20 @@ export async function GET(request: NextRequest) {
     let startDate: Date
     let endDate: Date | null = null
 
-    // If custom start date is provided, use it instead of timeframe
-    if (startDateParam) {
+    // Priority: Custom date range overrides timeframe
+    if (startDateParam && endDateParam) {
+      // Both start and end dates provided - use exact range
       startDate = new Date(startDateParam)
-      // If end date is also provided, use it; otherwise, use current date
-      if (endDateParam) {
-        endDate = new Date(endDateParam)
-      }
+      endDate = new Date(endDateParam)
+      console.log(`Using custom date range: ${startDateParam} to ${endDateParam}`)
+    } else if (startDateParam) {
+      // Only start date provided - from start date to now
+      startDate = new Date(startDateParam)
+      endDate = now
+      console.log(`Using custom start date: ${startDateParam} to now`)
     } else {
       // Use timeframe logic as fallback
+      console.log(`Using timeframe: ${timeframe}`)
       switch (timeframe) {
         case '7d':
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -137,8 +142,11 @@ export async function GET(request: NextRequest) {
         case 'ytd':
           startDate = new Date(now.getFullYear(), 0, 1)
           break
-        default:
+        case 'all':
           startDate = new Date(0) // All time
+          break
+        default:
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // Default to 30d
       }
     }
     // First, get all user bets to properly handle parlay grouping
@@ -286,10 +294,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate analytics using proper profit handling
+    // ONLY use settled bets for profit calculations and metrics
     const totalBets = bets.length
     const settledBets = bets.filter(bet => ['won', 'lost', 'void'].includes(bet.status))
-    const wonBets = bets.filter(bet => bet.status === 'won')
-    const voidBets = bets.filter(bet => bet.status === 'void')
+    const wonBets = settledBets.filter(bet => bet.status === 'won')
+    const voidBets = settledBets.filter(bet => bet.status === 'void')
 
     const totalStake = settledBets.reduce((sum, bet) => sum + bet.stake, 0)
 
@@ -310,10 +319,9 @@ export async function GET(request: NextRequest) {
       return sum + profit
     }, 0)
 
-    const winRate =
-      settledBets.filter(b => b.status !== 'void').length > 0
-        ? (wonBets.length / settledBets.filter(b => b.status !== 'void').length) * 100
-        : 0
+    // Only calculate win rate from settled bets (excluding voids)
+    const nonVoidSettledBets = settledBets.filter(b => b.status !== 'void')
+    const winRate = nonVoidSettledBets.length > 0 ? (wonBets.length / nonVoidSettledBets.length) * 100 : 0
     const roi = totalStake > 0 ? (netProfit / totalStake) * 100 : 0
     const avgBetSize = totalBets > 0 ? totalStake / totalBets : 0
 
@@ -364,8 +372,8 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Sport breakdown
-    const sportBreakdown = bets.reduce(
+    // Sport breakdown - only use settled bets for accurate profit/winrate calculations
+    const sportBreakdown = settledBets.reduce(
       (acc, bet) => {
         if (!acc[bet.sport]) {
           acc[bet.sport] = { bets: 0, won: 0, stake: 0, profit: 0 }
@@ -394,8 +402,8 @@ export async function GET(request: NextRequest) {
       {} as Record<string, BreakdownStats>
     )
 
-    // Bet type breakdown
-    const betTypeBreakdown = bets.reduce(
+    // Bet type breakdown - only use settled bets for accurate metrics
+    const betTypeBreakdown = settledBets.reduce(
       (acc, bet) => {
         const betTypeKey = bet.bet_type || 'Unknown'
         if (!acc[betTypeKey]) {
@@ -425,8 +433,8 @@ export async function GET(request: NextRequest) {
       {} as Record<string, BreakdownStats>
     )
 
-    // Prop type breakdown
-    const propTypeBreakdown = bets.reduce(
+    // Prop type breakdown - only use settled bets for accurate metrics
+    const propTypeBreakdown = settledBets.reduce(
       (acc, bet) => {
         const propTypeKey = bet.prop_type || 'Standard'
         if (!acc[propTypeKey]) {
@@ -456,8 +464,8 @@ export async function GET(request: NextRequest) {
       {} as Record<string, BreakdownStats>
     )
 
-    // Side breakdown
-    const sideBreakdown = bets.reduce(
+    // Side breakdown - only use settled bets for accurate metrics
+    const sideBreakdown = settledBets.reduce(
       (acc, bet) => {
         const sideKey = bet.side || 'N/A'
         if (!acc[sideKey]) {
@@ -493,8 +501,8 @@ export async function GET(request: NextRequest) {
     const propTypeStats = convertBreakdownToStats(propTypeBreakdown, 'propType')
     const sideStats = convertBreakdownToStats(sideBreakdown, 'side')
 
-    // Line movement analysis
-    const lineMovementData = bets
+    // Line movement analysis - only use settled bets for accurate profit data
+    const lineMovementData = settledBets
       .filter(bet => bet.line_value !== null && bet.line_value !== undefined)
       .map(bet => {
         const clv = ((bet.line_value! - bet.odds) / bet.odds) * 100

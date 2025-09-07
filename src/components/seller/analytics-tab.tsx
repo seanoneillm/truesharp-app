@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
+import { useStripeSellerData } from '@/lib/hooks/use-stripe-data'
 import {
   Activity,
   // LineChart, // TS6133: unused import
@@ -76,6 +77,9 @@ export function AnalyticsTab() {
   })
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<'roi' | 'win_rate' | 'total_bets' | 'subscribers'>('roi')
+  
+  // Use Stripe seller data to enhance analytics with subscriber information
+  const { data: stripeData, loading: stripeLoading } = useStripeSellerData()
 
   const loadAnalyticsData = useCallback(async () => {
     if (!user) return
@@ -127,11 +131,21 @@ export function AnalyticsTab() {
         .eq('strategies.user_id', user.id)
         .eq('status', 'active')
 
+      // Build subscriber count map - prioritize Stripe data when available
       const subscriberCountMap = new Map()
-      subscriptionCounts?.forEach(sub => {
-        const current = subscriberCountMap.get(sub.strategy_id) || 0
-        subscriberCountMap.set(sub.strategy_id, current + 1)
-      })
+      
+      if (stripeData && stripeData.strategyMetrics) {
+        // Use Stripe strategy metrics for accurate subscriber counts
+        Object.entries(stripeData.strategyMetrics).forEach(([strategyId, metrics]) => {
+          subscriberCountMap.set(strategyId, metrics.subscribers)
+        })
+      } else {
+        // Fallback to Supabase subscription counts
+        subscriptionCounts?.forEach(sub => {
+          const current = subscriberCountMap.get(sub.strategy_id) || 0
+          subscriberCountMap.set(sub.strategy_id, current + 1)
+        })
+      }
 
       // Process analytics data
       const processedStrategies: StrategyAnalytics[] = (leaderboardData || []).map(strategy => ({
@@ -224,7 +238,7 @@ export function AnalyticsTab() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, stripeData])
 
   useEffect(() => {
     loadAnalyticsData()
@@ -266,7 +280,7 @@ export function AnalyticsTab() {
     }
   }
 
-  if (loading) {
+  if (loading || stripeLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

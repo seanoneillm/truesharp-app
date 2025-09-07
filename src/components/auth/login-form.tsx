@@ -45,20 +45,20 @@ export function LoginForm() {
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const accessToken = hashParams.get('access_token')
         const type = hashParams.get('type')
-        
+
         if (accessToken && type) {
           setIsLoading(true)
           setUrlMessage('Processing authentication...')
           setUrlMessageType('success')
-          
+
           try {
             // Import supabase client
             const { createClient } = await import('@/lib/supabase')
             const supabase = createClient()
-            
+
             // Get the current session to check if user is authenticated
             const { data, error } = await supabase.auth.getSession()
-            
+
             if (error) {
               console.error('Session check error:', error)
               setUrlMessage('Authentication error occurred.')
@@ -67,10 +67,10 @@ export function LoginForm() {
               console.log('User authenticated successfully, redirecting to dashboard')
               setUrlMessage('Successfully authenticated! Redirecting...')
               setUrlMessageType('success')
-              
+
               // Clear the hash from URL
               window.history.replaceState(null, '', window.location.pathname)
-              
+
               // Redirect to dashboard after a short delay
               setTimeout(() => {
                 router.push('/dashboard')

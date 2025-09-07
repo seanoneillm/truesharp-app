@@ -19,6 +19,7 @@ interface Profile {
   email?: string
   pro?: string
   is_seller?: boolean
+  profile_picture_url?: string
 }
 
 export default function DashboardPage() {
@@ -104,17 +105,19 @@ export default function DashboardPage() {
               <WelcomeSection profile={profile} />
             </div>
 
-            {/* Main Dashboard Grid - Better Organization */}
+            {/* Main Dashboard Grid - Responsive Organization */}
             <div className="space-y-6">
-              {/* Top Row - Two Column Grid */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Top Row - Responsive Two Column Grid */}
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
                 <TodaysBets />
                 <AnalyticsPreview />
               </div>
 
-              {/* Middle Row - Three Column Grid */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <SellerPreview profile={profile} />
+              {/* Middle Row - Responsive Three Column Grid */}
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="md:col-span-2 xl:col-span-1">
+                  <SellerPreview profile={profile} />
+                </div>
                 <SubscriptionsPreview />
                 <MarketplacePreview />
               </div>

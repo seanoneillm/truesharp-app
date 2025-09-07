@@ -197,8 +197,8 @@ const defaultFilters: AnalyticsFilters = {
   maxOdds: null,
   minStake: null,
   maxStake: null,
-  results: ['won', 'lost'],
-  timeframe: '30d',
+  results: ['won', 'lost', 'void', 'pending'], // Include all statuses by default
+  timeframe: 'all', // Show all time by default
 }
 
 export function useAnalytics(user: SupportedUser | null = null) {

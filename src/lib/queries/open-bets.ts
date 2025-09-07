@@ -116,12 +116,15 @@ export async function getOpenBetsForStrategies(
           betsByStrategy[strategyBet.strategy_id] = []
         }
 
-        // Handle each bet in the bets array
-        strategyBet.bets.forEach((bet: unknown) => {
-          betsByStrategy[strategyBet.strategy_id]?.push({
-            ...(bet as object),
-            strategy_id: strategyBet.strategy_id,
-          } as OpenBet)
+        // Handle bets - could be array or single object from Supabase join
+        const bets = Array.isArray(strategyBet.bets) ? strategyBet.bets : [strategyBet.bets]
+        bets.forEach((bet: unknown) => {
+          if (bet) { // Ensure bet exists
+            betsByStrategy[strategyBet.strategy_id]?.push({
+              ...(bet as object),
+              strategy_id: strategyBet.strategy_id,
+            } as OpenBet)
+          }
         })
       })
 

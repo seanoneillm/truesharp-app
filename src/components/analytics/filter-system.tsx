@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
-import { Check, ChevronDown, Crown, Filter, Lock, X } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronDown, Crown, Filter, Lock, X, Calendar, Target, TrendingUp, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 export interface FilterOptions {
   // Core filters matching database schema - now supporting multiple selections
@@ -48,9 +48,9 @@ interface FilterSystemProps {
 // Database schema-based filter options - specific bet types as requested
 const BET_TYPES = ['All', 'spread', 'moneyline', 'total', 'player_prop', 'game_prop', 'parlay']
 const STATUS_OPTIONS = ['All', 'pending', 'won', 'lost', 'void', 'cancelled']
-const IS_PARLAY_OPTIONS = ['All', 'true', 'false']
+// const IS_PARLAY_OPTIONS = ['All', 'true', 'false']
 const SIDE_OPTIONS = ['All', 'over', 'under', 'home', 'away']
-const ODDS_TYPE_OPTIONS = ['All', 'favorite', 'underdog'] // Based on odds +/-
+// const ODDS_TYPE_OPTIONS = ['All', 'favorite', 'underdog'] // Based on odds +/-
 
 
 const LEAGUES = [
@@ -211,11 +211,11 @@ export function FilterSystem({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Update local filters when prop filters change (but only if no unsaved changes)
-  useState(() => {
+  useEffect(() => {
     if (!hasUnsavedChanges) {
       setLocalFilters(filters)
     }
-  })
+  }, [filters, hasUnsavedChanges])
 
   const updateLocalFilters = (updates: Partial<FilterOptions>) => {
     const newFilters = { ...localFilters, ...updates }
@@ -268,32 +268,49 @@ export function FilterSystem({
   }
 
   return (
-    <Card className="mb-6">
-      <CardContent className="p-4">
+    <Card className="mb-8 border-0 bg-gradient-to-br from-white to-slate-50/50 shadow-xl backdrop-blur-sm">
+      <CardContent className="p-6">
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between">
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="flex h-auto items-center space-x-2 p-0">
-                <Filter className="h-4 w-4" />
-                <span className="font-semibold">Filters</span>
+              <Button 
+                variant="ghost" 
+                className="group flex h-auto items-center space-x-3 p-2 rounded-xl hover:bg-blue-50 transition-all duration-200"
+              >
+                <div className="rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 p-2 group-hover:from-blue-500 group-hover:to-cyan-500 transition-all duration-200">
+                  <Filter className="h-5 w-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <span className="text-lg font-bold text-slate-900">Smart Filters</span>
+                  <p className="text-sm text-slate-600">Customize your analytics view</p>
+                </div>
                 {getActiveFiltersCount() > 0 && (
-                  <Badge variant="secondary">{getActiveFiltersCount()}</Badge>
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg">
+                    {getActiveFiltersCount()} active
+                  </Badge>
                 )}
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`h-5 w-5 text-slate-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                 />
               </Button>
             </CollapsibleTrigger>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               {!isPro && (
-                <Badge variant="outline" className="border-amber-600 text-amber-600">
-                  <Crown className="mr-1 h-3 w-3" />
-                  Free Tier
+                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-50 px-3 py-1">
+                  <Crown className="mr-1.5 h-3.5 w-3.5" />
+                  Free Plan
+                </Badge>
+              )}
+              {isPro && (
+                <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1">
+                  <Crown className="mr-1.5 h-3.5 w-3.5" />
+                  Pro Plan
                 </Badge>
               )}
               {hasUnsavedChanges && (
-                <Badge variant="outline" className="border-blue-600 text-blue-600">
-                  Unsaved Changes
+                <Badge variant="outline" className="border-blue-500 text-blue-700 bg-blue-50 px-3 py-1 animate-pulse">
+                  <Clock className="mr-1.5 h-3.5 w-3.5" />
+                  Unsaved
                 </Badge>
               )}
               {getActiveFiltersCount() > 0 && (
@@ -304,290 +321,538 @@ export function FilterSystem({
                     clearFilters()
                     setHasUnsavedChanges(false)
                   }}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
-                  <X className="mr-1 h-4 w-4" />
+                  <X className="mr-2 h-4 w-4" />
                   Clear All
                 </Button>
               )}
             </div>
           </div>
 
-          <CollapsibleContent className="space-y-4">
-            {/* Default Filters - Always Visible */}
-            <div className="grid grid-cols-1 gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800/50 md:grid-cols-3">
-              {/* Bet Types */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Bet Types</label>
-                <MultiSelectDropdown
-                  values={localFilters.betTypes || ['All']}
-                  options={BET_TYPES}
-                  onChange={values => updateLocalFilters({ betTypes: values })}
-                  placeholder="Select bet types"
-                />
+          <CollapsibleContent className="space-y-6">
+            {/* Basic Filters Section */}
+            <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-sm">
+              <div className="mb-4 flex items-center space-x-2">
+                <div className="rounded-lg bg-blue-100 p-2">
+                  <Target className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-900">Basic Filters</h3>
+                  <p className="text-xs text-blue-700">Core betting filters for everyone</p>
+                </div>
               </div>
+              
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {/* Bet Types */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    <span>Bet Types</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.betTypes || ['All']}
+                    options={BET_TYPES.map(type => type === 'All' ? 'All Types' : 
+                      type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()))}
+                    onChange={values => updateLocalFilters({ 
+                      betTypes: values.map(v => v === 'All Types' ? 'All' : v.toLowerCase().replace(' ', '_'))
+                    })}
+                    placeholder="Select bet types"
+                  />
+                </div>
 
-              {/* Leagues (combined sport/league) */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Leagues</label>
-                <MultiSelectDropdown
-                  values={localFilters.leagues || ['All']}
-                  options={LEAGUES}
-                  onChange={values => updateLocalFilters({ leagues: values })}
-                  placeholder="Select leagues"
-                />
-              </div>
+                {/* Leagues */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <Target className="h-4 w-4 text-green-600" />
+                    <span>Sports & Leagues</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.leagues || ['All']}
+                    options={LEAGUES.map(league => league === 'All' ? 'All Sports' : league)}
+                    onChange={values => updateLocalFilters({ 
+                      leagues: values.map(v => v === 'All Sports' ? 'All' : v)
+                    })}
+                    placeholder="Select sports/leagues"
+                  />
+                </div>
 
-              {/* Start Date Filter */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Start Date</label>
-                <Input
-                  type="date"
-                  value={localFilters.customStartDate || ''}
-                  onChange={e => updateLocalFilters({ customStartDate: e.target.value })}
-                  className="text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Database-specific Filters - Additional row */}
-            <div className="grid grid-cols-1 gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-700 dark:bg-green-900/20 md:grid-cols-4">
-              {/* Bet Status */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Status</label>
-                <MultiSelectDropdown
-                  values={localFilters.statuses || ['All']}
-                  options={STATUS_OPTIONS}
-                  onChange={values => updateLocalFilters({ statuses: values })}
-                  placeholder="Select statuses"
-                />
-              </div>
-
-              {/* Parlay Filter */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Parlay</label>
-                <MultiSelectDropdown
-                  values={localFilters.isParlays || ['All']}
-                  options={IS_PARLAY_OPTIONS}
-                  onChange={values => updateLocalFilters({ isParlays: values })}
-                  placeholder="Select parlay"
-                />
-              </div>
-
-              {/* Side Filter */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Side</label>
-                <MultiSelectDropdown
-                  values={localFilters.sides || ['All']}
-                  options={SIDE_OPTIONS}
-                  onChange={values => updateLocalFilters({ sides: values })}
-                  placeholder="Select sides"
-                />
-              </div>
-
-              {/* Underdog/Favorite Filter */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Odds Type</label>
-                <MultiSelectDropdown
-                  values={localFilters.oddsTypes || ['All']}
-                  options={ODDS_TYPE_OPTIONS}
-                  onChange={values => updateLocalFilters({ oddsTypes: values })}
-                  placeholder="Select odds types"
-                />
+                {/* Start Date - Regular Feature */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <span>Start Date</span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={localFilters.customStartDate || ''}
+                    onChange={e => updateLocalFilters({ customStartDate: e.target.value })}
+                    className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Pro Tier Filters - Blurred/Locked for non-pro users */}
+            {/* Advanced Filters Section */}
+            <div className="rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm">
+              <div className="mb-4 flex items-center space-x-2">
+                <div className="rounded-lg bg-green-100 p-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900">Advanced Filters</h3>
+                  <p className="text-xs text-green-700">Detailed betting analysis filters</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {/* Bet Status */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                    <span>Bet Status</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.statuses || ['All']}
+                    options={STATUS_OPTIONS.map(status => {
+                      const statusMap = {
+                        'All': 'All Statuses',
+                        'pending': 'Pending ⏳',
+                        'won': 'Won ✅',
+                        'lost': 'Lost ❌',
+                        'void': 'Void 🚫',
+                        'cancelled': 'Cancelled ⭕'
+                      }
+                      return (statusMap as any)[status] || status
+                    })}
+                    onChange={values => updateLocalFilters({ 
+                      statuses: values.map(v => {
+                        const reverseMap = {
+                          'All Statuses': 'All',
+                          'Pending ⏳': 'pending',
+                          'Won ✅': 'won', 
+                          'Lost ❌': 'lost',
+                          'Void 🚫': 'void',
+                          'Cancelled ⭕': 'cancelled'
+                        }
+                        return (reverseMap as any)[v] || v
+                      })
+                    })}
+                    placeholder="Select bet status"
+                  />
+                </div>
+
+                {/* Parlay Filter */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <div className="h-3 w-3 rounded-full bg-purple-500"></div>
+                    <span>Bet Style</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.isParlays || ['All']}
+                    options={['All Bets', 'Single Bets Only', 'Parlays Only']}
+                    onChange={values => updateLocalFilters({ 
+                      isParlays: values.map(v => {
+                        if (v === 'All Bets') return 'All'
+                        if (v === 'Single Bets Only') return 'false'
+                        if (v === 'Parlays Only') return 'true'
+                        return v
+                      })
+                    })}
+                    placeholder="Select bet style"
+                  />
+                </div>
+
+                {/* Side Filter */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                    <span>Bet Side</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.sides || ['All']}
+                    options={SIDE_OPTIONS.map(side => {
+                      const sideMap = {
+                        'All': 'All Sides',
+                        'over': 'Over 📈',
+                        'under': 'Under 📉', 
+                        'home': 'Home Team 🏠',
+                        'away': 'Away Team ✈️'
+                      }
+                      return (sideMap as any)[side] || side
+                    })}
+                    onChange={values => updateLocalFilters({ 
+                      sides: values.map(v => {
+                        const reverseMap = {
+                          'All Sides': 'All',
+                          'Over 📈': 'over',
+                          'Under 📉': 'under',
+                          'Home Team 🏠': 'home', 
+                          'Away Team ✈️': 'away'
+                        }
+                        return (reverseMap as any)[v] || v
+                      })
+                    })}
+                    placeholder="Select bet side"
+                  />
+                </div>
+
+                {/* Odds Type Filter */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <div className="h-3 w-3 rounded-full bg-orange-500"></div>
+                    <span>Odds Type</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.oddsTypes || ['All']}
+                    options={['All Odds', 'Favorites (-) 💪', 'Underdogs (+) 🎯']}
+                    onChange={values => updateLocalFilters({ 
+                      oddsTypes: values.map(v => {
+                        if (v === 'All Odds') return 'All'
+                        if (v === 'Favorites (-) 💪') return 'favorite'
+                        if (v === 'Underdogs (+) 🎯') return 'underdog'
+                        return v
+                      })
+                    })}
+                    placeholder="Select odds type"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pro Range Filters Section */}
             <div
-              className={`rounded-lg border p-4 ${isPro ? 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20' : 'border-gray-200 bg-gray-100 dark:border-gray-600 dark:bg-gray-800'} ${!isPro ? 'relative' : ''}`}
+              className={`relative rounded-xl border shadow-sm ${
+                isPro 
+                  ? 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50' 
+                  : 'border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200'
+              }`}
             >
               {!isPro && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
-                  <div className="text-center">
-                    <Lock className="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Pro Features
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/90 backdrop-blur-md">
+                  <div className="text-center p-8">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500">
+                      <Crown className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 mb-2">Pro Range Filters</h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Unlock precise filtering by odds, stakes, and betting ranges
                     </p>
-                    <p className="text-xs text-gray-500">Upgrade to unlock advanced filters</p>
+                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                      Upgrade to Pro
+                    </Badge>
                   </div>
                 </div>
               )}
 
-              <div className="mb-4 flex items-center space-x-2">
-                <Crown className="h-4 w-4 text-amber-600" />
-                <span className="font-medium text-amber-600">Pro Range Filters</span>
-              </div>
+              <div className="p-6">
+                <div className="mb-4 flex items-center space-x-3">
+                  <div className="rounded-lg bg-gradient-to-r from-yellow-400 to-orange-500 p-2">
+                    <Crown className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-yellow-900">Pro Range Filters</h3>
+                    <p className="text-xs text-yellow-700">Advanced numerical filters for precise analysis</p>
+                  </div>
+                  {isPro && (
+                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
+                      Active
+                    </Badge>
+                  )}
+                </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* Odds Range */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Odds Range</label>
-                  <div className="flex space-x-2">
-                    <Input
-                      type="number"
-                      placeholder="Min (e.g. -200)"
-                      value={localFilters.oddsRange?.min || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          oddsRange: {
-                            ...localFilters.oddsRange,
-                            min: parseFloat(e.target.value) || 0,
-                            max: localFilters.oddsRange?.max || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max (e.g. +300)"
-                      value={localFilters.oddsRange?.max || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          oddsRange: {
-                            ...localFilters.oddsRange,
-                            max: parseFloat(e.target.value) || 0,
-                            min: localFilters.oddsRange?.min || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Odds Range */}
+                  <div>
+                    <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                      <div className="h-3 w-3 rounded-full bg-gradient-to-r from-red-500 to-green-500"></div>
+                      <span>Odds Range</span>
+                    </label>
+                    <div className="space-y-3">
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Min Odds</label>
+                          <Input
+                            type="number"
+                            placeholder="-200 (favorite)"
+                            value={localFilters.oddsRange?.min || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                oddsRange: {
+                                  ...localFilters.oddsRange,
+                                  min: parseFloat(e.target.value) || 0,
+                                  max: localFilters.oddsRange?.max || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Max Odds</label>
+                          <Input
+                            type="number"
+                            placeholder="+300 (underdog)"
+                            value={localFilters.oddsRange?.max || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                oddsRange: {
+                                  ...localFilters.oddsRange,
+                                  max: parseFloat(e.target.value) || 0,
+                                  min: localFilters.oddsRange?.min || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500">Filter bets by American odds format (-200 to +500)</p>
+                    </div>
+                  </div>
+
+                  {/* Stake Range */}
+                  <div>
+                    <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                      <div className="h-3 w-3 rounded-full bg-gradient-to-r from-green-500 to-blue-500"></div>
+                      <span>Stake Range</span>
+                    </label>
+                    <div className="space-y-3">
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Min Stake</label>
+                          <Input
+                            type="number"
+                            placeholder="$10"
+                            value={localFilters.stakeRange?.min || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                stakeRange: {
+                                  ...localFilters.stakeRange,
+                                  min: parseFloat(e.target.value) || 0,
+                                  max: localFilters.stakeRange?.max || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Max Stake</label>
+                          <Input
+                            type="number"
+                            placeholder="$500"
+                            value={localFilters.stakeRange?.max || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                stakeRange: {
+                                  ...localFilters.stakeRange,
+                                  max: parseFloat(e.target.value) || 0,
+                                  min: localFilters.stakeRange?.min || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500">Filter bets by stake amount ($)</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Spread Range */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Spread Range</label>
-                  <div className="flex space-x-2">
-                    <Input
-                      type="number"
-                      step="0.5"
-                      placeholder="Min (e.g. -14)"
-                      value={localFilters.spreadRange?.min || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          spreadRange: {
-                            ...localFilters.spreadRange,
-                            min: parseFloat(e.target.value) || 0,
-                            max: localFilters.spreadRange?.max || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
-                    <Input
-                      type="number"
-                      step="0.5"
-                      placeholder="Max (e.g. +7)"
-                      value={localFilters.spreadRange?.max || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          spreadRange: {
-                            ...localFilters.spreadRange,
-                            max: parseFloat(e.target.value) || 0,
-                            min: localFilters.spreadRange?.min || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
+                {/* Additional Pro Ranges */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Spread Range */}
+                  <div>
+                    <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                      <div className="h-3 w-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                      <span>Spread Range</span>
+                    </label>
+                    <div className="space-y-3">
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Min Spread</label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="-14.5"
+                            value={localFilters.spreadRange?.min || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                spreadRange: {
+                                  ...localFilters.spreadRange,
+                                  min: parseFloat(e.target.value) || 0,
+                                  max: localFilters.spreadRange?.max || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Max Spread</label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="+7.5"
+                            value={localFilters.spreadRange?.max || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                spreadRange: {
+                                  ...localFilters.spreadRange,
+                                  max: parseFloat(e.target.value) || 0,
+                                  min: localFilters.spreadRange?.min || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500">Filter spread bets by point spread</p>
+                    </div>
+                  </div>
+
+                  {/* Total Range */}
+                  <div>
+                    <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                      <div className="h-3 w-3 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500"></div>
+                      <span>Total Range</span>
+                    </label>
+                    <div className="space-y-3">
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Min Total</label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="40.5"
+                            value={localFilters.totalRange?.min || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                totalRange: {
+                                  ...localFilters.totalRange,
+                                  min: parseFloat(e.target.value) || 0,
+                                  max: localFilters.totalRange?.max || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="mb-1 block text-xs text-slate-600">Max Total</label>
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="55.5"
+                            value={localFilters.totalRange?.max || ''}
+                            onChange={e =>
+                              updateLocalFilters({
+                                totalRange: {
+                                  ...localFilters.totalRange,
+                                  max: parseFloat(e.target.value) || 0,
+                                  min: localFilters.totalRange?.min || 0,
+                                },
+                              })
+                            }
+                            disabled={!isPro}
+                            className="border-yellow-200 focus:border-yellow-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500">Filter over/under bets by total points</p>
+                    </div>
                   </div>
                 </div>
-
-                {/* Total Range */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Total Range</label>
-                  <div className="flex space-x-2">
-                    <Input
-                      type="number"
-                      step="0.5"
-                      placeholder="Min (e.g. 40.5)"
-                      value={localFilters.totalRange?.min || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          totalRange: {
-                            ...localFilters.totalRange,
-                            min: parseFloat(e.target.value) || 0,
-                            max: localFilters.totalRange?.max || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
-                    <Input
-                      type="number"
-                      step="0.5"
-                      placeholder="Max (e.g. 55.5)"
-                      value={localFilters.totalRange?.max || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          totalRange: {
-                            ...localFilters.totalRange,
-                            max: parseFloat(e.target.value) || 0,
-                            min: localFilters.totalRange?.min || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
+                
+                {/* Pro Date Range Filters */}
+                <div className="border-t border-yellow-200 pt-6 mt-6">
+                  <div className="mb-4 flex items-center space-x-2">
+                    <div className="rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 p-2">
+                      <Calendar className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-purple-900">Pro Date Range</h4>
+                      <p className="text-xs text-purple-700">Advanced date filtering for precise analysis</p>
+                    </div>
                   </div>
-                </div>
+                  
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {/* Pro Start Date */}
+                    <div className="relative">
+                      <label className={`mb-3 flex items-center space-x-2 text-sm font-semibold ${isPro ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <Calendar className={`h-4 w-4 ${isPro ? 'text-purple-600' : 'text-slate-400'}`} />
+                        <span>Pro Start Date</span>
+                        <Badge className="bg-yellow-500 text-white text-xs px-1 py-0">PRO</Badge>
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="date"
+                          value={isPro ? (localFilters.customStartDate || '') : ''}
+                          onChange={e => isPro && updateLocalFilters({ customStartDate: e.target.value })}
+                          disabled={!isPro}
+                          className={isPro 
+                            ? "border-purple-200 focus:border-purple-500 focus:ring-purple-500" 
+                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          }
+                        />
+                        {!isPro && <Lock className="absolute right-3 top-3 h-4 w-4 text-slate-400" />}
+                      </div>
+                    </div>
 
-                {/* Stake Range */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Stake Range</label>
-                  <div className="flex space-x-2">
-                    <Input
-                      type="number"
-                      placeholder="Min ($)"
-                      value={localFilters.stakeRange?.min || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          stakeRange: {
-                            ...localFilters.stakeRange,
-                            min: parseFloat(e.target.value) || 0,
-                            max: localFilters.stakeRange?.max || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max ($)"
-                      value={localFilters.stakeRange?.max || ''}
-                      onChange={e =>
-                        updateLocalFilters({
-                          stakeRange: {
-                            ...localFilters.stakeRange,
-                            max: parseFloat(e.target.value) || 0,
-                            min: localFilters.stakeRange?.min || 0,
-                          },
-                        })
-                      }
-                      disabled={!isPro}
-                      className="text-xs"
-                    />
+                    {/* Pro End Date */}
+                    <div className="relative">
+                      <label className={`mb-3 flex items-center space-x-2 text-sm font-semibold ${isPro ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <Calendar className={`h-4 w-4 ${isPro ? 'text-purple-600' : 'text-slate-400'}`} />
+                        <span>Pro End Date</span>
+                        <Badge className="bg-yellow-500 text-white text-xs px-1 py-0">PRO</Badge>
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="date"
+                          value={isPro ? (localFilters.customEndDate || '') : ''}
+                          onChange={e => isPro && updateLocalFilters({ customEndDate: e.target.value })}
+                          disabled={!isPro}
+                          className={isPro 
+                            ? "border-purple-200 focus:border-purple-500 focus:ring-purple-500" 
+                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          }
+                        />
+                        {!isPro && <Lock className="absolute right-3 top-3 h-4 w-4 text-slate-400" />}
+                      </div>
+                    </div>
                   </div>
+                  <p className="mt-3 text-xs text-slate-500">Pro users can set custom date ranges for advanced filtering</p>
                 </div>
               </div>
             </div>
 
             {/* Save/Cancel Buttons */}
             {hasUnsavedChanges && (
-              <div className="flex justify-end space-x-2 border-t pt-4">
-                <Button variant="outline" size="sm" onClick={resetFilters}>
+              <div className="flex justify-end space-x-3 border-t border-slate-200 pt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={resetFilters}
+                  className="border-slate-300 text-slate-600 hover:bg-slate-50 px-6"
+                >
+                  <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
-                <Button size="sm" onClick={saveFilters} className="bg-blue-600 hover:bg-blue-700">
-                  Save Filters
+                <Button 
+                  onClick={saveFilters} 
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-6"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Apply Filters
                 </Button>
               </div>
             )}

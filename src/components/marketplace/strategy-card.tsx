@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface StrategyData {
   id: string
@@ -160,7 +161,11 @@ export function StrategyCard({
 
               <div>
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-sm font-bold text-slate-900">@{strategy.username}</h3>
+                  <Link href={`/marketplace/${strategy.username}`}>
+                    <h3 className="text-sm font-bold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors">
+                      @{strategy.username}
+                    </h3>
+                  </Link>
                   {verificationBadge && (
                     <div
                       className={`${verificationBadge.bg} ${verificationBadge.text} rounded px-1.5 py-0.5 text-xs font-medium`}

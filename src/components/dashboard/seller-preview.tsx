@@ -2,9 +2,10 @@
 
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useStripeSellerData, type StripeSellerData } from '@/lib/hooks/use-stripe-data'
 import { DollarSign, Store, TrendingUp, Users } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 
 interface SellerData {
   totalRevenue: number
@@ -14,6 +15,9 @@ interface SellerData {
   averageROI: number
   averageWinRate: number
   totalBets: number
+  stripeData?: StripeSellerData | undefined
+  pendingPayments?: number | undefined
+  monetizedStrategiesCount: number
 }
 
 interface Profile {
@@ -38,36 +42,49 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
     averageROI: 0,
     averageWinRate: 0,
     totalBets: 0,
+    // stripeData: undefined,
+    pendingPayments: 0,
+    monetizedStrategiesCount: 0,
   })
   const [loading, setLoading] = useState(true)
+  const fetchingRef = useRef(false)
+  
+  // Hook for Stripe seller data
+  const { data: stripeSellerData, error: stripeError } = useStripeSellerData()
 
-  useEffect(() => {
-    async function fetchSellerData() {
-      if (!user) {
+  const fetchSellerData = useCallback(async () => {
+    if (!user || fetchingRef.current) {
+      return
+    }
+
+    try {
+      fetchingRef.current = true
+      setLoading(true)
+      
+      // Check if user is a seller first
+      if (!profile?.is_seller) {
+        setSellerData({
+          totalRevenue: 0,
+          subscriberCount: 0,
+          strategiesCount: 0,
+          hasStrategies: false,
+          averageROI: 0,
+          averageWinRate: 0,
+          totalBets: 0,
+          // stripeData: undefined,
+          pendingPayments: 0,
+          monetizedStrategiesCount: 0,
+        })
         setLoading(false)
         return
       }
 
+      const supabase = createClient()
+
+      // Fetch strategies created by this user with fallback
+      let strategies: any[] = []
       try {
-        const supabase = createClient()
-
-        // Check if user is a seller first
-        if (!profile?.is_seller) {
-          setSellerData({
-            totalRevenue: 0,
-            subscriberCount: 0,
-            strategiesCount: 0,
-            hasStrategies: false,
-            averageROI: 0,
-            averageWinRate: 0,
-            totalBets: 0,
-          })
-          setLoading(false)
-          return
-        }
-
-        // Fetch strategies created by this user
-        const { data: strategies, error: strategiesError } = await supabase
+        const { data, error: strategiesError } = await supabase
           .from('strategies')
           .select(
             `
@@ -85,11 +102,20 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
           .eq('user_id', user.id)
 
         if (strategiesError) {
-          console.error('Error fetching strategies:', strategiesError)
+          console.warn('Strategies fetch failed, using empty array:', strategiesError.message)
+          strategies = []
+        } else {
+          strategies = data || []
         }
+      } catch (strategiesNetworkError) {
+        console.warn('Network error fetching strategies, using empty array')
+        strategies = []
+      }
 
-        // Fetch active subscriptions for this seller
-        const { data: subscriptions, error: subscriptionsError } = await supabase
+      // Fetch active subscriptions for this seller with fallback
+      let subscriptions: any[] = []
+      try {
+        const { data, error: subscriptionsError } = await supabase
           .from('subscriptions')
           .select(
             `
@@ -104,137 +130,129 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
           .eq('status', 'active')
 
         if (subscriptionsError) {
-          console.error('Error fetching subscriptions:', subscriptionsError)
+          console.warn('Subscriptions fetch failed, using empty array:', subscriptionsError.message)
+          subscriptions = []
+        } else {
+          subscriptions = data || []
         }
-
-        // Calculate revenue and subscriber count from actual subscriptions
-        let totalMonthlyRevenue = 0
-        let totalSubscribers = 0
-        let strategiesCount = 0
-        let totalPerformanceMetrics = { roi: 0, winRate: 0, totalBets: 0, strategiesWithData: 0 }
-
-        console.log('Seller Preview Debug:', {
-          strategiesCount: strategies?.length || 0,
-          monetizedStrategies: strategies?.filter(s => s.monetized).length || 0,
-          subscriptionsCount: subscriptions?.length || 0,
-          strategies: strategies?.map(s => ({
-            id: s.id,
-            name: s.name,
-            monetized: s.monetized,
-            pricing_monthly: s.pricing_monthly,
-            pricing_weekly: s.pricing_weekly,
-            pricing_yearly: s.pricing_yearly,
-          })),
-          subscriptions: subscriptions?.map(s => ({
-            strategy_id: s.strategy_id,
-            price: s.price,
-            frequency: s.frequency,
-          })),
-        })
-
-        if (strategies) {
-          // Count all strategies (not just monetized ones)
-          strategiesCount = strategies.length
-          const monetizedStrategies = strategies.filter(s => s.monetized)
-
-          // Calculate subscriber count and revenue from subscriptions
-          if (subscriptions && subscriptions.length > 0) {
-            // Calculate total subscribers (count of active subscriptions)
-            totalSubscribers = subscriptions.length
-
-            // Group subscriptions by strategy to calculate revenue per strategy
-            const subscriptionsByStrategy = subscriptions.reduce(
-              (acc, subscription) => {
-                const strategyId = subscription.strategy_id
-                if (!acc[strategyId]) {
-                  acc[strategyId] = []
-                }
-                acc[strategyId]!.push(subscription)
-                return acc
-              },
-              {} as Record<string, typeof subscriptions>
-            )
-
-            // Calculate revenue for each strategy and sum them up
-            totalMonthlyRevenue = Object.entries(subscriptionsByStrategy).reduce(
-              (total, [strategyId, strategySubscriptions]) => {
-                // Find the strategy to get its pricing
-                const strategy = strategies.find(s => s.id === strategyId)
-                if (!strategy) return total
-
-                // Count subscribers for this strategy
-                const subscriberCount = strategySubscriptions.length
-
-                // Get the monthly price for this strategy from strategies table
-                let monthlyPrice = 0
-                if (strategy.pricing_monthly) {
-                  monthlyPrice = Number(strategy.pricing_monthly)
-                } else if (strategy.pricing_weekly) {
-                  monthlyPrice = Number(strategy.pricing_weekly) * 4.33 // Average weeks per month
-                } else if (strategy.pricing_yearly) {
-                  monthlyPrice = Number(strategy.pricing_yearly) / 12
-                }
-
-                // Calculate revenue for this strategy: subscribers × price × rake factor
-                const strategyRevenue = subscriberCount * monthlyPrice * 0.82
-
-                console.log(
-                  `Strategy ${strategy.name}: ${subscriberCount} subscribers × $${monthlyPrice.toFixed(2)}/month × 0.82 = $${strategyRevenue.toFixed(2)}`
-                )
-
-                return total + strategyRevenue
-              },
-              0
-            )
-
-            console.log(
-              `Total Monthly Revenue: $${totalMonthlyRevenue.toFixed(2)} from ${totalSubscribers} subscriptions across ${Object.keys(subscriptionsByStrategy).length} strategies`
-            )
-          }
-
-          // Calculate average performance metrics across monetized strategies
-          totalPerformanceMetrics = monetizedStrategies.reduce(
-            (acc, strategy) => {
-              if (
-                strategy.performance_roi !== null &&
-                strategy.performance_win_rate !== null &&
-                strategy.performance_total_bets
-              ) {
-                acc.roi += strategy.performance_roi || 0
-                acc.winRate += strategy.performance_win_rate || 0
-                acc.totalBets += strategy.performance_total_bets || 0
-                acc.strategiesWithData++
-              }
-              return acc
-            },
-            { roi: 0, winRate: 0, totalBets: 0, strategiesWithData: 0 }
-          )
-        }
-
-        setSellerData({
-          totalRevenue: totalMonthlyRevenue,
-          subscriberCount: totalSubscribers,
-          strategiesCount: strategiesCount,
-          hasStrategies: strategiesCount > 0,
-          averageROI:
-            totalPerformanceMetrics.strategiesWithData > 0
-              ? totalPerformanceMetrics.roi / totalPerformanceMetrics.strategiesWithData
-              : 0,
-          averageWinRate:
-            totalPerformanceMetrics.strategiesWithData > 0
-              ? totalPerformanceMetrics.winRate / totalPerformanceMetrics.strategiesWithData
-              : 0,
-          totalBets: totalPerformanceMetrics.totalBets,
-        })
-      } catch (error) {
-        console.error('Error:', error)
-      } finally {
-        setLoading(false)
+      } catch (subscriptionsNetworkError) {
+        console.warn('Network error fetching subscriptions, using empty array')
+        subscriptions = []
       }
-    }
 
+      // Use Stripe data from hook if available
+      const stripeData = stripeSellerData
+      
+      // Debug logging for dashboard
+      console.log('🔍 Dashboard Preview - Stripe data available:', !!stripeData)
+      if (stripeData && stripeData.totalRevenue > 0) {
+        console.log('✅ Dashboard Preview - Using Stripe seller data - Revenue:', stripeData.totalRevenue, 'Subscribers:', stripeData.subscriberCount)
+      } else if (stripeError) {
+        console.warn('⚠️ Dashboard Preview - Stripe data hook error, using fallback calculations:', stripeError)
+      } else if (stripeData) {
+        if (stripeData.hasStripeAccount === false) {
+          console.log('⚠️ Dashboard Preview - Seller has no Stripe Connect account configured')
+        } else {
+          console.log('ℹ️ Dashboard Preview - Stripe data exists but revenue is 0 (no active subscriptions):', stripeData)
+        }
+      } else {
+        console.log('ℹ️ Dashboard Preview - No Stripe data available, using fallback')
+      }
+
+      // Calculate seller metrics (use Stripe data when available, fallback to Supabase)
+      let totalMonthlyRevenue = stripeData?.totalRevenue || 0
+      let totalSubscribers = stripeData?.subscriberCount || 0
+      let strategiesCount = 0
+      let monetizedStrategiesCount = 0
+      let totalPerformanceMetrics = { roi: 0, winRate: 0, totalBets: 0, strategiesWithData: 0 }
+
+      if (strategies) {
+        strategiesCount = strategies.length
+        const monetizedStrategies = strategies.filter(s => s.monetized)
+        monetizedStrategiesCount = monetizedStrategies.length
+
+        // Fallback to Supabase data only if Stripe data is not available
+        if (!stripeData && subscriptions && subscriptions.length > 0) {
+          totalSubscribers = subscriptions.length
+
+          // Simplified revenue calculation using subscription price directly
+          totalMonthlyRevenue = subscriptions.reduce((total, subscription) => {
+            const price = Number(subscription.price || 0)
+            const monthlyPrice =
+              subscription.frequency === 'weekly'
+                ? price * 4.33
+                : subscription.frequency === 'yearly'
+                  ? price / 12
+                  : price // monthly
+            return total + monthlyPrice * 0.82 // Apply rake factor
+          }, 0)
+        }
+
+        // Calculate average performance metrics across monetized strategies
+        totalPerformanceMetrics = monetizedStrategies.reduce(
+          (acc, strategy) => {
+            if (
+              strategy.performance_roi !== null &&
+              strategy.performance_win_rate !== null &&
+              strategy.performance_total_bets
+            ) {
+              acc.roi += strategy.performance_roi || 0
+              acc.winRate += strategy.performance_win_rate || 0
+              acc.totalBets += strategy.performance_total_bets || 0
+              acc.strategiesWithData++
+            }
+            return acc
+          },
+          { roi: 0, winRate: 0, totalBets: 0, strategiesWithData: 0 }
+        )
+      }
+
+      // Create new data object
+      const newSellerData = {
+        totalRevenue: Number(totalMonthlyRevenue.toFixed(2)),
+        subscriberCount: totalSubscribers,
+        strategiesCount: strategiesCount,
+        hasStrategies: strategiesCount > 0,
+        averageROI:
+          totalPerformanceMetrics.strategiesWithData > 0
+            ? Number(
+                (totalPerformanceMetrics.roi / totalPerformanceMetrics.strategiesWithData).toFixed(
+                  2
+                )
+              )
+            : 0,
+        averageWinRate:
+          totalPerformanceMetrics.strategiesWithData > 0
+            ? Number(
+                (
+                  totalPerformanceMetrics.winRate / totalPerformanceMetrics.strategiesWithData
+                ).toFixed(2)
+              )
+            : 0,
+        totalBets: totalPerformanceMetrics.totalBets,
+        stripeData,
+        pendingPayments: stripeData?.pendingPayments || 0,
+        monetizedStrategiesCount,
+      }
+
+      console.log('🔍 Dashboard Preview - Final calculated seller data:', newSellerData)
+
+      // Only update if data actually changed (prevents unnecessary re-renders)
+      setSellerData(prevData => {
+        const hasChanged = JSON.stringify(prevData) !== JSON.stringify(newSellerData)
+        return hasChanged ? (newSellerData as SellerData) : prevData
+      })
+    } catch (error) {
+      console.error('Dashboard Preview - Error:', error)
+    } finally {
+      setLoading(false)
+      fetchingRef.current = false
+    }
+  }, [user, profile, stripeSellerData, stripeError])
+
+  useEffect(() => {
     fetchSellerData()
-  }, [user, profile])
+  }, [user, profile, fetchSellerData])
 
   if (loading) {
     return (
@@ -267,35 +285,62 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
       <div className="mb-6 grid grid-cols-1 gap-4">
         {/* Monthly Revenue */}
         <div className="rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="rounded-lg bg-green-200 p-2">
-                <DollarSign className="h-5 w-5 text-green-700" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex items-center space-x-3 min-w-0 flex-1">
+              <div className="rounded-lg bg-green-200 p-2 flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-700" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Monthly Revenue</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">Monthly Revenue</p>
                 <p className="text-xs text-green-600">Current month estimate</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-green-700">
-                ${sellerData.totalRevenue.toFixed(2)}
+            <div className="text-right flex-shrink-0">
+              <p className="text-xl sm:text-2xl font-bold text-green-700 break-words">
+                ${sellerData.totalRevenue >= 1000 ? 
+                  (sellerData.totalRevenue / 1000).toFixed(1) + 'k' : 
+                  sellerData.totalRevenue.toFixed(2)}
               </p>
-              <p className="text-xs text-green-600">+12% vs last month</p>
+              <div className="text-xs text-green-600 space-y-1">
+                {sellerData.pendingPayments && sellerData.pendingPayments > 0 && (
+                  <div className="inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+                    ${sellerData.pendingPayments} pending
+                  </div>
+                )}
+                {sellerData.stripeData?.hasStripeAccount === false && (
+                  <div className="inline-block rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-800">
+                    No Stripe Connect
+                  </div>
+                )}
+                {sellerData.stripeData?.hasStripeAccount && (
+                  <div className="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                    Live Stripe data
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Subscriber Count */}
           <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-4">
             <div className="text-center">
               <div className="mx-auto mb-2 w-fit rounded-lg bg-blue-200 p-2">
-                <Users className="h-5 w-5 text-blue-700" />
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-700" />
               </div>
-              <p className="mb-1 text-2xl font-bold text-blue-700">{sellerData.subscriberCount}</p>
-              <p className="text-xs font-medium text-blue-600">Subscribers</p>
+              <p className="mb-1 text-xl sm:text-2xl font-bold text-blue-700 break-words">
+                {sellerData.subscriberCount >= 1000 ? 
+                  (sellerData.subscriberCount / 1000).toFixed(1) + 'k' : 
+                  sellerData.subscriberCount}
+              </p>
+              <p className="text-xs font-medium text-blue-600">
+                Subscribers
+                {sellerData.stripeData && (
+                  <span className="ml-1 text-blue-500">(via Stripe)</span>
+                )}
+              </p>
             </div>
           </div>
 
@@ -303,12 +348,14 @@ export default function SellerPreview({ profile }: SellerPreviewProps) {
           <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-pink-50 p-4">
             <div className="text-center">
               <div className="mx-auto mb-2 w-fit rounded-lg bg-purple-200 p-2">
-                <TrendingUp className="h-5 w-5 text-purple-700" />
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-700" />
               </div>
-              <p className="mb-1 text-2xl font-bold text-purple-700">
-                {sellerData.strategiesCount}
+              <p className="mb-1 text-xl sm:text-2xl font-bold text-purple-700 break-words">
+                {sellerData.monetizedStrategiesCount}
               </p>
-              <p className="text-xs font-medium text-purple-600">Strategies</p>
+              <p className="text-xs font-medium text-purple-600">
+                Monetized ({sellerData.strategiesCount} total)
+              </p>
             </div>
           </div>
         </div>

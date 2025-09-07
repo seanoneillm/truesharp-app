@@ -214,9 +214,15 @@ export async function updateStrategy(
     })
 
     if (!response.ok) {
-      const errorData = await response.text()
+      const errorData = await response.json().catch(async () => {
+        // Fallback to text if JSON parsing fails
+        return { error: await response.text() }
+      })
       console.error('API error response:', errorData)
-      throw new Error(`Failed to update strategy: ${response.status} ${response.statusText}`)
+      
+      // Use the detailed error message if available
+      const errorMessage = errorData.details || errorData.error || `Failed to update strategy: ${response.status} ${response.statusText}`
+      throw new Error(errorMessage)
     }
 
     const result = await response.json()
@@ -228,14 +234,28 @@ export async function updateStrategy(
 }
 
 export async function deleteStrategy(strategyId: string): Promise<void> {
-  const supabase = createBrowserClient()
+  try {
+    const response = await fetch(`/api/strategies/delete/${strategyId}`, {
+      method: 'DELETE',
+    })
 
-  // Delete the strategy - cascade should handle related records
-  const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
+    if (!response.ok) {
+      const errorData = await response.json().catch(async () => {
+        // Fallback to text if JSON parsing fails
+        return { error: await response.text() }
+      })
+      console.error('API error response:', errorData)
+      
+      // Use the detailed error message if available
+      const errorMessage = errorData.details || errorData.error || `Failed to delete strategy: ${response.status} ${response.statusText}`
+      throw new Error(errorMessage)
+    }
 
-  if (error) {
+    const result = await response.json()
+    console.log('Strategy deleted successfully:', result)
+  } catch (error) {
     console.error('Error deleting strategy:', error)
-    throw new Error('Failed to delete strategy')
+    throw error
   }
 }
 

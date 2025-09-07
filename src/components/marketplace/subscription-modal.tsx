@@ -15,6 +15,7 @@ import { useState } from 'react'
 interface StrategyData {
   id: string
   strategy_id: string
+  user_id: string // Add user_id for seller identification
   strategy_name: string
   strategy_description: string
   username: string
@@ -88,8 +89,6 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
   const handleSubscribe = async () => {
     setLoading(true)
     try {
-      // Here you would integrate with Stripe or your payment processor
-      // For now, we'll simulate the subscription process
       console.log(
         'Subscribing to strategy:',
         strategy.strategy_id,
@@ -97,13 +96,34 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
         selectedFrequency
       )
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Call the subscribe API to create Stripe Checkout session
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          strategyId: strategy.strategy_id,
+          sellerId: strategy.user_id, // Use the seller's user_id
+          frequency: selectedFrequency,
+        }),
+      })
 
-      // Close modal on success
-      onClose()
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create checkout session')
+      }
+
+      if (result.checkout_url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.checkout_url
+      } else {
+        throw new Error('No checkout URL received')
+      }
     } catch (error) {
       console.error('Subscription error:', error)
+      alert(error instanceof Error ? error.message : 'Failed to start checkout process')
     } finally {
       setLoading(false)
     }

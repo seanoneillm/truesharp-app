@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { ToastProvider } from '@/components/ui/toast'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useProfile } from '@/lib/hooks/use-profile'
 import { SellerProfileEditor } from '@/components/seller/seller-profile-editor'
 import StrategiesTab from '@/components/seller/strategies-tab'
 import { SubscribersTab } from '@/components/seller/subscribers-tab'
@@ -14,16 +15,22 @@ import { AnalyticsTab } from '@/components/seller/analytics-tab'
 import { EnhancedOpenBets } from '@/components/seller/enhanced-open-bets'
 import {
   DollarSign,
-  Plus,
+  // Plus,
   RefreshCw,
   Store,
   Target,
   TrendingUp,
   User,
   Users,
+  CheckCircle,
+  Star,
+  Shield,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react'
+import { useStripeSellerData, type StripeSellerData } from '@/lib/hooks/use-stripe-data'
 
 interface SellerData {
   totalRevenue: number
@@ -33,12 +40,22 @@ interface SellerData {
   averageROI: number
   averageWinRate: number
   totalBets: number
+  stripeData?: StripeSellerData | undefined
+  pendingPayments?: number | undefined
+  strategyMetrics?: Record<string, {
+    subscribers: number
+    revenue: number
+    tiers: string[]
+  }>
 }
 
 export default function SellPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const { user, loading: authLoading } = useAuth()
+  const { profile, loading: profileLoading, refreshProfile } = useProfile()
+  const [becomingSellerLoading, setBecomingSellerLoading] = useState(false)
+  const [becomingSellerError, setBecomingSellerError] = useState<string | null>(null)
 
   // Debug logging
   useEffect(() => {
@@ -57,6 +74,9 @@ export default function SellPage() {
     averageROI: 0,
     averageWinRate: 0,
     totalBets: 0,
+    // stripeData: undefined,
+    pendingPayments: 0,
+    strategyMetrics: {},
   })
   const [loading, setLoading] = useState(true)
   const fetchingRef = useRef(false)
@@ -76,10 +96,24 @@ export default function SellPage() {
       placed_at: string
       game_date?: string
       sportsbook?: string
+      prop_type?: string
+      player_name?: string
+      line_value?: number
+      side?: string
     }>
   >([])
   const [openBetsLoading, setOpenBetsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  
+  // Hook for Stripe seller data
+  const { data: stripeSellerData, loading: stripeLoading, error: stripeError, refetch: refetchStripe } = useStripeSellerData()
+  
+  // Debug effect to monitor Stripe data changes
+  useEffect(() => {
+    console.log('🔍 Sell Page - Stripe seller data changed:', stripeSellerData)
+    console.log('🔍 Sell Page - Stripe loading:', stripeLoading)
+    console.log('🔍 Sell Page - Stripe error:', stripeError)
+  }, [stripeSellerData, stripeLoading, stripeError])
 
   useEffect(() => {
     setMounted(true)
@@ -140,13 +174,19 @@ export default function SellPage() {
               status,
               placed_at,
               game_date,
-              sportsbook
+              sportsbook,
+              prop_type,
+              player_name,
+              line_value,
+              side
             `
             )
             .eq('user_id', user.id)
             .eq('status', 'pending')
+            .gt('game_date', new Date().toISOString())
+            .order('game_date', { ascending: true })
             .order('placed_at', { ascending: false })
-            .limit(10)
+            .limit(50)
 
           if (error) {
             console.warn('Open bets fetch failed, using empty array:', error.message)
@@ -221,9 +261,32 @@ export default function SellPage() {
         subscriptions = []
       }
 
-      // Calculate seller metrics
-      let totalMonthlyRevenue = 0
-      let totalSubscribers = 0
+      // Use Stripe data from hook if available
+      const stripeData = stripeSellerData
+      
+      // Debug logging
+      console.log('🔍 Debug - Stripe data available:', !!stripeData)
+      console.log('🔍 Debug - Stripe data:', stripeData)
+      console.log('🔍 Debug - Stripe loading:', stripeLoading)
+      console.log('🔍 Debug - Stripe error:', stripeError)
+      
+      if (stripeData && stripeData.totalRevenue > 0) {
+        console.log('✅ Using Stripe seller data from hook - Revenue:', stripeData.totalRevenue, 'Subscribers:', stripeData.subscriberCount)
+      } else if (stripeError) {
+        console.warn('⚠️ Stripe data hook error, using fallback calculations:', stripeError)
+      } else if (stripeData) {
+        if (stripeData.hasStripeAccount === false) {
+          console.log('⚠️ Seller has no Stripe Connect account configured')
+        } else {
+          console.log('ℹ️ Stripe data exists but revenue is 0 (no active subscriptions):', stripeData)
+        }
+      } else {
+        console.log('ℹ️ No Stripe data available, using fallback')
+      }
+
+      // Calculate seller metrics (use Stripe data when available, fallback to Supabase)
+      let totalMonthlyRevenue = stripeData?.totalRevenue || 0
+      let totalSubscribers = stripeData?.subscriberCount || 0
       let strategiesCount = 0
       let monetizedStrategiesCount = 0
       let totalPerformanceMetrics = { roi: 0, winRate: 0, totalBets: 0, strategiesWithData: 0 }
@@ -233,8 +296,8 @@ export default function SellPage() {
         const monetizedStrategies = strategies.filter(s => s.monetized)
         monetizedStrategiesCount = monetizedStrategies.length
 
-        // Calculate subscriber count and revenue from subscriptions
-        if (subscriptions && subscriptions.length > 0) {
+        // Fallback to Supabase data only if Stripe data is not available
+        if (!stripeData && subscriptions && subscriptions.length > 0) {
           totalSubscribers = subscriptions.length
 
           // Simplified revenue calculation using subscription price directly
@@ -292,12 +355,17 @@ export default function SellPage() {
               )
             : 0,
         totalBets: totalPerformanceMetrics.totalBets,
+        stripeData,
+        pendingPayments: stripeData?.pendingPayments || 0,
+        strategyMetrics: stripeData?.strategyMetrics || {},
       }
+
+      console.log('🔍 Debug - Final calculated seller data:', newSellerData)
 
       // Only update if data actually changed (prevents unnecessary re-renders)
       setSellerData(prevData => {
         const hasChanged = JSON.stringify(prevData) !== JSON.stringify(newSellerData)
-        return hasChanged ? newSellerData : prevData
+        return hasChanged ? (newSellerData as SellerData) : prevData
       })
     } catch (error) {
       console.error('Error:', error)
@@ -315,6 +383,51 @@ export default function SellPage() {
 
   const refreshData = () => {
     fetchSellerData()
+    refetchStripe() // Also refresh Stripe data
+  }
+
+  const becomeASeller = async () => {
+    if (!user) return
+
+    try {
+      setBecomingSellerLoading(true)
+      setBecomingSellerError(null)
+
+      // First, update profile to enable seller
+      const supabase = createClient()
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ is_seller: true })
+        .eq('id', user.id)
+
+      if (profileError) throw profileError
+
+      // Create Stripe Connect account
+      const response = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create Stripe Connect account')
+      }
+
+      // Redirect to Stripe onboarding
+      if (result.onboarding_url) {
+        window.location.href = result.onboarding_url
+      } else {
+        // If no onboarding needed, refresh profile
+        await refreshProfile()
+      }
+    } catch (error: unknown) {
+      setBecomingSellerError(error instanceof Error ? error.message : 'Failed to enable seller account')
+    } finally {
+      setBecomingSellerLoading(false)
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -325,7 +438,7 @@ export default function SellPage() {
     }).format(amount)
   }
 
-  if (authLoading || !mounted) {
+  if (authLoading || profileLoading || !mounted) {
     return (
       <DashboardLayout>
         <div className="space-y-6">
@@ -340,6 +453,126 @@ export default function SellPage() {
           </div>
         </div>
       </DashboardLayout>
+    )
+  }
+
+  // Show seller onboarding if user is not a seller
+  if (user && profile && !profile.is_seller) {
+    return (
+      <ToastProvider>
+        <DashboardLayout>
+          <div className="mx-auto max-w-4xl space-y-8">
+            {/* Hero Section */}
+            <div className="text-center">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
+                <Store className="h-10 w-10 text-white" />
+              </div>
+              <h1 className="mb-4 text-4xl font-bold text-slate-900">Become a Seller</h1>
+              <p className="mx-auto max-w-2xl text-lg text-slate-600">
+                Start monetizing your betting expertise by sharing your strategies with other users. 
+                Earn revenue from subscribers who want to follow your picks.
+              </p>
+            </div>
+
+            {/* Benefits Grid */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-green-900">Earn Revenue</h3>
+                <p className="text-green-700">
+                  Set your own pricing for weekly, monthly, or yearly subscriptions. 
+                  Keep 80% of subscription revenue.
+                </p>
+              </Card>
+
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-blue-900">Build Your Following</h3>
+                <p className="text-blue-700">
+                  Share your betting strategies and build a community of subscribers 
+                  who trust your expertise.
+                </p>
+              </Card>
+
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-6">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+                  <Shield className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-purple-900">Secure Payments</h3>
+                <p className="text-purple-700">
+                  All payments are processed securely through Stripe. 
+                  Get paid directly to your bank account.
+                </p>
+              </Card>
+            </div>
+
+            {/* Features List */}
+            <Card className="p-8">
+              <h2 className="mb-6 text-2xl font-bold text-slate-900">What You Get</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {[
+                  'Create unlimited betting strategies',
+                  'Set flexible pricing options',
+                  'Track your performance metrics',
+                  'Manage your subscriber base',
+                  'Access detailed analytics',
+                  'Secure payment processing',
+                  'Professional seller dashboard',
+                  'Promotional tools and features',
+                ].map((feature, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-slate-700">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* CTA Section */}
+            <Card className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+              <div className="text-center">
+                <h2 className="mb-4 text-3xl font-bold">Ready to Start Selling?</h2>
+                <p className="mb-6 text-lg text-blue-100">
+                  Join our marketplace and start earning from your betting expertise today.
+                </p>
+                
+                {becomingSellerError && (
+                  <div className="mb-4 rounded-lg bg-red-100 p-3 text-red-800">
+                    {becomingSellerError}
+                  </div>
+                )}
+
+                <Button
+                  onClick={becomeASeller}
+                  disabled={becomingSellerLoading}
+                  size="lg"
+                  className="bg-white text-blue-600 hover:bg-gray-100"
+                >
+                  {becomingSellerLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Setting up your account...
+                    </>
+                  ) : (
+                    <>
+                      <Star className="mr-2 h-5 w-5" />
+                      Become a Seller
+                    </>
+                  )}
+                </Button>
+                
+                <p className="mt-4 text-sm text-blue-200">
+                  You'll be redirected to Stripe to set up your payout information
+                </p>
+              </div>
+            </Card>
+          </div>
+        </DashboardLayout>
+      </ToastProvider>
     )
   }
   return (
@@ -361,6 +594,33 @@ export default function SellPage() {
             </div>
             <div className="flex items-center space-x-3">
               <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/account-link', {
+                      method: 'POST',
+                    })
+                    if (response.ok) {
+                      const data = await response.json()
+                      if (data.url) {
+                        window.location.href = data.url
+                      }
+                    } else {
+                      const errorData = await response.json()
+                      alert(errorData.error || 'Failed to open account management')
+                    }
+                  } catch (error) {
+                    console.error('Error opening account management:', error)
+                    alert('Failed to open account management')
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="border-green-300 text-sm text-green-700 hover:bg-green-50"
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Manage Account
+              </Button>
+              <Button
                 onClick={() => setProfileEditorOpen(true)}
                 variant="outline"
                 size="sm"
@@ -378,21 +638,14 @@ export default function SellPage() {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
-              <Button
-                onClick={() => setProfileEditorOpen(true)}
-                variant="outline"
-                size="sm"
-                className="border-purple-300 text-sm text-purple-600 hover:bg-purple-50"
-              >
-                <User className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
-              <Link href="/games">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Pick
-                </Button>
-              </Link>
+              {profile?.username && (
+                <Link href={`/marketplace/${profile.username}`}>
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    View Public Profile
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -407,6 +660,21 @@ export default function SellPage() {
                   </p>
                   <p className="text-xs text-green-600">
                     From {sellerData.subscriberCount} active subscribers
+                    {(sellerData.pendingPayments || 0) > 0 && (
+                      <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+                        ${sellerData.pendingPayments} pending
+                      </span>
+                    )}
+                    {sellerData.stripeData?.hasStripeAccount === false && (
+                      <span className="ml-2 rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-800">
+                        No Stripe Connect
+                      </span>
+                    )}
+                    {sellerData.stripeData?.hasStripeAccount && (
+                      <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                        Live Stripe data
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="rounded-xl bg-green-100 p-2">
@@ -423,7 +691,10 @@ export default function SellPage() {
                     {sellerData.subscriberCount}
                   </p>
                   <p className="mt-1 text-xs text-blue-600">
-                    {sellerData.subscriberCount} active, +0 this month
+                    {sellerData.subscriberCount} active
+                    {sellerData.stripeData && (
+                      <span className="ml-1 text-blue-500">(via Stripe)</span>
+                    )}
                   </p>
                 </div>
                 <div className="rounded-xl bg-blue-100 p-2">
@@ -503,6 +774,7 @@ export default function SellPage() {
                 loading={openBetsLoading}
                 onRefresh={refreshData}
               />
+
 
               {/* Business Insights Grid */}
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -593,36 +865,6 @@ export default function SellPage() {
                 </Card>
               </div>
 
-              {/* Quick Actions */}
-              <Card className="p-6">
-                <h3 className="mb-6 text-xl font-bold text-gray-900">Quick Actions</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <Button
-                    onClick={() => setActiveTab('strategies')}
-                    className="h-16 flex-col space-y-2 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Target className="h-6 w-6" />
-                    <span>Create Strategy</span>
-                  </Button>
-                  <Link href="/games">
-                    <Button
-                      variant="outline"
-                      className="h-16 w-full flex-col space-y-2 border-green-300 text-green-700 hover:bg-green-50"
-                    >
-                      <Plus className="h-6 w-6" />
-                      <span>Add Picks</span>
-                    </Button>
-                  </Link>
-                  <Button
-                    onClick={() => setActiveTab('subscribers')}
-                    variant="outline"
-                    className="h-16 flex-col space-y-2 border-purple-300 text-purple-700 hover:bg-purple-50"
-                  >
-                    <Users className="h-6 w-6" />
-                    <span>Manage Subscribers</span>
-                  </Button>
-                </div>
-              </Card>
             </div>
           )}
 

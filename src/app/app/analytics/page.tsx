@@ -90,16 +90,26 @@ type Bet = {
   id?: string | number
   placed_at?: string
   sport?: string
+  league?: string
   description?: string
+  bet_description?: string
   bet_type?: string
   odds?: number
   stake?: number
   potential_payout?: number
   actual_payout?: number | null
+  profit?: number | null
   status?: string
   sportsbook?: string
   teams?: string | string[] | null
+  home_team?: string
+  away_team?: string
   game_date?: string
+  strategy_id?: string
+  line_value?: number
+  prop_type?: string
+  player_name?: string
+  side?: string
   clv?: number | null
   closing_line?: number | null
   line_movement?: number | null
@@ -215,13 +225,13 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
           <thead className="sticky top-0 bg-slate-50/50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Date
+                Date Placed
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Sport
+                Sport / League
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Description
+                Matchup & Details
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                 Bet Type
@@ -233,10 +243,10 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
                 Stake
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Potential Payout
+                Result
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Actual Payout
+                P&L
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                 Status
@@ -245,10 +255,7 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
                 Sportsbook
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Teams
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                Game Date
+                Strategy
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                 <div className="flex items-center">
@@ -277,78 +284,151 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/50 bg-white/50">
-            {bets.map((bet, index) => (
-              <tr key={bet.id || index} className="transition-colors hover:bg-slate-50/50">
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {formatDate(bet.placed_at)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                    {bet.sport || 'N/A'}
-                  </span>
-                </td>
-                <td className="max-w-xs truncate px-6 py-4 text-sm text-slate-900">
-                  {bet.description || 'N/A'}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {bet.bet_type || 'N/A'}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
-                  {formatOdds(bet.odds)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {formatCurrency(bet.stake)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {formatCurrency(bet.potential_payout)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
-                  <span
-                    className={
-                      (bet.actual_payout ?? 0) > 0
-                        ? 'text-green-600'
-                        : (bet.actual_payout ?? 0) < 0
-                          ? 'text-red-600'
-                          : 'text-slate-900'
-                    }
-                  >
-                    {formatCurrency(bet.actual_payout)}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {getStatusBadge(bet.status)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {bet.sportsbook || 'N/A'}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {bet.teams ? (
-                    <div className="max-w-xs truncate">
-                      {typeof bet.teams === 'string' ? bet.teams : JSON.stringify(bet.teams)}
+            {bets.map((bet, index) => {
+              // Build teams display
+              let teamsDisplay = 'N/A'
+              if (bet.home_team && bet.away_team) {
+                teamsDisplay = `${bet.away_team} @ ${bet.home_team}`
+              } else if (bet.teams) {
+                teamsDisplay = typeof bet.teams === 'string' ? bet.teams : JSON.stringify(bet.teams)
+              }
+
+              // Use bet_description as primary display and supplement with additional details
+              const buildCompleteBetDescription = (bet: Bet) => {
+                // Start with bet_description from the database (this should be the main description)
+                let primaryDescription = bet.bet_description || 'N/A'
+                
+                // Build supplementary details array for additional context
+                const supplementaryDetails = []
+                
+                // Add teams if available
+                if (bet.home_team && bet.away_team) {
+                  supplementaryDetails.push(`${bet.away_team} @ ${bet.home_team}`)
+                }
+                
+                // Add bet type and side together for context
+                const betTypeAndSide = []
+                if (bet.bet_type) {
+                  betTypeAndSide.push(bet.bet_type.replace('_', ' ').toUpperCase())
+                }
+                if (bet.side) {
+                  betTypeAndSide.push(bet.side.toUpperCase())
+                }
+                if (betTypeAndSide.length > 0) {
+                  supplementaryDetails.push(betTypeAndSide.join(' '))
+                }
+                
+                // Add line value with proper formatting
+                if (bet.line_value !== undefined && bet.line_value !== null) {
+                  supplementaryDetails.push(bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`)
+                }
+                
+                // Add player info for props
+                if (bet.player_name) {
+                  const playerInfo = [bet.player_name]
+                  if (bet.prop_type) {
+                    playerInfo.push(bet.prop_type)
+                  }
+                  supplementaryDetails.push(playerInfo.join(' '))
+                }
+                
+                // Combine primary description with supplementary details
+                if (supplementaryDetails.length > 0) {
+                  return `${primaryDescription} | ${supplementaryDetails.join(' | ')}`
+                }
+                
+                return primaryDescription
+              }
+              
+              const betDetails = buildCompleteBetDescription(bet)
+
+              // Calculate profit for display
+              const profit = bet.profit ?? (
+                bet.status === 'won' ? (bet.potential_payout || 0) - (bet.stake || 0) :
+                bet.status === 'lost' ? -(bet.stake || 0) :
+                0
+              )
+
+              return (
+                <tr key={bet.id || index} className="transition-colors hover:bg-slate-50/50">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {formatDate(bet.placed_at)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-900">
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                        {bet.sport || 'N/A'}
+                      </span>
+                      {bet.league && (
+                        <div className="text-xs text-slate-500">{bet.league}</div>
+                      )}
                     </div>
-                  ) : (
-                    'N/A'
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
-                  {formatDate(bet.game_date)}
-                </td>
-                <BlurredCell isProColumn={true}>
-                  {bet.clv ? `${bet.clv > 0 ? '+' : ''}${bet.clv}%` : 'N/A'}
-                </BlurredCell>
-                <BlurredCell isProColumn={true}>{formatOdds(bet.closing_line)}</BlurredCell>
-                <BlurredCell isProColumn={true}>
-                  {bet.line_movement
-                    ? `${bet.line_movement > 0 ? '+' : ''}${bet.line_movement}`
-                    : 'N/A'}
-                </BlurredCell>
-                <BlurredCell isProColumn={true}>
-                  {bet.expected_value
-                    ? `${bet.expected_value > 0 ? '+' : ''}${bet.expected_value}%`
-                    : 'N/A'}
-                </BlurredCell>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-900">
+                    <div className="space-y-1 max-w-xs">
+                      <div className="font-medium text-slate-700">{teamsDisplay}</div>
+                      <div className="text-xs text-slate-600 truncate">{betDetails}</div>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800">
+                      {bet.bet_type || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
+                    {formatOdds(bet.odds)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {formatCurrency(bet.stake)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {bet.status === 'won' ? 'Won' : bet.status === 'lost' ? 'Lost' : bet.status === 'void' ? 'Void' : 'Pending'}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <span
+                      className={
+                        profit > 0
+                          ? 'text-green-600'
+                          : profit < 0
+                            ? 'text-red-600'
+                            : 'text-slate-900'
+                      }
+                    >
+                      {formatCurrency(profit)}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {getStatusBadge(bet.status)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {bet.sportsbook || 'Manual'}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
+                    {bet.strategy_id ? (
+                      <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800">
+                        Strategy Bet
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">Manual</span>
+                    )}
+                  </td>
+                  <BlurredCell isProColumn={true}>
+                    {bet.clv ? `${bet.clv > 0 ? '+' : ''}${bet.clv}%` : 'N/A'}
+                  </BlurredCell>
+                  <BlurredCell isProColumn={true}>{formatOdds(bet.closing_line)}</BlurredCell>
+                  <BlurredCell isProColumn={true}>
+                    {bet.line_movement
+                      ? `${bet.line_movement > 0 ? '+' : ''}${bet.line_movement}`
+                      : 'N/A'}
+                  </BlurredCell>
+                  <BlurredCell isProColumn={true}>
+                    {bet.expected_value
+                      ? `${bet.expected_value > 0 ? '+' : ''}${bet.expected_value}%`
+                      : 'N/A'}
+                  </BlurredCell>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -381,15 +461,16 @@ interface SavedFilter {
 export default function EnhancedAnalyticsPage() {
   const { user, loading: authLoading } = useAuth() // Use the correct useAuth hook
   const { profile, loading: profileLoading } = useProfile()
-  const [selectedTimeframe, setSelectedTimeframe] = useState('30d')
+  const [selectedTimeframe, setSelectedTimeframe] = useState('all')
   const [showProUpgrade, setShowProUpgrade] = useState(false)
+  const [showBankrollGuide, setShowBankrollGuide] = useState(false)
 
   // Use actual Pro status from profile
   const isPro = profile?.pro === 'yes'
   const [activeView, setActiveView] = useState('overview')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
-  const { analyticsData, isLoading, error, updateFilters, totalBets, filteredBetsCount } =
+  const { analyticsData, isLoading, error, filters, updateFilters, totalBets, filteredBetsCount } =
     useAnalytics(user)
   // Extract bets array from analyticsData, fallback to empty array if not available
   const bets = analyticsData?.bets || []
@@ -478,13 +559,13 @@ export default function EnhancedAnalyticsPage() {
     )
   }
 
-  // Mock data for charts (will be replaced with real data)
-  const mockProfitData = analyticsData.dailyProfitData.map(day => ({
+  // Transform analytics data to chart format - this data is already filtered by the useAnalytics hook
+  const profitChartData = analyticsData.dailyProfitData.map(day => ({
     date: day.date,
-    cumulativeProfit: day.cumulativeProfit,
-    dailyProfit: day.profit,
+    cumulativeProfit: day.cumulativeProfit, // This should be actual calculated profit, not potential
+    dailyProfit: day.profit, // Daily profit change
     roi: analyticsData.metrics.roi,
-    units: day.cumulativeProfit / 100, // Mock units conversion
+    units: day.cumulativeProfit / (analyticsData.metrics.avgStake || 100), // Convert to units based on average stake
     bets: day.bets,
   }))
 
@@ -530,16 +611,41 @@ export default function EnhancedAnalyticsPage() {
                   ? 'Advanced analytics with unlimited filtering and professional insights'
                   : 'Deep dive into your verified betting performance with advanced analytics'}
               </p>
-              {/* Data summary */}
-              <div className="mt-2 flex items-center space-x-4 text-sm text-slate-500">
-                <span>Total Bets: {totalBets}</span>
-                <span>Filtered: {filteredBetsCount}</span>
+              {/* Data summary with loading indicator */}
+              <div className="mt-3 flex items-center space-x-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  {isLoading && (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                  )}
+                  <span className={`${isLoading ? 'text-blue-600 animate-pulse' : 'text-slate-500'}`}>
+                    Total Bets: {totalBets}
+                  </span>
+                </div>
+                <span className={`${isLoading ? 'text-blue-600 animate-pulse' : 'text-slate-500'}`}>
+                  Filtered: {filteredBetsCount}
+                </span>
                 {analyticsData.metrics.totalStaked > 0 && (
-                  <span>Total Staked: ${analyticsData.metrics.totalStaked.toFixed(2)}</span>
+                  <span className={`${isLoading ? 'text-blue-600 animate-pulse' : 'text-slate-500'}`}>
+                    Total Staked: ${analyticsData.metrics.totalStaked.toFixed(2)}
+                  </span>
+                )}
+                {isLoading && (
+                  <div className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                    Refreshing data...
+                  </div>
                 )}
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Bankroll Guide Button */}
+              <button
+                onClick={() => setShowBankrollGuide(true)}
+                className="inline-flex items-center rounded-xl border border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-2 text-sm font-medium text-green-700 shadow-sm transition-all hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Bankroll Guide
+              </button>
+              
               {/* View Toggle */}
               <div className="flex items-center space-x-2">
                 <button
@@ -593,9 +699,10 @@ export default function EnhancedAnalyticsPage() {
               <button
                 onClick={() => window.location.reload()}
                 className="inline-flex items-center rounded-xl border border-slate-300 bg-white/70 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-white"
+                disabled={isLoading}
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Loading...' : 'Refresh'}
               </button>
               <button
                 onClick={isPro ? undefined : handleProFeatureClick}
@@ -631,14 +738,21 @@ export default function EnhancedAnalyticsPage() {
                 />
               </div>
             ) : (
-              // Original Free Filters
-              <div className="sticky top-24 rounded-2xl border border-slate-200/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm">
-                <div className="mb-6 flex items-center space-x-2">
-                  <Filter className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
+              // Organized Filters Panel
+              <div className="sticky top-24 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white/90 to-slate-50/90 p-6 shadow-xl backdrop-blur-md">
+                <div className="mb-8 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 p-2.5">
+                      <Filter className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Filters</h3>
+                      <p className="text-xs text-slate-500">Customize your analytics view</p>
+                    </div>
+                  </div>
                   {isPro && (
-                    <div className="ml-auto">
-                      <Zap className="h-4 w-4 text-yellow-500" />
+                    <div className="rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 p-1.5">
+                      <Zap className="h-3 w-3 text-white" />
                     </div>
                   )}
                 </div>
@@ -655,29 +769,101 @@ export default function EnhancedAnalyticsPage() {
                   </div>
                 )}
 
-                <div className="space-y-6">
+                <div className="space-y-8">
+                  {/* Date Range Filter - Pro Feature */}
+                  {isPro && (
+                    <div className="rounded-xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-4">
+                      <label className="mb-4 flex items-center text-sm font-bold text-slate-800">
+                        <div className="mr-3 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 p-2">
+                          <Zap className="h-4 w-4 text-white" />
+                        </div>
+                        Custom Date Range
+                        <span className="ml-2 rounded-full bg-yellow-500 px-2 py-0.5 text-xs text-white">PRO</span>
+                      </label>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-xs font-medium text-slate-700">Start Date</label>
+                            <input
+                              type="date"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  updateFilters({ 
+                                    dateRange: { 
+                                      start: e.target.value, 
+                                      end: filters.dateRange.end 
+                                    } 
+                                  })
+                                }
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-medium text-slate-700">End Date</label>
+                            <input
+                              type="date"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  updateFilters({ 
+                                    dateRange: { 
+                                      start: filters.dateRange.start, 
+                                      end: e.target.value 
+                                    } 
+                                  })
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => updateFilters({ dateRange: { start: null, end: null } })}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                        >
+                          Clear Date Range
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Timeframe Filter */}
                   <div>
-                    <label className="mb-3 block text-sm font-medium text-slate-700">
-                      Time Period
+                    <label className="mb-4 flex items-center text-sm font-bold text-slate-800">
+                      <div className="mr-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 p-2">
+                        <RefreshCw className="h-4 w-4 text-white" />
+                      </div>
+                      {isPro ? 'Quick Time Period' : 'Time Period'}
                     </label>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-3">
                       {timeframes.map(timeframe => (
                         <button
                           key={timeframe.value}
                           onClick={() => handleTimeframeChange(timeframe.value)}
                           disabled={!timeframe.free && !isPro}
-                          className={`w-full rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                          className={`group relative rounded-xl border p-4 text-left transition-all duration-200 ${
                             selectedTimeframe === timeframe.value
-                              ? 'border-blue-600 bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
+                              ? 'border-blue-500 bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
                               : timeframe.free || isPro
-                                ? 'border-slate-300 hover:border-blue-300 hover:bg-blue-50'
+                                ? 'border-slate-200 bg-white hover:border-blue-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:shadow-md'
                                 : 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{timeframe.label}</span>
-                            {!timeframe.free && !isPro && <Lock className="h-4 w-4" />}
+                            <div>
+                              <span className="text-sm font-semibold">{timeframe.label}</span>
+                              {selectedTimeframe === timeframe.value && (
+                                <div className="mt-1 text-xs text-blue-100">Currently active</div>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {!timeframe.free && !isPro && (
+                                <Lock className="h-4 w-4 text-slate-400" />
+                              )}
+                              {selectedTimeframe === timeframe.value && (
+                                <CheckCircle className="h-4 w-4 text-white" />
+                              )}
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -855,7 +1041,8 @@ export default function EnhancedAnalyticsPage() {
                 {analyticsData.metrics.totalBets > 0 && (
                   <div className="space-y-8">
                     <AdvancedProfitChart
-                      data={mockProfitData}
+                      key={`chart-${selectedTimeframe}-${JSON.stringify(filters)}`}
+                      data={profitChartData}
                       isPro={isPro}
                       timeframe={selectedTimeframe}
                       onTimeframeChange={handleTimeframeChange}
@@ -1005,7 +1192,7 @@ export default function EnhancedAnalyticsPage() {
                   )}
                 </div>
 
-                <BetsTable bets={bets || []} isPro={isPro} isLoading={isLoading} />
+                <BetsTable bets={bets as any || []} isPro={isPro} isLoading={isLoading} />
               </div>
             )}
 
@@ -1015,6 +1202,7 @@ export default function EnhancedAnalyticsPage() {
                   <Crown className="mr-2 h-5 w-5 text-yellow-500" />
                   Advanced Analytics
                 </h2>
+
 
                 <CLVChart />
 
@@ -1091,6 +1279,90 @@ export default function EnhancedAnalyticsPage() {
             )}
           </div>
         </div>
+
+        {/* Bankroll Guide Modal */}
+        {showBankrollGuide && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6">
+                <div className="flex items-center space-x-3">
+                  <div className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 p-2">
+                    <BarChart3 className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">📊 Bankroll Basics & Finding Your Edge</h3>
+                    <p className="text-sm text-green-700">Essential guide for responsible betting</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBankrollGuide(false)}
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/50 hover:text-slate-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="max-h-[70vh] overflow-y-auto p-8">
+                <div className="prose max-w-none">
+                  <div className="mb-8">
+                    <h2 className="mb-4 flex items-center text-2xl font-bold text-slate-900">
+                      What is a Bankroll?
+                    </h2>
+                    <p className="text-slate-700">
+                      Your bankroll is the amount of money you've set aside strictly for sports betting. Think of it as your "betting budget." The most important rule is simple: <strong>never bet money you can't afford to lose</strong>. Your bankroll should be separate from bills, savings, or everyday spending.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">How Big Should Your Bankroll Be?</h2>
+                    <p className="text-slate-700">
+                      There's no universal number. Some bettors set aside $500, others $5,000. The key is comfort — you should be fine if it all disappeared tomorrow. Start small and grow your bankroll with consistent discipline.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Units & Bet Sizing</h2>
+                    <p className="text-slate-700">
+                      To stay consistent, bettors use "units." One unit is usually 1–2% of your bankroll. For example, if your bankroll is $1,000, one unit might be $10–20. Betting in units makes your results easy to track, compare, and analyze — no matter the size of your bankroll.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Why Small Bets Win Long-Term</h2>
+                    <p className="text-slate-700">
+                      It's tempting to chase a big win by betting more, but large swings wipe out bankrolls quickly. By sticking to flat betting (same unit size every time) or a small variation (1–3 units depending on confidence), you protect yourself from losing streaks.
+                    </p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Analyzing Your Bet History</h2>
+                    <p className="text-slate-700 mb-4">
+                      Your analytics dashboard shows you more than just wins and losses. By looking deeper into your performance, you can identify:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-slate-700">
+                      <li><strong>Your ROI (Return on Investment):</strong> How much you're earning per dollar risked.</li>
+                      <li><strong>Best & Worst Sports/Markets:</strong> Maybe you crush NBA totals but struggle with MLB moneylines.</li>
+                      <li><strong>Bet Types That Work:</strong> Some bettors thrive on spreads, others on props.</li>
+                    </ul>
+                  </div>
+
+                  <div className="mb-8">
+                    <h2 className="mb-4 text-2xl font-bold text-slate-900">Tracking Bets = Finding Your Edge</h2>
+                    <p className="text-slate-700">
+                      Tracking every wager is what separates disciplined bettors from casual gamblers. Over time, patterns emerge. Maybe you're profitable when betting underdogs but lose when you back heavy favorites. With data, you can double down on what works and cut out what doesn't.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 p-6">
+                    <p className="text-lg font-semibold text-green-900">
+                      👉 <strong>Bottom line:</strong> Your bankroll is your foundation, your units are your safety net, and your data is your roadmap. Respect those three, and you give yourself the best chance to succeed while betting responsibly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pro Upgrade Modal */}
         {showProUpgrade && (

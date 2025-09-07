@@ -1,7 +1,6 @@
 'use client'
 
-import { Calendar } from 'lucide-react'
-import { useState } from 'react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DateSelectorProps {
   selectedDate: Date | null
@@ -9,7 +8,6 @@ interface DateSelectorProps {
 }
 
 export default function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) {
-  const [showCalendar, setShowCalendar] = useState(false)
 
   // Get normalized dates for comparison (removes time component)
   const today = new Date()
@@ -49,12 +47,28 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
   const handleDateSelect = (dateString: string) => {
     const newDate = new Date(dateString + 'T00:00:00')
     onDateChange(newDate)
-    setShowCalendar(false)
   }
 
   // Handle quick date button clicks
   const handleQuickDate = (targetDate: Date) => {
     onDateChange(targetDate)
+  }
+
+  // Handle date navigation with arrows
+  const goToPreviousDay = () => {
+    if (selectedDate) {
+      const prevDate = new Date(selectedDate)
+      prevDate.setDate(selectedDate.getDate() - 1)
+      onDateChange(prevDate)
+    }
+  }
+
+  const goToNextDay = () => {
+    if (selectedDate) {
+      const nextDate = new Date(selectedDate)
+      nextDate.setDate(selectedDate.getDate() + 1)
+      onDateChange(nextDate)
+    }
   }
 
   // Return loading state if selectedDate is null
@@ -71,101 +85,84 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="p-4">
-        {/* Header with current date */}
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-slate-900">Date Selection</h3>
-          </div>
-          <span className="text-sm text-slate-600">
-            {selectedDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </span>
-        </div>
+        {/* Compact Date Navigation */}
+        <div className="flex items-center justify-center space-x-3">
+          {/* Left Arrow */}
+          <button
+            onClick={goToPreviousDay}
+            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
 
-        {/* Quick Date Tabs */}
-        <div className="mb-4 flex items-center space-x-1 rounded-lg bg-slate-50 p-1">
-          <button
-            onClick={() => handleQuickDate(yesterday)}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              isYesterday(selectedDate)
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-            }`}
-          >
-            Yesterday
-          </button>
-          <button
-            onClick={() => handleQuickDate(today)}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              isToday(selectedDate)
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-            }`}
-          >
-            Today
-          </button>
-          <button
-            onClick={() => handleQuickDate(tomorrow)}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              isTomorrow(selectedDate)
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-            }`}
-          >
-            Tomorrow
-          </button>
-        </div>
-
-        {/* Date Picker and Toggle */}
-        <div className="flex items-center space-x-3">
-          <div className="flex-1">
-            <input
-              type="date"
-              value={formatDateForInput(selectedDate)}
-              onChange={e => handleDateSelect(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            onClick={() => setShowCalendar(!showCalendar)}
-            className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
-          >
-            {showCalendar ? 'Hide' : 'More'}
-          </button>
-        </div>
-
-        {/* Expandable Calendar Options */}
-        {showCalendar && (
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="grid grid-cols-2 gap-2">
+          {/* Date Selection Row */}
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {/* Quick Date Buttons */}
+            <div className="flex items-center space-x-1 rounded-lg bg-slate-50 p-1">
               <button
-                onClick={() => {
-                  handleQuickDate(today)
-                  setShowCalendar(false)
-                }}
-                className="rounded-lg bg-blue-50 px-3 py-2 text-center text-sm text-blue-600 transition-colors hover:bg-blue-100"
+                onClick={() => handleQuickDate(yesterday)}
+                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
+                  isYesterday(selectedDate)
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+                }`}
               >
-                Jump to Today
+                Yesterday
               </button>
               <button
-                onClick={() => {
-                  const nextWeek = new Date(today)
-                  nextWeek.setDate(today.getDate() + 7)
-                  handleQuickDate(nextWeek)
-                  setShowCalendar(false)
-                }}
-                className="rounded-lg bg-slate-50 px-3 py-2 text-center text-sm text-slate-600 transition-colors hover:bg-slate-100"
+                onClick={() => handleQuickDate(today)}
+                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
+                  isToday(selectedDate)
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+                }`}
               >
-                Next Week
+                Today
+              </button>
+              <button
+                onClick={() => handleQuickDate(tomorrow)}
+                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
+                  isTomorrow(selectedDate)
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+                }`}
+              >
+                Tomorrow
               </button>
             </div>
+
+            {/* Date Picker */}
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-slate-400" />
+              <input
+                type="date"
+                value={formatDateForInput(selectedDate)}
+                onChange={e => handleDateSelect(e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-        )}
+
+          {/* Right Arrow */}
+          <button
+            onClick={goToNextDay}
+            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
+            aria-label="Next day"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Optional: Current date display (compact) */}
+        <div className="mt-3 text-center text-sm text-slate-600">
+          {selectedDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </div>
       </div>
     </div>
   )

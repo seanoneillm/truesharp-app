@@ -2,7 +2,7 @@
 
 import { isActiveRoute, NavigationRoute, navigationRoutes } from '@/lib/navigation/routes'
 import { cn } from '@/lib/utils'
-import { BarChart3, CreditCard, DollarSign, Home, MessageSquare, Store, Trophy } from 'lucide-react'
+import { BarChart3, CreditCard, DollarSign, Home, MessageSquare, MessageCircle, Store, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -14,6 +14,7 @@ const iconMap = {
   DollarSign,
   CreditCard,
   MessageSquare,
+  MessageCircle,
 }
 
 interface NavigationItemsProps {

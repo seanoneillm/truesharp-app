@@ -91,14 +91,32 @@ const SubscriptionCard = ({
   const [cancelling, setCancelling] = useState(false)
 
   const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+      return
+    }
+    
     setCancelling(true)
     try {
-      // TODO: Implement Stripe cancellation
       console.log('Cancelling subscription:', subscription.id)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      
+      const response = await fetch(`/api/subscriptions/cancel/${subscription.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to cancel subscription')
+      }
+
+      const result = await response.json()
+      console.log('Subscription cancelled successfully:', result)
+      
+      // Show success message and refresh
+      alert('Subscription cancelled successfully')
       onRefresh()
     } catch (error) {
       console.error('Error cancelling subscription:', error)
+      alert(`Failed to cancel subscription: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setCancelling(false)
     }
@@ -275,6 +293,33 @@ const SubscriptionCard = ({
             <div className="space-y-3">
               <h5 className="text-sm font-semibold text-gray-700">Actions</h5>
               <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/billing-portal', {
+                        method: 'POST',
+                      })
+                      if (response.ok) {
+                        const data = await response.json()
+                        if (data.url) {
+                          window.location.href = data.url
+                        }
+                      } else {
+                        const errorData = await response.json()
+                        alert(errorData.error || 'Failed to open billing portal')
+                      }
+                    } catch (error) {
+                      console.error('Error opening billing portal:', error)
+                      alert('Failed to open billing portal')
+                    }
+                  }}
+                  className="w-full border-blue-200 text-blue-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Manage Billing
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient } from '@/lib/supabase'
+import { useStripeSellerData } from '@/lib/hooks/use-stripe-data'
 import {
   // Mail, // TS6133: unused import
   // Calendar, // TS6133: unused import
@@ -58,6 +59,9 @@ export function SubscribersTab() {
   })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'cancelled'>('all')
+  
+  // Use Stripe seller data for accurate metrics
+  const { data: stripeData, loading: stripeLoading } = useStripeSellerData()
 
   const loadSubscribersData = useCallback(async () => {
     if (!user) return
@@ -114,9 +118,11 @@ export function SubscribersTab() {
 
       setSubscribers(processedSubscribers)
 
-      // Calculate metrics
+      // Calculate metrics - prefer Stripe data when available
       const activeSubscribers = processedSubscribers.filter(s => s.status === 'active')
-      const totalRevenue = activeSubscribers.reduce((sum, sub) => {
+      
+      // Use Stripe data for revenue if available
+      const totalRevenue = stripeData ? stripeData.totalRevenue : activeSubscribers.reduce((sum, sub) => {
         const monthlyPrice =
           sub.frequency === 'weekly'
             ? sub.price * 4.33
@@ -126,7 +132,10 @@ export function SubscribersTab() {
         return sum + monthlyPrice * 0.82 // Apply platform fee
       }, 0)
 
-      // Calculate new/cancelled this month
+      // Use Stripe data for subscriber count if available
+      const activeSubscriberCount = stripeData ? stripeData.subscriberCount : activeSubscribers.length
+
+      // Calculate new/cancelled this month from Supabase data
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       const newThisMonth = processedSubscribers.filter(
@@ -138,16 +147,16 @@ export function SubscribersTab() {
 
       const churnRate =
         processedSubscribers.length > 0
-          ? (cancelledThisMonth / (activeSubscribers.length + cancelledThisMonth)) * 100
+          ? (cancelledThisMonth / (activeSubscriberCount + cancelledThisMonth)) * 100
           : 0
       const retentionRate = 100 - churnRate
 
       setMetrics({
         totalSubscribers: processedSubscribers.length,
-        activeSubscribers: activeSubscribers.length,
+        activeSubscribers: activeSubscriberCount,
         monthlyRevenue: totalRevenue,
         averageRevenuePer:
-          activeSubscribers.length > 0 ? totalRevenue / activeSubscribers.length : 0,
+          activeSubscriberCount > 0 ? totalRevenue / activeSubscriberCount : 0,
         churnRate,
         newThisMonth,
         cancelledThisMonth,
@@ -158,7 +167,7 @@ export function SubscribersTab() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, stripeData])
 
   useEffect(() => {
     loadSubscribersData()
@@ -198,7 +207,7 @@ export function SubscribersTab() {
     }
   }
 
-  if (loading) {
+  if (loading || stripeLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

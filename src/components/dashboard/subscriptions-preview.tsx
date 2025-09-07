@@ -1,21 +1,31 @@
 'use client'
 
-import { createBrowserClient } from '@/lib/auth/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { CreditCard, ExternalLink, Heart, User } from 'lucide-react'
+import { CreditCard, ExternalLink, Heart, User, Calendar } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface Subscription {
   id: string
+  subscriber_id: string
   seller_id: string
   strategy_id: string
+  status: 'active' | 'cancelled' | 'past_due'
   frequency: 'weekly' | 'monthly' | 'yearly'
   price: number
-  status: string
+  currency: string
   created_at: string
-  seller_username?: string
+  updated_at: string
+  cancelled_at?: string
+  current_period_start?: string
+  current_period_end?: string
+  next_billing_date?: string
+  stripe_subscription_id?: string
+  // Joined data from other tables
   strategy_name?: string
+  strategy_description?: string
+  seller_username?: string
+  seller_display_name?: string
   seller_profile?:
     | {
         username: string
@@ -28,94 +38,63 @@ export default function SubscriptionsPreview() {
   const { user } = useAuth()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const fetchingRef = useRef(false)
 
-  useEffect(() => {
-    async function fetchSubscriptions() {
-      if (!user) {
-        setLoading(false)
+  const fetchSubscriptions = useCallback(async () => {
+    if (!user || fetchingRef.current) return
+
+    console.log('🔍 Dashboard Subscriptions Preview - Fetching for user:', user.id)
+
+    try {
+      fetchingRef.current = true
+      setError(null)
+
+      // Use the same API approach as the subscriptions page
+      const response = await fetch('/api/subscriptions', {
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch subscriptions: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      console.log('🔍 Dashboard Subscriptions Preview - API response:', {
+        success: data.success,
+        subscriptionsCount: data.subscriptions?.length || 0,
+        error: data.error,
+      })
+
+      if (!data.success) {
+        setError(data.error || 'Failed to load subscriptions')
+        setSubscriptions([])
         return
       }
 
-      try {
-        const supabase = createBrowserClient()
+      const subscriptionData = data.subscriptions || []
 
-        // Fetch user's active subscriptions with strategy information
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select(
-            `
-            id,
-            seller_id,
-            strategy_id,
-            frequency,
-            price,
-            status,
-            created_at,
-            current_period_start,
-            current_period_end
-          `
-          )
-          .eq('subscriber_id', user.id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('Error fetching subscriptions:', error?.message || error)
-          setLoading(false)
-          return
-        }
-
-        if (data && data.length > 0) {
-          // Fetch seller profile information and strategy names
-          const sellerIds = data.map(sub => sub.seller_id)
-          const strategyIds = data.map(sub => sub.strategy_id)
-
-          const [sellerProfilesResult, strategiesResult] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('id, username, is_verified_seller')
-              .in('id', sellerIds),
-            supabase.from('strategies').select('id, name').in('id', strategyIds),
-          ])
-
-          const { data: sellerProfiles, error: profileError } = sellerProfilesResult
-          const { data: strategies, error: strategiesError } = strategiesResult
-
-          if (!profileError && !strategiesError && sellerProfiles && strategies) {
-            // Combine subscription data with seller profiles and strategy names
-            const transformedData = data.map(sub => {
-              const sellerProfile = sellerProfiles.find(p => p.id === sub.seller_id)
-              const strategy = strategies.find(s => s.id === sub.strategy_id)
-              return {
-                ...sub,
-                seller_username: sellerProfile?.username || `Seller${sub.seller_id.slice(-4)}`,
-                strategy_name: strategy?.name || 'Strategy',
-                seller_profile: sellerProfile,
-              }
-            })
-            setSubscriptions(transformedData)
-          } else {
-            // If we can't get profiles or strategies, still show subscription data
-            const transformedData = data.map(sub => ({
-              ...sub,
-              seller_username: `Seller${sub.seller_id.slice(-4)}`,
-              strategy_name: 'Strategy',
-              seller_profile: undefined,
-            }))
-            setSubscriptions(transformedData)
-          }
-        } else {
-          setSubscriptions([])
-        }
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : error)
-      } finally {
-        setLoading(false)
-      }
+      // Filter for active subscriptions only for the dashboard preview
+      const activeSubscriptions = subscriptionData.filter((sub: any) => sub.status === 'active')
+      
+      console.log('🔍 Dashboard Subscriptions Preview - Found', activeSubscriptions.length, 'active subscriptions')
+      setSubscriptions(activeSubscriptions)
+    } catch (err) {
+      console.error('Error fetching subscriptions for dashboard:', err)
+      setError('Failed to load subscriptions')
+      setSubscriptions([])
+    } finally {
+      setLoading(false)
+      fetchingRef.current = false
     }
-
-    fetchSubscriptions()
   }, [user])
+
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptions()
+    }
+  }, [user, fetchSubscriptions])
 
   const getFrequencyLabel = (frequency: string) => {
     switch (frequency) {
@@ -145,12 +124,52 @@ export default function SubscriptionsPreview() {
 
   if (loading) {
     return (
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-medium text-gray-900">Active Subscriptions</h2>
+      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-xl">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="rounded-lg bg-pink-100 p-2">
+              <Heart className="h-5 w-5 text-pink-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Active Subscriptions</h2>
+              <p className="text-sm text-gray-500">Loading your subscriptions...</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="h-8 w-8 animate-pulse rounded bg-gray-200"></div>
+          </div>
+        </div>
         <div className="animate-pulse space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 rounded bg-gray-200"></div>
+            <div key={i} className="h-16 rounded-lg bg-gray-200"></div>
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-100 bg-red-50 p-6 shadow-xl">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="rounded-lg bg-red-100 p-2">
+              <Heart className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-red-900">Subscription Error</h2>
+              <p className="text-sm text-red-600">Failed to load subscriptions</p>
+            </div>
+          </div>
+        </div>
+        <div className="py-4 text-center">
+          <p className="mb-4 text-sm text-red-700">{error}</p>
+          <button
+            onClick={fetchSubscriptions}
+            className="inline-flex items-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     )
@@ -193,31 +212,47 @@ export default function SubscriptionsPreview() {
           {subscriptions.slice(0, 3).map(subscription => (
             <div
               key={subscription.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 p-4 hover:bg-gray-50"
+              className="flex items-center justify-between rounded-lg border border-gray-200 bg-gradient-to-r from-white to-gray-50 p-4 transition-all duration-200 hover:border-gray-300 hover:shadow-md"
             >
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
                 <div className="flex-shrink-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-blue-200 shadow-sm">
                     <User className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{subscription.strategy_name}</p>
-                  <p className="text-xs text-gray-500">by @{subscription.seller_username}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {subscription.strategy_name || 'Strategy'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
+                  </p>
+                  {subscription.next_billing_date && (
+                    <div className="flex items-center mt-1">
+                      <Calendar className="h-3 w-3 text-gray-400 mr-1" />
+                      <p className="text-xs text-gray-400">
+                        Next: {new Date(subscription.next_billing_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="text-right">
+              <div className="text-right flex-shrink-0 ml-3">
                 <div className="flex items-center space-x-2">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getFrequencyColor(subscription.frequency)}`}
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium shadow-sm ${getFrequencyColor(subscription.frequency)}`}
                   >
-                    ${subscription.price}
+                    ${subscription.price || 0}
                     {getFrequencyLabel(subscription.frequency)}
                   </span>
                   <Link
-                    href={`/marketplace/${subscription.seller_username}`}
-                    className="text-blue-600 hover:text-blue-500"
+                    href={`/marketplace/${subscription.seller_username || subscription.seller_display_name || ''}`}
+                    className="text-blue-600 hover:text-blue-500 transition-colors p-1"
+                    title="View strategy details"
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Link>
@@ -238,27 +273,34 @@ export default function SubscriptionsPreview() {
           )}
 
           {/* Total Monthly Cost */}
-          <div className="mt-4 rounded-lg bg-gray-50 p-3">
+          <div className="mt-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50 p-4 border border-gray-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Total Monthly Cost:</span>
-              <span className="text-sm font-bold text-gray-900">
+              <div className="flex items-center space-x-2">
+                <CreditCard className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">Monthly Spend:</span>
+              </div>
+              <span className="text-lg font-bold text-blue-600">
                 $
                 {subscriptions
                   .reduce((total, sub) => {
+                    const price = sub.price || 0
                     // Convert all frequencies to monthly cost
                     switch (sub.frequency) {
                       case 'weekly':
-                        return total + sub.price * 4.33 // Average weeks per month
+                        return total + price * 4.33 // Average weeks per month
                       case 'monthly':
-                        return total + sub.price
+                        return total + price
                       case 'yearly':
-                        return total + sub.price / 12
+                        return total + price / 12
                       default:
-                        return total + sub.price
+                        return total + price
                     }
                   }, 0)
                   .toFixed(2)}
               </span>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              Across {subscriptions.length} active {subscriptions.length === 1 ? 'subscription' : 'subscriptions'}
             </div>
           </div>
         </div>

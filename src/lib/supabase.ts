@@ -627,6 +627,23 @@ export type Database = {
           updated_at?: string
         }
       }
+      feedback: {
+        Row: {
+          id: string
+          feedback_text: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          feedback_text: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          feedback_text?: string
+          created_at?: string | null
+        }
+      }
     }
   }
 }

@@ -127,43 +127,43 @@ export default function MarketplacePreview() {
           {topStrategies.map((strategy, index) => (
             <div
               key={strategy.id}
-              className="group relative transform rounded-xl border border-gray-200 bg-gradient-to-r from-white to-gray-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+              className="group relative transform rounded-xl border border-gray-200 bg-gradient-to-r from-white to-gray-50 p-3 sm:p-4 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-blue-600 shadow-lg">
-                      <span className="text-lg font-bold text-white">#{index + 1}</span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start space-x-2 sm:space-x-4 min-w-0 flex-1">
+                  <div className="relative flex-shrink-0">
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500 to-blue-600 shadow-lg">
+                      <span className="text-sm sm:text-lg font-bold text-white">#{index + 1}</span>
                     </div>
                     {index === 0 && (
-                      <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500">
-                        <Star className="h-3 w-3 fill-current text-white" />
+                      <div className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500">
+                        <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current text-white" />
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center space-x-2">
-                      <p className="truncate text-sm font-bold text-gray-900">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="mb-1">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate leading-tight">
                         {strategy.strategy_name}
-                      </p>
-                      <div className="flex items-center space-x-1 rounded-full bg-emerald-100 px-2 py-1">
-                        <TrendingUp className="h-3 w-3 text-emerald-600" />
-                        <span className="text-xs font-semibold text-emerald-700">
+                      </h3>
+                      <div className="mt-1 inline-flex items-center space-x-1 rounded-full bg-emerald-100 px-2 py-0.5">
+                        <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-600 flex-shrink-0" />
+                        <span className="text-xs font-semibold text-emerald-700 whitespace-nowrap">
                           {strategy.roi_percentage?.toFixed(1) || '0'}%
                         </span>
                       </div>
                     </div>
-                    <p className="mb-2 text-xs text-gray-500">by @{strategy.username}</p>
-                    <div className="flex items-center space-x-4">
+                    <p className="mb-2 text-xs text-gray-500 truncate">by @{strategy.username}</p>
+                    <div className="space-y-1">
                       <div className="flex items-center space-x-1">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        <span className="text-xs font-medium text-gray-600">
-                          {(strategy.win_rate || 0).toFixed(0)}% win rate
+                        <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-green-500 flex-shrink-0"></div>
+                        <span className="text-xs text-gray-600 whitespace-nowrap">
+                          {(strategy.win_rate || 0).toFixed(0)}% win
                         </span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Users className="h-3 w-3 text-blue-500" />
-                        <span className="text-xs font-medium text-gray-600">
+                        <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs text-gray-600 whitespace-nowrap">
                           {strategy.total_bets || 0} bets
                         </span>
                       </div>
@@ -171,28 +171,27 @@ export default function MarketplacePreview() {
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-lg font-bold text-transparent">
-                    $
-                    {strategy.pricing_monthly ||
+                <div className="text-right flex-shrink-0">
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-sm sm:text-base font-bold text-transparent">
+                    ${strategy.pricing_monthly ||
                       strategy.pricing_weekly ||
                       strategy.pricing_yearly ||
                       strategy.price ||
                       25}
                   </div>
-                  <div className="text-xs font-medium text-gray-500">
+                  <div className="text-xs text-gray-500 whitespace-nowrap">
                     {strategy.pricing_monthly
-                      ? '/month'
+                      ? '/mo'
                       : strategy.pricing_weekly
-                        ? '/week'
+                        ? '/wk'
                         : strategy.pricing_yearly
-                          ? '/year'
-                          : '/month'}
+                          ? '/yr'
+                          : '/mo'}
                   </div>
                   <div className="mt-1 flex items-center justify-end">
                     <div className="flex items-center space-x-1 text-orange-500">
-                      <Users className="h-3 w-3" />
-                      <span className="text-xs font-semibold">
+                      <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                      <span className="text-xs font-semibold whitespace-nowrap">
                         {strategy.subscriber_count || 0}
                       </span>
                     </div>

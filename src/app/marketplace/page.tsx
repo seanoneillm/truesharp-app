@@ -5,7 +5,7 @@ import { StrategyCard } from '@/components/marketplace/strategy-card'
 import { SubscriptionPricingModal } from '@/components/marketplace/subscription-pricing-modal'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSubscribe } from '@/lib/hooks/use-subscribe'
-import { Search, Store } from 'lucide-react'
+import { Search, Store, X, TrendingUp, Target, Activity, Users as UsersIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -40,8 +40,9 @@ interface StrategyData {
 
 export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSport, setSelectedSport] = useState('all')
+  const [selectedLeague, setSelectedLeague] = useState('all')
   const [sortBy, setSortBy] = useState('leaderboard')
+  const [showAlgorithmModal, setShowAlgorithmModal] = useState(false)
 
   const [strategies, setStrategies] = useState<StrategyData[]>([])
   const [strategiesLoading, setStrategiesLoading] = useState(true)
@@ -133,8 +134,8 @@ export default function MarketplacePage() {
           limit: '50',
         })
 
-        if (selectedSport !== 'all') {
-          params.append('sport', selectedSport)
+        if (selectedLeague !== 'all') {
+          params.append('league', selectedLeague)
         }
 
         const response = await fetch(`/api/marketplace?${params.toString()}`)
@@ -154,7 +155,7 @@ export default function MarketplacePage() {
     }
 
     fetchStrategies()
-  }, [sortBy, selectedSport])
+  }, [sortBy, selectedLeague])
 
   // Load user's existing subscriptions
   useEffect(() => {
@@ -216,41 +217,21 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          {/* Leaderboard Quick Stats */}
+          {/* Marketplace Info */}
           <div className="hidden items-center space-x-8 lg:flex">
             <div className="text-center">
               <div className="text-2xl font-bold text-slate-900">{strategies.length}</div>
               <div className="text-sm text-slate-600">Active Strategies</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                +
-                {strategies.length > 0
-                  ? (
-                      strategies.reduce((sum, s) => sum + s.roi_percentage, 0) / strategies.length
-                    ).toFixed(1)
-                  : '0'}
-                %
+            <button
+              onClick={() => setShowAlgorithmModal(true)}
+              className="text-center group cursor-pointer hover:bg-slate-50 p-3 rounded-lg transition-colors"
+            >
+              <div className="text-sm font-medium text-blue-600 group-hover:text-blue-700">
+                How Rankings Work
               </div>
-              <div className="text-sm text-slate-600">Average ROI</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {strategies.length > 0
-                  ? (
-                      strategies.reduce((sum, s) => sum + s.win_rate, 0) / strategies.length
-                    ).toFixed(1)
-                  : '0'}
-                %
-              </div>
-              <div className="text-sm text-slate-600">Average Win Rate</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {strategies.filter(s => s.rank && s.rank <= 10).length}
-              </div>
-              <div className="text-sm text-slate-600">Top 10 Strategies</div>
-            </div>
+              <div className="text-xs text-slate-500">Learn about our algorithm</div>
+            </button>
           </div>
         </div>
 
@@ -267,15 +248,48 @@ export default function MarketplacePage() {
             />
           </div>
           <select
-            value={selectedSport}
-            onChange={e => setSelectedSport(e.target.value)}
-            className="min-w-[140px] rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            value={selectedLeague}
+            onChange={e => setSelectedLeague(e.target.value)}
+            className="min-w-[160px] rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           >
-            <option value="all">All Sports</option>
-            <option value="NBA">NBA</option>
-            <option value="NFL">NFL</option>
-            <option value="MLB">MLB</option>
-            <option value="NHL">NHL</option>
+            <option value="all">All Leagues</option>
+            
+            {/* American Sports */}
+            <optgroup label="American Sports">
+              <option value="NFL">NFL</option>
+              <option value="NBA">NBA</option>
+              <option value="MLB">MLB</option>
+              <option value="NHL">NHL</option>
+              <option value="NCAAF">NCAAF</option>
+              <option value="NCAAB">NCAAB</option>
+              <option value="WNBA">WNBA</option>
+              <option value="CFL">CFL</option>
+              <option value="XFL">XFL</option>
+            </optgroup>
+            
+            {/* Soccer */}
+            <optgroup label="Soccer">
+              <option value="Premier League">Premier League</option>
+              <option value="Champions League">Champions League</option>
+              <option value="Europa League">Europa League</option>
+              <option value="La Liga">La Liga</option>
+              <option value="Serie A">Serie A</option>
+              <option value="Bundesliga">Bundesliga</option>
+              <option value="Ligue 1">Ligue 1</option>
+              <option value="MLS">MLS</option>
+            </optgroup>
+            
+            {/* Individual Sports */}
+            <optgroup label="Individual Sports">
+              <option value="ATP Tour">ATP Tour</option>
+              <option value="WTA Tour">WTA Tour</option>
+              <option value="PGA Tour">PGA Tour</option>
+              <option value="UFC">UFC</option>
+              <option value="Bellator">Bellator</option>
+              <option value="Boxing">Boxing</option>
+              <option value="Formula 1">Formula 1</option>
+              <option value="NASCAR">NASCAR</option>
+            </optgroup>
           </select>
           <select
             value={sortBy}
@@ -389,6 +403,112 @@ export default function MarketplacePage() {
             strategy={selectedStrategy}
             isLoading={subscriptionLoading}
           />
+        )}
+
+        {/* Leaderboard Algorithm Modal */}
+        {showAlgorithmModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              {/* Background overlay */}
+              <div 
+                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                onClick={() => setShowAlgorithmModal(false)}
+              ></div>
+
+              {/* Modal panel */}
+              <div className="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center">
+                      <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <TrendingUp className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="ml-4 text-left">
+                        <h3 className="text-lg font-medium leading-6 text-gray-900">
+                          How Our Rankings Work
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Understanding the leaderboard algorithm
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowAlgorithmModal(false)}
+                      className="rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      Our leaderboard ranking system evaluates strategies based on multiple performance factors 
+                      to provide the most accurate representation of betting expertise.
+                    </p>
+
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <TrendingUp className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-gray-900">ROI Performance (40%)</h4>
+                          <p className="text-sm text-gray-600">
+                            Return on investment over the strategy's lifetime, with higher weight for consistent performance.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Target className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-gray-900">Win Rate (25%)</h4>
+                          <p className="text-sm text-gray-600">
+                            Percentage of successful bets, balanced against total volume for reliability.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <Activity className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-gray-900">Volume & Consistency (20%)</h4>
+                          <p className="text-sm text-gray-600">
+                            Total number of bets and consistency of performance over time periods.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <UsersIcon className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-gray-900">Community Trust (15%)</h4>
+                          <p className="text-sm text-gray-600">
+                            Subscriber count, retention rate, and verification status contribute to overall ranking.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-lg bg-yellow-50 p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Note:</strong> Rankings are updated daily and require a minimum of 20 tracked bets 
+                        to ensure statistical significance. Newer strategies may take time to establish their ranking.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                  <button
+                    type="button"
+                    className="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+                    onClick={() => setShowAlgorithmModal(false)}
+                  >
+                    Got It
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

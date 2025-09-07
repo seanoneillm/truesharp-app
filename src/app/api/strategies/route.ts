@@ -769,10 +769,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Strategy ID is required' }, { status: 400 })
     }
 
-    // Verify strategy belongs to user
+    // Verify strategy belongs to user and get current strategy data
     const { data: strategy, error: fetchError } = await supabase
       .from('strategies')
-      .select('id')
+      .select('id, name, description, monetized, pricing_weekly, pricing_monthly, pricing_yearly, stripe_product_id')
       .eq('id', strategyId)
       .eq('user_id', user.id)
       .single()
@@ -795,6 +795,145 @@ export async function PATCH(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+
+    // Check if we need to create/update Stripe products
+    const isBeingMonetized = updates.monetized === true && strategy.monetized !== true
+    const isPricingUpdated = (
+      updates.pricing_weekly !== strategy.pricing_weekly ||
+      updates.pricing_monthly !== strategy.pricing_monthly ||
+      updates.pricing_yearly !== strategy.pricing_yearly
+    )
+    const shouldCreateStripeProduct = isBeingMonetized || (strategy.monetized && isPricingUpdated && !strategy.stripe_product_id)
+
+    if (shouldCreateStripeProduct) {
+      console.log('🎯 Creating/updating Stripe product for strategy:', strategyId)
+      
+      try {
+        // Get seller's Stripe Connect account
+        const { data: sellerProfile, error: accountError } = await serviceSupabase
+          .from('profiles')
+          .select('stripe_connect_account_id')
+          .eq('id', user.id)
+          .single()
+
+        if (accountError || !sellerProfile?.stripe_connect_account_id) {
+          console.warn('⚠️ No Stripe Connect account found for seller')
+          return NextResponse.json(
+            { 
+              error: 'Stripe Connect account required',
+              details: 'Please complete your seller onboarding first. Go to Settings to set up your payout account.'
+            },
+            { status: 400 }
+          )
+        }
+
+        // Import stripe here to avoid issues with server-side imports
+        const { stripe } = await import('@/lib/stripe')
+
+        // Verify the Connect account is ready to accept payments
+        const connectAccount = await stripe.accounts.retrieve(sellerProfile.stripe_connect_account_id)
+        if (!connectAccount.details_submitted || !connectAccount.charges_enabled) {
+          console.warn('⚠️ Stripe Connect account not ready for charges')
+          return NextResponse.json(
+            { 
+              error: 'Seller account setup incomplete',
+              details: 'Please complete your Stripe onboarding process to enable monetization. Check your Settings page.'
+            },
+            { status: 400 }
+          )
+        }
+
+        // Create Stripe product on the platform account (for application fees + transfers)
+          const product = await stripe.products.create({
+            name: `${updates.name || strategy.name} - Strategy Subscription`,
+            description: updates.description || strategy.description || `Access to ${updates.name || strategy.name} betting strategy`,
+            metadata: {
+              strategy_id: strategyId,
+              user_id: user.id,
+              strategy_name: updates.name || strategy.name,
+              connect_account_id: sellerProfile.stripe_connect_account_id,
+            },
+          })
+          // Note: No stripeAccount parameter - product created on platform account
+
+          // Create prices for each frequency that has a value
+          const priceIds: Record<string, string | null> = {
+            weekly: null,
+            monthly: null,
+            yearly: null,
+          }
+
+          const weeklyPrice = updates.pricing_weekly || strategy.pricing_weekly
+          const monthlyPrice = updates.pricing_monthly || strategy.pricing_monthly
+          const yearlyPrice = updates.pricing_yearly || strategy.pricing_yearly
+
+          if (weeklyPrice && weeklyPrice > 0) {
+            const weeklyPriceObj = await stripe.prices.create({
+              product: product.id,
+              unit_amount: Math.round(weeklyPrice * 100), // Convert to cents
+              currency: 'usd',
+              recurring: {
+                interval: 'week',
+              },
+              metadata: {
+                strategy_id: strategyId,
+                frequency: 'weekly',
+              },
+            })
+            priceIds.weekly = weeklyPriceObj.id
+          }
+
+          if (monthlyPrice && monthlyPrice > 0) {
+            const monthlyPriceObj = await stripe.prices.create({
+              product: product.id,
+              unit_amount: Math.round(monthlyPrice * 100), // Convert to cents
+              currency: 'usd',
+              recurring: {
+                interval: 'month',
+              },
+              metadata: {
+                strategy_id: strategyId,
+                frequency: 'monthly',
+              },
+            })
+            priceIds.monthly = monthlyPriceObj.id
+          }
+
+          if (yearlyPrice && yearlyPrice > 0) {
+            const yearlyPriceObj = await stripe.prices.create({
+              product: product.id,
+              unit_amount: Math.round(yearlyPrice * 100), // Convert to cents
+              currency: 'usd',
+              recurring: {
+                interval: 'year',
+              },
+              metadata: {
+                strategy_id: strategyId,
+                frequency: 'yearly',
+              },
+            })
+            priceIds.yearly = yearlyPriceObj.id
+          }
+
+          // Add Stripe IDs to updates
+          updates.stripe_product_id = product.id
+          updates.stripe_price_weekly_id = priceIds.weekly
+          updates.stripe_price_monthly_id = priceIds.monthly
+          updates.stripe_price_yearly_id = priceIds.yearly
+          updates.creator_account_id = sellerProfile.stripe_connect_account_id
+
+          console.log('✅ Stripe product created:', product.id, 'with prices:', priceIds)
+      } catch (stripeError) {
+        console.error('❌ Error creating Stripe product:', stripeError)
+        return NextResponse.json(
+          { 
+            error: 'Failed to create Stripe products',
+            details: stripeError instanceof Error ? stripeError.message : 'Unknown error'
+          },
+          { status: 500 }
+        )
+      }
+    }
 
     // Update strategy using service role
     const { error: updateError } = await serviceSupabase

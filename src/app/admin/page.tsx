@@ -4,8 +4,9 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { Clock, RefreshCw, Shield, User, AlertTriangle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Clock, RefreshCw, Shield, User, AlertTriangle, MessageSquare } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { createClient } from '@/lib/supabase'
 
 const ADMIN_USER_ID = '28991397-dae7-42e8-a822-0dffc6ff49b7'
 
@@ -35,6 +36,13 @@ export default function AdminPage() {
   const [sharpSportsProfileId, setSharpSportsProfileId] = useState('')
   const [targetUserId, setTargetUserId] = useState('')
 
+  // Feedback states  
+  const [feedbackList, setFeedbackList] = useState<{id: string; feedback_text: string; created_at: string | null}[]>([])
+  const [isFetchingFeedback, setIsFetchingFeedback] = useState(false)
+
+  // Check if user is admin
+  const isAdmin = user?.id === ADMIN_USER_ID
+
   // Initialize date safely after hydration
   useEffect(() => {
     const today = new Date()
@@ -42,8 +50,37 @@ export default function AdminPage() {
     setSelectedDate(today)
   }, [])
 
-  // Check if user is admin
-  const isAdmin = user?.id === ADMIN_USER_ID
+  // Fetch feedback function
+  const fetchFeedback = useCallback(async () => {
+    if (!isAdmin) return
+
+    setIsFetchingFeedback(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.error('Error fetching feedback:', error)
+      } else {
+        setFeedbackList(data || [])
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching feedback:', error)
+    } finally {
+      setIsFetchingFeedback(false)
+    }
+  }, [isAdmin])
+
+  // Fetch feedback on component mount
+  useEffect(() => {
+    if (isAdmin) {
+      fetchFeedback()
+    }
+  }, [isAdmin, fetchFeedback])
 
   if (authLoading) {
     return (
@@ -774,6 +811,84 @@ export default function AdminPage() {
               <div className="text-xs text-slate-500">Check external APIs</div>
             </Button>
           </div>
+        </Card>
+
+        {/* User Feedback */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <MessageSquare className="h-6 w-6 text-blue-600" />
+              <h3 className="text-lg font-semibold text-slate-900">User Feedback</h3>
+            </div>
+            <Button
+              onClick={fetchFeedback}
+              disabled={isFetchingFeedback}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetchingFeedback ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {isFetchingFeedback ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+              <span className="ml-2 text-slate-600">Loading feedback...</span>
+            </div>
+          ) : feedbackList.length === 0 ? (
+            <div className="py-8 text-center">
+              <MessageSquare className="mx-auto h-12 w-12 text-slate-300" />
+              <p className="mt-2 text-slate-500">No feedback submitted yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 mb-4">
+                Showing {feedbackList.length} most recent feedback submissions
+              </p>
+              
+              <div className="overflow-hidden rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
+                  <table className="w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                          Date Submitted
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                          Feedback
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {feedbackList.map((feedback) => (
+                        <tr key={feedback.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                            {feedback.created_at 
+                              ? new Date(feedback.created_at).toLocaleString() 
+                              : 'Unknown'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-900">
+                            <div className="max-w-md">
+                              <p className="line-clamp-3">{feedback.feedback_text}</p>
+                              {feedback.feedback_text.length > 150 && (
+                                <button 
+                                  className="mt-1 text-blue-600 hover:text-blue-800 text-xs"
+                                  onClick={() => alert(feedback.feedback_text)}
+                                >
+                                  Read more...
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

@@ -352,9 +352,9 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
         ) : (
           <div className="py-12 text-center">
             <Trophy className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-            <h3 className="mb-2 text-lg font-medium text-gray-900">No Open Bets</h3>
+            <h3 className="mb-2 text-lg font-medium text-gray-900">No Open Bets Available</h3>
             <p className="mb-6 text-gray-600">
-              You don&apos;t have any pending bets at the moment. Place some bets to see the
+              You don&apos;t have any pending bets for upcoming games at the moment. Place some bets to see the
               enhanced selection features here!
             </p>
 

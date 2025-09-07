@@ -129,6 +129,12 @@ export const SUBSCRIPTION_TIERS = {
 
 // TrueSharp Pro Features
 export const PRO_FEATURES = {
+  // Stripe Product Configuration
+  stripe: {
+    productId: 'prod_T0QifcIPF83rbh', // TrueSharp Pro product ID
+    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+    yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL_PRICE_ID,
+  },
   price: {
     monthly: 19.99,
     yearly: 199.99,

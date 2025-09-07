@@ -259,66 +259,170 @@ export default function ShareStrategyModal({
       return null
     }
 
-    console.log('shareImageRef element:', shareImageRef.current)
+    const element = shareImageRef.current
+    console.log('shareImageRef element:', element)
     console.log(
       'Element dimensions:',
-      shareImageRef.current.offsetWidth,
+      element.offsetWidth,
       'x',
-      shareImageRef.current.offsetHeight
+      element.offsetHeight
     )
 
     setIsGenerating(true)
     try {
-      // Wait for any pending renders
-      await new Promise(resolve => setTimeout(resolve, 300))
+      // Force a layout recalculation and wait for any pending renders
+      element.style.display = 'block'
+      element.style.visibility = 'visible'
+      element.style.opacity = '1'
+      
+      // Wait longer for all content to render, especially SVGs
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-      const element = shareImageRef.current
+      // Force browser reflow
+      element.offsetHeight
+      
       const rect = element.getBoundingClientRect()
       console.log('Element rect:', rect)
 
       if (rect.width === 0 || rect.height === 0) {
-        console.error('Element has zero dimensions')
+        console.error('Element has zero dimensions:', rect)
         return null
       }
 
-      // Get device pixel ratio for high-DPI displays
+      // Check if element is actually visible
+      const computedStyle = window.getComputedStyle(element)
+      if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+        console.error('Element is not visible')
+        return null
+      }
+
+      // Use a more conservative scale for better compatibility
       const pixelRatio = window.devicePixelRatio || 1
-      const scale = Math.max(3, pixelRatio * 2) // Use at least 3x scale for crisp images
+      const scale = Math.min(3, pixelRatio * 2) // More conservative scaling
+
+      console.log('Generating canvas with scale:', scale, 'pixelRatio:', pixelRatio)
 
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
-        scale: scale,
+        scale: 3, // Higher scale for better quality (3x for ultra-crisp text)
         useCORS: true,
-        allowTaint: true,
-        logging: false, // Disable logging for cleaner console
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        removeContainer: true, // Clean up temporary elements
-        imageTimeout: 15000, // Longer timeout for complex images
+        allowTaint: false,
+        logging: false,
+        width: 600, // Fixed width matching container
+        height: element.scrollHeight + 20, // Add small buffer for content
+        removeContainer: false,
+        imageTimeout: 20000, // Longer timeout for high-quality rendering
+        foreignObjectRendering: false,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+        // Enhanced rendering options
+        ignoreElements: (element) => {
+          // Skip elements that might interfere with rendering
+          return element.classList?.contains('shadow-lg') && element !== shareImageRef.current
+        },
         onclone: function (clonedDoc) {
-          // Ensure fonts are loaded in cloned document
-          const clonedElement =
-            clonedDoc.querySelector('[data-html2canvas-clone]') || clonedDoc.body
-          if (clonedElement) {
-            const elementWithStyle = clonedElement as HTMLElement
-            elementWithStyle.style.setProperty('-webkit-font-smoothing', 'antialiased')
-            elementWithStyle.style.setProperty('text-rendering', 'optimizeLegibility')
+          console.log('html2canvas onclone - preparing high-quality image')
+          
+          // Find the main container
+          const clonedContainer = clonedDoc.querySelector('[data-image-container]') || 
+                                 clonedDoc.querySelector('div')
+          
+          if (clonedContainer) {
+            const container = clonedContainer as HTMLElement
+            
+            // Enhanced container styling for better rendering
+            container.style.setProperty('width', '600px', 'important')
+            container.style.setProperty('padding', '40px', 'important')
+            container.style.setProperty('padding-bottom', '48px', 'important')
+            container.style.setProperty('box-sizing', 'border-box', 'important')
+            container.style.setProperty('background-color', '#ffffff', 'important')
+            container.style.setProperty('position', 'relative', 'important')
+            container.style.setProperty('overflow', 'visible', 'important')
+            container.style.setProperty('display', 'block', 'important')
+            container.style.setProperty('visibility', 'visible', 'important')
+            container.style.setProperty('border-radius', '12px', 'important')
+            container.style.setProperty('box-shadow', 'none', 'important') // Remove shadow for cleaner image
           }
+          
+          // Enhanced text rendering for all elements
+          const allElements = clonedDoc.querySelectorAll('*')
+          allElements.forEach((el) => {
+            const htmlEl = el as HTMLElement
+            if (htmlEl.style) {
+              htmlEl.style.setProperty('visibility', 'visible', 'important')
+              htmlEl.style.setProperty('opacity', '1', 'important')
+              htmlEl.style.setProperty('-webkit-font-smoothing', 'antialiased', 'important')
+              htmlEl.style.setProperty('-moz-osx-font-smoothing', 'grayscale', 'important')
+              htmlEl.style.setProperty('text-rendering', 'optimizeLegibility', 'important')
+              htmlEl.style.setProperty('font-kerning', 'normal', 'important')
+              htmlEl.style.setProperty('font-variant-ligatures', 'common-ligatures', 'important')
+              
+              // Remove shadows and transforms for cleaner rendering
+              htmlEl.style.setProperty('box-shadow', 'none', 'important')
+              htmlEl.style.setProperty('text-shadow', 'none', 'important')
+              htmlEl.style.removeProperty('transform')
+              htmlEl.style.removeProperty('-webkit-transform')
+              htmlEl.style.removeProperty('filter')
+            }
+          })
+          
+          // Enhanced SVG handling
+          const svgs = clonedDoc.querySelectorAll('svg')
+          svgs.forEach((svg) => {
+            const svgEl = svg as SVGElement
+            svgEl.style.setProperty('display', 'inline-block', 'important')
+            svgEl.style.setProperty('vertical-align', 'middle', 'important')
+            svgEl.style.setProperty('shape-rendering', 'geometricPrecision', 'important')
+            svgEl.style.setProperty('text-rendering', 'geometricPrecision', 'important')
+          })
+          
+          // Enhance text elements specifically
+          const textElements = clonedDoc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, div')
+          textElements.forEach((textEl) => {
+            const htmlTextEl = textEl as HTMLElement
+            if (htmlTextEl.style) {
+              htmlTextEl.style.setProperty('font-smooth', 'always', 'important')
+              htmlTextEl.style.setProperty('-webkit-font-smoothing', 'subpixel-antialiased', 'important')
+            }
+          })
+          
+          console.log('onclone processing complete - high-quality image prepared')
         },
       })
 
       console.log('Canvas generated successfully:', canvas.width, 'x', canvas.height)
 
-      // Test if canvas has content by checking if it's not blank
+      // Enhanced blank canvas detection
       const ctx = canvas.getContext('2d')
-      const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height)
-      const isBlank = imageData?.data.every((pixel, index) => {
-        // Check if every pixel is white (255, 255, 255, 255) or transparent
-        return index % 4 === 3 ? true : pixel === 255
-      })
-
-      if (isBlank) {
-        console.error('Generated canvas appears to be blank')
+      if (!ctx) {
+        console.error('Failed to get canvas context')
+        return null
+      }
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const data = imageData.data
+      
+      // Check for completely blank (all white or transparent)
+      let nonWhitePixels = 0
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]
+        const g = data[i + 1] 
+        const b = data[i + 2]
+        const a = data[i + 3] || 0
+        
+        // Count pixels that are not white or transparent
+        if (!(r === 255 && g === 255 && b === 255) && a > 0) {
+          nonWhitePixels++
+        }
+      }
+      
+      console.log('Non-white pixels found:', nonWhitePixels)
+      
+      if (nonWhitePixels < 100) { // Threshold for "blank" canvas
+        console.error('Generated canvas appears to be blank - only', nonWhitePixels, 'non-white pixels')
+        return null
       }
 
       return canvas
@@ -350,74 +454,51 @@ export default function ShareStrategyModal({
     }
   }
 
-  const handleShare = async (platform: 'twitter' | 'instagram' | 'discord') => {
-    const canvas = await generateImage()
-    if (canvas) {
-      const blob = await new Promise<Blob>(resolve => {
-        canvas.toBlob(blob => resolve(blob!), 'image/png', 1.0) // Maximum quality
-      })
 
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            files: [new File([blob], 'strategy-bets.png', { type: 'image/png' })],
-            title: `${strategy?.name} - Open Bets`,
-            text: `Check out these open bets from ${strategy?.profiles.username} on TrueSharp!`,
-          })
-        } catch (error) {
-          // Fallback to platform-specific URLs
-          fallbackShare(platform)
-        }
-      } else {
-        fallbackShare(platform)
-      }
-    }
-  }
+  // const fallbackShare = async (platform: string) => {
+  //   const username = strategy?.profiles.username || 'a pro bettor'
+  //   const strategyName = strategy?.name || 'betting strategy'
 
-  const fallbackShare = async (platform: string) => {
-    const username = strategy?.profiles.username || 'a pro bettor'
-    const strategyName = strategy?.name || 'betting strategy'
+  //   if (platform === 'twitter') {
+  //     // For Twitter, we need to generate the image and create a data URL
+  //     const canvas = await generateImage()
+  //     if (canvas) {
+  //       const imageDataUrl = canvas.toDataURL('image/png')
+  //       const text = `🎯 Check out "${strategyName}" by ${username} on TrueSharp! 📊 Professional sports betting strategies with verified performance. #SportsBetting #TrueSharp #BettingStrategy`
 
-    if (platform === 'twitter') {
-      // For Twitter, we need to generate the image and create a data URL
-      const canvas = await generateImage()
-      if (canvas) {
-        const imageDataUrl = canvas.toDataURL('image/png')
-        const text = `🎯 Check out "${strategyName}" by ${username} on TrueSharp! 📊 Professional sports betting strategies with verified performance. #SportsBetting #TrueSharp #BettingStrategy`
+  //       // Create Twitter intent with image data URL at the end
+  //       const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + ' ')}&url=${encodeURIComponent(imageDataUrl)}`
+  //       window.open(tweetUrl, '_blank')
+  //       return
+  //     }
+  //   }
 
-        // Create Twitter intent with image data URL at the end
-        const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + ' ')}&url=${encodeURIComponent(imageDataUrl)}`
-        window.open(tweetUrl, '_blank')
-        return
-      }
-    }
+  //   // Fallback for other platforms or if image generation fails
+  //   const text = `🎯 Check out "${strategyName}" by ${username} on TrueSharp! 📊 Professional sports betting strategies with verified performance.`
+  //   const baseUrl = window.location.origin
+  //   let shareUrl = `${baseUrl}/marketplace`
 
-    // Fallback for other platforms or if image generation fails
-    const text = `🎯 Check out "${strategyName}" by ${username} on TrueSharp! 📊 Professional sports betting strategies with verified performance.`
-    const baseUrl = window.location.origin
-    let shareUrl = `${baseUrl}/marketplace`
+  //   if (strategy?.user_id) {
+  //     shareUrl = `${baseUrl}/marketplace?seller=${strategy.user_id}`
+  //   }
 
-    if (strategy?.user_id) {
-      shareUrl = `${baseUrl}/marketplace?seller=${strategy.user_id}`
-    }
+  //   const urls = {
+  //     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}&hashtags=SportsBetting,TrueSharp,BettingStrategy`,
+  //     discord: `https://discord.com/channels/@me`,
+  //     instagram: shareUrl,
+  //   }
 
-    const urls = {
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}&hashtags=SportsBetting,TrueSharp,BettingStrategy`,
-      discord: `https://discord.com/channels/@me`,
-      instagram: shareUrl,
-    }
-
-    if (platform === 'instagram') {
-      navigator.clipboard.writeText(`${text} ${shareUrl}`)
-      alert('Message and link copied! Share on Instagram Stories or posts.')
-    } else if (platform === 'discord') {
-      navigator.clipboard.writeText(`${text} ${shareUrl}`)
-      window.open(urls.discord, '_blank')
-      alert('Message copied! Paste it in Discord.')
-    } else {
-      window.open(urls[platform as keyof typeof urls], '_blank')
-    }
-  }
+  //   if (platform === 'instagram') {
+  //     navigator.clipboard.writeText(`${text} ${shareUrl}`)
+  //     alert('Message and link copied! Share on Instagram Stories or posts.')
+  //   } else if (platform === 'discord') {
+  //     navigator.clipboard.writeText(`${text} ${shareUrl}`)
+  //     window.open(urls.discord, '_blank')
+  //     alert('Message copied! Paste it in Discord.')
+  //   } else {
+  //     window.open(urls[platform as keyof typeof urls], '_blank')
+  //   }
+  // }
 
   const copyLink = () => {
     const baseUrl = window.location.origin
@@ -437,8 +518,14 @@ export default function ShareStrategyModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="max-h-[95vh] w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b p-6">
           <h2 className="text-xl font-bold">Share Strategy Bets</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -446,9 +533,9 @@ export default function ShareStrategyModal({
           </button>
         </div>
 
-        <div className="flex h-[70vh]">
+        <div className="flex flex-col lg:flex-row h-auto lg:h-[70vh]">
           {/* Left side - Bet selection */}
-          <div className="w-1/2 overflow-y-auto border-r p-6">
+          <div className="w-full lg:w-1/2 overflow-y-auto lg:border-r border-b lg:border-b-0 p-4 lg:p-6 max-h-[40vh] lg:max-h-full">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold">Open Bets ({allBets.length})</h3>
               <div className="flex items-center gap-2">
@@ -467,7 +554,7 @@ export default function ShareStrategyModal({
             {isLoading ? (
               <div className="py-8 text-center">Loading bets...</div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {allBets.map(bet => {
                   const display = formatBetDisplay(bet)
                   const isSelected = selectedBets.has(bet.id)
@@ -476,30 +563,30 @@ export default function ShareStrategyModal({
                   return (
                     <div
                       key={bet.id}
-                      className={`relative rounded-lg border bg-gradient-to-r from-gray-50 to-white p-3 transition-all duration-200 hover:shadow-sm ${
+                      className={`relative rounded-lg border bg-gradient-to-r from-gray-50 to-white p-2 transition-all duration-200 hover:shadow-sm ${
                         isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-start justify-between">
-                        <div className="flex flex-1 items-start space-x-3">
-                          <div className="mt-1 flex-shrink-0">{getStatusIcon(status)}</div>
+                        <div className="flex flex-1 items-start space-x-2">
+                          <div className="mt-0.5 flex-shrink-0">{getStatusIcon(status)}</div>
                           <div className="min-w-0 flex-1">
-                            <div className="mb-1 text-sm font-semibold text-gray-900">
+                            <div className="mb-1 text-xs font-semibold text-gray-900 truncate">
                               {formatBetDescription(bet)}
                             </div>
-                            <div className="mb-1 flex items-center space-x-2">
-                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <div className="mb-1 flex items-center space-x-1 flex-wrap">
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800">
                                 {bet.sport}
                               </span>
-                              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
                                 {display.odds}
                               </span>
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600">
                                 {bet.bet_type?.charAt(0).toUpperCase() + bet.bet_type?.slice(1) ||
                                   'Bet'}
                               </span>
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 truncate">
                               {bet.home_team && bet.away_team
                                 ? `${bet.away_team} vs ${bet.home_team}`
                                 : display.teams}{' '}
@@ -509,13 +596,13 @@ export default function ShareStrategyModal({
                         </div>
                         <button
                           onClick={() => toggleBetSelection(bet.id)}
-                          className={`ml-2 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                          className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
                             isSelected
                               ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
                               : 'border-gray-300 hover:border-red-400 hover:text-red-500'
                           }`}
                         >
-                          <X size={12} />
+                          <X size={10} />
                         </button>
                       </div>
 
@@ -538,36 +625,66 @@ export default function ShareStrategyModal({
           </div>
 
           {/* Right side - Preview */}
-          <div className="w-1/2 overflow-y-auto bg-gray-50 p-6">
+          <div className="w-full lg:w-1/2 overflow-y-auto bg-gray-50 p-4 lg:p-6 max-h-[50vh] lg:max-h-full">
             <h3 className="mb-4 font-semibold">Preview ({selectedBetsList.length} bets)</h3>
-
-            <div
-              ref={shareImageRef}
-              className="rounded-lg bg-white p-6 shadow-sm"
-              style={{
-                fontFamily:
-                  'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                WebkitFontSmoothing: 'antialiased',
-                textRendering: 'optimizeLegibility',
-                lineHeight: '1.5',
-              }}
+            
+            {/* Scrollable container for the image preview */}
+            <div className="overflow-x-auto overflow-y-visible pb-4 flex justify-center"
+                 style={{ minWidth: '600px' }}
             >
-              {/* TrueSharp Branding */}
-              <div className="mb-6 flex items-center justify-center">
+              <div
+                ref={shareImageRef}
+                data-image-container="true"
+                className="rounded-lg bg-white shadow-lg"
+                style={{
+                  fontFamily:
+                    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
+                  WebkitFontSmoothing: 'antialiased',
+                  MozOsxFontSmoothing: 'grayscale',
+                  textRendering: 'optimizeLegibility',
+                  fontFeatureSettings: '"liga", "kern"',
+                  lineHeight: '1.6',
+                  width: '600px', // Fixed width for consistent image generation
+                  padding: '40px', // Increased padding for better spacing
+                  paddingBottom: '48px', // Extra bottom padding to prevent cutoff
+                  boxSizing: 'border-box',
+                  overflow: 'visible', // Ensure content isn't clipped
+                  position: 'relative',
+                  backgroundColor: 'white',
+                  flexShrink: 0, // Prevent shrinking
+                  minHeight: 'auto', // Let content determine height
+                }}
+              >
+              {/* Compact TrueSharp Branding */}
+              <div className="mb-4 flex items-center justify-center">
                 <div className="flex items-center gap-3">
-                  <TrueSharpShield className="h-10 w-10" variant="default" />
-                  <span className="text-2xl font-bold text-gray-800">TrueSharp</span>
+                  <TrueSharpShield className="h-8 w-8" variant="default" />
+                  <div className="text-center">
+                    <div className="text-xl font-black text-gray-900" style={{ letterSpacing: '-0.02em' }}>
+                      TrueSharp
+                    </div>
+                    <div className="text-xs font-medium text-gray-500 tracking-wide">
+                      PROFESSIONAL STRATEGIES
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Strategy Info */}
-              <div className="mb-6 text-center">
-                <h2 className="text-xl font-bold text-gray-800">{strategy?.name}</h2>
-                <p className="text-gray-600">by @{strategy?.profiles.username}</p>
+              {/* Compact Strategy Info */}
+              <div className="mb-4 text-center border-b border-gray-100 pb-3">
+                <h2 className="text-lg font-bold text-gray-900 mb-1" style={{ letterSpacing: '-0.01em' }}>
+                  {strategy?.name}
+                </h2>
+                <p className="text-sm text-gray-600 font-medium mb-2">
+                  by <span className="text-blue-600 font-semibold">@{strategy?.profiles.username}</span>
+                </p>
+                <div className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                  {selectedBetsList.length} Active {selectedBetsList.length === 1 ? 'Bet' : 'Bets'}
+                </div>
               </div>
 
-              {/* Bets - styled like Today's Bets */}
-              <div className="space-y-4">
+              {/* Compact Bets Display */}
+              <div className="space-y-2">
                 {selectedBetsList.map(bet => {
                   const display = formatBetDisplay(bet)
                   const status = bet.status || 'pending'
@@ -575,14 +692,15 @@ export default function ShareStrategyModal({
                   return (
                     <div
                       key={bet.id}
-                      className="relative rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 transition-all duration-200 hover:shadow-md"
+                      className="relative rounded-xl border border-gray-200 bg-gradient-to-r from-white to-gray-50 shadow-sm"
+                      style={{ padding: '16px', marginBottom: '8px' }} // More controlled spacing
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex flex-1 items-start space-x-3">
-                          <div className="mt-1 flex-shrink-0">{getStatusIcon(status)}</div>
+                          <div className="mt-0.5 flex-shrink-0">{getStatusIcon(status)}</div>
                           <div className="min-w-0 flex-1">
-                            <div className="mb-2 flex items-center justify-between">
-                              <h4 className="text-sm font-semibold text-gray-900">
+                            <div className="mb-3 flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-bold text-gray-900 leading-tight" style={{ lineHeight: '1.2' }}>
                                 {isPreviewMode ? (
                                   <span className="inline-block rounded bg-gray-300 px-2 py-1 font-mono text-xs text-transparent">
                                     {'●'.repeat(
@@ -597,31 +715,37 @@ export default function ShareStrategyModal({
                                 )}
                               </h4>
                               <span
-                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(status)}`}
+                                className={`inline-flex items-center rounded-full text-xs font-semibold flex-shrink-0 ${getStatusColor(status)}`}
+                                style={{ padding: '4px 8px', lineHeight: '1' }}
                               >
                                 {status.charAt(0).toUpperCase() + status.slice(1)}
                               </span>
                             </div>
 
-                            <div className="mb-2 flex items-center space-x-2">
-                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <div className="mb-3 flex items-center space-x-2 flex-wrap gap-y-1">
+                              <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 text-xs font-semibold"
+                                    style={{ padding: '3px 8px', lineHeight: '1.2' }}>
                                 {bet.sport}
                               </span>
                               {isPreviewMode ? (
                                 <>
-                                  <span className="inline-block rounded bg-gray-300 px-2 py-0.5 font-mono text-xs text-transparent">
+                                  <span className="inline-block rounded bg-gray-300 font-mono text-xs text-transparent"
+                                        style={{ padding: '3px 8px' }}>
                                     {'●●●●'}
                                   </span>
-                                  <span className="inline-block rounded bg-gray-300 px-2 py-0.5 font-mono text-xs text-transparent">
+                                  <span className="inline-block rounded bg-gray-300 font-mono text-xs text-transparent"
+                                        style={{ padding: '3px 8px' }}>
                                     {'●●●●●'}
                                   </span>
                                 </>
                               ) : (
                                 <>
-                                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                  <span className="rounded-lg bg-gray-100 text-gray-700 text-xs font-bold"
+                                        style={{ padding: '3px 8px', lineHeight: '1.2' }}>
                                     {display.odds}
                                   </span>
-                                  <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                                  <span className="rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold"
+                                        style={{ padding: '3px 8px', lineHeight: '1.2' }}>
                                     {bet.bet_type?.charAt(0).toUpperCase() +
                                       bet.bet_type?.slice(1) || 'Bet'}
                                   </span>
@@ -629,7 +753,7 @@ export default function ShareStrategyModal({
                               )}
                             </div>
 
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-600 font-medium" style={{ lineHeight: '1.3' }}>
                               {bet.home_team && bet.away_team
                                 ? `${bet.away_team} vs ${bet.home_team}`
                                 : display.teams}{' '}
@@ -640,7 +764,7 @@ export default function ShareStrategyModal({
                       </div>
 
                       <div
-                        className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
+                        className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-lg ${
                           status === 'won'
                             ? 'bg-green-500'
                             : status === 'lost'
@@ -658,51 +782,62 @@ export default function ShareStrategyModal({
               {selectedBetsList.length === 0 && (
                 <div className="py-8 text-center text-gray-500">Select bets to preview</div>
               )}
+              </div>
             </div>
 
-            {/* Share Actions */}
-            <div className="mt-6 space-y-3">
+            {/* Compact Share Actions */}
+            <div className="mt-4 space-y-2">
               <button
                 onClick={handleDownload}
                 disabled={selectedBetsList.length === 0 || isGenerating}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                <Download size={16} />
+                <Download size={14} />
                 {isGenerating ? 'Generating...' : 'Download PNG'}
               </button>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleShare('twitter')}
-                  disabled={selectedBetsList.length === 0}
-                  className="flex items-center justify-center gap-2 rounded bg-black px-3 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
+                  disabled
+                  className="flex items-center justify-center gap-1 rounded bg-gray-300 px-2 py-1.5 text-xs text-gray-500 cursor-not-allowed relative"
+                  title="Coming Soon"
                 >
-                  <Twitter size={16} />X (Twitter)
+                  <Twitter size={12} />
+                  <span>X</span>
+                  <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-full font-semibold leading-none">
+                    Soon
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleShare('discord')}
-                  disabled={selectedBetsList.length === 0}
-                  className="flex items-center justify-center gap-2 rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700 disabled:opacity-50"
+                  disabled
+                  className="flex items-center justify-center gap-1 rounded bg-gray-300 px-2 py-1.5 text-xs text-gray-500 cursor-not-allowed relative"
+                  title="Coming Soon"
                 >
-                  <MessageCircle size={16} />
-                  Discord
+                  <MessageCircle size={12} />
+                  <span>Discord</span>
+                  <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-full font-semibold leading-none">
+                    Soon
+                  </div>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleShare('instagram')}
-                  disabled={selectedBetsList.length === 0}
-                  className="flex items-center justify-center gap-2 rounded bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-2 text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
+                  disabled
+                  className="flex items-center justify-center gap-1 rounded bg-gray-300 px-2 py-1.5 text-xs text-gray-500 cursor-not-allowed relative"
+                  title="Coming Soon"
                 >
-                  <Instagram size={16} />
-                  Instagram
+                  <Instagram size={12} />
+                  <span>Instagram</span>
+                  <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-full font-semibold leading-none">
+                    Soon
+                  </div>
                 </button>
                 <button
                   onClick={copyLink}
-                  className="flex items-center justify-center gap-2 rounded bg-gray-600 px-3 py-2 text-white hover:bg-gray-700"
+                  className="flex items-center justify-center gap-1 rounded bg-gray-600 px-2 py-1.5 text-xs text-white hover:bg-gray-700"
                 >
-                  <Copy size={16} />
+                  <Copy size={12} />
                   Copy Link
                 </button>
               </div>

@@ -37,16 +37,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const sport = searchParams.get('sport')
+    const league = searchParams.get('league')
     const sortBy = searchParams.get('sort') || 'leaderboard'
     const verified = searchParams.get('verified')
 
     // Query the strategy_leaderboard table directly - only monetized strategies
     let query = supabase.from('strategy_leaderboard').select('*').eq('is_monetized', true)
 
-    // Apply sport filter
-    if (sport && sport !== 'all') {
-      query = query.eq('primary_sport', sport.toUpperCase())
+    // Apply league filter
+    if (league && league !== 'all') {
+      // Map league to primary_sport for now - you may need to update your database schema
+      // to have a separate league column if you want more granular filtering
+      const sportMapping: Record<string, string> = {
+        'NFL': 'NFL',
+        'NBA': 'NBA',
+        'MLB': 'MLB',
+        'NHL': 'NHL',
+        'NCAAF': 'NCAAF',
+        'NCAAB': 'NCAAB',
+        'WNBA': 'WNBA',
+        'CFL': 'CFL',
+        'XFL': 'XFL',
+        'Premier League': 'Soccer',
+        'Champions League': 'Soccer',
+        'Europa League': 'Soccer',
+        'La Liga': 'Soccer',
+        'Serie A': 'Soccer',
+        'Bundesliga': 'Soccer',
+        'Ligue 1': 'Soccer',
+        'MLS': 'Soccer',
+        'ATP Tour': 'Tennis',
+        'WTA Tour': 'Tennis',
+        'PGA Tour': 'Golf',
+        'UFC': 'MMA',
+        'Bellator': 'MMA',
+        'Boxing': 'Boxing',
+        'Formula 1': 'Racing',
+        'NASCAR': 'Racing'
+      }
+      
+      const mappedSport = sportMapping[league]
+      if (mappedSport) {
+        query = query.eq('primary_sport', mappedSport.toUpperCase())
+      }
     }
 
     // Apply verified filter
@@ -85,29 +118,71 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Get additional strategy details if needed
+    // Get additional strategy details and accurate subscriber counts
     const strategyIds = (leaderboardData || []).map(s => s.strategy_id)
+    const userIds = (leaderboardData || []).map(s => s.user_id)
+    
     let strategyDetails: Array<{
       id: string
       description: string
-      subscriber_count: number
       start_date?: string
+    }> = []
+    let subscriberCounts: Array<{
+      strategy_id: string
+      subscriber_count: number
+    }> = []
+    let profilePictures: Array<{
+      id: string
+      profile_picture_url: string | null
     }> = []
 
     if (strategyIds.length > 0) {
+      // Get strategy details
       const { data: strategies, error: strategyError } = await supabase
         .from('strategies')
-        .select('id, description, subscriber_count, start_date')
+        .select('id, description, start_date')
         .in('id', strategyIds)
 
       if (!strategyError) {
         strategyDetails = strategies || []
+      }
+
+      // Get accurate subscriber counts from subscriptions table
+      const { data: subscriptions, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .select('strategy_id')
+        .in('strategy_id', strategyIds)
+        .eq('status', 'active')
+
+      if (!subscriptionError) {
+        // Count subscribers per strategy
+        const counts = (subscriptions || []).reduce((acc, sub) => {
+          acc[sub.strategy_id] = (acc[sub.strategy_id] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+
+        subscriberCounts = Object.entries(counts).map(([strategy_id, count]) => ({
+          strategy_id,
+          subscriber_count: count as number
+        }))
+      }
+
+      // Get profile pictures
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, profile_picture_url')
+        .in('id', userIds)
+
+      if (!profileError) {
+        profilePictures = profiles || []
       }
     }
 
     // Transform to StrategyData format and calculate leaderboard scores
     const strategiesWithStats = (leaderboardData || []).map((item): StrategyData => {
       const strategyDetail = strategyDetails.find(s => s.id === item.strategy_id)
+      const subscriberData = subscriberCounts.find(s => s.strategy_id === item.strategy_id)
+      const profileData = profilePictures.find(p => p.id === item.user_id)
 
       // Calculate leaderboard score using our algorithm
       const leaderboardScore = calculateLeaderboardScore({
@@ -149,7 +224,7 @@ export async function GET(request: NextRequest) {
         strategy_description: strategyDetail?.description || 'No description available',
         username: item.username,
         display_name: item.username,
-        profile_picture_url: null, // We'll need to join with profiles if needed
+        profile_picture_url: profileData?.profile_picture_url || null,
         total_bets: item.total_bets,
         roi_percentage: parseFloat(item.roi_percentage.toString()),
         win_rate: parseFloat(item.win_rate.toString()) * 100, // Convert decimal to percentage for display
@@ -159,7 +234,7 @@ export async function GET(request: NextRequest) {
         pricing_weekly: parseFloat(item.subscription_price_weekly?.toString() || '15'),
         pricing_monthly: parseFloat(item.subscription_price_monthly?.toString() || '50'),
         pricing_yearly: parseFloat(item.subscription_price_yearly?.toString() || '500'),
-        subscriber_count: strategyDetail?.subscriber_count || 0,
+        subscriber_count: subscriberData?.subscriber_count || 0,
         is_verified: item.is_verified_seller,
         verification_status: item.verification_status,
         rank: item.overall_rank,

@@ -51,6 +51,8 @@ interface Bet {
   bet_description: string
   description?: string
   line_value?: number
+  side?: string | null
+  player_name?: string | null
   odds: string | number
   stake: number
   potential_payout: number
@@ -304,7 +306,29 @@ export function BetsTab({
                                   <span className="text-xs text-gray-500">{bet.sportsbook}</span>
                                 )}
                               </div>
-                              <p className="line-clamp-2 font-medium">{bet.bet_description}</p>
+                              <div className="space-y-1">
+                                <p className="line-clamp-2 font-medium">{bet.bet_description}</p>
+                                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                                  {bet.home_team && bet.away_team && (
+                                    <span className="font-medium">{bet.away_team} @ {bet.home_team}</span>
+                                  )}
+                                  {bet.side && (
+                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium">
+                                      {bet.side.toUpperCase()}
+                                    </span>
+                                  )}
+                                  {bet.line_value !== undefined && bet.line_value !== null && (
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium">
+                                      {bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`}
+                                    </span>
+                                  )}
+                                  {bet.player_name && (
+                                    <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 font-medium">
+                                      {bet.player_name}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
 
                               {/* Parlay legs preview */}
                               {bet.is_parlay && bet.legs && bet.legs.length > 0 && (
@@ -528,7 +552,7 @@ export function BetsTab({
               </p>
               <Link href="/games">
                 <Button>
-                  Browse Games
+                  Recent Bets
                   <ExternalLink className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

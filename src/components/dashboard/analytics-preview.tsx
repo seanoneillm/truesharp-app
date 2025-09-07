@@ -384,41 +384,43 @@ export default function AnalyticsPreview() {
       )}
 
       {/* Total Profit Display */}
-      <div className="mb-6 rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-gray-50 to-white p-6 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-gray-50 to-white p-4 sm:p-6 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
             <div
-              className={`rounded-2xl p-4 shadow-lg ${
+              className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg flex-shrink-0 ${
                 totalProfit >= 0
                   ? 'bg-gradient-to-br from-green-100 to-emerald-200'
                   : 'bg-gradient-to-br from-red-100 to-red-200'
               }`}
             >
               {totalProfit >= 0 ? (
-                <TrendingUp className="h-6 w-6 text-green-600" />
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               ) : (
-                <TrendingDown className="h-6 w-6 text-red-600" />
+                <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
               )}
             </div>
-            <div>
-              <div className="mb-1 text-sm font-medium text-gray-500">Total Profit/Loss</div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 text-xs sm:text-sm font-medium text-gray-500">Total Profit/Loss</div>
               <div
-                className={`text-3xl font-bold ${
+                className={`text-xl sm:text-2xl lg:text-3xl font-bold break-words ${
                   totalProfit >= 0
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent'
                     : 'bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent'
                 }`}
               >
-                {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                {totalProfit >= 0 ? '+' : ''}${Math.abs(totalProfit) >= 1000 ? 
+                  (totalProfit / 1000).toFixed(1) + 'k' : 
+                  totalProfit.toFixed(2)}
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="mb-2 text-sm font-medium text-gray-500">
+          <div className="text-right flex-shrink-0">
+            <div className="mb-2 text-xs sm:text-sm font-medium text-gray-500 truncate">
               {getPeriodLabel(selectedPeriod)}
             </div>
             <div
-              className={`text-3xl font-bold ${
+              className={`text-2xl sm:text-3xl font-bold ${
                 totalProfit >= 0 ? 'text-green-500' : 'text-red-500'
               }`}
             >

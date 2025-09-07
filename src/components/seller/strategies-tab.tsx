@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/lib/hooks/use-auth'
 import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 import { createClient } from '@/lib/supabase'
+import { useStripeSellerData } from '@/lib/hooks/use-stripe-data'
 import { Loader2, Plus, Target } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ProfessionalStrategyCard, type StrategyData } from './professional-strategy-card'
@@ -23,6 +24,9 @@ export function StrategiesTab() {
   const [strategies, setStrategies] = useState<StrategyData[]>([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  
+  // Use Stripe seller data to enhance strategy information with subscriber counts
+  const { data: stripeData, loading: stripeLoading } = useStripeSellerData()
 
   const loadStrategies = useCallback(async () => {
     if (!user?.id) {
@@ -62,10 +66,45 @@ export function StrategiesTab() {
           return strategy
         })
 
-        setStrategies(enhancedStrategies as StrategyData[])
+        // Further enhance with Stripe subscriber data if available
+        let finalStrategies = enhancedStrategies
+        if (stripeData && stripeData.strategyMetrics) {
+          finalStrategies = enhancedStrategies.map(strategy => {
+            const stripeMetrics = stripeData.strategyMetrics[strategy.id]
+            if (stripeMetrics) {
+              return {
+                ...strategy,
+                subscriber_count: stripeMetrics.subscribers,
+                stripe_revenue: stripeMetrics.revenue,
+                stripe_tiers: stripeMetrics.tiers,
+              }
+            }
+            return strategy
+          })
+        }
+
+        setStrategies(finalStrategies as StrategyData[])
       } catch (openBetsError) {
         console.warn('Failed to fetch open bets, using regular strategies:', openBetsError)
-        setStrategies(regularStrategies)
+        
+        // Still enhance with Stripe data even if open bets fail
+        let finalStrategies = regularStrategies
+        if (stripeData && stripeData.strategyMetrics) {
+          finalStrategies = regularStrategies.map(strategy => {
+            const stripeMetrics = stripeData.strategyMetrics[strategy.id]
+            if (stripeMetrics) {
+              return {
+                ...strategy,
+                subscriber_count: stripeMetrics.subscribers,
+                stripe_revenue: stripeMetrics.revenue,
+                stripe_tiers: stripeMetrics.tiers,
+              }
+            }
+            return strategy
+          })
+        }
+        
+        setStrategies(finalStrategies)
       }
     } catch (error) {
       console.error('Error loading strategies:', error)
@@ -77,7 +116,7 @@ export function StrategiesTab() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, addToast])
+  }, [user?.id, addToast, stripeData])
 
   useEffect(() => {
     if (!authLoading && user?.id) {
@@ -212,7 +251,7 @@ export function StrategiesTab() {
     [handleSaveStrategy, handleDeleteStrategy, handleSuccess, handleError]
   )
 
-  if (authLoading || loading) {
+  if (authLoading || loading || stripeLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

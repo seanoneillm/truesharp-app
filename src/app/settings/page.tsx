@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { useStripeSubscriberData, formatStripeAmount, formatSubscriptionInterval, isSubscriptionActive, getNextBillingDate } from '@/lib/hooks/use-stripe-data'
 
 // Types for settings data - matches the provided profiles table schema
 interface UserProfile {
@@ -115,6 +116,10 @@ export default function SettingsPage() {
   })
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null)
+  
+  // Stripe data hooks
+  const { data: stripeSubscriptions, loading: stripeSubsLoading } = useStripeSubscriberData()
+  // const { data: stripeInvoices, loading: stripeInvoicesLoading, error: stripeInvoicesError, refetch: refetchInvoices } = useStripeInvoices(10)
 
   const loadUserData = useCallback(async () => {
     if (!user) {
@@ -188,7 +193,7 @@ export default function SettingsPage() {
         }
       }
 
-      // Load subscriptions
+      // Load subscriptions from Supabase (legacy)
       const { data: subsData } = await supabase
         .from('subscriptions')
         .select('*, strategies(*), profiles(*)')
@@ -198,6 +203,8 @@ export default function SettingsPage() {
       if (subsData) {
         setSubscriptions(subsData)
       }
+
+      // Stripe subscriptions are now handled by hooks
     } catch (error) {
       setError('Failed to load settings')
     } finally {
@@ -427,18 +434,88 @@ export default function SettingsPage() {
       setSaving(true)
       setError(null)
 
-      // Update profile to enable seller
-      const { error } = await supabase
+      // First, update profile to enable seller
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ is_seller: true })
         .eq('id', user.id)
 
-      if (error) throw error
+      if (profileError) throw profileError
 
-      setSuccess('Seller account enabled! You can now create strategies.')
-      await loadUserData()
+      // Create Stripe Connect account
+      const response = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create Stripe Connect account')
+      }
+
+      // Redirect to Stripe onboarding
+      if (result.onboarding_url) {
+        window.location.href = result.onboarding_url
+      } else {
+        setSuccess('Seller account enabled! Complete your payout setup to start earning.')
+        await loadUserData()
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'Failed to enable seller account')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const manageStripeAccount = async () => {
+    if (!user || !sellerAccount) return
+
+    try {
+      setSaving(true)
+      setError(null)
+
+      if (!sellerAccount.details_submitted) {
+        // Create new onboarding link if account isn't set up yet
+        const response = await fetch('/api/stripe/connect/onboarding', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create onboarding link')
+        }
+
+        if (result.onboarding_url) {
+          window.location.href = result.onboarding_url
+        }
+      } else {
+        // Create login link for existing accounts
+        const response = await fetch('/api/stripe/connect/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create login link')
+        }
+
+        if (result.login_url) {
+          window.location.href = result.login_url
+        }
+      }
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Failed to manage Stripe account')
     } finally {
       setSaving(false)
     }
@@ -950,8 +1027,39 @@ export default function SettingsPage() {
                       </div>
                       {profile?.pro === 'yes' && (
                         <div className="mt-4 text-sm text-slate-600">
-                          <p>Next billing date: January 15, 2025</p>
-                          <p>Amount: $20.00/month</p>
+                          {(() => {
+                            if (stripeSubsLoading) {
+                              return (
+                                <>
+                                  <p>Loading subscription details...</p>
+                                </>
+                              )
+                            }
+                            
+                            const proSub = stripeSubscriptions?.subscriptions?.find(sub => 
+                              sub.items[0]?.product.metadata.type === 'truesharp_pro'
+                            )
+                            if (proSub && isSubscriptionActive(proSub.status)) {
+                              const nextBilling = getNextBillingDate(proSub.current_period_end)
+                              const amount = formatStripeAmount(proSub.items[0]?.price?.unit_amount || 0)
+                              const interval = formatSubscriptionInterval(proSub.items[0]?.price?.recurring?.interval || 'month')
+                              return (
+                                <>
+                                  <p>Next billing date: {nextBilling.toLocaleDateString()}</p>
+                                  <p>Amount: ${amount}/{interval}</p>
+                                  <p className="text-xs text-green-600 mt-1">
+                                    Current period: {new Date(proSub.current_period_start * 1000).toLocaleDateString()} - {nextBilling.toLocaleDateString()}
+                                  </p>
+                                </>
+                              )
+                            }
+                            return (
+                              <>
+                                <p>Next billing date: Not available</p>
+                                <p>Amount: $20.00/month (estimated)</p>
+                              </>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>
@@ -959,18 +1067,79 @@ export default function SettingsPage() {
                     {/* Active Subscriptions */}
                     <div className="rounded-lg border border-slate-200 p-6">
                       <h3 className="mb-4 text-lg font-semibold text-slate-900">
-                        Strategy Subscriptions
+                        Active Subscriptions
                       </h3>
-                      {subscriptions.length > 0 ? (
+                      {((stripeSubscriptions?.subscriptions?.length || 0) > 0 || subscriptions.length > 0) ? (
                         <div className="space-y-3">
+                          {/* Stripe Subscriptions */}
+                          {stripeSubsLoading ? (
+                            <div className="text-center text-slate-500 py-4">
+                              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-slate-600"></div>
+                              <p className="mt-2">Loading subscriptions...</p>
+                            </div>
+                          ) : stripeSubscriptions?.subscriptions?.map(sub => {
+                            const isActive = isSubscriptionActive(sub.status)
+                            const nextBilling = getNextBillingDate(sub.current_period_end)
+                            const mainItem = sub.items[0]
+                            
+                            return (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between rounded-lg border border-slate-100 p-4"
+                              >
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="font-medium text-slate-900">
+                                      {mainItem?.product?.name || 'Unknown Product'}
+                                    </div>
+                                    <div
+                                      className={`h-2 w-2 rounded-full ${
+                                        isActive ? 'bg-green-500' : 'bg-gray-400'
+                                      }`}
+                                    ></div>
+                                  </div>
+                                  <div className="text-sm text-slate-600 space-y-1">
+                                    {mainItem?.product?.metadata?.type === 'truesharp_pro' ? (
+                                      <div>TrueSharp Pro - {formatSubscriptionInterval(mainItem?.price?.recurring?.interval || 'month')}</div>
+                                    ) : (
+                                      <div>
+                                        Strategy subscription - {formatSubscriptionInterval(mainItem?.price?.recurring?.interval || 'month')}
+                                      </div>
+                                    )}
+                                    {isActive && (
+                                      <div>Next billing: {nextBilling.toLocaleDateString()}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium text-slate-900">
+                                    ${formatStripeAmount(mainItem?.price?.unit_amount || 0)}/{formatSubscriptionInterval(mainItem?.price?.recurring?.interval || 'month')}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500 capitalize">
+                                    {sub.status}
+                                  </div>
+                                  <Button variant="outline" size="sm" className="mt-1">
+                                    Manage
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                          
+                          {/* Legacy Supabase Subscriptions */}
                           {subscriptions.map(sub => (
                             <div
                               key={sub.id}
-                              className="flex items-center justify-between rounded-lg border border-slate-100 p-4"
+                              className="flex items-center justify-between rounded-lg border border-slate-100 p-4 bg-amber-50"
                             >
                               <div>
-                                <div className="font-medium text-slate-900">
-                                  @{sub.profiles?.username}
+                                <div className="flex items-center space-x-2">
+                                  <div className="font-medium text-slate-900">
+                                    @{sub.profiles?.username}
+                                  </div>
+                                  <div className="rounded bg-amber-200 px-2 py-0.5 text-xs text-amber-800">
+                                    Legacy
+                                  </div>
                                 </div>
                                 <div className="text-sm text-slate-600">{sub.strategies?.name}</div>
                               </div>
@@ -1149,7 +1318,12 @@ export default function SettingsPage() {
                                   sellerAccount?.payouts_enabled ? 'bg-green-500' : 'bg-yellow-500'
                                 }`}
                               ></div>
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={manageStripeAccount}
+                                disabled={saving}
+                              >
                                 {sellerAccount?.details_submitted ? 'Manage' : 'Connect'} Account
                               </Button>
                             </div>

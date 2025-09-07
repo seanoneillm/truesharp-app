@@ -65,6 +65,12 @@ export function useSubscribe(): UseSubscribeReturn {
         return { success: false, error: data.error }
       }
 
+      // If we got a checkout URL, redirect to Stripe Checkout
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url
+        return { success: true }
+      }
+
       return {
         success: true,
         subscription: data.subscription,
