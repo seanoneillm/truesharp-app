@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { useAnalytics, type Bet } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { RefreshCw, Link, X, BarChart3 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 
 function calculateTrends(monthlyData: { roi: number }[]): {
@@ -121,9 +121,9 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [hasMoreBets, setHasMoreBets] = useState(true)
+  const [hasMoreBets, setHasMoreBets] = useState(true) // Re-enable pagination
   const [loadingMoreBets, setLoadingMoreBets] = useState(false)
-  const [additionalBets, setAdditionalBets] = useState<Bet[]>([]) // State for additional loaded bets
+  const [additionalBets, setAdditionalBets] = useState<Bet[]>([]) // For paginated real bets
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [strategiesLoading, setStrategiesLoading] = useState(false)
   const [isRefreshingBets, setIsRefreshingBets] = useState(false)
@@ -142,6 +142,37 @@ export default function AnalyticsPage() {
     filters,
     updateFilters,
   } = useAnalytics(user)
+
+  // Combine bets and ensure uniqueness by ID to prevent duplicate keys
+  const recentBets = React.useMemo(() => {
+    const initialBets = analyticsData?.recentBets || []
+    const allBets = [...initialBets, ...additionalBets]
+    
+    // Debug logging for duplicates
+    const seenIds = new Set()
+    const duplicateIds = new Set()
+    allBets.forEach(bet => {
+      if (seenIds.has(bet.id)) {
+        duplicateIds.add(bet.id)
+      } else {
+        seenIds.add(bet.id)
+      }
+    })
+    
+    if (duplicateIds.size > 0) {
+      console.warn('🚨 Found duplicate bet IDs:', Array.from(duplicateIds))
+      console.log('Initial bets count:', initialBets.length, 'Additional bets count:', additionalBets.length)
+    }
+    
+    // Remove duplicates by ID (keep first occurrence)
+    const uniqueBets = allBets.filter((bet, index, arr) => 
+      arr.findIndex(b => b.id === bet.id) === index
+    )
+    
+    console.log(`📊 Combined bets: ${allBets.length} total, ${uniqueBets.length} unique`)
+    
+    return uniqueBets
+  }, [analyticsData?.recentBets, additionalBets])
 
   // Improved user profile fetching with better error handling
   useEffect(() => {
@@ -312,10 +343,23 @@ export default function AnalyticsPage() {
         throw new Error(`Failed to generate context: ${response.status}`)
       }
 
-      const { contextId } = await response.json()
+      const result = await response.json()
+      const { contextId, fallback } = result
       console.log('✅ Generated SharpSports context ID:', contextId)
 
-      const booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
+      let booklinkUrl
+      if (fallback) {
+        // Use direct Booklink URL pattern for fallback
+        console.log('🔄 Using fallback Booklink URL approach')
+        const redirectUrl = window.location.hostname === 'localhost'
+          ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
+          : `${window.location.origin}/api/sharpsports/accounts`
+        
+        booklinkUrl = `https://booklink.sharpsports.io?userId=${user.id}&callback=${encodeURIComponent(`${redirectUrl}?userId=${user.id}`)}`
+      } else {
+        // Use standard context-based URL
+        booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
+      }
 
       console.log('📋 Opening Booklink UI:', booklinkUrl)
 
@@ -379,123 +423,70 @@ export default function AnalyticsPage() {
   }
 
   const loadMoreBets = async () => {
-    if (loadingMoreBets || !hasMoreBets) return
+    if (loadingMoreBets || !hasMoreBets || !user?.id) return
 
     setLoadingMoreBets(true)
 
     try {
-      // Simulate loading more bets by generating additional data
-      const nextPage = currentPage + 1
-      const additionalBets = Array.from({ length: 10 }, (_, i) => {
-        const index = (nextPage - 1) * 10 + i
-        const teamNames = [
-          ['Lakers', 'Warriors'],
-          ['Cowboys', 'Giants'],
-          ['Yankees', 'Red Sox'],
-          ['Chiefs', 'Broncos'],
-          ['Celtics', 'Heat'],
-          ['Rangers', 'Devils'],
-          ['Dodgers', 'Padres'],
-          ['Bills', 'Patriots'],
-          ['Clippers', 'Suns'],
-          ['Astros', 'Angels'],
-          ['49ers', 'Seahawks'],
-          ['Knicks', 'Nets'],
-          ['Rams', 'Cardinals'],
-          ['Packers', 'Bears'],
-          ['Mets', 'Phillies'],
-        ]
+      console.log('📊 Loading more bets - Page:', currentPage + 1)
+      
+      // Calculate offset for pagination
+      const currentBetCount = recentBets.length
+      const limit = 20 // Load 20 more bets at a time
+      
+      console.log(`📊 Current bet count: ${currentBetCount}, requesting ${limit} more bets`)
 
-        const betTypes = ['Spread', 'Moneyline', 'Total Over', 'Total Under', 'Player Props']
-        const sportsbooks = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'ESPN BET']
-        const sports = ['NFL', 'NBA', 'MLB', 'NHL']
-
-        const teams = teamNames[index % teamNames.length] || ['Team A', 'Team B']
-        const betType = betTypes[index % betTypes.length] || 'Moneyline'
-        const sportsbook = sportsbooks[index % sportsbooks.length] || 'DraftKings'
-        const sport = sports[index % sports.length] || 'NFL'
-
-        const stakeAmount = 50 + Math.random() * 200
-        const oddsValue =
-          Math.random() > 0.5
-            ? Math.round(100 + Math.random() * 300)
-            : Math.round(-110 - Math.random() * 200)
-        const isWin = Math.random() > 0.4 // 60% win rate
-
-        let betDescription = ''
-        let lineValue = 0
-
-        switch (betType) {
-          case 'Spread':
-            lineValue = (Math.random() - 0.5) * 14
-            betDescription = `${teams[0]} ${lineValue > 0 ? '+' : ''}${lineValue.toFixed(1)}`
-            break
-          case 'Moneyline':
-            betDescription = `${teams[0]} to Win`
-            break
-          case 'Total Over':
-            lineValue = 45 + Math.random() * 10
-            betDescription = `Over ${lineValue.toFixed(1)} Total Points`
-            break
-          case 'Total Under':
-            lineValue = 45 + Math.random() * 10
-            betDescription = `Under ${lineValue.toFixed(1)} Total Points`
-            break
-          case 'Player Props':
-            const playerNames = [
-              'LeBron James',
-              'Tom Brady',
-              'Aaron Judge',
-              'Connor McDavid',
-              'Steph Curry',
-            ]
-            const props = ['Points', 'Yards', 'Home Runs', 'Goals', 'Assists']
-            const player = playerNames[Math.floor(Math.random() * playerNames.length)]
-            const prop = props[Math.floor(Math.random() * props.length)]
-            lineValue = 1.5 + Math.random() * 3
-            betDescription = `${player} Over ${lineValue.toFixed(1)} ${prop}`
-            break
-        }
-
-        const placedDate = new Date(Date.now() - (index + 10) * 24 * 60 * 60 * 1000).toISOString()
-
-        return {
-          id: `bet-${index + 11}`,
-          user_id: user?.id || '',
-          sport: sport,
-          league: sport,
-          home_team: teams[1] || 'Home Team',
-          away_team: teams[0] || 'Away Team',
-          bet_type: betType,
-          bet_description: betDescription,
-          description: betDescription,
-          line_value: lineValue !== 0 ? lineValue : undefined,
-          odds: oddsValue,
-          stake: Math.round(stakeAmount),
-          potential_payout: Math.round(stakeAmount * (1 + Math.abs(oddsValue) / 100)),
-          status: isWin ? ('won' as const) : ('lost' as const),
-          profit: isWin
-            ? Math.round((stakeAmount * Math.abs(oddsValue)) / 100)
-            : -Math.round(stakeAmount),
-          placed_at: placedDate,
-          game_date: new Date(new Date(placedDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
-          sportsbook: sportsbook,
-          settled_at: new Date(new Date(placedDate).getTime() + 3 * 60 * 60 * 1000).toISOString(),
-          bet_source: 'mock',
-          is_copy_bet: false,
-          is_parlay: false,
-        } as Bet
+      // Create pagination request parameters
+      const paginationParams = new URLSearchParams({
+        userId: user.id,
+        pageType: 'pagination',
+        limit: limit.toString(),
+        offset: currentBetCount.toString(),
+        // Include current filters to maintain consistency
+        ...Object.fromEntries(
+          Object.entries(filters).map(([key, value]) => [
+            key, 
+            Array.isArray(value) ? value.join(',') : String(value)
+          ])
+        )
       })
 
-      setAdditionalBets(prev => [...prev, ...additionalBets])
-      setCurrentPage(nextPage)
+      console.log('📊 Pagination params:', paginationParams.toString())
 
-      // Simulate reaching the end after a few pages
-      if (nextPage >= 5) {
+      const response = await fetch(`/api/analytics?${paginationParams}`, {
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const newBets = result.data?.recentBets || []
+        
+        console.log(`📊 Loaded ${newBets.length} new bets from pagination`)
+        
+        if (newBets.length > 0) {
+          // Append new bets to existing additional bets
+          setAdditionalBets(prev => [...prev, ...newBets])
+          setCurrentPage(prev => prev + 1)
+          
+          // If we got fewer bets than requested, we've reached the end
+          if (newBets.length < limit) {
+            console.log('📊 Reached end of bets (got fewer than requested)')
+            setHasMoreBets(false)
+          }
+        } else {
+          // No more bets to load
+          console.log('📊 No more bets available')
+          setHasMoreBets(false)
+        }
+      } else {
+        console.error('Failed to load more bets:', response.status)
+        const errorData = await response.text()
+        console.error('Error details:', errorData)
         setHasMoreBets(false)
       }
     } catch (err) {
       console.error('Error loading more bets:', err)
+      setHasMoreBets(false)
     } finally {
       setLoadingMoreBets(false)
     }
@@ -504,6 +495,11 @@ export default function AnalyticsPage() {
   const handleFiltersChange = useCallback(
     (newFilters: FilterOptions) => {
       console.log('Filter change triggered:', newFilters)
+
+      // Reset pagination when filters change
+      setAdditionalBets([])
+      setCurrentPage(1)
+      setHasMoreBets(true)
 
       // Update local state immediately for UI responsiveness
       setLocalFilters(newFilters)
@@ -794,7 +790,6 @@ export default function AnalyticsPage() {
 
   const dailyProfitData = analyticsData?.dailyProfitData || []
   const monthlyData = analyticsData?.monthlyData || []
-  const recentBets = [...(analyticsData?.recentBets || []), ...additionalBets]
 
   // Transform chart data for overview with enhanced calculations
   const chartData = dailyProfitData.map(item => ({

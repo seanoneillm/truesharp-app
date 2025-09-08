@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       }
     }
     // Calculate filtered performance
-    let query = supabase.from('bets').select('*').eq('user_id', user.id)
+    let query = supabase.from('bets').select('*').eq('user_id', user.id).neq('bet_source', 'mock')
     if (sports.length > 0 && !sports.includes('all')) {
       query = query.in('sport', sports)
     }

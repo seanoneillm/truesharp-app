@@ -19,7 +19,20 @@ export function computeProfit(bet: any): number {
   if (!bet.status) return 0
 
   const status = bet.status.toLowerCase()
+  const outcome = bet.outcome?.toLowerCase()
 
+  // Handle completed status with outcome
+  if (status === 'completed') {
+    if (outcome === 'win' || outcome === 'won') {
+      return (bet.toWin || 0) / 100 // Convert cents to dollars
+    } else if (outcome === 'loss' || outcome === 'lost' || outcome === 'lose') {
+      return -((bet.atRisk || 0) / 100) // Convert cents to dollars
+    }
+    // For completed with push/void/unknown outcome
+    return 0
+  }
+
+  // Handle direct status values
   if (status === 'won') {
     return (bet.toWin || 0) / 100 // Convert cents to dollars
   }
@@ -65,32 +78,57 @@ export function normalizeBetType(proposition: string | undefined | null): string
   return 'player_prop'
 }
 
-export function normalizeBetStatus(status: string | undefined | null): string {
+export function normalizeBetStatus(status: string | undefined | null, outcome: string | undefined | null = null): string {
   if (!status) return 'pending'
 
   const lower = status.toLowerCase()
+  const outcomeLower = outcome?.toLowerCase()
+  console.log(`🔄 Normalizing status: "${status}" (outcome: "${outcome}") -> "${lower}"`)
+
+  // If status is "completed", check the outcome to determine win/loss
+  if (lower === 'completed') {
+    if (outcomeLower === 'win' || outcomeLower === 'won') {
+      console.log(`✅ Completed bet with outcome "${outcome}" mapped to: won`)
+      return 'won'
+    } else if (outcomeLower === 'loss' || outcomeLower === 'lost' || outcomeLower === 'lose') {
+      console.log(`❌ Completed bet with outcome "${outcome}" mapped to: lost`)
+      return 'lost'
+    } else if (outcomeLower === 'push' || outcomeLower === 'void') {
+      console.log(`🚫 Completed bet with outcome "${outcome}" mapped to: void`)
+      return 'void'
+    } else {
+      // If completed but no clear outcome, it might be settled but we don't know the result
+      console.log(`⚠️ Completed bet with unclear outcome "${outcome}", defaulting to: pending`)
+      return 'pending'
+    }
+  }
 
   // Map various status formats to our standard format
   switch (lower) {
     case 'won':
     case 'win':
     case 'w':
+      console.log(`✅ Status mapped to: won`)
       return 'won'
     case 'lost':
     case 'lose':
     case 'loss':
     case 'l':
+      console.log(`❌ Status mapped to: lost`)
       return 'lost'
     case 'pending':
     case 'open':
     case 'active':
+      console.log(`⏳ Status mapped to: pending`)
       return 'pending'
     case 'cancelled':
     case 'canceled':
     case 'void':
     case 'push':
+      console.log(`🚫 Status mapped to: void`)
       return 'void'
     default:
+      console.log(`⚠️ Unknown status "${status}", defaulting to: pending`)
       return 'pending'
   }
 }
@@ -98,7 +136,7 @@ export function normalizeBetStatus(status: string | undefined | null): string {
 export function transformSharpSportsBet(bet: any, profileId: string): any {
   return {
     profile_id: profileId,
-    external_bet_id: bet.betSlip?.id || bet.id,
+    external_bet_id: bet.id, // Use the actual bet ID, not betSlip ID
     sport: bet.event?.sport,
     league: bet.event?.league || 'N/A', // Provide default for required field
     bet_type: normalizeBetType(bet.proposition),
@@ -106,10 +144,10 @@ export function transformSharpSportsBet(bet: any, profileId: string): any {
     odds: bet.oddsAmerican || 0, // Provide default for required field
     stake: (bet.atRisk || 0) / 100, // Convert cents to dollars
     potential_payout: ((bet.toWin || 0) + (bet.atRisk || 0)) / 100, // Convert cents to dollars
-    status: normalizeBetStatus(bet.status),
+    status: normalizeBetStatus(bet.status, bet.outcome), // Pass outcome to help determine win/loss
     placed_at: bet.timePlaced,
     settled_at: bet.dateClosed,
-    game_date: bet.event?.startTime,
+    game_date: bet.event?.startTime || new Date().toISOString(), // Provide default for required field
     home_team: bet.event?.contestantHome?.fullName,
     away_team: bet.event?.contestantAway?.fullName,
     side: normalizeSide(bet.position),

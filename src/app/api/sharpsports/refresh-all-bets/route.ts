@@ -11,6 +11,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🔄 Starting combined SharpSports refresh for user ${userId}`)
+    
+    // Get the base URL from the request
+    const baseUrl = new URL(request.url).origin
 
     const results = {
       step1: null,
@@ -24,10 +27,10 @@ export async function POST(request: NextRequest) {
     try {
       console.log('📊 Step 1: Fetching all bettors...')
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 minute timeout
       
       const bettorsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/sharpsports/fetch-bettors`,
+        `${baseUrl}/api/sharpsports/fetch-bettors`,
         {
           method: 'POST',
           headers: {
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Step 1 error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       if (errorMessage.includes('aborted') || errorMessage.includes('timeout')) {
-        results.errors.push('Step 1 timeout: SharpSports API call exceeded 60 seconds')
+        results.errors.push('Step 1 timeout: SharpSports API call exceeded 5 minutes')
       } else {
         results.errors.push('Step 1 error: ' + errorMessage)
       }
@@ -61,10 +64,10 @@ export async function POST(request: NextRequest) {
     try {
       console.log('👥 Step 2: Matching bettor profiles...')
       const controller2 = new AbortController()
-      const timeoutId2 = setTimeout(() => controller2.abort(), 60000) // 60 second timeout
+      const timeoutId2 = setTimeout(() => controller2.abort(), 300000) // 5 minute timeout
       
       const profilesResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/sharpsports/fetch-bettor-profiles`,
+        `${baseUrl}/api/sharpsports/fetch-bettor-profiles`,
         {
           method: 'POST',
           headers: {
@@ -95,10 +98,10 @@ export async function POST(request: NextRequest) {
     try {
       console.log('🎯 Step 3: Refreshing user bets...')
       const controller3 = new AbortController()
-      const timeoutId3 = setTimeout(() => controller3.abort(), 60000) // 60 second timeout
+      const timeoutId3 = setTimeout(() => controller3.abort(), 300000) // 5 minute timeout
       
       const betsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/sharpsports/refresh-user-bets`,
+        `${baseUrl}/api/sharpsports/refresh-user-bets`,
         {
           method: 'POST',
           headers: {

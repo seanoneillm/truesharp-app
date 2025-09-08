@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { calculateProfitLegacy } from '@/lib/utils/parlay-profit-calculator'
 
 // POST /api/sharpsports/sync - Manually sync betSlips for testing
 export async function POST(request: NextRequest) {
@@ -249,7 +250,7 @@ async function processBet(
       odds: parseInt(oddsAmerican) || 0,
       stake: parseFloat(atRisk) || 0,
       potential_payout: parseFloat(atRisk) + parseFloat(toWin) || 0,
-      status: mapStatus(status),
+      status: mapStatus(status, bet.outcome),
       placed_at: timePlaced || new Date().toISOString(),
       settled_at: dateClosed || null,
       game_date: event?.startTime || new Date().toISOString(),
@@ -259,7 +260,7 @@ async function processBet(
       line_value: line ? parseFloat(line) : null,
       sportsbook: book?.name || 'Unknown',
       bet_source: 'sharpsports',
-      profit: calculateProfit(status, atRisk, toWin),
+      profit: calculateProfit(status, atRisk, toWin, bet.outcome),
       parlay_id: parlayId,
       is_parlay: parlayId !== null,
       updated_at: new Date().toISOString(),
@@ -300,17 +301,41 @@ function mapProposition(proposition: string): string {
   }
 }
 
-function mapStatus(status: string): string {
-  switch (status?.toLowerCase()) {
+function mapStatus(status: string, outcome?: string): string {
+  const statusLower = status?.toLowerCase()
+  const outcomeLower = outcome?.toLowerCase()
+  
+  // If status is "completed", check the outcome to determine win/loss
+  if (statusLower === 'completed') {
+    if (outcomeLower === 'win' || outcomeLower === 'won') {
+      return 'won'
+    } else if (outcomeLower === 'loss' || outcomeLower === 'lost' || outcomeLower === 'lose') {
+      return 'lost'
+    } else if (outcomeLower === 'push' || outcomeLower === 'void') {
+      return 'void'
+    } else if (outcomeLower === 'cashout') {
+      return 'won' // Treat cashouts as wins since money was returned
+    } else {
+      // If completed but no clear outcome, default to pending
+      return 'pending'
+    }
+  }
+  
+  switch (statusLower) {
     case 'pending':
       return 'pending'
     case 'won':
+    case 'win':
       return 'won'
     case 'lost':
+    case 'lose':
+    case 'loss':
       return 'lost'
     case 'cancelled':
+    case 'canceled':
       return 'cancelled'
     case 'void':
+    case 'push':
       return 'void'
     default:
       return 'pending'
@@ -329,19 +354,8 @@ function mapSide(position: string): string | null {
   return null
 }
 
-function calculateProfit(status: string, atRisk: string, toWin: string): number | null {
-  const stake = parseFloat(atRisk) || 0
-  const winAmount = parseFloat(toWin) || 0
-
-  switch (status?.toLowerCase()) {
-    case 'won':
-      return winAmount
-    case 'lost':
-      return -stake
-    case 'void':
-    case 'cancelled':
-      return 0
-    default:
-      return null // Pending bets have no profit yet
-  }
+function calculateProfit(status: string, atRisk: string, toWin: string, outcome?: string): number | null {
+  // Use the legacy compatibility function for now
+  // Note: For proper parlay handling, the full sync should be refactored to use calculateBetProfits()
+  return calculateProfitLegacy(status, atRisk, toWin, outcome)
 }

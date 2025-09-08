@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10000')
 
-    let query = supabase.from('bets').select('*', { count: 'exact' }).eq('user_id', user.id)
+    let query = supabase.from('bets').select('*', { count: 'exact' }).eq('user_id', user.id).neq('bet_source', 'mock')
 
     if (sports.length > 0 && !sports.includes('all')) {
       query = query.in('sport', sports)

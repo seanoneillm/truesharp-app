@@ -109,6 +109,9 @@ export async function GET(request: NextRequest) {
     const maxOdds = searchParams.get('max_odds')
     const minStake = searchParams.get('min_stake')
     const maxStake = searchParams.get('max_stake')
+    const limit = searchParams.get('limit')
+    const offset = searchParams.get('offset')
+    const pageType = searchParams.get('pageType') // 'initial' or 'pagination'
 
     // Calculate date range based on custom date filters or timeframe
     const now = new Date()
@@ -150,11 +153,13 @@ export async function GET(request: NextRequest) {
       }
     }
     // First, get all user bets to properly handle parlay grouping
+    // Exclude mock bets from analytics calculations
     let query = querySupabase
       .from('bets')
       .select('*')
       .eq('user_id', finalUserId)
       .eq('is_copy_bet', false)
+      .neq('bet_source', 'mock')
       .gte('placed_at', startDate.toISOString())
 
     // Add end date filter if provided
@@ -707,7 +712,19 @@ export async function GET(request: NextRequest) {
         bets: 1,
       })),
       monthlyData: [],
-      recentBets: groupBetsForDisplay(bets.slice(0, 30), allBets), // Get more raw bets to account for parlay grouping
+      recentBets: (() => {
+        // Group all bets first, then paginate the grouped results
+        const allGroupedBets = groupBetsForDisplay(bets, allBets)
+        
+        if (pageType === 'pagination') {
+          const startIndex = offset ? parseInt(offset) : 0
+          const endIndex = startIndex + (limit ? parseInt(limit) : 20)
+          return allGroupedBets.slice(startIndex, endIndex)
+        } else {
+          // Initial load shows 30 grouped bets
+          return allGroupedBets.slice(0, 30)
+        }
+      })(),
       topPerformingSports: sportStats.slice(0, 5),
     }
 

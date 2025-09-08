@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { Loader2, RefreshCw, Link, Check, AlertCircle } from 'lucide-react'
+import { AlertCircle, Check, Link, Loader2, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 interface BettorAccount {
@@ -81,10 +81,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         },
         body: JSON.stringify({
           userId: effectiveUserId,
-          redirectUrl:
-            window.location.hostname === 'localhost'
-              ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
-              : `${window.location.origin}/api/sharpsports/accounts`,
+          // Let the server determine the correct redirect URL
         }),
       })
 
@@ -92,11 +89,22 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         throw new Error(`Failed to generate context: ${response.status}`)
       }
 
-      const { contextId } = await response.json()
+      const result = await response.json()
+      const { contextId, fallback } = result
       console.log('✅ Generated SharpSports context ID:', contextId)
 
       // Step 2: Use the correct SharpSports UI URL format
-      const booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
+      let booklinkUrl
+      if (fallback) {
+        // Use direct Booklink URL pattern for fallback
+        console.log('🔄 Using fallback Booklink URL approach')
+        const redirectUrl = `${window.location.origin}/api/sharpsports/accounts`
+
+        booklinkUrl = `https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent(`${redirectUrl}?userId=${effectiveUserId}`)}`
+      } else {
+        // Use standard context-based URL
+        booklinkUrl = `https://ui.sharpsports.io/link/${contextId}`
+      }
 
       console.log('📋 Opening Booklink UI:', booklinkUrl)
 
@@ -364,7 +372,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
                 className="block text-xs text-blue-600 hover:underline"
                 onClick={() =>
                   window.open(
-                    `https://sandbox-booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                    `https://sandbox-booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent(`${window.location.origin}/api/sharpsports/accounts`)}`
                   )
                 }
               >
@@ -374,7 +382,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
                 className="block text-xs text-blue-600 hover:underline"
                 onClick={() =>
                   window.open(
-                    `https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                    `https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent(`${window.location.origin}/api/sharpsports/accounts`)}`
                   )
                 }
               >
@@ -384,7 +392,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
                 className="block text-xs text-blue-600 hover:underline"
                 onClick={() =>
                   window.open(
-                    `https://app.sharpsports.io/booklink?userId=${effectiveUserId}&callback=${encodeURIComponent('https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts')}`
+                    `https://app.sharpsports.io/booklink?userId=${effectiveUserId}&callback=${encodeURIComponent(`${window.location.origin}/api/sharpsports/accounts`)}`
                   )
                 }
               >
