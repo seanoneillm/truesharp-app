@@ -98,7 +98,12 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       if (fallback) {
         // Use direct Booklink URL pattern for fallback
         console.log('🔄 Using fallback Booklink URL approach')
-        const redirectUrl = `${window.location.origin}/api/sharpsports/accounts`
+        // Force localhost for development, use actual origin for production
+        const isLocalhost =
+          window.location.hostname === 'localhost' || window.location.hostname.includes('ngrok')
+        const redirectUrl = isLocalhost
+          ? 'http://localhost:3007/api/sharpsports/accounts'
+          : `${window.location.origin}/api/sharpsports/accounts`
 
         booklinkUrl = `https://booklink.sharpsports.io?userId=${effectiveUserId}&callback=${encodeURIComponent(`${redirectUrl}?userId=${effectiveUserId}`)}`
       } else {

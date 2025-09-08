@@ -32,11 +32,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const apiKey = process.env.SHARPSPORTS_API_KEY
-    if (!apiKey) {
-      console.error('SharpSports Context - API key not configured')
+    // Use public API key for context generation (required in live mode)
+    const publicApiKey = process.env.SHARPSPORTS_PUBLIC_API_KEY
+    const privateApiKey = process.env.SHARPSPORTS_API_KEY
+
+    // For context generation, try public key first, fallback to private key (for sandbox compatibility)
+    const contextApiKey = publicApiKey || privateApiKey
+
+    if (!contextApiKey) {
+      console.error('SharpSports Context - No API key configured (public or private)')
       return NextResponse.json({ error: 'SharpSports API key not configured' }, { status: 500 })
     }
+
+    console.log(`🔑 Using ${publicApiKey ? 'public' : 'private'} API key for context generation`)
 
     // Use the main API for both development and production
     const apiBaseUrl = 'https://api.sharpsports.io'
@@ -70,7 +78,7 @@ export async function POST(request: NextRequest) {
     const contextResponse = await fetch(contextEndpoint, {
       method: 'POST',
       headers: {
-        Authorization: `Token ${apiKey}`,
+        Authorization: `Token ${contextApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(contextPayload),
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
           const altResponse = await fetch(altEndpoint, {
             method: 'POST',
             headers: {
-              Authorization: `Token ${apiKey}`,
+              Authorization: `Token ${contextApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(contextPayload),
