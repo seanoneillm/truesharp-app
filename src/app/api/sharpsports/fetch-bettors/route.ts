@@ -11,12 +11,18 @@ class SharpSportsClient {
   }
 
   async bettorList() {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
     const response = await fetch(`${this.baseUrl}/bettors`, {
       headers: {
         Authorization: this.apiKey,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     })
+    
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${await response.text()}`)
@@ -27,12 +33,18 @@ class SharpSportsClient {
   }
 
   async bettoraccountsList() {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
     const response = await fetch(`${this.baseUrl}/bettorAccounts`, {
       headers: {
         Authorization: this.apiKey,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     })
+    
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${await response.text()}`)
