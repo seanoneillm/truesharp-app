@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
 // We need to use the service role key to bypass RLS in webhooks
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     hasBody: !!body,
     bodyLength: body.length,
     hasSignature: !!signature,
-    signaturePrefix: signature?.substring(0, 20) + '...'
+    signaturePrefix: signature?.substring(0, 20) + '...',
   })
 
   if (!signature) {
@@ -29,17 +29,10 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      STRIPE_CONFIG.webhookSecret
-    )
+    event = stripe.webhooks.constructEvent(body, signature, STRIPE_CONFIG.webhookSecret)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
-    return NextResponse.json(
-      { error: 'Webhook signature verification failed' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
   }
 
   console.log('Received Stripe webhook:', event.type, event.id)
@@ -82,34 +75,51 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error('Error processing webhook:', error)
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  console.log('Processing checkout session completed:', session.id)
-  console.log('Session metadata:', session.metadata)
+  console.log('🎯 Processing checkout session completed:', session.id)
+  console.log('📋 Session metadata:', session.metadata)
 
   const { strategy_id, subscriber_id, seller_id, frequency } = session.metadata || {}
-  console.log('Extracted values:', { strategy_id, subscriber_id, seller_id, frequency })
+  console.log('📝 Extracted values:', { strategy_id, subscriber_id, seller_id, frequency })
 
   if (!strategy_id || !subscriber_id || !seller_id || !frequency) {
-    console.error('Missing required metadata in session:', session.metadata)
+    console.error('❌ CRITICAL: Missing required metadata in session:', session.metadata)
+    console.error('📧 Session details:', {
+      id: session.id,
+      customer: session.customer,
+      subscription: session.subscription,
+      payment_status: session.payment_status,
+      status: session.status,
+    })
     return
   }
 
-  // Get the subscription from Stripe  
+  // Get the subscription from Stripe
   if (!session.subscription) {
-    console.error('No subscription ID found in session:', session.id)
+    console.error('❌ CRITICAL: No subscription ID found in session:', session.id)
     return
   }
 
-  const stripeSubscription = await stripe.subscriptions.retrieve(
-    session.subscription as string
-  )
+  // Check if subscription already exists to prevent duplicates
+  const { data: existingSubscription } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('stripe_subscription_id', session.subscription as string)
+    .single()
+
+  if (existingSubscription) {
+    console.log(
+      'ℹ️ Subscription already exists in database, skipping creation:',
+      existingSubscription.id
+    )
+    return
+  }
+
+  const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription as string)
 
   // Get strategy details for price
   const { data: strategy, error: strategyError } = await supabase
@@ -119,7 +129,21 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     .single()
 
   if (strategyError || !strategy) {
-    console.error('Strategy not found:', strategy_id)
+    console.error('❌ CRITICAL: Strategy not found in webhook processing!')
+    console.error('📋 Strategy ID:', strategy_id)
+    console.error('📋 Error:', strategyError)
+    console.error('📋 Session metadata:', session.metadata)
+    console.error('📋 Stripe subscription ID:', session.subscription)
+    console.error('🚨 This subscription EXISTS in Stripe but will NOT be created in database')
+    console.error('🔧 Manual recovery required using /api/debug/recover-subscription')
+
+    // Log to help with debugging
+    console.error('🔍 Debug info for manual recovery:')
+    console.error('   - Stripe Subscription ID:', session.subscription)
+    console.error('   - Subscriber ID:', subscriber_id)
+    console.error('   - Seller ID:', seller_id)
+    console.error('   - Missing Strategy ID:', strategy_id)
+    console.error('   - Frequency:', frequency)
     return
   }
 
@@ -143,13 +167,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     start: subscription.current_period_start,
     end: subscription.current_period_end,
     startType: typeof subscription.current_period_start,
-    endType: typeof subscription.current_period_end
+    endType: typeof subscription.current_period_end,
   })
-  
-  const currentPeriodStart = subscription.current_period_start 
+
+  const currentPeriodStart = subscription.current_period_start
     ? new Date(subscription.current_period_start * 1000)
     : new Date()
-  const currentPeriodEnd = subscription.current_period_end 
+  const currentPeriodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000)
     : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
 
@@ -169,31 +193,40 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     stripe_connect_account_id: session.metadata?.seller_connect_account_id || null,
     stripe_customer_id: session.customer as string,
   }
-  
+
   console.log('🔍 Attempting to insert subscription data:', subscriptionData)
-  
-  const { error: insertError } = await supabase
+
+  const { data: newSubscription, error: insertError } = await supabase
     .from('subscriptions')
     .insert(subscriptionData)
+    .select()
+    .single()
 
   if (insertError) {
-    console.error('❌ Error creating subscription:', insertError)
-    console.error('❌ Failed data:', subscriptionData)
+    console.error('❌ CRITICAL: Error creating subscription in database!')
+    console.error('📋 Insert error:', insertError)
+    console.error('📋 Failed data:', subscriptionData)
+    console.error('🚨 Subscription exists in Stripe but NOT in database')
+    console.error('🔧 Use /api/debug/recover-subscription to fix this')
     return
   } else {
-    console.log('✅ Subscription created successfully')
+    console.log('✅ Subscription created successfully in database!')
+    console.log('📋 New subscription ID:', newSubscription.id)
+    console.log('📋 Stripe subscription ID:', newSubscription.stripe_subscription_id)
   }
 
   // Update strategy subscriber count
   const { error: updateError } = await supabase.rpc('increment_subscriber_count', {
-    strategy_id_param: strategy_id
+    strategy_id_param: strategy_id,
   })
 
   if (updateError) {
-    console.error('Error updating subscriber count:', updateError)
+    console.error('⚠️ Error updating subscriber count (non-critical):', updateError)
+  } else {
+    console.log('✅ Strategy subscriber count updated')
   }
 
-  console.log('Successfully created subscription for session:', session.id)
+  console.log('🎉 Successfully processed checkout session:', session.id)
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
@@ -201,7 +234,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
   const subscriptionData = subscription as any
   const metadata = subscriptionData.metadata || {}
-  
+
   console.log('📋 Subscription metadata:', metadata)
 
   // Check if this is a Pro subscription
@@ -241,10 +274,10 @@ async function handleProSubscriptionCreated(subscription: any, metadata: any) {
     stripe_customer_id: subscription.customer,
     status: subscription.status === 'active' ? 'active' : subscription.status,
     plan: plan,
-    current_period_start: subscription.current_period_start 
+    current_period_start: subscription.current_period_start
       ? new Date(subscription.current_period_start * 1000).toISOString()
       : new Date().toISOString(),
-    current_period_end: subscription.current_period_end 
+    current_period_end: subscription.current_period_end
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     price_id: subscription.items?.data?.[0]?.price?.id || null,
@@ -293,7 +326,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     // Update existing subscription status to active
     const { error } = await supabase
       .from('subscriptions')
-      .update({ 
+      .update({
         status: 'active',
         updated_at: new Date().toISOString(),
       })
@@ -305,20 +338,20 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   } else {
     // Create subscription record if it doesn't exist (fallback for missing checkout.session.completed)
     console.log('🔄 No subscription record found, attempting to create from invoice data')
-    
+
     // Try to get metadata from subscription or line items
     let metadata = invoiceData.subscription_details?.metadata || {}
     if (!metadata.strategy_id && invoiceData.lines?.data?.[0]?.metadata) {
       metadata = invoiceData.lines.data[0].metadata
     }
-    
+
     console.log('📋 Invoice metadata:', metadata)
-    
+
     if (metadata.strategy_id && metadata.subscriber_id && metadata.seller_id) {
       // Get full subscription details from Stripe
       const stripeSubscription = await stripe.subscriptions.retrieve(invoiceData.subscription)
       const subscription = stripeSubscription as any
-      
+
       // Create the subscription record
       const subscriptionData = {
         subscriber_id: metadata.subscriber_id || metadata.buyer_id, // Handle both field names
@@ -329,32 +362,30 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
         frequency: metadata.frequency || 'monthly', // Default to monthly if not specified
         price: parseFloat(metadata.price || '0') / 100, // Convert from cents
         currency: 'USD',
-        current_period_start: subscription.current_period_start 
+        current_period_start: subscription.current_period_start
           ? new Date(subscription.current_period_start * 1000).toISOString()
           : new Date().toISOString(),
-        current_period_end: subscription.current_period_end 
+        current_period_end: subscription.current_period_end
           ? new Date(subscription.current_period_end * 1000).toISOString()
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        next_billing_date: subscription.current_period_end 
+        next_billing_date: subscription.current_period_end
           ? new Date(subscription.current_period_end * 1000).toISOString()
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         stripe_customer_id: invoiceData.customer,
       }
-      
+
       console.log('🔍 Creating subscription from invoice data:', subscriptionData)
-      
-      const { error: insertError } = await supabase
-        .from('subscriptions')
-        .insert(subscriptionData)
+
+      const { error: insertError } = await supabase.from('subscriptions').insert(subscriptionData)
 
       if (insertError) {
         console.error('❌ Error creating subscription from invoice:', insertError)
       } else {
         console.log('✅ Subscription created successfully from invoice')
-        
+
         // Update strategy subscriber count
         const { error: updateError } = await supabase.rpc('increment_subscriber_count', {
-          strategy_id_param: metadata.strategy_id
+          strategy_id_param: metadata.strategy_id,
         })
 
         if (updateError) {
@@ -376,7 +407,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   // Update subscription status to past_due
   const { error } = await supabase
     .from('subscriptions')
-    .update({ 
+    .update({
       status: 'past_due',
       updated_at: new Date().toISOString(),
     })
@@ -388,29 +419,60 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  console.log('Processing subscription updated:', subscription.id)
+  console.log('🔄 Processing subscription updated:', subscription.id)
 
-  const subscriptionData = subscription as any
+  const subscriptionData = subscription as unknown as {
+    metadata: Record<string, string>
+    id: string
+    status: string
+    current_period_start: number
+    current_period_end: number
+  }
   const metadata = subscriptionData.metadata || {}
+
+  console.log('📋 Subscription metadata:', metadata)
+  console.log('📋 New status:', subscriptionData.status)
 
   // Check if this is a Pro subscription
   if (metadata.subscription_type === 'pro') {
+    console.log('💼 Processing Pro subscription update')
     await handleProSubscriptionUpdated(subscriptionData, metadata)
   } else {
-    // Handle regular strategy subscriptions
-    const { error } = await supabase
+    console.log('📊 Processing strategy subscription update')
+
+    // Check if subscription exists in database
+    const { data: existingSub, error: fetchError } = await supabase
       .from('subscriptions')
-      .update({
-        status: subscriptionData.status === 'active' ? 'active' : subscriptionData.status,
-        current_period_start: new Date(subscriptionData.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscriptionData.current_period_end * 1000).toISOString(),
-        next_billing_date: new Date(subscriptionData.current_period_end * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .select('id')
+      .eq('stripe_subscription_id', subscriptionData.id)
+      .single()
+
+    if (fetchError || !existingSub) {
+      console.error('⚠️ Subscription not found in database for update:', subscriptionData.id)
+      console.error('📋 This may be an orphaned Stripe subscription')
+      console.error('📋 Error:', fetchError)
+      return
+    }
+
+    // Handle regular strategy subscriptions
+    const updateData = {
+      status: subscriptionData.status === 'active' ? 'active' : subscriptionData.status,
+      current_period_start: new Date(subscriptionData.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(subscriptionData.current_period_end * 1000).toISOString(),
+      next_billing_date: new Date(subscriptionData.current_period_end * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error: updateError } = await supabase
+      .from('subscriptions')
+      .update(updateData)
       .eq('stripe_subscription_id', subscriptionData.id)
 
-    if (error) {
-      console.error('Error updating strategy subscription:', error)
+    if (updateError) {
+      console.error('❌ Error updating strategy subscription:', updateError)
+    } else {
+      console.log('✅ Strategy subscription updated successfully')
+      console.log('📋 Updated data:', updateData)
     }
   }
 }
@@ -420,10 +482,10 @@ async function handleProSubscriptionUpdated(subscription: any, metadata: any) {
 
   const updateData = {
     status: subscription.status,
-    current_period_start: subscription.current_period_start 
+    current_period_start: subscription.current_period_start
       ? new Date(subscription.current_period_start * 1000).toISOString()
       : null,
-    current_period_end: subscription.current_period_end 
+    current_period_end: subscription.current_period_end
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null,
     updated_at: new Date().toISOString(),
@@ -443,7 +505,7 @@ async function handleProSubscriptionUpdated(subscription: any, metadata: any) {
 
   // Update profile pro status based on subscription status
   const proStatus = subscription.status === 'active' ? 'yes' : 'no'
-  
+
   if (metadata.user_id) {
     const { error: profileError } = await supabase
       .from('profiles')
@@ -459,25 +521,38 @@ async function handleProSubscriptionUpdated(subscription: any, metadata: any) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  console.log('Processing subscription deleted:', subscription.id)
+  console.log('🔄 Processing subscription deleted:', subscription.id)
 
-  const subscriptionData = subscription as any
+  const subscriptionData = subscription as { metadata: Record<string, string>; id: string }
   const metadata = subscriptionData.metadata || {}
+
+  console.log('📋 Subscription metadata:', metadata)
 
   // Check if this is a Pro subscription
   if (metadata.subscription_type === 'pro') {
+    console.log('💼 Processing Pro subscription deletion')
     await handleProSubscriptionDeleted(subscriptionData, metadata)
   } else {
-    // Handle regular strategy subscriptions
-    // Get the subscription to decrement strategy counter
-    const { data: subData } = await supabase
+    console.log('📊 Processing strategy subscription deletion')
+
+    // Get the subscription from database to check if it exists and get strategy_id
+    const { data: subData, error: fetchError } = await supabase
       .from('subscriptions')
-      .select('strategy_id')
+      .select('strategy_id, id, subscriber_id, seller_id')
       .eq('stripe_subscription_id', subscriptionData.id)
       .single()
 
+    if (fetchError || !subData) {
+      console.error('⚠️ Subscription not found in database for deletion:', subscriptionData.id)
+      console.error('📋 This may be an orphaned Stripe subscription')
+      console.error('📋 Error:', fetchError)
+      return
+    }
+
+    console.log('📋 Found subscription in database:', subData.id)
+
     // Update subscription status to cancelled
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
         status: 'cancelled',
@@ -486,20 +561,27 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       })
       .eq('stripe_subscription_id', subscriptionData.id)
 
-    if (error) {
-      console.error('Error updating strategy subscription status:', error)
+    if (updateError) {
+      console.error('❌ Error updating strategy subscription status:', updateError)
+      return
+    } else {
+      console.log('✅ Subscription status updated to cancelled')
     }
 
     // Decrement strategy subscriber count
-    if (subData?.strategy_id) {
-      const { error: updateError } = await supabase.rpc('decrement_subscriber_count', {
-        strategy_id_param: subData.strategy_id
+    if (subData.strategy_id) {
+      const { error: decrementError } = await supabase.rpc('decrement_subscriber_count', {
+        strategy_id_param: subData.strategy_id,
       })
 
-      if (updateError) {
-        console.error('Error decrementing subscriber count:', updateError)
+      if (decrementError) {
+        console.error('⚠️ Error decrementing subscriber count (non-critical):', decrementError)
+      } else {
+        console.log('✅ Strategy subscriber count decremented')
       }
     }
+
+    console.log('🎉 Successfully processed subscription deletion:', subscriptionData.id)
   }
 }
 

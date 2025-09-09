@@ -9,16 +9,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useSharpSportsExtension } from '@/lib/contexts/sharpsports-extension'
-import { Download, AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Download } from 'lucide-react'
 import { useState } from 'react'
 
 export function ExtensionUpdateModal() {
-  const { 
-    isExtensionUpdateRequired, 
-    extensionDownloadUrl, 
-    clearExtensionUpdate 
-  } = useSharpSportsExtension()
-  
+  const { isExtensionUpdateRequired, extensionDownloadUrl, clearExtensionUpdate } =
+    useSharpSportsExtension()
+
   const [isDismissed, setIsDismissed] = useState(false)
 
   const isOpen = isExtensionUpdateRequired && !isDismissed
@@ -30,7 +27,7 @@ export function ExtensionUpdateModal() {
       // Fallback to Chrome Web Store search
       window.open('https://chrome.google.com/webstore/search/sharpsports', '_blank')
     }
-    
+
     // Clear the extension update state
     clearExtensionUpdate()
   }
@@ -46,7 +43,7 @@ export function ExtensionUpdateModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDismiss}>
-      <DialogContent className="sm:max-w-md mx-auto">
+      <DialogContent className="mx-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center gap-2">
@@ -66,23 +63,23 @@ export function ExtensionUpdateModal() {
           <DialogDescription>
             {isExtensionUpdateRequired ? (
               <>
-                Your SharpSports browser extension needs to be updated to continue linking 
+                Your SharpSports browser extension needs to be updated to continue linking
                 SDK-required sportsbooks. Please install the latest version.
               </>
             ) : (
               <>
-                To link certain sportsbooks that require SDK integration, you need to install 
-                the SharpSports browser extension. This enables secure connection to additional 
+                To link certain sportsbooks that require SDK integration, you need to install the
+                SharpSports browser extension. This enables secure connection to additional
                 sportsbook platforms.
               </>
             )}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="rounded-lg bg-blue-50 p-3">
-            <h4 className="font-medium text-blue-900 mb-1">What this enables:</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
+            <h4 className="mb-1 font-medium text-blue-900">What this enables:</h4>
+            <ul className="space-y-1 text-sm text-blue-800">
               <li>• Access to more sportsbook platforms</li>
               <li>• Secure authentication for SDK-required books</li>
               <li>• Automatic bet syncing from additional sources</li>
