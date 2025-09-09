@@ -16,7 +16,6 @@ export function ExtensionUpdateModal() {
   const { 
     isExtensionUpdateRequired, 
     extensionDownloadUrl, 
-    isExtensionAvailable,
     clearExtensionUpdate 
   } = useSharpSportsExtension()
   
