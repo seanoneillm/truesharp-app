@@ -72,8 +72,8 @@ async function handleRefreshResponseCreated(supabase: any, data: any) {
 
       // Find the bettor account to get user_id
       const { data: account, error: accountError } = await supabase
-        .from('bettor_account')
-        .select('user_id, bettor_id')
+        .from('bettor_accounts')
+        .select('bettor_id')
         .eq('sharpsports_account_id', bettorAccountId)
         .single()
 
@@ -82,8 +82,20 @@ async function handleRefreshResponseCreated(supabase: any, data: any) {
         return
       }
 
+      // Get the user_id from the bettor_id via profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('sharpsports_bettor_id', account.bettor_id)
+        .single()
+
+      if (profileError || !profile) {
+        console.error('SharpSports Webhook - Profile not found for bettor:', account.bettor_id, profileError)
+        return
+      }
+
       // Fetch and sync betSlips for this bettor
-      await syncBetSlips(supabase, account.bettor_id, account.user_id)
+      await syncBetSlips(supabase, account.bettor_id, profile.id)
     } else {
       console.log(
         `❌ SharpSports Webhook - Refresh failed for account: ${bettorAccountId}, status: ${status}`
@@ -100,7 +112,7 @@ async function handleBettorAccountVerified(supabase: any, data: any) {
   try {
     // Update the bettor account verification status
     const { error: updateError } = await supabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .update({
         verified: true,
         access: data.access || true,
@@ -134,8 +146,8 @@ async function syncBetSlips(supabase: any, bettorId: string, userId: string) {
         ? 'https://api.sharpsports.io'
         : 'https://sandbox-api.sharpsports.io'
 
-    // Fetch betSlips from SharpSports API
-    const response = await fetch(`${apiBaseUrl}/v1/bettors/${bettorId}/betSlips`, {
+    // Fetch betSlips from SharpSports API (include all statuses to get pending bets)
+    const response = await fetch(`${apiBaseUrl}/v1/bettors/${bettorId}/betSlips?includeIncomplete=true`, {
       headers: {
         Authorization: `Token ${apiKey}`,
         'Content-Type': 'application/json',

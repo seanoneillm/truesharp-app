@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateProfitLegacy } from '@/lib/utils/parlay-profit-calculator'
+import { processBetsWithParlayLogic } from '@/lib/utils/parlay-sync-handler'
 
 // POST /api/sharpsports/sync - Manually sync betSlips for testing
 export async function POST(request: NextRequest) {
@@ -17,15 +17,25 @@ export async function POST(request: NextRequest) {
     let effectiveUserId = user?.id
     let querySupabase = supabase
 
+    // Read request body once to get all parameters
+    const body = await request.json().catch(() => ({}))
+    const { 
+      userId: requestUserId, 
+      extensionAuthToken,
+      extensionVersion 
+    } = body
+
+    console.log('🔍 Extension data:', { 
+      hasToken: !!extensionAuthToken, 
+      version: extensionVersion 
+    })
+
     // Handle service role fallback for authentication
     if (authError || !user) {
-      const body = await request.json().catch(() => ({}))
-      const userId = body.userId
-
-      if (userId) {
+      if (requestUserId) {
         console.log(
           'SharpSports Sync - Using service role with userId:',
-          userId.substring(0, 8) + '...'
+          requestUserId.substring(0, 8) + '...'
         )
 
         const serviceSupabase = createClient(
@@ -39,7 +49,7 @@ export async function POST(request: NextRequest) {
           }
         )
 
-        effectiveUserId = userId
+        effectiveUserId = requestUserId
         querySupabase = serviceSupabase
       } else {
         console.log('SharpSports Sync - No authentication available')
@@ -47,11 +57,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get all linked bettor accounts for this user
+    // First get the user's SharpSports bettor ID from their profile
+    const { data: profile, error: profileError } = await querySupabase
+      .from('profiles')
+      .select('sharpsports_bettor_id')
+      .eq('id', effectiveUserId)
+      .single()
+
+    if (profileError || !profile?.sharpsports_bettor_id) {
+      console.log('SharpSports Sync - User has no SharpSports bettor ID')
+      return NextResponse.json({
+        message: 'User has no SharpSports bettor ID configured',
+        synced: 0,
+      })
+    }
+
+    // Get all linked bettor accounts for this bettor
     const { data: accounts, error: accountsError } = await querySupabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .select('*')
-      .eq('user_id', effectiveUserId)
+      .eq('bettor_id', profile.sharpsports_bettor_id)
       .eq('verified', true)
 
     if (accountsError) {
@@ -86,7 +111,9 @@ export async function POST(request: NextRequest) {
         const betsProcessed = await syncBetSlipsForAccount(
           querySupabase,
           account.bettor_id,
-          effectiveUserId!
+          effectiveUserId!,
+          extensionAuthToken,
+          extensionVersion
         )
         totalBetsProcessed += betsProcessed
 
@@ -135,7 +162,9 @@ export async function POST(request: NextRequest) {
 async function syncBetSlipsForAccount(
   supabase: any,
   bettorId: string,
-  userId: string
+  userId: string,
+  extensionAuthToken?: string,
+  extensionVersion?: string
 ): Promise<number> {
   console.log(`🔄 SharpSports Sync - Syncing betSlips for bettor: ${bettorId}`)
 
@@ -148,12 +177,23 @@ async function syncBetSlipsForAccount(
         ? 'https://api.sharpsports.io'
         : 'https://sandbox-api.sharpsports.io'
 
-    // Fetch betSlips from SharpSports API
-    const response = await fetch(`${apiBaseUrl}/v1/bettors/${bettorId}/betSlips`, {
-      headers: {
-        Authorization: `Token ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+    // Prepare headers with extension data if available
+    const headers: Record<string, string> = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    }
+
+    // Add extension data to headers if available
+    if (extensionAuthToken) {
+      headers['X-Extension-Auth-Token'] = extensionAuthToken
+    }
+    if (extensionVersion) {
+      headers['X-Extension-Version'] = extensionVersion
+    }
+
+    // Fetch betSlips from SharpSports API (include all statuses to get pending bets)
+    const response = await fetch(`${apiBaseUrl}/v1/bettors/${bettorId}/betSlips?includeIncomplete=true`, {
+      headers,
     })
 
     if (!response.ok) {
@@ -166,196 +206,18 @@ async function syncBetSlipsForAccount(
     const betSlips = await response.json()
     console.log(`📊 SharpSports Sync - Fetched ${betSlips.length} betSlips`)
 
-    let totalBetsProcessed = 0
+    // Use parlay-aware processing
+    const syncResult = await processBetsWithParlayLogic(betSlips, userId, supabase)
+    console.log(`✅ SharpSports Sync - Processed ${syncResult.processed} bets (${syncResult.updated} updated, ${syncResult.errors.length} errors)`)
 
-    // Process each betSlip
-    for (const betSlip of betSlips) {
-      const betsInSlip = await processBetSlip(supabase, betSlip, userId)
-      totalBetsProcessed += betsInSlip
+    if (syncResult.errors.length > 0) {
+      console.error('SharpSports Sync - Sync errors:', syncResult.errors)
     }
 
-    console.log(
-      `✅ SharpSports Sync - Completed syncing betSlips for bettor: ${bettorId}, processed ${totalBetsProcessed} bets`
-    )
-    return totalBetsProcessed
+    return syncResult.processed
   } catch (error) {
     console.error('SharpSports Sync - Error syncing betSlips:', error)
     throw error
   }
 }
 
-async function processBetSlip(supabase: any, betSlip: any, userId: string): Promise<number> {
-  try {
-    const { bets } = betSlip
-
-    if (!bets || bets.length === 0) {
-      console.log('SharpSports Sync - BetSlip has no bets, skipping')
-      return 0
-    }
-
-    // Generate parlay_id for multi-bet slips (parlays)
-    const parlayId = bets.length > 1 ? crypto.randomUUID() : null
-
-    console.log(`🎯 SharpSports Sync - Processing ${bets.length} bet(s) from betSlip ${betSlip.id}`)
-
-    let betsProcessed = 0
-    for (const bet of bets) {
-      const success = await processBet(supabase, bet, betSlip, userId, parlayId)
-      if (success) betsProcessed++
-    }
-
-    return betsProcessed
-  } catch (error) {
-    console.error('SharpSports Sync - Error processing betSlip:', error)
-    return 0
-  }
-}
-
-async function processBet(
-  supabase: any,
-  bet: any,
-  betSlip: any,
-  userId: string,
-  parlayId: string | null
-): Promise<boolean> {
-  try {
-    const {
-      event,
-      proposition,
-      bookDescription,
-      oddsAmerican,
-      atRisk,
-      toWin,
-      status,
-      timePlaced,
-      dateClosed,
-      position,
-      line,
-    } = bet
-    const { book } = betSlip
-
-    // Create external_bet_id (stable identifier for upserts)
-    const external_bet_id = parlayId
-      ? `${betSlip.id}-${bet.id}` // For parlay legs: betSlipId-betId
-      : bet.id || betSlip.id // For single bets: use bet.id or fallback to betSlip.id
-
-    // Map SharpSports data to our bets table structure
-    const mappedBet = {
-      user_id: userId,
-      external_bet_id: external_bet_id,
-      sport: event?.sport || 'Unknown',
-      league: event?.league || 'Unknown',
-      bet_type: mapProposition(proposition),
-      bet_description: bookDescription || 'N/A',
-      odds: parseInt(oddsAmerican) || 0,
-      stake: parseFloat(atRisk) || 0,
-      potential_payout: parseFloat(atRisk) + parseFloat(toWin) || 0,
-      status: mapStatus(status, bet.outcome),
-      placed_at: timePlaced || new Date().toISOString(),
-      settled_at: dateClosed || null,
-      game_date: event?.startTime || new Date().toISOString(),
-      home_team: event?.contestantHome?.fullName || null,
-      away_team: event?.contestantAway?.fullName || null,
-      side: mapSide(position),
-      line_value: line ? parseFloat(line) : null,
-      sportsbook: book?.name || 'Unknown',
-      bet_source: 'sharpsports',
-      profit: calculateProfit(status, atRisk, toWin, bet.outcome),
-      parlay_id: parlayId,
-      is_parlay: parlayId !== null,
-      updated_at: new Date().toISOString(),
-    }
-
-    console.log(`💾 SharpSports Sync - Upserting bet with external_bet_id: ${external_bet_id}`)
-
-    // Upsert bet (insert or update based on external_bet_id)
-    const { error: upsertError } = await supabase.from('bets').upsert(mappedBet, {
-      onConflict: 'external_bet_id',
-      ignoreDuplicates: false,
-    })
-
-    if (upsertError) {
-      console.error('SharpSports Sync - Error upserting bet:', upsertError)
-      return false
-    } else {
-      console.log(`✅ SharpSports Sync - Successfully upserted bet: ${external_bet_id}`)
-      return true
-    }
-  } catch (error) {
-    console.error('SharpSports Sync - Error processing bet:', error)
-    return false
-  }
-}
-
-// Helper functions to map SharpSports data to our format
-function mapProposition(proposition: string): string {
-  switch (proposition?.toLowerCase()) {
-    case 'spread':
-      return 'spread'
-    case 'total':
-      return 'total'
-    case 'moneyline':
-      return 'moneyline'
-    default:
-      return 'player_prop'
-  }
-}
-
-function mapStatus(status: string, outcome?: string): string {
-  const statusLower = status?.toLowerCase()
-  const outcomeLower = outcome?.toLowerCase()
-  
-  // If status is "completed", check the outcome to determine win/loss
-  if (statusLower === 'completed') {
-    if (outcomeLower === 'win' || outcomeLower === 'won') {
-      return 'won'
-    } else if (outcomeLower === 'loss' || outcomeLower === 'lost' || outcomeLower === 'lose') {
-      return 'lost'
-    } else if (outcomeLower === 'push' || outcomeLower === 'void') {
-      return 'void'
-    } else if (outcomeLower === 'cashout') {
-      return 'won' // Treat cashouts as wins since money was returned
-    } else {
-      // If completed but no clear outcome, default to pending
-      return 'pending'
-    }
-  }
-  
-  switch (statusLower) {
-    case 'pending':
-      return 'pending'
-    case 'won':
-    case 'win':
-      return 'won'
-    case 'lost':
-    case 'lose':
-    case 'loss':
-      return 'lost'
-    case 'cancelled':
-    case 'canceled':
-      return 'cancelled'
-    case 'void':
-    case 'push':
-      return 'void'
-    default:
-      return 'pending'
-  }
-}
-
-function mapSide(position: string): string | null {
-  if (!position) return null
-
-  const pos = position.toLowerCase()
-  if (pos.includes('over')) return 'over'
-  if (pos.includes('under')) return 'under'
-  if (pos.includes('home')) return 'home'
-  if (pos.includes('away')) return 'away'
-
-  return null
-}
-
-function calculateProfit(status: string, atRisk: string, toWin: string, outcome?: string): number | null {
-  // Use the legacy compatibility function for now
-  // Note: For proper parlay handling, the full sync should be refactored to use calculateBetProfits()
-  return calculateProfitLegacy(status, atRisk, toWin, outcome)
-}

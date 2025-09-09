@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Combined endpoint that runs all 3 SharpSports functions in order
+// Combined endpoint that runs all 4 SharpSports functions in order
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       step1: null,
       step2: null,
       step3: null,
+      step4: null,
       success: false,
       errors: [] as string[],
     }
@@ -94,14 +95,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 3: Refresh User Bets
+    // Step 3: Refresh Bettor Account Data with SharpSports
     try {
-      console.log('🎯 Step 3: Refreshing user bets...')
+      console.log('🔄 Step 3: Refreshing bettor account data...')
       const controller3 = new AbortController()
       const timeoutId3 = setTimeout(() => controller3.abort(), 300000) // 5 minute timeout
       
-      const betsResponse = await fetch(
-        `${baseUrl}/api/sharpsports/refresh-user-bets`,
+      const refreshResponse = await fetch(
+        `${baseUrl}/api/sharpsports/refresh-bettor-account`,
         {
           method: 'POST',
           headers: {
@@ -116,18 +117,55 @@ export async function POST(request: NextRequest) {
       
       clearTimeout(timeoutId3)
 
-      const betsResult = await betsResponse.json()
-      results.step3 = betsResult
+      const refreshResult = await refreshResponse.json()
+      results.step3 = refreshResult
 
-      if (!betsResult.success) {
-        results.errors.push('Step 3 failed: ' + betsResult.error)
+      if (!refreshResult.success) {
+        results.errors.push('Step 3 failed: ' + refreshResult.error)
       } else {
-        console.log('✅ Step 3 completed:', betsResult.message)
+        console.log('✅ Step 3 completed:', refreshResult.message)
       }
     } catch (error) {
       console.error('❌ Step 3 error:', error)
       results.errors.push(
         'Step 3 error: ' + (error instanceof Error ? error.message : 'Unknown error')
+      )
+    }
+
+    // Step 4: Refresh User Bets
+    try {
+      console.log('🎯 Step 4: Refreshing user bets...')
+      const controller4 = new AbortController()
+      const timeoutId4 = setTimeout(() => controller4.abort(), 300000) // 5 minute timeout
+      
+      const betsResponse = await fetch(
+        `${baseUrl}/api/sharpsports/refresh-user-bets`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller4.signal,
+          body: JSON.stringify({
+            userId: userId,
+          }),
+        }
+      )
+      
+      clearTimeout(timeoutId4)
+
+      const betsResult = await betsResponse.json()
+      results.step4 = betsResult
+
+      if (!betsResult.success) {
+        results.errors.push('Step 4 failed: ' + betsResult.error)
+      } else {
+        console.log('✅ Step 4 completed:', betsResult.message)
+      }
+    } catch (error) {
+      console.error('❌ Step 4 error:', error)
+      results.errors.push(
+        'Step 4 error: ' + (error instanceof Error ? error.message : 'Unknown error')
       )
     }
 

@@ -15,7 +15,7 @@ class SharpSportsClient {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 minute timeout
     
-    const response = await fetch(`${this.baseUrl}/bettors/${id}/betSlips`, {
+    const response = await fetch(`${this.baseUrl}/bettors/${id}/betSlips?includeIncomplete=true`, {
       headers: {
         Authorization: this.apiKey,
         'Content-Type': 'application/json',

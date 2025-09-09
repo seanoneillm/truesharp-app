@@ -43,6 +43,29 @@ export async function processBetsWithParlayLogic(
 }> {
   const stats = { processed: 0, updated: 0, errors: [] as string[] }
 
+  // Log raw bet slip data for debugging
+  console.log(`📊 Raw betSlips data summary:`)
+  console.log(`Total betSlips: ${betSlips.length}`)
+  
+  // Count different statuses and outcomes to see what we're getting
+  const statusCounts = new Map<string, number>()
+  const outcomeCounts = new Map<string, number>()
+  
+  for (const betSlip of betSlips) {
+    if (betSlip.bets) {
+      for (const bet of betSlip.bets) {
+        const status = bet.status || 'undefined'
+        const outcome = bet.outcome === null ? 'null' : (bet.outcome || 'undefined')
+        
+        statusCounts.set(status, (statusCounts.get(status) || 0) + 1)
+        outcomeCounts.set(outcome, (outcomeCounts.get(outcome) || 0) + 1)
+      }
+    }
+  }
+  
+  console.log(`📈 Status distribution:`, Object.fromEntries(statusCounts))
+  console.log(`📈 Outcome distribution:`, Object.fromEntries(outcomeCounts))
+
   // Group bet slips by parlay vs single bets
   const singleBets: any[] = []
   const parlayGroups = new Map<string, { slips: any[]; uuid: string }>()
@@ -58,7 +81,7 @@ export async function processBetsWithParlayLogic(
       if (!parlayGroups.has(betSlip.id)) {
         parlayGroups.set(betSlip.id, {
           slips: [],
-          uuid: crypto.randomUUID(), // Generate proper UUID for database
+          uuid: generateDeterministicUUID(betSlip.id), // Generate consistent UUID from betSlip ID
         })
       }
       parlayGroups.get(betSlip.id)!.slips.push(betSlip)
@@ -76,8 +99,9 @@ export async function processBetsWithParlayLogic(
   // Process single bets (existing logic)
   for (const betSlip of singleBets) {
     try {
-      const bets = await processSingleBetSlip(betSlip, userId, supabase)
-      stats.processed += bets.length
+      const result = await processSingleBetSlip(betSlip, userId, supabase)
+      stats.processed += result.bets.length
+      stats.updated += result.updated
     } catch (error) {
       stats.errors.push(`Single bet ${betSlip.id}: ${error}`)
     }
@@ -86,13 +110,14 @@ export async function processBetsWithParlayLogic(
   // Process parlays with correct profit logic
   for (const [slipId, parlayGroup] of parlayGroups) {
     try {
-      const bets = await processParlayBetSlips(
+      const result = await processParlayBetSlips(
         parlayGroup.slips,
         userId,
         parlayGroup.uuid,
         supabase
       )
-      stats.processed += bets.length
+      stats.processed += result.bets.length
+      stats.updated += result.updated
     } catch (error) {
       stats.errors.push(`Parlay ${slipId}: ${error}`)
     }
@@ -108,11 +133,12 @@ async function processSingleBetSlip(
   betSlip: any,
   userId: string,
   supabase: any
-): Promise<ProcessedBet[]> {
+): Promise<{ bets: ProcessedBet[]; updated: number }> {
   const processedBets: ProcessedBet[] = []
+  let updated = 0
 
   if (!betSlip.bets || betSlip.bets.length === 0) {
-    return processedBets
+    return { bets: processedBets, updated }
   }
 
   for (const bet of betSlip.bets) {
@@ -120,8 +146,11 @@ async function processSingleBetSlip(
     const toWin = (parseFloat(betSlip.toWin) || 0) / 100 // Convert cents to dollars
     const potentialPayout = toWin + stake
 
-    // Calculate profit for single bet
-    const profit = calculateSingleBetProfit(betSlip.status, betSlip.outcome, stake, toWin)
+    // Log the bet status and outcome for debugging
+    console.log(`🔍 Processing bet ${bet.id}: status="${bet.status}", outcome="${bet.outcome}"`)
+
+    // Calculate profit for single bet - use bet status/outcome, not betSlip
+    const profit = calculateSingleBetProfit(bet.status, bet.outcome, stake, toWin)
 
     const processedBet: ProcessedBet = {
       external_bet_id: bet.id || betSlip.id,
@@ -133,7 +162,7 @@ async function processSingleBetSlip(
       odds: parseInt(bet.oddsAmerican) || 0,
       stake: stake,
       potential_payout: potentialPayout,
-      status: mapStatus(betSlip.status, betSlip.outcome),
+      status: mapStatus(bet.status, bet.outcome),
       profit: profit,
       placed_at: betSlip.timePlaced || new Date().toISOString(),
       settled_at: betSlip.dateClosed || null,
@@ -151,11 +180,12 @@ async function processSingleBetSlip(
 
     processedBets.push(processedBet)
 
-    // Save to database
-    await saveBetToDatabase(processedBet, supabase)
+    // Save to database and track if it was an update
+    const wasUpdated = await saveBetToDatabase(processedBet, supabase)
+    if (wasUpdated) updated++
   }
 
-  return processedBets
+  return { bets: processedBets, updated }
 }
 
 /**
@@ -166,11 +196,12 @@ async function processParlayBetSlips(
   userId: string,
   parlayId: string,
   supabase: any
-): Promise<ProcessedBet[]> {
+): Promise<{ bets: ProcessedBet[]; updated: number }> {
   const processedBets: ProcessedBet[] = []
+  let updated = 0
 
   if (parlaySlips.length === 0) {
-    return processedBets
+    return { bets: processedBets, updated }
   }
 
   // Get the main parlay slip (usually the first one has the stake/payout info)
@@ -185,7 +216,6 @@ async function processParlayBetSlips(
 
   // Determine parlay outcome by checking all legs
   const parlayOutcome = determineParlayOutcome(parlaySlips)
-  const parlayStatus = mapParlayStatus(parlayOutcome)
 
   // Calculate parlay profit based on overall outcome
   let parlayProfit: number | null = null
@@ -210,6 +240,9 @@ async function processParlayBetSlips(
     if (!betSlip.bets || betSlip.bets.length === 0) continue
 
     for (const bet of betSlip.bets) {
+      // Log the bet status and outcome for debugging parlays
+      console.log(`🔍 Processing parlay bet ${bet.id}: status="${bet.status}", outcome="${bet.outcome}"`)
+      
       const processedBet: ProcessedBet = {
         external_bet_id: `${parlayId}-${bet.id}`,
         user_id: userId,
@@ -220,7 +253,7 @@ async function processParlayBetSlips(
         odds: parseInt(bet.oddsAmerican) || 0,
         stake: i === 0 ? totalStake : 0, // Only first leg has stake
         potential_payout: i === 0 ? totalPayout : 0, // Only first leg has payout
-        status: parlayStatus,
+        status: mapStatus(bet.status, bet.outcome), // Use individual bet status, not parlay status
         profit: i === 0 ? parlayProfit : 0, // Only first leg has profit/loss
         placed_at: betSlip.timePlaced || new Date().toISOString(),
         settled_at: betSlip.dateClosed || null,
@@ -238,12 +271,13 @@ async function processParlayBetSlips(
 
       processedBets.push(processedBet)
 
-      // Save to database
-      await saveBetToDatabase(processedBet, supabase)
+      // Save to database and track if it was an update
+      const wasUpdated = await saveBetToDatabase(processedBet, supabase)
+      if (wasUpdated) updated++
     }
   }
 
-  return processedBets
+  return { bets: processedBets, updated }
 }
 
 /**
@@ -255,32 +289,48 @@ function determineParlayOutcome(parlaySlips: any[]): 'win' | 'loss' | 'push' | '
   let hasPush = false
   let hasPending = false
 
+  // For parlays, we need to check each individual bet's status/outcome
   for (const slip of parlaySlips) {
-    const status = slip.status?.toLowerCase()
-    const outcome = slip.outcome?.toLowerCase()
+    if (!slip.bets || slip.bets.length === 0) continue
 
-    // Determine this leg's outcome
-    let legOutcome: string
-    if (status === 'completed') {
-      if (outcome === 'win' || outcome === 'won') legOutcome = 'win'
-      else if (outcome === 'loss' || outcome === 'lost' || outcome === 'lose') legOutcome = 'loss'
-      else if (outcome === 'push' || outcome === 'void') legOutcome = 'push'
-      else legOutcome = 'pending'
-    } else if (status === 'won' || status === 'win') {
-      legOutcome = 'win'
-    } else if (status === 'lost' || status === 'lose' || status === 'loss') {
-      legOutcome = 'loss'
-    } else if (status === 'void' || status === 'push' || status === 'cancelled') {
-      legOutcome = 'push'
-    } else {
-      legOutcome = 'pending'
+    for (const bet of slip.bets) {
+      const status = bet.status?.toLowerCase()
+      const outcome = bet.outcome?.toLowerCase()
+
+      // Determine this bet's outcome
+      let legOutcome: string
+      if (status === 'completed') {
+        // If outcome is null/undefined, it's still pending even if status is completed
+        if (!bet.outcome || !outcome) {
+          legOutcome = 'pending'
+        } else if (outcome === 'win' || outcome === 'won') {
+          legOutcome = 'win'
+        } else if (outcome === 'loss' || outcome === 'lost' || outcome === 'lose') {
+          legOutcome = 'loss'
+        } else if (outcome === 'push' || outcome === 'void') {
+          legOutcome = 'push'
+        } else {
+          legOutcome = 'pending'
+        }
+      } else if (status === 'won' || status === 'win') {
+        legOutcome = 'win'
+      } else if (status === 'lost' || status === 'lose' || status === 'loss') {
+        legOutcome = 'loss'
+      } else if (status === 'void' || status === 'push' || status === 'cancelled' || status === 'canceled') {
+        legOutcome = 'push'
+      } else if (status === 'pending' || status === 'open' || status === 'active') {
+        legOutcome = 'pending'
+      } else {
+        // For any unknown status, treat as pending
+        legOutcome = 'pending'
+      }
+
+      // Track outcomes
+      if (legOutcome === 'win') hasWin = true
+      else if (legOutcome === 'loss') hasLoss = true
+      else if (legOutcome === 'push') hasPush = true
+      else hasPending = true
     }
-
-    // Track outcomes
-    if (legOutcome === 'win') hasWin = true
-    else if (legOutcome === 'loss') hasLoss = true
-    else if (legOutcome === 'push') hasPush = true
-    else hasPending = true
   }
 
   // Determine parlay result
@@ -292,23 +342,6 @@ function determineParlayOutcome(parlaySlips: any[]): 'win' | 'loss' | 'push' | '
   return 'pending' // Default to pending
 }
 
-/**
- * Map parlay outcome to database status
- */
-function mapParlayStatus(outcome: 'win' | 'loss' | 'push' | 'pending'): string {
-  switch (outcome) {
-    case 'win':
-      return 'won'
-    case 'loss':
-      return 'lost'
-    case 'push':
-      return 'void'
-    case 'pending':
-      return 'pending'
-    default:
-      return 'pending'
-  }
-}
 
 /**
  * Calculate profit for a single bet
@@ -350,18 +383,30 @@ function calculateSingleBetProfit(
 /**
  * Save a processed bet to the database
  */
-async function saveBetToDatabase(bet: ProcessedBet, supabase: any): Promise<void> {
+async function saveBetToDatabase(bet: ProcessedBet, supabase: any): Promise<boolean> {
   try {
     // Check if bet exists
-    const { data: existingBet } = await supabase
+    const { data: existingBet, error: fetchError } = await supabase
       .from('bets')
-      .select('id, external_bet_id, status, profit')
+      .select('id, external_bet_id, status, profit, settled_at')
       .eq('external_bet_id', bet.external_bet_id)
       .single()
 
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found
+      console.error(`❌ Error fetching existing bet ${bet.external_bet_id}:`, fetchError)
+      throw fetchError
+    }
+
     if (existingBet) {
-      // Update if status or profit changed
-      if (existingBet.status !== bet.status || existingBet.profit !== bet.profit) {
+      // Always update to ensure latest data is saved, including status changes
+      // This ensures pending -> won/lost transitions are captured
+      const shouldUpdate = 
+        existingBet.status !== bet.status || 
+        existingBet.profit !== bet.profit || 
+        existingBet.settled_at !== bet.settled_at ||
+        (bet.status !== 'pending' && existingBet.status === 'pending') // Always update when leaving pending state
+
+      if (shouldUpdate) {
         const { error } = await supabase
           .from('bets')
           .update({
@@ -369,14 +414,22 @@ async function saveBetToDatabase(bet: ProcessedBet, supabase: any): Promise<void
             profit: bet.profit,
             settled_at: bet.settled_at,
             updated_at: bet.updated_at,
+            // Also update other fields in case they changed
+            potential_payout: bet.potential_payout,
+            stake: bet.stake,
           })
           .eq('external_bet_id', bet.external_bet_id)
 
         if (error) {
           console.error(`❌ Error updating bet ${bet.external_bet_id}:`, error)
+          throw error
         } else {
-          console.log(`✅ Updated bet: ${bet.external_bet_id} (profit: ${bet.profit})`)
+          console.log(`✅ Updated bet: ${bet.external_bet_id} (${existingBet.status} → ${bet.status}, profit: ${bet.profit})`)
         }
+        return true // Was an update
+      } else {
+        console.log(`⏭️ No changes needed for bet: ${bet.external_bet_id} (status: ${bet.status})`)
+        return false // No update needed
       }
     } else {
       // Insert new bet
@@ -384,9 +437,11 @@ async function saveBetToDatabase(bet: ProcessedBet, supabase: any): Promise<void
 
       if (error) {
         console.error(`❌ Error inserting bet ${bet.external_bet_id}:`, error)
+        throw error
       } else {
-        console.log(`✅ Inserted bet: ${bet.external_bet_id} (profit: ${bet.profit})`)
+        console.log(`✅ Inserted new bet: ${bet.external_bet_id} (status: ${bet.status}, profit: ${bet.profit})`)
       }
+      return false // Was a new insert, not an update
     }
   } catch (error) {
     console.error(`❌ Error saving bet ${bet.external_bet_id}:`, error)
@@ -408,11 +463,36 @@ function mapProposition(proposition: string): string {
   }
 }
 
-function mapStatus(status: string, outcome?: string): string {
+/**
+ * Generate a deterministic UUID from a string (for consistent parlay IDs)
+ */
+function generateDeterministicUUID(input: string): string {
+  // Simple hash function to create deterministic UUID
+  let hash = 0
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  
+  // Convert to positive number and pad
+  const positiveHash = Math.abs(hash).toString(16).padStart(8, '0')
+  
+  // Format as UUID v4
+  const uuidString = `${positiveHash.slice(0, 8)}-${positiveHash.slice(0, 4)}-4${positiveHash.slice(1, 4)}-8${positiveHash.slice(0, 3)}-${positiveHash}${positiveHash.slice(0, 4)}`
+  
+  return uuidString
+}
+
+function mapStatus(status: string, outcome?: string | null): string {
   const statusLower = status?.toLowerCase()
   const outcomeLower = outcome?.toLowerCase()
 
+  // Handle completed status with outcome
   if (statusLower === 'completed') {
+    // If outcome is null/undefined, it's still pending even if status is completed
+    if (!outcome || !outcomeLower) return 'pending'
+    
     if (outcomeLower === 'win' || outcomeLower === 'won') return 'won'
     if (outcomeLower === 'loss' || outcomeLower === 'lost' || outcomeLower === 'lose') return 'lost'
     if (outcomeLower === 'push' || outcomeLower === 'void') return 'void'
@@ -420,7 +500,12 @@ function mapStatus(status: string, outcome?: string): string {
     return 'pending'
   }
 
+  // Handle direct status values
   switch (statusLower) {
+    case 'pending':
+    case 'open':
+    case 'active':
+      return 'pending'
     case 'won':
     case 'win':
       return 'won'
@@ -430,9 +515,12 @@ function mapStatus(status: string, outcome?: string): string {
       return 'lost'
     case 'void':
     case 'cancelled':
+    case 'canceled':
     case 'push':
       return 'void'
     default:
+      // For any unknown status, default to pending to ensure it gets saved
+      console.log(`⚠️ Unknown bet status: '${status}' - defaulting to pending`)
       return 'pending'
   }
 }

@@ -8,7 +8,12 @@ export async function POST(request: NextRequest) {
 
     // Read request body once
     const body = await request.json().catch(() => ({}))
-    const { userId: requestUserId, redirectUrl: baseRedirectUrl } = body
+    const { 
+      userId: requestUserId, 
+      redirectUrl: baseRedirectUrl,
+      extensionAuthToken,
+      extensionVersion
+    } = body
 
     const supabase = await createServerSupabaseClient(request)
     const {
@@ -65,22 +70,42 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 SharpSports Context - Redirect URL: ${redirectWithUserId}`)
 
     // Payload for context generation
-    const contextPayload = {
+    const contextPayload: any = {
       internalId: effectiveUserId,
       redirectUrl: redirectWithUserId,
     }
+    
+    // Add extension data if available
+    if (extensionAuthToken) {
+      contextPayload.extensionAuthToken = extensionAuthToken
+    }
+    if (extensionVersion) {
+      contextPayload.extensionVersion = extensionVersion
+    }
+    
     console.log('🔄 SharpSports Context - Payload:', JSON.stringify(contextPayload, null, 2))
 
     // Generate context ID using SharpSports API
     const contextEndpoint = `${apiBaseUrl}/v1/context`
     console.log(`🔄 SharpSports Context - Calling: ${contextEndpoint}`)
 
+    // Prepare headers with extension data if available
+    const headers: Record<string, string> = {
+      Authorization: `Token ${contextApiKey}`,
+      'Content-Type': 'application/json',
+    }
+    
+    // Add extension data to headers if available
+    if (extensionAuthToken) {
+      headers['X-Extension-Auth-Token'] = extensionAuthToken
+    }
+    if (extensionVersion) {
+      headers['X-Extension-Version'] = extensionVersion
+    }
+
     const contextResponse = await fetch(contextEndpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Token ${contextApiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(contextPayload),
     })
 
@@ -106,10 +131,7 @@ export async function POST(request: NextRequest) {
         try {
           const altResponse = await fetch(altEndpoint, {
             method: 'POST',
-            headers: {
-              Authorization: `Token ${contextApiKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify(contextPayload),
           })
 
@@ -179,6 +201,16 @@ export async function POST(request: NextRequest) {
 
     const contextData = await contextResponse.json()
     console.log('✅ SharpSports Context - API Response:', JSON.stringify(contextData, null, 2))
+
+    // Check for extension-related responses
+    if (contextData.extensionUpdateRequired) {
+      console.log('🔄 SharpSports Context - Extension update required')
+      return NextResponse.json({
+        extensionUpdateRequired: true,
+        extensionDownloadUrl: contextData.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports',
+        error: 'Extension update required',
+      })
+    }
 
     // Try different possible field names for the context ID
     const contextId =

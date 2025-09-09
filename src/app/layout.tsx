@@ -1,4 +1,8 @@
 import { AuthProvider } from '@/lib/auth/AuthProvider'
+import { SharpSportsExtensionProvider } from '@/lib/contexts/sharpsports-extension'
+import { SharpSportsExtensionScript } from '@/components/sharpsports/extension-script'
+import { ExtensionUpdateModal } from '@/components/sharpsports/extension-update-modal'
+import { Analytics } from '@vercel/analytics/next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
@@ -14,7 +18,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SharpSportsExtensionProvider>
+            <SharpSportsExtensionScript />
+            {children}
+            <ExtensionUpdateModal />
+            <Analytics />
+          </SharpSportsExtensionProvider>
+        </AuthProvider>
       </body>
     </html>
   )

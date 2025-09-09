@@ -16,15 +16,25 @@ export async function POST(request: NextRequest) {
     let effectiveUserId = user?.id
     let querySupabase = supabase
 
+    // Read request body once to get all parameters
+    const body = await request.json().catch(() => ({}))
+    const { 
+      userId: requestUserId, 
+      extensionAuthToken,
+      extensionVersion 
+    } = body
+
+    console.log('🔍 Extension data:', { 
+      hasToken: !!extensionAuthToken, 
+      version: extensionVersion 
+    })
+
     // Handle service role fallback for authentication
     if (authError || !user) {
-      const body = await request.json().catch(() => ({}))
-      const userId = body.userId
-
-      if (userId) {
+      if (requestUserId) {
         console.log(
           'SharpSports Refresh - Using service role with userId:',
-          userId.substring(0, 8) + '...'
+          requestUserId.substring(0, 8) + '...'
         )
 
         const serviceSupabase = createClient(
@@ -38,7 +48,7 @@ export async function POST(request: NextRequest) {
           }
         )
 
-        effectiveUserId = userId
+        effectiveUserId = requestUserId
         querySupabase = serviceSupabase
       } else {
         console.log('SharpSports Refresh - No authentication available')
@@ -51,11 +61,26 @@ export async function POST(request: NextRequest) {
       effectiveUserId?.substring(0, 8) + '...'
     )
 
-    // Get all linked bettor accounts for this user
+    // First get the user's SharpSports bettor ID from their profile
+    const { data: profile, error: profileError } = await querySupabase
+      .from('profiles')
+      .select('sharpsports_bettor_id')
+      .eq('id', effectiveUserId)
+      .single()
+
+    if (profileError || !profile?.sharpsports_bettor_id) {
+      console.log('SharpSports Refresh - User has no SharpSports bettor ID')
+      return NextResponse.json({
+        message: 'User has no SharpSports bettor ID configured',
+        refreshed: 0,
+      })
+    }
+
+    // Get all linked bettor accounts for this bettor
     const { data: accounts, error: accountsError } = await querySupabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .select('*')
-      .eq('user_id', effectiveUserId)
+      .eq('bettor_id', profile.sharpsports_bettor_id)
       .eq('verified', true)
       .eq('access', true)
 
@@ -93,14 +118,25 @@ export async function POST(request: NextRequest) {
             ? 'https://api.sharpsports.io'
             : 'https://sandbox-api.sharpsports.io'
 
+        // Prepare headers with extension data if available
+        const headers: Record<string, string> = {
+          Authorization: `Token ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+
+        // Add extension data to headers if available
+        if (extensionAuthToken) {
+          headers['X-Extension-Auth-Token'] = extensionAuthToken
+        }
+        if (extensionVersion) {
+          headers['X-Extension-Version'] = extensionVersion
+        }
+
         const refreshResponse = await fetch(
           `${apiBaseUrl}/v1/bettorAccount/${account.sharpsports_account_id}/refresh`,
           {
             method: 'POST',
-            headers: {
-              Authorization: `Token ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers,
           }
         )
 

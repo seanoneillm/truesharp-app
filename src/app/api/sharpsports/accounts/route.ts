@@ -16,16 +16,27 @@ export async function POST(request: NextRequest) {
     let effectiveUserId = user?.id
     let querySupabase = supabase
 
-    // Handle service role fallback for authentication
+    // Read request body once to get all parameters
     const body = await request.json()
+    const { 
+      userId: requestUserId, 
+      extensionAuthToken,
+      extensionVersion,
+      bettorAccount 
+    } = body
+
+    console.log('🔍 Extension data:', { 
+      hasToken: !!extensionAuthToken, 
+      version: extensionVersion 
+    })
+
+    // Handle service role fallback for authentication
 
     if (authError || !user) {
-      const userId = body.userId
-
-      if (userId) {
+      if (requestUserId) {
         console.log(
           'SharpSports Accounts - Using service role with userId:',
-          userId.substring(0, 8) + '...'
+          requestUserId.substring(0, 8) + '...'
         )
 
         const serviceSupabase = createClient(
@@ -39,7 +50,7 @@ export async function POST(request: NextRequest) {
           }
         )
 
-        effectiveUserId = userId
+        effectiveUserId = requestUserId
         querySupabase = serviceSupabase
       } else {
         console.log('SharpSports Accounts - No authentication available')
@@ -47,7 +58,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { bettorAccount } = body
+    // bettorAccount already extracted above
 
     if (!bettorAccount) {
       return NextResponse.json({ error: 'Missing bettorAccount data' }, { status: 400 })
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
       effectiveUserId?.substring(0, 8) + '...'
     )
 
-    // Map SharpSports bettorAccount to our bettor_account table
+    // Map SharpSports bettorAccount to our bettor_accounts table
     const accountData = {
       user_id: effectiveUserId,
       sharpsports_account_id: bettorAccount.id,
@@ -86,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Insert the new bettor account (or update if it already exists)
     const { data: insertedAccount, error: insertError } = await querySupabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .upsert(accountData, {
         onConflict: 'sharpsports_account_id',
         ignoreDuplicates: false,
@@ -187,7 +198,7 @@ export async function GET(request: NextRequest) {
     )
 
     const { data: accounts, error: accountsError } = await querySupabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .select('*')
       .eq('user_id', effectiveUserId)
       .order('created_at', { ascending: false })
@@ -230,8 +241,16 @@ async function handleSharpSportsCallback(_request: NextRequest, params: URLSearc
     const bettorAccountId = params.get('bettorAccountId') || params.get('accountId')
     const contextId = params.get('contextId') || params.get('cid')
     const userId = params.get('userId') // This should be our internal user ID
+    const extensionAuthToken = params.get('extensionAuthToken')
+    const extensionVersion = params.get('extensionVersion')
 
-    console.log('SharpSports Callback - Parameters:', { bettorAccountId, contextId, userId })
+    console.log('SharpSports Callback - Parameters:', { 
+      bettorAccountId, 
+      contextId, 
+      userId,
+      hasExtensionToken: !!extensionAuthToken,
+      extensionVersion
+    })
 
     if (!bettorAccountId) {
       console.error('SharpSports Callback - No bettor account ID in callback')
@@ -244,12 +263,23 @@ async function handleSharpSportsCallback(_request: NextRequest, params: URLSearc
         ? 'https://api.sharpsports.io'
         : 'https://api.sharpsports.io'
 
+    // Prepare headers with extension data if available
+    const headers: Record<string, string> = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    }
+
+    // Add extension data to headers if available
+    if (extensionAuthToken) {
+      headers['X-Extension-Auth-Token'] = extensionAuthToken
+    }
+    if (extensionVersion) {
+      headers['X-Extension-Version'] = extensionVersion
+    }
+
     // Fetch the bettor account details from SharpSports
     const accountResponse = await fetch(`${apiBaseUrl}/v1/bettorAccounts/${bettorAccountId}`, {
-      headers: {
-        Authorization: `Token ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
     })
 
     if (!accountResponse.ok) {
@@ -277,7 +307,7 @@ async function handleSharpSportsCallback(_request: NextRequest, params: URLSearc
       }
     )
 
-    // Map SharpSports bettorAccount to our bettor_account table
+    // Map SharpSports bettorAccount to our bettor_accounts table
     const accountData = {
       user_id: userId, // Use the userId from the callback
       sharpsports_account_id: bettorAccount.id,
@@ -300,7 +330,7 @@ async function handleSharpSportsCallback(_request: NextRequest, params: URLSearc
 
     // Insert the new bettor account (or update if it already exists)
     const { data: insertedAccount, error: insertError } = await serviceSupabase
-      .from('bettor_account')
+      .from('bettor_accounts')
       .upsert(accountData, {
         onConflict: 'sharpsports_account_id',
         ignoreDuplicates: false,

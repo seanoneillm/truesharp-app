@@ -3,7 +3,9 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { AlertCircle, Check, Link, Loader2, RefreshCw } from 'lucide-react'
+import { useSharpSportsExtension } from '@/lib/contexts/sharpsports-extension'
+import { ExtensionDebugCard } from '@/components/sharpsports/extension-debug'
+import { AlertCircle, Check, Link, Loader2, RefreshCw, Download } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 interface BettorAccount {
@@ -25,22 +27,46 @@ interface SharpSportsIntegrationProps {
 
 export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) {
   const { user } = useAuth()
+  const { 
+    extensionAuthToken, 
+    extensionVersion,
+    isExtensionAvailable,
+    refreshExtensionToken
+  } = useSharpSportsExtension()
+  
   const [accounts, setAccounts] = useState<BettorAccount[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [extensionUpdateRequired, setExtensionUpdateRequired] = useState(false)
+  const [extensionDownloadUrl, setExtensionDownloadUrl] = useState<string | null>(null)
 
   const effectiveUserId = userId || user?.id
 
-  // Load linked accounts on component mount
-  useEffect(() => {
-    if (effectiveUserId) {
-      loadLinkedAccounts()
+  // Helper function to handle extension errors
+  const handleExtensionError = useCallback((result: { extensionUpdateRequired?: boolean, extensionDownloadUrl?: string, error?: string }) => {
+    if (result.extensionUpdateRequired) {
+      setExtensionUpdateRequired(true)
+      setExtensionDownloadUrl(result.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports')
+      setError('Extension update required to continue using SDK-required sportsbooks.')
+      return true
     }
-  }, [effectiveUserId])
+    return false
+  }, [])
 
-  const loadLinkedAccounts = async () => {
+  const handleInstallExtension = useCallback(() => {
+    if (extensionDownloadUrl) {
+      window.open(extensionDownloadUrl, '_blank')
+    } else {
+      window.open('https://chrome.google.com/webstore/search/sharpsports', '_blank')
+    }
+    setExtensionUpdateRequired(false)
+    setExtensionDownloadUrl(null)
+    setError(null)
+  }, [extensionDownloadUrl])
+
+  const loadLinkedAccounts = useCallback(async () => {
     if (!effectiveUserId) return
 
     try {
@@ -63,14 +89,63 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
     } finally {
       setLoading(false)
     }
-  }
+  }, [effectiveUserId])
+
+  // Load linked accounts on component mount
+  useEffect(() => {
+    if (effectiveUserId) {
+      loadLinkedAccounts()
+    }
+  }, [effectiveUserId, loadLinkedAccounts])
 
   const handleLinkSportsbooks = useCallback(async () => {
     if (!effectiveUserId) return
 
     console.log('🔗 Generating SharpSports context for Booklink UI')
+    console.log('🔍 Extension data being sent:', { 
+      hasToken: !!extensionAuthToken, 
+      tokenPreview: extensionAuthToken ? extensionAuthToken.substring(0, 10) + '...' : 'none',
+      version: extensionVersion,
+      isExtensionAvailable,
+    })
+    
+    // Debug script tag attributes for token/key matching
+    const script = document.getElementById('sharpsports-extension-script')
+    if (script) {
+      const scriptToken = script.getAttribute('extensionAuthToken')
+      const scriptPublicKey = script.getAttribute('publicKey')
+      const scriptInternalId = script.getAttribute('internalId')
+      
+      console.log('🔍 Script tag attributes:', {
+        hasToken: !!scriptToken,
+        tokenMatch: scriptToken === extensionAuthToken,
+        tokenPreview: scriptToken ? scriptToken.substring(0, 10) + '...' : 'none',
+        publicKeyPreview: scriptPublicKey ? scriptPublicKey.substring(0, 10) + '...' : 'none',
+        internalId: scriptInternalId,
+        envPublicKey: process.env.NEXT_PUBLIC_SHARPSPORTS_PUBLIC_KEY ? 
+          process.env.NEXT_PUBLIC_SHARPSPORTS_PUBLIC_KEY.substring(0, 10) + '...' : 'none'
+      })
+      
+      if (scriptToken !== extensionAuthToken) {
+        console.warn('⚠️ MISMATCH: Script tag token differs from context token!')
+      }
+    } else {
+      console.error('❌ Script tag not found! Extension cannot work without it.')
+    }
     setError(null)
     setLoading(true)
+
+    // Try to refresh the extension token if we don't have one
+    if (!extensionAuthToken) {
+      console.log('🔄 No extension auth token available, attempting refresh...')
+      try {
+        await refreshExtensionToken()
+        console.log('✅ Extension token refresh completed')
+      } catch (refreshError) {
+        console.warn('⚠️ Extension token refresh failed:', refreshError)
+        // Continue anyway - we can still try to link without the token
+      }
+    }
 
     try {
       // Step 1: Generate context ID (cid) from SharpSports API
@@ -81,6 +156,8 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         },
         body: JSON.stringify({
           userId: effectiveUserId,
+          extensionAuthToken: extensionAuthToken,
+          extensionVersion: extensionVersion,
           // Let the server determine the correct redirect URL
         }),
       })
@@ -90,6 +167,12 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       }
 
       const result = await response.json()
+      
+      // Check for extension errors
+      if (handleExtensionError(result)) {
+        return
+      }
+      
       const { contextId, fallback } = result
       console.log('✅ Generated SharpSports context ID:', contextId)
 
@@ -153,7 +236,7 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
               clearInterval(checkClosed)
               return
             }
-          } catch (e) {
+          } catch {
             // Cross-origin restrictions prevent reading popup URL - this is normal
           }
         } catch (error) {
@@ -173,13 +256,18 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
     } finally {
       setLoading(false)
     }
-  }, [effectiveUserId, loadLinkedAccounts])
+  }, [effectiveUserId, loadLinkedAccounts, extensionAuthToken, extensionVersion, refreshExtensionToken, handleExtensionError, isExtensionAvailable])
 
   const handleRefreshAccounts = async () => {
     if (!effectiveUserId) return
 
     try {
       console.log('🔄 Refreshing SharpSports accounts')
+      console.log('🔍 Extension data being sent to refresh:', { 
+        hasToken: !!extensionAuthToken, 
+        tokenPreview: extensionAuthToken ? extensionAuthToken.substring(0, 10) + '...' : 'none',
+        version: extensionVersion,
+      })
       setRefreshing(true)
       setError(null)
 
@@ -188,7 +276,11 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: effectiveUserId }),
+        body: JSON.stringify({ 
+          userId: effectiveUserId,
+          extensionAuthToken: extensionAuthToken,
+          extensionVersion: extensionVersion,
+        }),
       })
 
       if (!response.ok) {
@@ -196,6 +288,12 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       }
 
       const data = await response.json()
+      
+      // Check for extension errors
+      if (handleExtensionError(data)) {
+        return
+      }
+      
       console.log('✅ Refresh initiated:', data.message)
 
       // Show success message with details
@@ -229,7 +327,11 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: effectiveUserId }),
+        body: JSON.stringify({ 
+          userId: effectiveUserId,
+          extensionAuthToken: extensionAuthToken,
+          extensionVersion: extensionVersion,
+        }),
       })
 
       if (!response.ok) {
@@ -237,6 +339,12 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
       }
 
       const data = await response.json()
+      
+      // Check for extension errors
+      if (handleExtensionError(data)) {
+        return
+      }
+      
       console.log('✅ Manual sync completed:', data.message)
 
       if (data.totalBetsProcessed > 0) {
@@ -254,14 +362,17 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
   const verifiedAccountsCount = accounts.filter(acc => acc.verified && acc.access).length
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Link className="h-5 w-5" />
-          SharpSports Integration
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+      <ExtensionDebugCard />
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            SharpSports Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         {/* Account Status */}
         <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
           <div>
@@ -276,6 +387,41 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
               <span className="text-sm">Connected</span>
             </div>
           )}
+        </div>
+
+        {/* Extension Status */}
+        <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3">
+          <div>
+            <p className="text-sm font-medium">Browser Extension</p>
+            <p className="text-xs text-gray-600">
+              {isExtensionAvailable 
+                ? `Version: ${extensionVersion || 'Detected'}` 
+                : 'Not detected'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {isExtensionAvailable ? (
+              <div className="flex items-center text-green-600">
+                <Check className="mr-1 h-4 w-4" />
+                <span className="text-sm">Active</span>
+              </div>
+            ) : (
+              <div className="flex items-center text-orange-600">
+                <AlertCircle className="mr-1 h-4 w-4" />
+                <span className="text-sm">Missing</span>
+              </div>
+            )}
+            {process.env.NODE_ENV === 'development' && (
+              <Button
+                onClick={refreshExtensionToken}
+                size="sm"
+                variant="ghost"
+                className="text-xs h-6 px-2"
+              >
+                Refresh
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Linked Accounts List */}
@@ -319,8 +465,31 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
           <p className="text-sm text-gray-600">No sportsbook accounts linked yet.</p>
         )}
 
+        {/* Extension Update Required */}
+        {extensionUpdateRequired && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-medium text-orange-900 mb-2">Extension Update Required</h4>
+                <p className="text-sm text-orange-800 mb-3">
+                  Your SharpSports browser extension needs to be updated to continue linking SDK-required sportsbooks.
+                </p>
+                <Button
+                  onClick={handleInstallExtension}
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Update Extension
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error Display */}
-        {error && (
+        {error && !extensionUpdateRequired && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-sm text-red-700">{error}</p>
           </div>
@@ -415,5 +584,6 @@ export function SharpSportsIntegration({ userId }: SharpSportsIntegrationProps) 
         </div>
       </CardContent>
     </Card>
+    </>
   )
 }
