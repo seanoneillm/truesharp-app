@@ -13,7 +13,7 @@ export async function GET() {
     console.log('🔍 Starting webhook health check...')
 
     // 1. Check recent Stripe events
-    let recentEvents: any[] = []
+    let recentEvents: unknown[] = []
     try {
       const events = await stripe.events.list({
         limit: 10,
@@ -26,7 +26,7 @@ export async function GET() {
     }
 
     // 2. Find any orphaned subscriptions (exist in Stripe but not in DB)
-    const orphanedSubscriptions = []
+    const orphanedSubscriptions: unknown[] = []
 
     try {
       const stripeSubscriptions = await stripe.subscriptions.list({
@@ -59,7 +59,7 @@ export async function GET() {
     }
 
     // 3. Check for missing strategies referenced in Stripe metadata
-    const missingStrategies = []
+    const missingStrategies: unknown[] = []
 
     try {
       const stripeSubscriptions = await stripe.subscriptions.list({ limit: 20 })
@@ -88,7 +88,7 @@ export async function GET() {
     }
 
     // 4. Get webhook endpoint configuration status
-    let webhookEndpoints = []
+    let webhookEndpoints: unknown[] = []
     try {
       const endpoints = await stripe.webhookEndpoints.list()
       webhookEndpoints = endpoints.data.map(endpoint => ({
@@ -111,16 +111,24 @@ export async function GET() {
         webhook_endpoints: webhookEndpoints.length,
       },
       details: {
-        recent_checkout_events: recentEvents.map(event => ({
-          id: event.id,
-          created: event.created,
-          type: event.type,
-          session_id: event.data.object.id,
-          metadata: event.data.object.metadata,
-        })),
-        orphaned_subscriptions,
-        missing_strategies,
-        webhook_endpoints,
+        recent_checkout_events: recentEvents.map(event => {
+          const e = event as { 
+            id: string; 
+            created: number; 
+            type: string; 
+            data: { object: { id: string; metadata: Record<string, string> | null } } 
+          }
+          return {
+            id: e.id,
+            created: e.created,
+            type: e.type,
+            session_id: e.data.object.id,
+            metadata: e.data.object.metadata,
+          }
+        }),
+        orphaned_subscriptions: orphanedSubscriptions,
+        missing_strategies: missingStrategies,
+        webhook_endpoints: webhookEndpoints,
       },
       recommendations:
         orphanedSubscriptions.length > 0

@@ -65,7 +65,7 @@ export async function GET() {
     }
 
     // 3. Check Stripe for recent customer activity
-    let stripeCustomers = []
+    let stripeCustomers: unknown[] = []
     try {
       const customers = await stripe.customers.list({
         limit: 20,
@@ -80,7 +80,7 @@ export async function GET() {
     }
 
     // 4. Check recent Stripe subscriptions
-    let stripeSubscriptions = []
+    let stripeSubscriptions: unknown[] = []
     try {
       const subscriptions = await stripe.subscriptions.list({
         limit: 20,
@@ -92,10 +92,11 @@ export async function GET() {
       console.log('🔄 Recent Stripe subscriptions:', stripeSubscriptions.length)
 
       stripeSubscriptions.forEach((sub, i) => {
-        console.log(`  ${i + 1}. Stripe Sub: ${sub.id}`)
-        console.log(`     Customer: ${sub.customer}`)
-        console.log(`     Status: ${sub.status}`)
-        console.log(`     Metadata:`, sub.metadata)
+        const subscription = sub as { id: string; customer: string; status: string; metadata: Record<string, string> }
+        console.log(`  ${i + 1}. Stripe Sub: ${subscription.id}`)
+        console.log(`     Customer: ${subscription.customer}`)
+        console.log(`     Status: ${subscription.status}`)
+        console.log(`     Metadata:`, subscription.metadata)
         console.log('')
       })
     } catch (stripeError) {
@@ -103,7 +104,7 @@ export async function GET() {
     }
 
     // 5. Check checkout sessions
-    let checkoutSessions = []
+    let checkoutSessions: unknown[] = []
     try {
       const sessions = await stripe.checkout.sessions.list({
         limit: 20,
@@ -115,12 +116,20 @@ export async function GET() {
       console.log('🛒 Recent checkout sessions:', checkoutSessions.length)
 
       checkoutSessions.forEach((session, i) => {
-        console.log(`  ${i + 1}. Session: ${session.id}`)
-        console.log(`     Customer: ${session.customer}`)
-        console.log(`     Subscription: ${session.subscription}`)
-        console.log(`     Payment Status: ${session.payment_status}`)
-        console.log(`     Status: ${session.status}`)
-        console.log(`     Metadata:`, session.metadata)
+        const s = session as { 
+          id: string; 
+          customer: string | null; 
+          subscription: string | null; 
+          payment_status: string; 
+          status: string; 
+          metadata: Record<string, string> | null 
+        }
+        console.log(`  ${i + 1}. Session: ${s.id}`)
+        console.log(`     Customer: ${s.customer}`)
+        console.log(`     Subscription: ${s.subscription}`)
+        console.log(`     Payment Status: ${s.payment_status}`)
+        console.log(`     Status: ${s.status}`)
+        console.log(`     Metadata:`, s.metadata)
         console.log('')
       })
     } catch (stripeError) {
@@ -139,28 +148,45 @@ export async function GET() {
       data: {
         derek_profiles: derek,
         database_subscriptions: subscriptions,
-        stripe_customers: stripeCustomers.map(c => ({
-          id: c.id,
-          email: c.email,
-          metadata: c.metadata,
-          created: c.created,
-        })),
-        stripe_subscriptions: stripeSubscriptions.map(s => ({
-          id: s.id,
-          customer: s.customer,
-          status: s.status,
-          metadata: s.metadata,
-          created: s.created,
-        })),
-        checkout_sessions: checkoutSessions.map(s => ({
-          id: s.id,
-          customer: s.customer,
-          subscription: s.subscription,
-          payment_status: s.payment_status,
-          status: s.status,
-          metadata: s.metadata,
-          created: s.created,
-        })),
+        stripe_customers: stripeCustomers.map(c => {
+          const customer = c as { id: string; email: string | null; metadata: Record<string, string>; created: number }
+          return {
+            id: customer.id,
+            email: customer.email,
+            metadata: customer.metadata,
+            created: customer.created,
+          }
+        }),
+        stripe_subscriptions: stripeSubscriptions.map(s => {
+          const subscription = s as { id: string; customer: string; status: string; metadata: Record<string, string>; created: number }
+          return {
+            id: subscription.id,
+            customer: subscription.customer,
+            status: subscription.status,
+            metadata: subscription.metadata,
+            created: subscription.created,
+          }
+        }),
+        checkout_sessions: checkoutSessions.map(s => {
+          const session = s as { 
+            id: string; 
+            customer: string | null; 
+            subscription: string | null; 
+            payment_status: string; 
+            status: string; 
+            metadata: Record<string, string> | null; 
+            created: number 
+          }
+          return {
+            id: session.id,
+            customer: session.customer,
+            subscription: session.subscription,
+            payment_status: session.payment_status,
+            status: session.status,
+            metadata: session.metadata,
+            created: session.created,
+          }
+        }),
       },
     })
   } catch (error) {
