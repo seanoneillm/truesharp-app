@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
                   frequency: metadata.frequency || 'monthly',
                   price,
                   currency: 'USD',
-                  current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                  current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                  next_billing_date: new Date(subscription.current_period_end * 1000).toISOString(),
+                  current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                  current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                  next_billing_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
                   stripe_customer_id: subscription.customer as string,
                 }
                 
@@ -134,8 +134,8 @@ export async function GET(request: NextRequest) {
                 stripe_customer_id: subscription.customer as string,
                 status: 'active',
                 plan: metadata.plan || 'monthly',
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
                 price_id: subscription.items?.data?.[0]?.price?.id || null,
               }
               

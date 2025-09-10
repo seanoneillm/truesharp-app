@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // GET /api/sharpsports/books - Fetch books with SDK support information
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('📚 Fetching SharpSports books with SDK support info')
 

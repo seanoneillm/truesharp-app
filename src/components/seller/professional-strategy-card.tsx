@@ -348,7 +348,6 @@ const ProfessionalStrategyCardComponent = ({
             <OpenBetsDisplay
               bets={strategy.open_bets}
               title="Current Open Bets"
-              maxBets={3}
               compact={false}
             />
           </div>

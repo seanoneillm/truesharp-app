@@ -283,7 +283,6 @@ export function SubscriptionCard({
           <SubscriberOpenBetsDisplay
             bets={subscription.strategy.open_bets}
             title="Current Open Picks"
-            maxBets={3}
             showTitle={true}
           />
         </div>

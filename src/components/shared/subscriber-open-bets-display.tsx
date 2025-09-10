@@ -8,7 +8,6 @@ interface SubscriberOpenBetsDisplayProps {
   bets: OpenBet[]
   title?: string
   showTitle?: boolean
-  maxBets?: number
   className?: string
 }
 
@@ -16,7 +15,6 @@ export function SubscriberOpenBetsDisplay({
   bets,
   title = 'Current Open Bets',
   showTitle = true,
-  maxBets = 5,
   className = '',
 }: SubscriberOpenBetsDisplayProps) {
   if (!bets || bets.length === 0) {

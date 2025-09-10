@@ -148,7 +148,6 @@ export default function AnalyticsPage() {
     const userAgent = navigator.userAgent.toLowerCase()
     const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg')
     const isEdge = userAgent.includes('edg')
-    const isFirefox = userAgent.includes('firefox')
     
     // Chrome and Edge are typically supported for SharpSports extension
     return isChrome || isEdge

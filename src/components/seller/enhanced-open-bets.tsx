@@ -147,23 +147,8 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
     }
   }
 
-  const formatOdds = (odds: string | number) => {
-    const numOdds = typeof odds === 'string' ? parseInt(odds) : odds
-    return numOdds > 0 ? `+${numOdds}` : `${numOdds}`
-  }
-
   const formatCurrency = (amount: number) => {
     return `$${amount.toFixed(2)}`
-  }
-
-  const formatGameDate = (dateString?: string) => {
-    if (!dateString) return null
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
   }
 
   return (

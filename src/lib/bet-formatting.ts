@@ -17,9 +17,9 @@ interface BetData {
   placed_at: string
   game_date?: string
   sportsbook?: string
-  player_name?: string
-  line_value?: number
-  side?: string
+  player_name?: string | null
+  line_value?: number | null
+  side?: string | null
 }
 
 /**
@@ -181,7 +181,7 @@ function formatGameDateTime(gameDate?: string): string {
 /**
  * Format line value for display
  */
-function formatLineValue(lineValue?: number): string {
+function formatLineValue(lineValue?: number | null): string {
   if (lineValue === undefined || lineValue === null) return ''
   return lineValue > 0 ? `+${lineValue}` : `${lineValue}`
 }

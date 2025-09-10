@@ -8,7 +8,6 @@ export async function POST(request: NextRequest) {
 
     // Fetch odds for 1 day before through 7 days after the base date (8 days total)
     const baseDate = new Date(date || new Date().toISOString().split('T')[0])
-    const promises = []
 
     // Define all sports to fetch (or use specific sport if provided)
     const sportsToFetch =

@@ -258,7 +258,6 @@ const SubscriptionCard = ({
           <SubscriberOpenBetsDisplay
             bets={subscription.open_bets}
             title="Current Open Picks"
-            maxBets={5}
           />
         </div>
       )}

@@ -8,7 +8,6 @@ interface OpenBetsDisplayProps {
   bets: OpenBet[]
   title?: string
   showTitle?: boolean
-  maxBets?: number
   compact?: boolean
   className?: string
 }
@@ -17,7 +16,6 @@ export function OpenBetsDisplay({
   bets,
   title = 'Open Bets',
   showTitle = true,
-  maxBets = 5,
   compact = false,
   className = '',
 }: OpenBetsDisplayProps) {
