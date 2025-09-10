@@ -9,9 +9,12 @@ export async function GET() {
     const apiKey = process.env.SHARPSPORTS_API_KEY
     if (!apiKey) {
       console.error('Books - SHARPSPORTS_API_KEY not configured')
-      return NextResponse.json({ 
-        error: 'SharpSports API key not configured' 
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: 'SharpSports API key not configured',
+        },
+        { status: 500 }
+      )
     }
 
     // Fetch books with support information
@@ -19,20 +22,20 @@ export async function GET() {
       method: 'GET',
       headers: {
         Authorization: `Token ${apiKey}`,
-        'Accept': 'application/json',
-      }
+        Accept: 'application/json',
+      },
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(
-        `❌ Books - Failed to fetch books: ${response.status}`,
-        errorText
+      console.error(`❌ Books - Failed to fetch books: ${response.status}`, errorText)
+      return NextResponse.json(
+        {
+          error: `Failed to fetch books: HTTP ${response.status}`,
+          details: errorText,
+        },
+        { status: response.status }
       )
-      return NextResponse.json({
-        error: `Failed to fetch books: HTTP ${response.status}`,
-        details: errorText,
-      }, { status: response.status })
     }
 
     const booksData = await response.json()
@@ -41,11 +44,14 @@ export async function GET() {
     // Transform the data to highlight SDK requirements
     const transformedBooks = booksData.map((book: any) => ({
       ...book,
-      requiresExtension: Boolean(book.sdkRequired) && 
+      requiresExtension:
+        Boolean(book.sdkRequired) &&
         Boolean(book.sdkSupport?.webBrowserExtension?.platforms?.some((p: any) => p.supported)),
       mobileOnly: Boolean(book.mobileOnly),
-      desktopSupported: !book.mobileOnly && (!book.sdkRequired || 
-        Boolean(book.sdkSupport?.webBrowserExtension?.platforms?.some((p: any) => p.supported))),
+      desktopSupported:
+        !book.mobileOnly &&
+        (!book.sdkRequired ||
+          Boolean(book.sdkSupport?.webBrowserExtension?.platforms?.some((p: any) => p.supported))),
     }))
 
     return NextResponse.json({
@@ -56,7 +62,7 @@ export async function GET() {
         requiresExtension: transformedBooks.filter((b: any) => b.requiresExtension).length,
         mobileOnly: transformedBooks.filter((b: any) => b.mobileOnly).length,
         desktopSupported: transformedBooks.filter((b: any) => b.desktopSupported).length,
-      }
+      },
     })
   } catch (error) {
     console.error('Books - Unexpected error:', error)

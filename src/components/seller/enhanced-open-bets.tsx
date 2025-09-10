@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import { StrategySelectionModal } from '@/components/strategies/strategy-selection-modal'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
-import { cn } from '@/lib/utils'
-import { CheckCircle2, Circle, Trophy, Plus, Target, ArrowRight } from 'lucide-react'
-import { StrategySelectionModal } from '@/components/strategies/strategy-selection-modal'
 import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
+import { cn } from '@/lib/utils'
+import { ArrowRight, CheckCircle2, Circle, Plus, Target, Trophy } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
 
 interface OpenBet {
   id: string
@@ -259,10 +259,16 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
                                   <Badge variant="outline" className="text-xs">
                                     {formattedBet.sport}
                                   </Badge>
-                                  <Badge variant="outline" className="border-purple-300 bg-purple-100 text-xs text-purple-700">
+                                  <Badge
+                                    variant="outline"
+                                    className="border-purple-300 bg-purple-100 text-xs text-purple-700"
+                                  >
                                     {formattedBet.betType}
                                   </Badge>
-                                  <Badge variant="outline" className="border-gray-300 bg-gray-100 text-xs text-gray-700">
+                                  <Badge
+                                    variant="outline"
+                                    className="border-gray-300 bg-gray-100 text-xs text-gray-700"
+                                  >
                                     {formattedBet.sportsbook}
                                   </Badge>
                                   <Badge
@@ -280,10 +286,14 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
                                   <span className="font-medium">Odds: {formattedBet.odds}</span>
                                   <span>Stake: {formattedBet.stake}</span>
-                                  {formattedBet.gameDateTime && <span>Game: {formattedBet.gameDateTime}</span>}
-                                  {formattedBet.lineDisplay && <span>Line: {formattedBet.lineDisplay}</span>}
+                                  {formattedBet.gameDateTime && (
+                                    <span>Game: {formattedBet.gameDateTime}</span>
+                                  )}
+                                  {formattedBet.lineDisplay && (
+                                    <span>Line: {formattedBet.lineDisplay}</span>
+                                  )}
                                   {getDisplaySide(bet) && (
-                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium text-xs">
+                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
                                       {getDisplaySide(bet)}
                                     </span>
                                   )}
@@ -341,8 +351,8 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
             <Trophy className="mx-auto mb-4 h-12 w-12 text-gray-400" />
             <h3 className="mb-2 text-lg font-medium text-gray-900">No Open Bets Available</h3>
             <p className="mb-6 text-gray-600">
-              You don&apos;t have any pending bets for upcoming games at the moment. Place some bets to see the
-              enhanced selection features here!
+              You don&apos;t have any pending bets for upcoming games at the moment. Place some bets
+              to see the enhanced selection features here!
             </p>
 
             {/* Feature Preview */}

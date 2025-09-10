@@ -16,6 +16,7 @@ import {
   YAxis,
 } from 'recharts'
 import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
+import { LinkedSportsbooks } from './linked-sportsbooks'
 
 interface BetLeg {
   id: string
@@ -319,6 +320,9 @@ export function OverviewTab({
               )}
             </CardContent>
           </Card>
+          
+          {/* Linked Sportsbooks */}
+          <LinkedSportsbooks className="mt-6" />
         </div>
 
         {/* Recent Bets */}

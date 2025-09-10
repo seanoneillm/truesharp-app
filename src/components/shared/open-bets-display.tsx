@@ -1,8 +1,7 @@
 'use client'
 
-import React from 'react'
-import { Clock, Target, TrendingUp, Calendar, DollarSign, Trophy, Zap } from 'lucide-react'
 import { OpenBet, formatBetForDisplay } from '@/lib/queries/open-bets'
+import { Calendar, Clock, DollarSign, Target, TrendingUp, Trophy, Zap } from 'lucide-react'
 
 interface OpenBetsDisplayProps {
   bets: OpenBet[]

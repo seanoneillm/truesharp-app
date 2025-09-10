@@ -1,31 +1,31 @@
 'use client'
 
-import { useState, memo } from 'react'
-import {
-  Edit3,
-  Save,
-  X,
-  Trash2,
-  DollarSign,
-  TrendingUp,
-  Target,
-  Activity,
-  Users,
-  ToggleLeft,
-  ToggleRight,
-  AlertTriangle,
-  Eye,
-  Globe,
-  Lock,
-  Share2,
-} from 'lucide-react'
+import { OpenBetsDisplay } from '@/components/shared/open-bets-display'
+import ShareStrategyModal from '@/components/strategies/ShareStrategyModal'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
-import { OpenBetsDisplay } from '@/components/shared/open-bets-display'
 import { OpenBet } from '@/lib/queries/open-bets'
-import ShareStrategyModal from '@/components/strategies/ShareStrategyModal'
+import {
+  Activity,
+  AlertTriangle,
+  DollarSign,
+  Edit3,
+  Eye,
+  Globe,
+  Lock,
+  Save,
+  Share2,
+  Target,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  TrendingUp,
+  Users,
+  X,
+} from 'lucide-react'
+import { memo, useState } from 'react'
 
 export interface StrategyData {
   id: string
@@ -131,7 +131,7 @@ const ProfessionalStrategyCardComponent = ({
     } catch (error: any) {
       // Show more helpful error messages
       const errorMessage = error?.message || 'Failed to update strategy'
-      
+
       if (errorMessage.includes('Stripe Connect account required')) {
         onError?.('Complete your seller setup in Settings to enable monetization')
       } else if (errorMessage.includes('Seller account setup incomplete')) {
@@ -345,11 +345,7 @@ const ProfessionalStrategyCardComponent = ({
         {/* Open Bets Section */}
         {strategy.open_bets && strategy.open_bets.length > 0 && (
           <div className="border-t border-gray-100 bg-gradient-to-r from-orange-50 to-red-50 p-6">
-            <OpenBetsDisplay
-              bets={strategy.open_bets}
-              title="Current Open Bets"
-              compact={false}
-            />
+            <OpenBetsDisplay bets={strategy.open_bets} title="Current Open Bets" compact={false} />
           </div>
         )}
 
@@ -560,7 +556,11 @@ const ProfessionalStrategyCardComponent = ({
       </Card>
 
       {/* Monetization Warning Modal */}
-      <Modal isOpen={showMonetizationModal} onClose={() => setShowMonetizationModal(false)} size="lg">
+      <Modal
+        isOpen={showMonetizationModal}
+        onClose={() => setShowMonetizationModal(false)}
+        size="lg"
+      >
         <div className="p-6">
           <div className="mb-4 flex items-center space-x-3">
             <div className="rounded-full bg-blue-100 p-2">

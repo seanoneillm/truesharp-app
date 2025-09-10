@@ -1,8 +1,7 @@
 'use client'
 
-import React from 'react'
-import { Clock, Target, TrendingUp, Calendar, Trophy, Zap } from 'lucide-react'
 import { OpenBet, formatBetForDisplay } from '@/lib/queries/open-bets'
+import { Calendar, Clock, Target, TrendingUp, Trophy, Zap } from 'lucide-react'
 
 interface SubscriberOpenBetsDisplayProps {
   bets: OpenBet[]
@@ -101,7 +100,9 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
         <span className="inline-flex items-center rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
           {bet.sport}
         </span>
-        <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-medium ${getBetTypeColor(bet.betType)}`}>
+        <span
+          className={`inline-flex items-center rounded border px-2 py-1 text-xs font-medium ${getBetTypeColor(bet.betType)}`}
+        >
           {getBetTypeIcon(bet.betType)}
           <span className="ml-1">{bet.betType}</span>
         </span>
@@ -112,25 +113,21 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
           {bet.status}
         </span>
       </div>
-      
+
       {/* Main description - SharpSports style */}
       <div className="mb-2">
         <p className="text-sm font-medium text-gray-900">{bet.mainDescription}</p>
       </div>
-      
+
       {/* Bet details - SharpSports style (no monetary values for subscribers) */}
       <div className="flex items-center space-x-3 text-xs text-gray-600">
         <span className="font-medium">Odds: {bet.odds}</span>
         {bet.gameDateTime && <span>Game: {bet.gameDateTime}</span>}
         {bet.lineDisplay && <span>Line: {bet.lineDisplay}</span>}
       </div>
-      
+
       {/* Teams display */}
-      {bet.teamsDisplay && (
-        <div className="mt-1 text-xs text-gray-500">
-          {bet.teamsDisplay}
-        </div>
-      )}
+      {bet.teamsDisplay && <div className="mt-1 text-xs text-gray-500">{bet.teamsDisplay}</div>}
 
       {/* Game time display (no monetary values for subscribers) */}
       {bet.gameTime && (

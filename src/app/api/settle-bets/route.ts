@@ -510,33 +510,12 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
           profit = 0 // Push - return original stake
         }
 
-        // Update the bet - handle missing columns gracefully
+        // Update the bet with fields that exist in the schema
         const updateData: any = {
           updated_at: new Date().toISOString(),
-        }
-
-        // Add fields that exist in the schema
-        if (betResult.status === 'won') {
-          updateData.result = 'won'
-          updateData.actual_payout = bet.stake + profit
-          updateData.profit_loss = profit
-        } else if (betResult.status === 'lost') {
-          updateData.result = 'lost'
-          updateData.actual_payout = 0
-          updateData.profit_loss = profit // negative value
-        } else {
-          updateData.result = betResult.status
-          updateData.actual_payout = bet.stake // push/void
-          updateData.profit_loss = 0
-        }
-
-        // Try to add new columns if they exist
-        try {
-          updateData.status = betResult.status
-          updateData.settled_at = new Date().toISOString()
-          updateData.profit = profit
-        } catch (e) {
-          // Columns don't exist yet, that's ok
+          status: betResult.status,
+          settled_at: new Date().toISOString(),
+          profit: profit
         }
 
         const { error: updateError } = await serviceSupabase
@@ -837,33 +816,12 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
           profit = 0 // Push - return original stake
         }
 
-        // Update the bet - handle missing columns gracefully
+        // Update the bet with fields that exist in the schema
         const updateData: any = {
           updated_at: new Date().toISOString(),
-        }
-
-        // Add fields that exist in the schema
-        if (betResult.status === 'won') {
-          updateData.result = 'won'
-          updateData.actual_payout = bet.stake + profit
-          updateData.profit_loss = profit
-        } else if (betResult.status === 'lost') {
-          updateData.result = 'lost'
-          updateData.actual_payout = 0
-          updateData.profit_loss = profit // negative value
-        } else {
-          updateData.result = betResult.status
-          updateData.actual_payout = bet.stake // push/void
-          updateData.profit_loss = 0
-        }
-
-        // Try to add new columns if they exist
-        try {
-          updateData.status = betResult.status
-          updateData.settled_at = new Date().toISOString()
-          updateData.profit = profit
-        } catch (e) {
-          // Columns don't exist yet, that's ok
+          status: betResult.status,
+          settled_at: new Date().toISOString(),
+          profit: profit
         }
 
         const { error: updateError } = await serviceSupabase

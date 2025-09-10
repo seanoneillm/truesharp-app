@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate total revenue (monthly recurring)
     let totalRevenue = 0
-    let subscriberCount = activeSubscriptions.length
+    const subscriberCount = activeSubscriptions.length
     const strategyMetrics: Record<string, { subscribers: number; revenue: number; tiers: string[] }> = {}
 
     activeSubscriptions.forEach(sub => {

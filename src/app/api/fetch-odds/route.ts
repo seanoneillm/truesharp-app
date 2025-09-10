@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Process requests sequentially to avoid rate limiting
     const results = []
-    
+
     for (let i = -1; i <= 6; i++) {
       const fetchDate = new Date(baseDate)
       fetchDate.setDate(baseDate.getDate() + i)
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       // Process sports sequentially for this date
       for (const sportKey of sportsToFetch) {
         console.log(`🔄 Processing ${sportKey} for ${dateStr}`)
-        
+
         try {
           const apiUrl = new URL('/api/games/sportsgameodds', request.url)
           apiUrl.searchParams.set('sport', sportKey)
@@ -35,19 +35,18 @@ export async function POST(request: NextRequest) {
 
           const response = await fetch(apiUrl.toString())
           const data = await response.json()
-          
+
           results.push({
             date: dateStr,
             sport: sportKey,
             gameCount: data.games?.length || 0,
             success: !data.error,
           })
-          
+
           console.log(`✅ Completed ${sportKey} for ${dateStr}: ${data.games?.length || 0} games`)
-          
+
           // Add a small delay between requests to be respectful to the API
           await new Promise(resolve => setTimeout(resolve, 100))
-          
         } catch (error) {
           console.error(`❌ Error fetching ${sportKey} for ${dateStr}:`, error)
           results.push({
@@ -79,7 +78,12 @@ export async function POST(request: NextRequest) {
           if (result.success) {
             sportData.successfulDays += 1
           }
-          if (!result.success && 'error' in result && result.error && result.error.includes('rate limit')) {
+          if (
+            !result.success &&
+            'error' in result &&
+            result.error &&
+            result.error.includes('rate limit')
+          ) {
             sportData.rateLimited += 1
           }
         }

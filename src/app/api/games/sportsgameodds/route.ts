@@ -350,7 +350,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export function generateMockGames(sport: string, date: string | undefined) {
   const validDate = date || new Date().toISOString().split('T')[0]
 
@@ -750,7 +750,7 @@ function transformSportsGameOddsMarkets(odds: Record<string, unknown>) {
   return markets
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export async function saveOddsData(gameId: string, sportsbooks: Array<Record<string, unknown>>) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -893,7 +893,7 @@ function getMarketType(betTypeID: string): string {
   return typeMap[betTypeID] || betTypeID
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export function transformMarkets(sportsbooks: Array<Record<string, unknown>>) {
   const markets: Record<string, Array<Record<string, unknown>>> = {
     moneyline: [],

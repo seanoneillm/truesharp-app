@@ -296,7 +296,7 @@ const BetsTable = ({ bets, isPro, isLoading }: BetsTableProps) => {
               // Use bet_description as primary display and supplement with additional details
               const buildCompleteBetDescription = (bet: Bet) => {
                 // Start with bet_description from the database (this should be the main description)
-                let primaryDescription = bet.bet_description || 'N/A'
+                const primaryDescription = bet.bet_description || 'N/A'
                 
                 // Build supplementary details array for additional context
                 const supplementaryDetails = []

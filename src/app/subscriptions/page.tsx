@@ -1,28 +1,28 @@
 'use client'
 
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/hooks/use-auth'
 // Note: Using API endpoint /api/subscriptions-open-bets instead of direct query
 import { SubscriberOpenBetsDisplay } from '@/components/shared/subscriber-open-bets-display'
 import {
+  AlertTriangle,
   ArrowUpRight,
   BarChart3,
-  CreditCard,
-  Edit,
-  RefreshCw,
   Calendar,
-  DollarSign,
-  TrendingUp,
-  X,
-  AlertTriangle,
   CheckCircle,
   Clock,
+  CreditCard,
+  DollarSign,
+  Edit,
+  RefreshCw,
+  TrendingUp,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 // Enhanced interfaces for subscription data
 interface SubscriptionData {
@@ -91,14 +91,16 @@ const SubscriptionCard = ({
   const [cancelling, setCancelling] = useState(false)
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+    if (
+      !confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')
+    ) {
       return
     }
-    
+
     setCancelling(true)
     try {
       console.log('Cancelling subscription:', subscription.id)
-      
+
       const response = await fetch(`/api/subscriptions/cancel/${subscription.id}`, {
         method: 'DELETE',
       })
@@ -110,13 +112,15 @@ const SubscriptionCard = ({
 
       const result = await response.json()
       console.log('Subscription cancelled successfully:', result)
-      
+
       // Show success message and refresh
       alert('Subscription cancelled successfully')
       onRefresh()
     } catch (error) {
       console.error('Error cancelling subscription:', error)
-      alert(`Failed to cancel subscription: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(
+        `Failed to cancel subscription: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     } finally {
       setCancelling(false)
     }
@@ -235,7 +239,8 @@ const SubscriptionCard = ({
             <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 p-4">
               <p className="mb-1 text-xs font-medium text-blue-700">Win Rate</p>
               <p className="text-xl font-bold text-blue-600">
-                {subscription.strategy_performance_win_rate !== null && subscription.strategy_performance_win_rate !== undefined
+                {subscription.strategy_performance_win_rate !== null &&
+                subscription.strategy_performance_win_rate !== undefined
                   ? `${subscription.strategy_performance_win_rate.toFixed(1)}%`
                   : 'N/A'}
               </p>
@@ -255,10 +260,7 @@ const SubscriptionCard = ({
       {/* Open Bets Display */}
       {subscription.open_bets && subscription.open_bets.length > 0 && (
         <div className="border-b border-gray-100 bg-gradient-to-r from-orange-50 to-red-50 p-6">
-          <SubscriberOpenBetsDisplay
-            bets={subscription.open_bets}
-            title="Current Open Picks"
-          />
+          <SubscriberOpenBetsDisplay bets={subscription.open_bets} title="Current Open Picks" />
         </div>
       )}
 
