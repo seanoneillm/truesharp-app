@@ -4,13 +4,17 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId } = body
+    const { userId, extensionAuthToken, extensionVersion } = body
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
     console.log(`🔄 Starting combined SharpSports refresh for user ${userId}`)
+    console.log('🔑 Extension data for refresh:', {
+      hasAuthToken: !!extensionAuthToken,
+      extensionVersion: extensionVersion || 'not provided'
+    })
     
     // Get the base URL from the request
     const baseUrl = new URL(request.url).origin
@@ -111,6 +115,8 @@ export async function POST(request: NextRequest) {
           signal: controller3.signal,
           body: JSON.stringify({
             userId: userId,
+            extensionAuthToken,
+            extensionVersion,
           }),
         }
       )
@@ -148,6 +154,8 @@ export async function POST(request: NextRequest) {
           signal: controller4.signal,
           body: JSON.stringify({
             userId: userId,
+            extensionAuthToken,
+            extensionVersion,
           }),
         }
       )

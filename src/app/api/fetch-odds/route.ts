@@ -16,39 +16,51 @@ export async function POST(request: NextRequest) {
         ? [sport]
         : ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
 
+    // Process requests sequentially to avoid rate limiting
+    const results = []
+    
     for (let i = -1; i <= 6; i++) {
       const fetchDate = new Date(baseDate)
       fetchDate.setDate(baseDate.getDate() + i)
       const dateStr = fetchDate.toISOString().split('T')[0] || fetchDate.toISOString()
 
-      // Create promises for each sport
+      // Process sports sequentially for this date
       for (const sportKey of sportsToFetch) {
-        const apiUrl = new URL('/api/games/sportsgameodds', request.url)
-        apiUrl.searchParams.set('sport', sportKey)
-        apiUrl.searchParams.set('date', dateStr)
-        apiUrl.searchParams.set('refresh', 'true')
+        console.log(`🔄 Processing ${sportKey} for ${dateStr}`)
+        
+        try {
+          const apiUrl = new URL('/api/games/sportsgameodds', request.url)
+          apiUrl.searchParams.set('sport', sportKey)
+          apiUrl.searchParams.set('date', dateStr)
+          apiUrl.searchParams.set('refresh', 'true')
 
-        promises.push(
-          fetch(apiUrl.toString())
-            .then(res => res.json())
-            .then(data => ({
-              date: dateStr,
-              sport: sportKey,
-              gameCount: data.games?.length || 0,
-              success: !data.error,
-            }))
-            .catch(error => ({
-              date: dateStr,
-              sport: sportKey,
-              gameCount: 0,
-              success: false,
-              error: error.message,
-            }))
-        )
+          const response = await fetch(apiUrl.toString())
+          const data = await response.json()
+          
+          results.push({
+            date: dateStr,
+            sport: sportKey,
+            gameCount: data.games?.length || 0,
+            success: !data.error,
+          })
+          
+          console.log(`✅ Completed ${sportKey} for ${dateStr}: ${data.games?.length || 0} games`)
+          
+          // Add a small delay between requests to be respectful to the API
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+        } catch (error) {
+          console.error(`❌ Error fetching ${sportKey} for ${dateStr}:`, error)
+          results.push({
+            date: dateStr,
+            sport: sportKey,
+            gameCount: 0,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
       }
     }
-
-    const results = await Promise.all(promises)
     const totalGames = results.reduce((sum, result) => sum + result.gameCount, 0)
     const successfulRequests = results.filter(r => r.success).length
     const rateLimitedRequests = results.filter(
@@ -80,8 +92,11 @@ export async function POST(request: NextRequest) {
       >
     )
 
+    // Calculate total expected requests
+    const totalExpectedRequests = sportsToFetch.length * 8 // 8 days
+
     // Determine overall success and create appropriate message
-    const isPartialSuccess = successfulRequests > 0 && successfulRequests < promises.length
+    const isPartialSuccess = successfulRequests > 0 && successfulRequests < totalExpectedRequests
     const hasRateLimiting = rateLimitedRequests > 0
 
     let message = ''
@@ -91,11 +106,11 @@ export async function POST(request: NextRequest) {
       message = `All requests were rate limited. Using cached/database data. Please wait 5-10 minutes before trying again.`
       success = false
     } else if (hasRateLimiting && isPartialSuccess) {
-      message = `Partial success: ${successfulRequests}/${promises.length} requests succeeded, ${rateLimitedRequests} were rate limited. Some data may be cached.`
-    } else if (successfulRequests === promises.length) {
+      message = `Partial success: ${successfulRequests}/${totalExpectedRequests} requests succeeded, ${rateLimitedRequests} were rate limited. Some data may be cached.`
+    } else if (successfulRequests === totalExpectedRequests) {
       message = `All requests succeeded! Fetched ${totalGames} games.`
     } else if (successfulRequests > 0) {
-      message = `Partial success: ${successfulRequests}/${promises.length} requests succeeded.`
+      message = `Partial success: ${successfulRequests}/${totalExpectedRequests} requests succeeded.`
     } else {
       message = 'All requests failed. Please try again later.'
       success = false
@@ -108,7 +123,7 @@ export async function POST(request: NextRequest) {
       totalGames,
       successfulRequests,
       rateLimitedRequests,
-      totalRequests: promises.length,
+      totalRequests: totalExpectedRequests,
       sportResults,
       message,
     })
@@ -120,7 +135,7 @@ export async function POST(request: NextRequest) {
       totalGames,
       successfulRequests,
       rateLimitedRequests,
-      totalRequests: promises.length,
+      totalRequests: totalExpectedRequests,
       daysProcessed: 8,
       sportResults,
       results,

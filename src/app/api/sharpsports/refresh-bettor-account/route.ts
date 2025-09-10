@@ -2,6 +2,75 @@ import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+// SharpSports API types
+interface BettorAccount {
+  id: string
+  balance: number
+  verified: boolean
+  access: string
+  paused: boolean
+  bettor: string
+  book?: {
+    name: string
+  }
+}
+
+interface BetSlip {
+  id: string
+  bettor: string
+}
+
+// Create a simple SharpSports client following the SDK pattern from your snippet
+class SharpSportsClient {
+  private apiKey: string = ''
+  private baseUrl: string = 'https://api.sharpsports.io/v1'
+
+  auth(token: string) {
+    this.apiKey = token
+  }
+
+  async refreshresponsesByBettor({
+    limit,
+    id,
+  }: {
+    limit?: string
+    id: string
+  }): Promise<{ data: BetSlip[] }> {
+    const url = `${this.baseUrl}/bettors/${id}/betSlips?limit=${limit || '500'}`
+    const response = await fetch(url, {
+      headers: {
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${await response.text()}`)
+    }
+
+    const data = await response.json()
+    return { data }
+  }
+
+  async bettoraccountsList(): Promise<{ data: BettorAccount[] }> {
+    const response = await fetch(`${this.baseUrl}/bettorAccounts`, {
+      headers: {
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${await response.text()}`)
+    }
+
+    const data = await response.json()
+    return { data }
+  }
+}
+
+const sharpsports = new SharpSportsClient()
+
 // POST /api/sharpsports/refresh-bettor-account - Refresh bettor account data with SharpSports
 export async function POST(request: NextRequest) {
   try {
@@ -18,15 +87,11 @@ export async function POST(request: NextRequest) {
 
     // Read request body once to get all parameters
     const body = await request.json().catch(() => ({}))
-    const { 
-      userId: requestUserId, 
-      extensionAuthToken,
-      extensionVersion 
-    } = body
+    const { userId: requestUserId, extensionAuthToken, extensionVersion } = body
 
-    console.log('🔍 Extension data:', { 
-      hasToken: !!extensionAuthToken, 
-      version: extensionVersion 
+    console.log('🔍 Extension data:', {
+      hasToken: !!extensionAuthToken,
+      version: extensionVersion,
     })
 
     // Handle service role fallback for authentication
@@ -74,201 +139,207 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Use public API key for bettor refresh (required for live mode operations)
-    const publicApiKey = process.env.SHARPSPORTS_PUBLIC_API_KEY
-    const privateApiKey = process.env.SHARPSPORTS_API_KEY
-
-    // Try public key first, fallback to private key for sandbox compatibility
-    const apiKey = publicApiKey || privateApiKey
-
+    // Use same API key as step 4 (refresh-user-bets)
+    const apiKey = process.env.SHARPSPORTS_API_KEY
     if (!apiKey) {
-      console.error('SharpSports Refresh Bettor Account - No API key configured (public or private)')
-      return NextResponse.json({ 
-        success: false,
-        error: 'SharpSports API key not configured' 
-      }, { status: 500 })
+      console.error('SharpSports Refresh Bettor Account - API key not configured')
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'SharpSports API key not configured',
+        },
+        { status: 500 }
+      )
     }
 
-    console.log(`🔑 Using ${publicApiKey ? 'public' : 'private'} API key for bettor refresh`)
-
-    // Use production API (sandbox might not be available for this endpoint)
-    const apiBaseUrl = 'https://api.sharpsports.io'
-
-    console.log(`SharpSports Refresh Bettor Account - Refreshing bettor: ${profile.sharpsports_bettor_id}`)
-
-    // Prepare headers with extension data if available
-    const headers: Record<string, string> = {
-      Authorization: `Token ${apiKey}`,
-      'Content-Type': 'application/json',
-    }
-    
-    // Add extension data to headers if available
-    if (extensionAuthToken) {
-      headers['X-Extension-Auth-Token'] = extensionAuthToken
-    }
-    if (extensionVersion) {
-      headers['X-Extension-Version'] = extensionVersion
-    }
-
-    // First, get all bettor accounts for this bettor
-    const accountsResponse = await fetch(
-      `${apiBaseUrl}/v1/bettors/${profile.sharpsports_bettor_id}/bettorAccounts`,
-      {
-        method: 'GET',
-        headers,
-      }
+    console.log(
+      `SharpSports Refresh Bettor Account - Refreshing bettor: ${profile.sharpsports_bettor_id}`
     )
 
-    if (!accountsResponse.ok) {
-      const errorText = await accountsResponse.text()
-      console.error(
-        `❌ SharpSports Refresh Bettor Account - Failed to fetch bettor accounts:`,
-        accountsResponse.status,
-        errorText
+    // Auth with SharpSports SDK following your snippet pattern
+    sharpsports.auth(`Token ${apiKey}`)
+
+    try {
+      // Step 1: Get the bettor's accounts first
+      const { data: allAccounts } = await sharpsports.bettoraccountsList()
+
+      // Filter accounts for this specific bettor
+      const bettorAccounts: BettorAccount[] = allAccounts.filter(
+        (account: BettorAccount) => account.bettor === profile.sharpsports_bettor_id
       )
-      
-      // Check if response contains extension-related error data
-      let errorData: any = {}
-      try {
-        errorData = JSON.parse(errorText)
-      } catch {
-        // Not JSON, proceed with text error
-      }
-      
-      if (errorData.extensionUpdateRequired) {
+
+      console.log(
+        `� Found ${bettorAccounts.length} accounts for bettor ${profile.sharpsports_bettor_id}`
+      )
+
+      if (bettorAccounts.length === 0) {
         return NextResponse.json({
-          extensionUpdateRequired: true,
-          extensionDownloadUrl: errorData.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports',
-          error: 'Extension update required',
+          success: true,
+          message: `No accounts found for bettor ${profile.sharpsports_bettor_id}`,
+          refreshedAccounts: 0,
         })
       }
-      
-      return NextResponse.json({
-        success: false,
-        error: `Failed to fetch bettor accounts: HTTP ${accountsResponse.status}`,
-        details: errorText,
-      }, { status: 500 })
-    }
 
-    const accounts = await accountsResponse.json()
-    console.log(`📊 Found ${accounts.length} accounts for bettor ${profile.sharpsports_bettor_id}`)
+      // Step 2: Refresh responses by bettor (the missing call!)
+      console.log(`🔄 Calling refreshresponsesByBettor for ${profile.sharpsports_bettor_id}`)
 
-    if (accounts.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: `No accounts found for bettor ${profile.sharpsports_bettor_id}`,
-        refreshedAccounts: 0,
-      })
-    }
+      let refreshResponsesSuccess = false
+      let refreshResponsesCount = 0
 
-    // Refresh each account individually
-    const refreshResults = []
-    for (const account of accounts) {
       try {
-        console.log(`🔄 Refreshing account: ${account.id}`)
-        
-        const refreshResponse = await fetch(
-          `${apiBaseUrl}/v1/bettorAccount/${account.id}/refresh`,
-          {
-            method: 'POST',
-            headers,
-          }
-        )
+        const refreshResponsesResult = await sharpsports.refreshresponsesByBettor({
+          limit: '500',
+          id: profile.sharpsports_bettor_id,
+        })
 
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json()
-          
-          // Check for extension-related responses even in successful calls
-          if (refreshData.extensionUpdateRequired) {
-            refreshResults.push({
-              accountId: account.id,
-              bookName: account.book?.name || 'Unknown',
-              status: 'extension_update_required',
-              extensionUpdateRequired: true,
-              extensionDownloadUrl: refreshData.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports',
-            })
-          } else {
-            refreshResults.push({
-              accountId: account.id,
-              bookName: account.book?.name || 'Unknown',
-              status: 'success',
-              refreshId: refreshData.id || 'unknown'
-            })
-            console.log(`✅ Successfully initiated refresh for account ${account.id}`)
+        refreshResponsesCount = refreshResponsesResult.data?.length || 0
+        refreshResponsesSuccess = true
+
+        console.log(
+          `✅ refreshresponsesByBettor completed: ${refreshResponsesCount} responses refreshed`
+        )
+      } catch (refreshError) {
+        console.error('❌ refreshresponsesByBettor failed:', refreshError)
+        // Continue with account refresh even if this fails
+      }
+
+      // Step 3: Trigger actual refresh for each account (like the main refresh endpoint does)
+      console.log(`🔄 Triggering refresh for ${bettorAccounts.length} accounts`)
+
+      const refreshResults = []
+      let successfulRefreshes = 0
+
+      for (const account of bettorAccounts) {
+        try {
+          console.log(`🔄 Refreshing account: ${account.id} (${account.book?.name})`)
+
+          // Build refresh payload with extension data
+          const refreshPayload: Record<string, string> = {}
+          if (extensionAuthToken) {
+            refreshPayload.extensionAuthToken = extensionAuthToken
           }
-        } else {
-          const errorText = await refreshResponse.text()
-          console.error(`❌ Failed to refresh account ${account.id}: ${refreshResponse.status} ${errorText}`)
-          
-          // Check if individual refresh response contains extension data
-          let refreshErrorData: any = {}
-          try {
-            refreshErrorData = JSON.parse(errorText)
-          } catch {
-            // Not JSON, proceed with text error
+          if (extensionVersion) {
+            refreshPayload.extensionVersion = extensionVersion
           }
-          
-          if (refreshErrorData.extensionUpdateRequired) {
-            refreshResults.push({
-              accountId: account.id,
-              bookName: account.book?.name || 'Unknown',
-              status: 'extension_update_required',
-              extensionUpdateRequired: true,
-              extensionDownloadUrl: refreshErrorData.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports',
-            })
+
+          const refreshResponse = await fetch(
+            `https://api.sharpsports.io/v1/bettorAccount/${account.id}/refresh`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Token ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: Object.keys(refreshPayload).length > 0 ? JSON.stringify(refreshPayload) : null,
+            }
+          )
+
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json()
+            console.log(`✅ Successfully triggered refresh for account ${account.id}`)
+
+            // Check for extension update requirements
+            if (refreshData.extensionUpdateRequired) {
+              console.log('🔄 Extension update required for account:', account.id)
+              refreshResults.push({
+                accountId: account.id,
+                bookName: account.book?.name || 'Unknown',
+                status: 'extension_update_required',
+                extensionUpdateRequired: refreshData.extensionUpdateRequired,
+                extensionDownloadUrl: refreshData.extensionDownloadUrl,
+              })
+            } else {
+              refreshResults.push({
+                accountId: account.id,
+                bookName: account.book?.name || 'Unknown',
+                status: 'initiated',
+                refreshId: refreshData.id || 'unknown',
+              })
+            }
+            successfulRefreshes++
           } else {
+            const errorText = await refreshResponse.text()
+            console.error(
+              `❌ Failed to refresh account ${account.id}: ${refreshResponse.status} ${errorText}`
+            )
+
             refreshResults.push({
               accountId: account.id,
               bookName: account.book?.name || 'Unknown',
               status: 'failed',
-              error: `HTTP ${refreshResponse.status}: ${errorText}`
+              error: `HTTP ${refreshResponse.status}: ${errorText}`,
             })
           }
+        } catch (accountError) {
+          console.error(`❌ Error refreshing account ${account.id}:`, accountError)
+          refreshResults.push({
+            accountId: account.id,
+            bookName: account.book?.name || 'Unknown',
+            status: 'error',
+            error: accountError instanceof Error ? accountError.message : 'Unknown error',
+          })
         }
-      } catch (error) {
-        console.error(`❌ Error refreshing account ${account.id}:`, error)
-        refreshResults.push({
-          accountId: account.id,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        })
       }
-    }
 
-    // Count different types of results
-    const successfulRefreshes = refreshResults.filter(r => r.status === 'success').length
-    const extensionUpdateRequired = refreshResults.filter(r => r.status === 'extension_update_required').length
-    const failedRefreshes = refreshResults.filter(r => r.status === 'failed' || r.status === 'error').length
+      // Step 3: Update our database with fresh account data after triggering refresh
+      let updatedCount = 0
+      for (const account of bettorAccounts) {
+        const accountData = {
+          balance: account.balance,
+          verified: account.verified,
+          access: account.access,
+          paused: account.paused,
+          latest_refresh_time: new Date().toISOString(),
+        }
 
-    console.log(`✅ SharpSports Refresh Bettor Account - Completed: ${successfulRefreshes} success, ${extensionUpdateRequired} extension updates needed, ${failedRefreshes} failed`)
+        const { error: updateError } = await querySupabase
+          .from('bettor_accounts')
+          .update(accountData)
+          .eq('sharpsports_account_id', account.id)
 
-    // If any accounts require extension update, return that info
-    if (extensionUpdateRequired > 0) {
-      const extensionResult = refreshResults.find(r => r.status === 'extension_update_required')
-      return NextResponse.json({
-        extensionUpdateRequired: true,
-        extensionDownloadUrl: extensionResult?.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports',
-        error: `Extension update required for ${extensionUpdateRequired} accounts`,
+        if (updateError) {
+          console.error(`❌ Failed to update account ${account.id}:`, updateError)
+        } else {
+          console.log(`✅ Updated database for account: ${account.book?.name} (${account.id})`)
+          updatedCount++
+        }
+      }
+
+      // Check if any accounts require extension updates
+      const extensionUpdateAccounts = refreshResults.filter(r => r.status === 'extension_update_required')
+      const extensionUpdateRequired = extensionUpdateAccounts.length > 0
+      
+      const response: Record<string, any> = {
+        success: true,
+        message: `Refresh completed for bettor ${profile.sharpsports_bettor_id}: ${refreshResponsesSuccess ? refreshResponsesCount + ' responses refreshed, ' : 'responses refresh failed, '}${successfulRefreshes}/${bettorAccounts.length} accounts refreshed successfully`,
+        refreshedAccounts: successfulRefreshes,
+        updatedAccounts: updatedCount,
+        totalAccounts: bettorAccounts.length,
+        bettorId: profile.sharpsports_bettor_id,
+        refreshResponsesSuccess,
+        refreshResponsesCount,
         results: refreshResults,
-      })
+      }
+
+      // Add extension update info if needed
+      if (extensionUpdateRequired) {
+        response.extensionUpdateRequired = extensionUpdateAccounts.map(a => a.accountId)
+        response.extensionDownloadUrl = extensionUpdateAccounts[0]?.extensionDownloadUrl || 'https://chrome.google.com/webstore/search/sharpsports'
+        response.message += ` (${extensionUpdateAccounts.length} accounts require extension update)`
+      }
+
+      return NextResponse.json(response)
+    } catch (error) {
+      console.error('❌ SharpSports Refresh Bettor Account - Refresh error:', error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to trigger refresh',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        { status: 500 }
+      )
     }
-
-    // Consider it successful if we found accounts and processed them (even if refresh API failed)
-    // The important part is that we triggered the betSlips to be updated, which is working
-    const hasAccounts = refreshResults.length > 0
-    const message = hasAccounts
-      ? `Processed refresh for ${refreshResults.length} accounts for bettor ${profile.sharpsports_bettor_id} (${successfulRefreshes} succeeded, ${failedRefreshes} failed)`
-      : `No accounts found for bettor ${profile.sharpsports_bettor_id}`
-
-    return NextResponse.json({
-      success: hasAccounts, // Success if we have accounts to process
-      message: message,
-      refreshedAccounts: successfulRefreshes,
-      totalAccounts: refreshResults.length,
-      results: refreshResults,
-      bettorId: profile.sharpsports_bettor_id,
-      note: failedRefreshes > 0 ? "Some account refreshes failed but betSlips were still updated" : undefined
-    })
   } catch (error) {
     console.error('SharpSports Refresh Bettor Account - Unexpected error:', error)
     return NextResponse.json(

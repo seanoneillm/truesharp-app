@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { Calendar, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
 
 interface DatabaseBet {
   id: string
@@ -240,19 +241,6 @@ export default function TodaysBets() {
     return `$${parlay.total_stake.toFixed(2)}`
   }
 
-  const formatBetDescription = (bet: DatabaseBet) => {
-    let description = bet.bet_description
-
-    if (bet.line_value !== null && bet.line_value !== undefined) {
-      if (bet.bet_type === 'spread') {
-        description += ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}`
-      } else if (bet.bet_type === 'total') {
-        description += ` ${bet.line_value}`
-      }
-    }
-
-    return description
-  }
 
   const totalBetsCount = processedBets.straight_bets.length + processedBets.parlay_groups.length
 
@@ -307,234 +295,266 @@ export default function TodaysBets() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Render Straight Bets */}
-          {processedBets.straight_bets.map(bet => (
-            <div
-              key={bet.id}
-              className="relative rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 transition-all duration-200 hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex flex-1 items-start space-x-4">
-                  <div className="mt-1 flex-shrink-0">{getStatusIcon(bet.status)}</div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="mb-1 text-sm font-semibold text-gray-900">
-                      {formatBetDescription(bet)}
-                    </h4>
-                    <div className="mb-2 flex items-center space-x-3">
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                        {bet.sport}
-                      </span>
-                      <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                        {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
-                      </span>
-                      <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600">
-                        {bet.bet_type.charAt(0).toUpperCase() + bet.bet_type.slice(1)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {bet.home_team} vs {bet.away_team} •{' '}
-                      {new Date(bet.placed_at).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ml-4 text-right">
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(bet.status)} mb-2`}
-                  >
-                    {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
-                  </span>
-                  <div
-                    className={`text-lg font-bold ${
-                      bet.status === 'won'
-                        ? 'text-green-600'
-                        : bet.status === 'lost'
-                          ? 'text-red-600'
-                          : bet.status === 'void'
-                            ? 'text-yellow-600'
-                            : 'text-gray-900'
-                    }`}
-                  >
-                    {bet.status === 'pending'
-                      ? `+$${(bet.potential_payout - bet.stake).toFixed(2)}`
-                      : getProfitDisplay(bet)}
-                  </div>
-                  <div className="text-xs text-gray-500">Stake: ${bet.stake.toFixed(2)}</div>
-                </div>
-              </div>
-
+        <div>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {/* Render Straight Bets */}
+            {processedBets.straight_bets.map(bet => (
               <div
-                className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
-                  bet.status === 'won'
-                    ? 'bg-green-500'
-                    : bet.status === 'lost'
-                      ? 'bg-red-500'
-                      : bet.status === 'void'
-                        ? 'bg-yellow-500'
-                        : 'bg-blue-500'
-                }`}
-              ></div>
-            </div>
-          ))}
-
-          {/* Render Parlay Groups */}
-          {processedBets.parlay_groups.map(parlay => {
-            const isExpanded = expandedParlays.has(parlay.parlay_id)
-            return (
-              <div
-                key={parlay.parlay_id}
-                className="relative overflow-hidden rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-white"
+                key={bet.id}
+                className="relative rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 transition-all duration-200 hover:shadow-md"
               >
-                {/* Parlay Header */}
-                <div
-                  className="cursor-pointer p-4 transition-all duration-200 hover:shadow-md"
-                  onClick={() => toggleParlayExpanded(parlay.parlay_id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex flex-1 items-start space-x-4">
-                      <div className="mt-1 flex-shrink-0">{getStatusIcon(parlay.status)}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex items-center space-x-3">
-                          <h4 className="text-sm font-semibold text-gray-900">
-                            {parlay.legs.length}-Leg Parlay
-                          </h4>
-                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                            PARLAY
-                          </span>
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="mb-1 text-xs text-gray-500">
-                          {parlay.legs
-                            .map(leg => leg.sport)
-                            .filter((sport, index, arr) => arr.indexOf(sport) === index)
-                            .join(', ')}{' '}
-                          • Placed at{' '}
-                          {new Date(parlay.placed_at).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          Click to {isExpanded ? 'collapse' : 'view'} legs
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="ml-4 text-right">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(parlay.status)} mb-2`}
-                      >
-                        {parlay.status.charAt(0).toUpperCase() + parlay.status.slice(1)}
-                      </span>
-                      <div
-                        className={`text-lg font-bold ${
-                          parlay.status === 'won'
-                            ? 'text-green-600'
-                            : parlay.status === 'lost'
-                              ? 'text-red-600'
-                              : parlay.status === 'void'
-                                ? 'text-yellow-600'
-                                : 'text-gray-900'
-                        }`}
-                      >
-                        {parlay.status === 'pending'
-                          ? `+$${(parlay.total_potential_payout - parlay.total_stake).toFixed(2)}`
-                          : getParlayProfitDisplay(parlay)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Stake: ${parlay.total_stake.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Parlay Legs (Expandable) */}
-                {isExpanded && (
-                  <div className="border-t border-purple-100 bg-purple-50/50">
-                    {parlay.legs.map((leg, index) => (
-                      <div
-                        key={leg.id}
-                        className="border-b border-purple-100 px-4 py-3 last:border-b-0"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-1 items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-600">
-                                {index + 1}
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-1 items-start space-x-4">
+                    <div className="mt-1 flex-shrink-0">{getStatusIcon(bet.status)}</div>
+                    <div className="min-w-0 flex-1">
+                      {(() => {
+                        const formattedBet = formatBetForDisplay(bet)
+                        return (
+                          <>
+                            <div className="mb-2 flex items-center space-x-2">
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                                {formattedBet.sport}
+                              </span>
+                              <span className="rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
+                                {formattedBet.betType}
+                              </span>
+                              <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                                {formattedBet.sportsbook}
+                              </span>
+                              <span className="rounded bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
+                                {formattedBet.status}
                               </span>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-1 text-sm font-medium text-gray-900">
-                                {leg.home_team} vs {leg.away_team}
-                              </div>
-                              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                <span className="font-medium text-gray-700">
-                                  {leg.bet_description}
+                            
+                            <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                              {formattedBet.mainDescription}
+                            </h4>
+                            
+                            <div className="mb-2 flex items-center space-x-3 text-xs text-gray-600">
+                              <span className="font-medium">Odds: {formattedBet.odds}</span>
+                              <span>Stake: {formattedBet.stake}</span>
+                              {formattedBet.gameDateTime && (
+                                <span>Game: {formattedBet.gameDateTime}</span>
+                              )}
+                              {formattedBet.lineDisplay && (
+                                <span>Line: {formattedBet.lineDisplay}</span>
+                              )}
+                              {getDisplaySide(bet) && (
+                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium">
+                                  {getDisplaySide(bet)}
                                 </span>
-                                {leg.line_value !== null && leg.line_value !== undefined && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="font-medium text-gray-600">
-                                      {leg.bet_type === 'spread'
-                                        ? `${leg.line_value > 0 ? '+' : ''}${leg.line_value}`
-                                        : leg.line_value}
-                                    </span>
-                                  </>
-                                )}
-                                <span>•</span>
-                                <span className="font-medium text-gray-600">
-                                  {leg.odds > 0 ? `+${leg.odds}` : leg.odds}
-                                </span>
-                              </div>
+                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span
-                              className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ${getStatusColor(leg.status)}`}
-                            >
-                              {leg.status.charAt(0).toUpperCase() + leg.status.slice(1)}
-                            </span>
-                            {getStatusIcon(leg.status)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                            
+                            {formattedBet.teamsDisplay && (
+                              <div className="text-xs text-gray-500">
+                                {formattedBet.teamsDisplay}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
-                )}
-
+  
+                  <div className="ml-4 text-right">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(bet.status)} mb-2`}
+                    >
+                      {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
+                    </span>
+                    <div
+                      className={`text-lg font-bold ${
+                        bet.status === 'won'
+                          ? 'text-green-600'
+                          : bet.status === 'lost'
+                            ? 'text-red-600'
+                            : bet.status === 'void'
+                              ? 'text-yellow-600'
+                              : 'text-gray-900'
+                      }`}
+                    >
+                      {bet.status === 'pending'
+                        ? `+$${(bet.potential_payout - bet.stake).toFixed(2)}`
+                        : getProfitDisplay(bet)}
+                    </div>
+                    <div className="text-xs text-gray-500">Stake: ${bet.stake.toFixed(2)}</div>
+                  </div>
+                </div>
+  
                 <div
                   className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
-                    parlay.status === 'won'
+                    bet.status === 'won'
                       ? 'bg-green-500'
-                      : parlay.status === 'lost'
+                      : bet.status === 'lost'
                         ? 'bg-red-500'
-                        : parlay.status === 'void'
+                        : bet.status === 'void'
                           ? 'bg-yellow-500'
-                          : 'bg-purple-500'
+                          : 'bg-blue-500'
                   }`}
                 ></div>
               </div>
-            )
-          })}
-
-          {totalBetsCount > 3 && (
-            <div className="pt-4 text-center">
-              <Link
-                href="/analytics"
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
-              >
-                View all bets →
-              </Link>
-            </div>
-          )}
+            ))}
+  
+            {/* Render Parlay Groups */}
+            {processedBets.parlay_groups.map(parlay => {
+              const isExpanded = expandedParlays.has(parlay.parlay_id)
+              return (
+                <div
+                  key={parlay.parlay_id}
+                  className="relative overflow-hidden rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-white"
+                >
+                  {/* Parlay Header */}
+                  <div
+                    className="cursor-pointer p-4 transition-all duration-200 hover:shadow-md"
+                    onClick={() => toggleParlayExpanded(parlay.parlay_id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex flex-1 items-start space-x-4">
+                        <div className="mt-1 flex-shrink-0">{getStatusIcon(parlay.status)}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex items-center space-x-3">
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              {parlay.legs.length}-Leg Parlay
+                            </h4>
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+                              PARLAY
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="mb-1 text-xs text-gray-500">
+                            {parlay.legs
+                              .map(leg => leg.sport)
+                              .filter((sport, index, arr) => arr.indexOf(sport) === index)
+                              .join(', ')}{' '}
+                            • Placed at{' '}
+                            {new Date(parlay.placed_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Click to {isExpanded ? 'collapse' : 'view'} legs
+                          </div>
+                        </div>
+                      </div>
+  
+                      <div className="ml-4 text-right">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(parlay.status)} mb-2`}
+                        >
+                          {parlay.status.charAt(0).toUpperCase() + parlay.status.slice(1)}
+                        </span>
+                        <div
+                          className={`text-lg font-bold ${
+                            parlay.status === 'won'
+                              ? 'text-green-600'
+                              : parlay.status === 'lost'
+                                ? 'text-red-600'
+                                : parlay.status === 'void'
+                                  ? 'text-yellow-600'
+                                  : 'text-gray-900'
+                          }`}
+                        >
+                          {parlay.status === 'pending'
+                            ? `+$${(parlay.total_potential_payout - parlay.total_stake).toFixed(2)}`
+                            : getParlayProfitDisplay(parlay)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Stake: ${parlay.total_stake.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+  
+                  {/* Parlay Legs (Expandable) */}
+                  {isExpanded && (
+                    <div className="border-t border-purple-100 bg-purple-50/50">
+                      {parlay.legs.map((leg, index) => (
+                        <div
+                          key={leg.id}
+                          className="border-b border-purple-100 px-4 py-3 last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-1 items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-600">
+                                  {index + 1}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-1 text-sm font-medium text-gray-900">
+                                  {leg.home_team} vs {leg.away_team}
+                                </div>
+                                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                  <span className="font-medium text-gray-700">
+                                    {leg.bet_description}
+                                  </span>
+                                  {leg.line_value !== null && leg.line_value !== undefined && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="font-medium text-gray-600">
+                                        {leg.bet_type === 'spread'
+                                          ? `${leg.line_value > 0 ? '+' : ''}${leg.line_value}`
+                                          : leg.line_value}
+                                      </span>
+                                    </>
+                                  )}
+                                  <span>•</span>
+                                  <span className="font-medium text-gray-600">
+                                    {leg.odds > 0 ? `+${leg.odds}` : leg.odds}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span
+                                className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ${getStatusColor(leg.status)}`}
+                              >
+                                {leg.status.charAt(0).toUpperCase() + leg.status.slice(1)}
+                              </span>
+                              {getStatusIcon(leg.status)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+  
+                  <div
+                    className={`absolute bottom-0 left-0 top-0 w-1 rounded-l-xl ${
+                      parlay.status === 'won'
+                        ? 'bg-green-500'
+                        : parlay.status === 'lost'
+                          ? 'bg-red-500'
+                          : parlay.status === 'void'
+                            ? 'bg-yellow-500'
+                            : 'bg-purple-500'
+                    }`}
+                  ></div>
+                </div>
+              )
+            })}
+          </div>
+          
+          {/* Footer with scroll hint and view all link */}
+          <div className="pt-4 flex items-center justify-between border-t border-gray-100">
+            {totalBetsCount > 3 && (
+              <div className="text-xs text-gray-400">
+                ↕ Scroll above to view all {totalBetsCount} bets
+              </div>
+            )}
+            <Link
+              href="/analytics"
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              View all bets →
+            </Link>
+          </div>
         </div>
       )}
     </div>

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
 
 interface BetLeg {
   id: string
@@ -297,60 +298,70 @@ export function BetsTab({
                           </TableCell>
 
                           <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {bet.sport}
-                                </Badge>
-                                {bet.sportsbook && (
-                                  <span className="text-xs text-gray-500">{bet.sportsbook}</span>
-                                )}
-                              </div>
-                              <div className="space-y-1">
-                                <p className="line-clamp-2 font-medium">{bet.bet_description}</p>
-                                <div className="flex items-center space-x-2 text-xs text-gray-600">
-                                  {bet.home_team && bet.away_team && (
-                                    <span className="font-medium">{bet.away_team} @ {bet.home_team}</span>
-                                  )}
-                                  {bet.side && (
-                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium">
-                                      {bet.side.toUpperCase()}
+                            {(() => {
+                              const formattedBet = formatBetForDisplay(bet)
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {formattedBet.sport}
+                                    </Badge>
+                                    <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 font-medium text-xs">
+                                      {formattedBet.betType}
                                     </span>
-                                  )}
-                                  {bet.line_value !== undefined && bet.line_value !== null && (
-                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium">
-                                      {bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`}
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700 font-medium text-xs">
+                                      {formattedBet.sportsbook}
                                     </span>
-                                  )}
-                                  {bet.player_name && (
-                                    <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 font-medium">
-                                      {bet.player_name}
+                                    <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 font-medium text-xs">
+                                      {formattedBet.status}
                                     </span>
+                                  </div>
+                                  
+                                  <div className="space-y-1">
+                                    <p className="line-clamp-2 font-medium">{formattedBet.mainDescription}</p>
+                                    
+                                    <div className="flex items-center space-x-2 text-xs text-gray-600">
+                                      <span className="font-medium">Odds: {formattedBet.odds}</span>
+                                      <span>Stake: {formattedBet.stake}</span>
+                                      {formattedBet.gameDateTime && (
+                                        <span>Game: {formattedBet.gameDateTime}</span>
+                                      )}
+                                      {formattedBet.lineDisplay && (
+                                        <span>Line: {formattedBet.lineDisplay}</span>
+                                      )}
+                                      {getDisplaySide(bet) && (
+                                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium">
+                                          {getDisplaySide(bet)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    {formattedBet.teamsDisplay && (
+                                      <div className="text-xs text-gray-500">
+                                        {formattedBet.teamsDisplay}
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Parlay legs preview */}
+                                  {bet.is_parlay && bet.legs && bet.legs.length > 0 && (
+                                    <div className="space-y-1 border-l-2 border-gray-200 pl-2 text-xs text-gray-600">
+                                      {bet.legs.slice(0, 2).map(leg => (
+                                        <div key={leg.id}>
+                                          <span className="font-medium">{leg.sport}:</span>{' '}
+                                          {leg.bet_description} ({formatOdds(leg.odds)})
+                                        </div>
+                                      ))}
+                                      {bet.legs.length > 2 && (
+                                        <div className="text-gray-500">
+                                          +{bet.legs.length - 2} more legs
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
-                              </div>
-
-                              {/* Parlay legs preview */}
-                              {bet.is_parlay && bet.legs && bet.legs.length > 0 && (
-                                <div className="space-y-1 border-l-2 border-gray-200 pl-2 text-xs text-gray-600">
-                                  {bet.legs.slice(0, 2).map(leg => (
-                                    <div key={leg.id}>
-                                      <span className="font-medium">{leg.sport}:</span>{' '}
-                                      {leg.bet_description} ({formatOdds(leg.odds)})
-                                    </div>
-                                  ))}
-                                  {bet.legs.length > 2 && (
-                                    <div className="text-gray-500">
-                                      +{bet.legs.length - 2} more legs
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              <p className="text-sm text-gray-600">
-                                {formatOdds(bet.odds)} • {bet.bet_type}
-                              </p>
-                            </div>
+                              )
+                            })()}
                           </TableCell>
 
                           <TableCell>

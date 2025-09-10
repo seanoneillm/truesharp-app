@@ -28,8 +28,9 @@ export function SubscriberOpenBetsDisplay({
     )
   }
 
-  const displayBets = bets.slice(0, maxBets)
-  const hasMoreBets = bets.length > maxBets
+  // Show all bets in a scrollable container instead of limiting with maxBets
+  const displayBets = bets
+  const shouldScroll = bets.length > 3 // Enable scrolling if more than 3 bets
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -42,16 +43,16 @@ export function SubscriberOpenBetsDisplay({
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className={`space-y-2 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
         {displayBets.map(bet => {
           const formattedBet = formatBetForDisplay(bet)
           return <SubscriberBetCard key={bet.id} bet={formattedBet} />
         })}
       </div>
 
-      {hasMoreBets && (
-        <div className="border-t border-gray-100 pt-2 text-center text-xs text-gray-500">
-          +{bets.length - maxBets} more bet{bets.length - maxBets !== 1 ? 's' : ''}
+      {shouldScroll && (
+        <div className="border-t border-gray-100 pt-2 text-center text-xs text-gray-400">
+          ↕ Scroll to view all {bets.length} bets
         </div>
       )}
     </div>
@@ -97,49 +98,51 @@ function SubscriberBetCard({ bet }: SubscriberBetCardProps) {
 
   return (
     <div className="rounded-lg border border-gray-100 bg-white p-3 transition-all hover:border-gray-200 hover:shadow-sm">
-      <div className="mb-2 flex items-start justify-between">
-        <div className="flex flex-1 items-center space-x-2">
-          <span
-            className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${getBetTypeColor(bet.bet_type)}`}
-          >
-            {getBetTypeIcon(bet.bet_type)}
-            <span className="ml-1">{bet.bet_type.toUpperCase()}</span>
-          </span>
-          {bet.sport && (
-            <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">{bet.sport}</span>
-          )}
-        </div>
-        <div className="text-right">
-          <div className="text-sm font-bold text-gray-900">{bet.oddsDisplay}</div>
-        </div>
+      {/* Header badges - SharpSports style */}
+      <div className="mb-2 flex items-center space-x-2">
+        <span className="inline-flex items-center rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+          {bet.sport}
+        </span>
+        <span className={`inline-flex items-center rounded border px-2 py-1 text-xs font-medium ${getBetTypeColor(bet.betType)}`}>
+          {getBetTypeIcon(bet.betType)}
+          <span className="ml-1">{bet.betType}</span>
+        </span>
+        <span className="inline-flex items-center rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+          {bet.sportsbook}
+        </span>
+        <span className="inline-flex items-center rounded bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
+          {bet.status}
+        </span>
       </div>
-
+      
+      {/* Main description - SharpSports style */}
       <div className="mb-2">
-        <p className="line-clamp-2 text-sm font-medium text-gray-900">{bet.gameInfo}</p>
-        {bet.home_team && bet.away_team && (
-          <p className="mt-1 text-xs text-gray-600">
-            {bet.away_team} @ {bet.home_team}
-          </p>
-        )}
-        {bet.line_value && (
-          <p className="text-xs text-gray-600">
-            Line: {bet.line_value > 0 ? '+' : ''}
-            {bet.line_value}
-          </p>
-        )}
+        <p className="text-sm font-medium text-gray-900">{bet.mainDescription}</p>
       </div>
-
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center space-x-3">
-          {bet.gameTime && (
-            <div className="flex items-center text-gray-500">
-              <Calendar className="mr-1 h-3 w-3" />
-              {bet.gameTime}
-            </div>
-          )}
-          {bet.sportsbook && <span className="text-gray-500">{bet.sportsbook}</span>}
+      
+      {/* Bet details - SharpSports style (no monetary values for subscribers) */}
+      <div className="flex items-center space-x-3 text-xs text-gray-600">
+        <span className="font-medium">Odds: {bet.odds}</span>
+        {bet.gameDateTime && <span>Game: {bet.gameDateTime}</span>}
+        {bet.lineDisplay && <span>Line: {bet.lineDisplay}</span>}
+      </div>
+      
+      {/* Teams display */}
+      {bet.teamsDisplay && (
+        <div className="mt-1 text-xs text-gray-500">
+          {bet.teamsDisplay}
         </div>
-      </div>
+      )}
+
+      {/* Game time display (no monetary values for subscribers) */}
+      {bet.gameTime && (
+        <div className="mt-2 flex justify-end">
+          <div className="flex items-center text-xs text-gray-500">
+            <Calendar className="mr-1 h-3 w-3" />
+            {bet.gameTime}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

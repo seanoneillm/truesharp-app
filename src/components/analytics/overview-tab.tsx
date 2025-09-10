@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
 
 interface BetLeg {
   id: string
@@ -340,30 +341,59 @@ export function OverviewTab({
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-xs">
-                            {bet.sport}
+                            {(() => {
+                              const formattedBet = formatBetForDisplay(bet)
+                              return formattedBet.sport
+                            })()}
                           </Badge>
                           {getStatusBadge(bet.status)}
                         </div>
 
                         <div className="space-y-1">
-                          <p className="line-clamp-2 text-sm font-medium">
-                            {bet.bet_description || bet.description}
-                          </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-600">
-                            {bet.home_team && bet.away_team && (
-                              <span className="font-medium">{bet.away_team} @ {bet.home_team}</span>
-                            )}
-                            {bet.side && (
-                              <span className="rounded bg-blue-100 px-1 py-0.5 text-blue-700 font-medium text-xs">
-                                {bet.side.toUpperCase()}
-                              </span>
-                            )}
-                            {bet.line_value !== undefined && bet.line_value !== null && (
-                              <span className="rounded bg-gray-100 px-1 py-0.5 font-medium text-xs">
-                                {bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`}
-                              </span>
-                            )}
-                          </div>
+                          {(() => {
+                            const formattedBet = formatBetForDisplay(bet)
+                            return (
+                              <>
+                                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                                  <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 font-medium">
+                                    {formattedBet.betType}
+                                  </span>
+                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700 font-medium">
+                                    {formattedBet.sportsbook}
+                                  </span>
+                                  <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 font-medium">
+                                    {formattedBet.status}
+                                  </span>
+                                </div>
+                                
+                                <p className="line-clamp-2 text-sm font-medium">
+                                  {formattedBet.mainDescription}
+                                </p>
+                                
+                                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                                  <span className="font-medium">Odds: {formattedBet.odds}</span>
+                                  <span>Stake: {formattedBet.stake}</span>
+                                  {formattedBet.gameDateTime && (
+                                    <span>Game: {formattedBet.gameDateTime}</span>
+                                  )}
+                                  {formattedBet.lineDisplay && (
+                                    <span>Line: {formattedBet.lineDisplay}</span>
+                                  )}
+                                  {getDisplaySide(bet) && (
+                                    <span className="rounded bg-blue-100 px-1 py-0.5 text-blue-700 font-medium text-xs">
+                                      {getDisplaySide(bet)}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {formattedBet.teamsDisplay && (
+                                  <div className="text-xs text-gray-500">
+                                    {formattedBet.teamsDisplay}
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
 
                         {/* Parlay legs display */}
@@ -383,10 +413,6 @@ export function OverviewTab({
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between text-xs text-gray-600">
-                          <span>{formatOdds(bet.odds)}</span>
-                          <span>${bet.stake.toFixed(2)}</span>
-                        </div>
 
                         {bet.status !== 'pending' && bet.profit !== undefined && (
                           <div

@@ -30,8 +30,9 @@ export function OpenBetsDisplay({
     )
   }
 
-  const displayBets = bets.slice(0, maxBets)
-  const hasMoreBets = bets.length > maxBets
+  // Show all bets in a scrollable container instead of limiting with maxBets
+  const displayBets = bets
+  const shouldScroll = bets.length > 3 // Enable scrolling if more than 3 bets
 
   const totalPotentialProfit = bets.reduce((sum, bet) => {
     return sum + Math.max(0, bet.potential_payout - bet.stake)
@@ -53,16 +54,16 @@ export function OpenBetsDisplay({
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className={`space-y-2 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
         {displayBets.map(bet => {
           const formattedBet = formatBetForDisplay(bet)
           return <OpenBetCard key={bet.id} bet={formattedBet} compact={compact} />
         })}
       </div>
 
-      {hasMoreBets && (
-        <div className="border-t border-gray-100 pt-2 text-center text-xs text-gray-500">
-          +{bets.length - maxBets} more bet{bets.length - maxBets !== 1 ? 's' : ''}
+      {shouldScroll && (
+        <div className="border-t border-gray-100 pt-2 text-center text-xs text-gray-400">
+          ↕ Scroll to view all {bets.length} bets
         </div>
       )}
     </div>

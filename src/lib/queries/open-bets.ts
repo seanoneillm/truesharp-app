@@ -432,21 +432,111 @@ export async function getSubscriberStrategiesWithOpenBets(
 }
 
 /**
- * Helper function to format bet information for display
+ * Helper function to format bet information for display to match SharpSports style
  */
 export function formatBetForDisplay(bet: OpenBet) {
-  const gameInfo =
-    bet.bet_description ||
-    (bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : 'Unknown bet')
+  // Format sport name
+  const formatSport = (sport: string) => {
+    const sportMap: { [key: string]: string } = {
+      'mlb': 'Baseball',
+      'nfl': 'Football', 
+      'nba': 'Basketball',
+      'nhl': 'Hockey',
+      'soccer': 'Soccer',
+      'ncaaf': 'College Football',
+      'ncaab': 'College Basketball'
+    }
+    return sportMap[sport?.toLowerCase()] || sport?.charAt(0).toUpperCase() + sport?.slice(1).toLowerCase() || 'Unknown'
+  }
 
-  const oddsDisplay = bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`
+  // Format bet type
+  const formatBetType = (betType?: string) => {
+    if (!betType) return 'moneyline'
+    const typeMap: { [key: string]: string } = {
+      'moneyline': 'moneyline',
+      'spread': 'spread', 
+      'point_spread': 'spread',
+      'total': 'total',
+      'over_under': 'total',
+      'prop': 'prop',
+      'player_prop': 'prop'
+    }
+    return typeMap[betType.toLowerCase()] || betType.toLowerCase()
+  }
+
+  // Create main description following SharpSports format
+  const createMainDescription = () => {
+    const teams = bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : ''
+    const betType = formatBetType(bet.bet_type)
+    
+    switch (betType) {
+      case 'total': {
+        const direction = bet.side?.toLowerCase() === 'over' ? 'Over' : 'Under'
+        const line = bet.line_value ? ` ${bet.line_value}` : ''
+        if (teams) {
+          return `${teams} - Total - Total Runs - ${direction}${line}`
+        }
+        return `${direction} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+      }
+      
+      case 'spread': {
+        const line = bet.line_value ? ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}` : ''
+        if (teams) {
+          const favoriteTeam = bet.side === 'home' ? bet.home_team : bet.away_team
+          return `${teams} - Spread - Run Line - ${favoriteTeam}${line}`
+        }
+        return bet.bet_description || `Spread${line}`
+      }
+      
+      case 'moneyline': {
+        if (teams) {
+          const selectedTeam = bet.side === 'home' ? bet.home_team : bet.away_team
+          return `${teams} - Moneyline - ${selectedTeam} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+        }
+        const teamName = bet.side === 'home' ? bet.home_team : bet.away_team
+        return `${teamName || 'Team'} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+      }
+      
+      default:
+        return bet.bet_description || `${betType.charAt(0).toUpperCase() + betType.slice(1)} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+    }
+  }
+
+  const sport = formatSport(bet.sport)
+  const betType = formatBetType(bet.bet_type)
+  const sportsbook = bet.sportsbook || 'TrueSharp'
+  const status = bet.status.charAt(0).toUpperCase() + bet.status.slice(1).toLowerCase()
+  const mainDescription = createMainDescription()
+  const odds = bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`
+  const stake = `$${bet.stake.toFixed(2)}`
+  const gameDateTime = bet.game_date ? new Date(bet.game_date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }) : ''
+  const lineDisplay = bet.line_value !== undefined && bet.line_value !== null 
+    ? (bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`)
+    : ''
+  const teamsDisplay = bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : ''
 
   const potentialProfit = bet.potential_payout - bet.stake
 
   return {
     ...bet,
-    gameInfo,
-    oddsDisplay,
+    sport,
+    betType,
+    sportsbook,
+    status,
+    mainDescription,
+    odds,
+    stake,
+    gameDateTime,
+    lineDisplay,
+    teamsDisplay,
+    gameInfo: mainDescription, // Keep for backward compatibility
+    oddsDisplay: odds, // Keep for backward compatibility
     potentialProfit,
     gameTime: bet.game_date ? new Date(bet.game_date).toLocaleString() : null,
   }

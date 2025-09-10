@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, Circle, Trophy, Plus, Target, ArrowRight } from 'lucide-react'
 import { StrategySelectionModal } from '@/components/strategies/strategy-selection-modal'
+import { formatBetForDisplay, getDisplaySide } from '@/lib/bet-formatting'
 
 interface OpenBet {
   id: string
@@ -265,51 +266,52 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="mb-2 flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {bet?.sport || 'Unknown'}
-                            </Badge>
-                            {bet?.bet_type && (
-                              <Badge variant="outline" className="text-xs">
-                                {bet.bet_type}
-                              </Badge>
-                            )}
-                            {bet?.sportsbook && (
-                              <Badge variant="outline" className="text-xs">
-                                {bet.sportsbook}
-                              </Badge>
-                            )}
-                            <Badge
-                              variant="outline"
-                              className="border-yellow-300 bg-yellow-100 text-xs text-yellow-800"
-                            >
-                              Pending
-                            </Badge>
-                          </div>
+                          {(() => {
+                            const formattedBet = formatBetForDisplay(bet)
+                            return (
+                              <>
+                                <div className="mb-2 flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {formattedBet.sport}
+                                  </Badge>
+                                  <Badge variant="outline" className="border-purple-300 bg-purple-100 text-xs text-purple-700">
+                                    {formattedBet.betType}
+                                  </Badge>
+                                  <Badge variant="outline" className="border-gray-300 bg-gray-100 text-xs text-gray-700">
+                                    {formattedBet.sportsbook}
+                                  </Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className="border-yellow-300 bg-yellow-100 text-xs text-yellow-800"
+                                  >
+                                    {formattedBet.status}
+                                  </Badge>
+                                </div>
 
-                          <p className="mb-2 line-clamp-2 font-medium text-gray-900">
-                            {bet?.bet_description || 'No description'}
-                          </p>
+                                <p className="mb-2 line-clamp-2 font-medium text-gray-900">
+                                  {formattedBet.mainDescription}
+                                </p>
 
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span className="font-medium">Odds: {formatOdds(bet?.odds || 0)}</span>
-                            <span>Stake: {formatCurrency(bet?.stake || 0)}</span>
-                            {bet?.game_date && <span>Game: {formatGameDate(bet.game_date)}</span>}
-                            {bet?.line_value && <span>Line: {bet.line_value}</span>}
-                            {bet?.side && <span>{bet.side}</span>}
-                          </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <span className="font-medium">Odds: {formattedBet.odds}</span>
+                                  <span>Stake: {formattedBet.stake}</span>
+                                  {formattedBet.gameDateTime && <span>Game: {formattedBet.gameDateTime}</span>}
+                                  {formattedBet.lineDisplay && <span>Line: {formattedBet.lineDisplay}</span>}
+                                  {getDisplaySide(bet) && (
+                                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium text-xs">
+                                      {getDisplaySide(bet)}
+                                    </span>
+                                  )}
+                                </div>
 
-                          {(bet?.home_team && bet?.away_team) || bet?.player_name ? (
-                            <div className="mt-1 text-xs text-gray-500">
-                              {bet?.home_team && bet?.away_team ? (
-                                <span>
-                                  {bet.away_team} @ {bet.home_team}
-                                </span>
-                              ) : bet?.player_name ? (
-                                <span>{bet.player_name}</span>
-                              ) : null}
-                            </div>
-                          ) : null}
+                                {formattedBet.teamsDisplay && (
+                                  <div className="mt-1 text-xs text-gray-500">
+                                    {formattedBet.teamsDisplay}
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
 
                         <div className="ml-4 text-right">

@@ -55,17 +55,15 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Generate extension auth token by calling SharpSports auth-tokens endpoint
-    const response = await fetch('https://api.sharpsports.io/v1/auth-tokens', {
+    // Generate extension auth token by calling SharpSports extension/auth endpoint
+    const response = await fetch('https://api.sharpsports.io/v1/extension/auth', {
       method: 'POST',
       headers: {
         Authorization: `Token ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Add any required parameters for extension auth token
-        type: 'extension',
-        userId: effectiveUserId
+        internalId: effectiveUserId
       }),
     })
 

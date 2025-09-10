@@ -83,6 +83,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log('🎯 Processing checkout session completed:', session.id)
   console.log('📋 Session metadata:', session.metadata)
 
+  // Check if this is a Pro subscription
+  if (session.metadata?.subscription_type === 'pro') {
+    console.log('💼 Pro subscription checkout completed')
+    await handleProCheckoutCompleted(session)
+    return
+  }
+
+  // Handle strategy subscriptions
   const { strategy_id, subscriber_id, seller_id, frequency } = session.metadata || {}
   console.log('📝 Extracted values:', { strategy_id, subscriber_id, seller_id, frequency })
 
@@ -227,6 +235,100 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   console.log('🎉 Successfully processed checkout session:', session.id)
+}
+
+async function handleProCheckoutCompleted(session: Stripe.Checkout.Session) {
+  console.log('🎯 Processing Pro subscription checkout completed:', session.id)
+  console.log('📋 Session metadata:', session.metadata)
+
+  const { user_id, plan } = session.metadata || {}
+  console.log('📝 Extracted Pro values:', { user_id, plan })
+
+  if (!user_id || !plan) {
+    console.error('❌ CRITICAL: Missing required metadata in Pro session:', session.metadata)
+    return
+  }
+
+  // Get the subscription from Stripe
+  if (!session.subscription) {
+    console.error('❌ CRITICAL: No subscription ID found in Pro session:', session.id)
+    return
+  }
+
+  // Check if Pro subscription already exists to prevent duplicates
+  const { data: existingProSubscription } = await supabase
+    .from('pro_subscriptions')
+    .select('id')
+    .eq('stripe_subscription_id', session.subscription as string)
+    .single()
+
+  if (existingProSubscription) {
+    console.log(
+      'ℹ️ Pro subscription already exists in database, skipping creation:',
+      existingProSubscription.id
+    )
+    return
+  }
+
+  const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription as string)
+  
+  // Cast to access properties safely
+  const subscription = stripeSubscription as unknown as {
+    id: string
+    current_period_start: number
+    current_period_end: number
+    items: { data: Array<{ price: { id: string } }> }
+  }
+
+  // Create Pro subscription record
+  const proSubscriptionData = {
+    user_id,
+    stripe_subscription_id: subscription.id,
+    stripe_customer_id: session.customer as string,
+    status: 'active',
+    plan: plan,
+    current_period_start: subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000).toISOString()
+      : new Date().toISOString(),
+    current_period_end: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    price_id: subscription.items?.data?.[0]?.price?.id || null,
+  }
+
+  console.log('🔍 Attempting to insert Pro subscription data:', proSubscriptionData)
+
+  const { data: newProSubscription, error: insertError } = await supabase
+    .from('pro_subscriptions')
+    .insert(proSubscriptionData)
+    .select()
+    .single()
+
+  if (insertError) {
+    console.error('❌ CRITICAL: Error creating Pro subscription in database!')
+    console.error('📋 Insert error:', insertError)
+    console.error('📋 Failed data:', proSubscriptionData)
+    console.error('🚨 Pro subscription exists in Stripe but NOT in database')
+    return
+  } else {
+    console.log('✅ Pro subscription created successfully in database!')
+    console.log('📋 New Pro subscription ID:', newProSubscription.id)
+    console.log('📋 Stripe subscription ID:', newProSubscription.stripe_subscription_id)
+  }
+
+  // Update profile pro status
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({ pro: 'yes' })
+    .eq('id', user_id)
+
+  if (profileError) {
+    console.error('❌ Error updating profile pro status:', profileError)
+  } else {
+    console.log('✅ Profile updated to Pro status')
+  }
+
+  console.log('🎉 Successfully processed Pro checkout session:', session.id)
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {

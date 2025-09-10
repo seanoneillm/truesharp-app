@@ -143,6 +143,114 @@ export default function AnalyticsPage() {
     updateFilters,
   } = useAnalytics(user)
 
+  // Function to check browser compatibility for extension
+  const isBrowserSupported = () => {
+    const userAgent = navigator.userAgent.toLowerCase()
+    const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg')
+    const isEdge = userAgent.includes('edg')
+    const isFirefox = userAgent.includes('firefox')
+    
+    // Chrome and Edge are typically supported for SharpSports extension
+    return isChrome || isEdge
+  }
+
+  // Load SharpSports extension script on page load
+  useEffect(() => {
+    const loadSharpSportsExtension = async () => {
+      if (!user?.id) return
+
+      // Check browser compatibility first
+      if (!isBrowserSupported()) {
+        console.log('⚠️ Browser may not support SharpSports extension - Chrome or Edge recommended')
+        // Still attempt to load but don't show errors
+      }
+
+      try {
+        console.log('🔗 Loading SharpSports extension script on page load')
+
+        // Get extension auth token
+        const authTokenResponse = await fetch('/api/sharpsports/extension-auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+          }),
+        })
+
+        let extensionAuthToken = null
+        if (authTokenResponse.ok) {
+          const authResult = await authTokenResponse.json()
+          extensionAuthToken = authResult.extensionAuthToken
+          console.log('🔑 Extension auth token for page load:', extensionAuthToken ? 'obtained' : 'not available')
+        }
+
+        // Get public key for extension script
+        const configResponse = await fetch('/api/sharpsports/script-config')
+        if (!configResponse.ok) {
+          console.log('⚠️ Script config not available, status:', configResponse.status)
+          return
+        }
+        const configResult = await configResponse.json()
+        const publicKey = configResult.publicKey
+
+        // Get bettor ID from user profile
+        const profileResponse = await fetch(`/api/profile?userId=${user.id}`)
+        if (!profileResponse.ok) {
+          console.log('⚠️ Profile not available for extension script, status:', profileResponse.status)
+          return
+        }
+        const profileResult = await profileResponse.json()
+        const bettorId = profileResult.data?.sharpsports_bettor_id
+
+        if (!bettorId) {
+          console.log('⚠️ No SharpSports bettor ID found - extension script not loaded')
+          return
+        }
+
+        // Remove any existing extension scripts
+        const existingScripts = document.querySelectorAll('script[src*="extension-cdn.js"]')
+        existingScripts.forEach(script => script.remove())
+
+        // Create and inject the extension script
+        const extensionScript = document.createElement('script')
+        extensionScript.src = 'https://d1vhnbpkpweicq.cloudfront.net/extension-cdn.js'
+        extensionScript.setAttribute('internalId', bettorId)
+        extensionScript.setAttribute('publicKey', publicKey)
+        
+        if (extensionAuthToken) {
+          extensionScript.setAttribute('extensionAuthToken', extensionAuthToken)
+        }
+
+        document.head.appendChild(extensionScript)
+        console.log('✅ SharpSports extension script loaded on page load with:', {
+          internalId: bettorId,
+          publicKey: publicKey.substring(0, 10) + '...',
+          hasAuthToken: !!extensionAuthToken
+        })
+
+      } catch (error) {
+        console.log('⚠️ Failed to load extension script on page load:', error)
+      }
+    }
+
+    loadSharpSportsExtension()
+  }, [user?.id])  // Only reload when user changes
+
+  // Function to handle extension update prompts
+  const handleExtensionUpdateRequired = (downloadUrl: string) => {
+    const userWantsUpdate = window.confirm(
+      '🔄 Extension Update Required\n\n' +
+      'Your SharpSports browser extension needs to be updated to continue syncing certain sportsbooks.\n\n' +
+      'Click OK to download the latest version, or Cancel to continue with limited functionality.'
+    )
+
+    if (userWantsUpdate && downloadUrl) {
+      window.open(downloadUrl, '_blank')
+    }
+  }
+
   // Combine bets and ensure uniqueness by ID to prevent duplicate keys
   const recentBets = React.useMemo(() => {
     const initialBets = analyticsData?.recentBets || []
@@ -273,14 +381,55 @@ export default function AnalyticsPage() {
     try {
       console.log('🔄 Starting combined SharpSports refresh for user', user.id)
 
+      // Get extension auth token for refresh calls
+      let extensionAuthToken = null
+      let extensionVersion = null
+
+      try {
+        const authTokenResponse = await fetch('/api/sharpsports/extension-auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+          }),
+        })
+
+        if (authTokenResponse.ok) {
+          const authResult = await authTokenResponse.json()
+          extensionAuthToken = authResult.extensionAuthToken
+        }
+
+        // Get extension version from sessionStorage
+        extensionVersion = sessionStorage.getItem('sharpSportsExtensionVersion')
+        
+        console.log('🔑 Extension data for refresh:', {
+          hasAuthToken: !!extensionAuthToken,
+          extensionVersion: extensionVersion || 'not found'
+        })
+      } catch (error) {
+        console.log('⚠️ Could not get extension data for refresh, continuing without')
+      }
+
+      const refreshPayload: any = {
+        userId: user.id,
+      }
+
+      // Add extension data to refresh calls (Step 4 of SDK implementation)
+      if (extensionAuthToken) {
+        refreshPayload.extensionAuthToken = extensionAuthToken
+      }
+      if (extensionVersion) {
+        refreshPayload.extensionVersion = extensionVersion
+      }
+
       const response = await fetch('/api/sharpsports/refresh-all-bets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
+        body: JSON.stringify(refreshPayload),
       })
 
       const result = await response.json()
@@ -289,9 +438,23 @@ export default function AnalyticsPage() {
         console.log('✅ Combined refresh completed:', result.message)
         setRefreshResult(`✅ ${result.message}`)
 
-        // Show detailed results if available
+        // Check for extension update requirements in any step
+        let extensionUpdateRequired = false
+        let extensionDownloadUrl = null
+
         if (result.results) {
-          const { step1, step2, step3 } = result.results
+          const { step1, step2, step3, step4 } = result.results
+          
+          // Check each step for extension update requirements
+          const steps = [step1, step2, step3, step4]
+          for (const step of steps) {
+            if (step?.extensionUpdateRequired) {
+              extensionUpdateRequired = true
+              extensionDownloadUrl = step.extensionDownloadUrl
+              break
+            }
+          }
+
           const details = []
           if (step1?.success) details.push(`✅ Fetched ${step1.stats?.totalBettors || 0} bettors`)
           if (step2?.success)
@@ -301,6 +464,11 @@ export default function AnalyticsPage() {
           if (details.length > 0) {
             setRefreshResult(`✅ Success: ${details.join(', ')}`)
           }
+        }
+
+        // Handle extension update if required
+        if (extensionUpdateRequired && extensionDownloadUrl) {
+          handleExtensionUpdateRequired(extensionDownloadUrl)
         }
 
         // Clear result after 5 seconds
@@ -323,20 +491,106 @@ export default function AnalyticsPage() {
     setIsLinkingSportsbooks(true)
 
     try {
-      console.log('🔗 Generating SharpSports context for Booklink UI')
+      console.log('🔗 Implementing SharpSports Browser Extension SDK')
 
-      const response = await fetch('/api/sharpsports/context', {
+      // Step 1: Generate Extension Auth Token
+      console.log('🔑 Getting extension auth token...')
+      const authTokenResponse = await fetch('/api/sharpsports/extension-auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           userId: user.id,
-          redirectUrl:
-            window.location.hostname === 'localhost'
-              ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
-              : `${window.location.origin}/api/sharpsports/accounts`,
         }),
+      })
+
+      let extensionAuthToken = null
+      if (authTokenResponse.ok) {
+        try {
+          const authResult = await authTokenResponse.json()
+          extensionAuthToken = authResult.extensionAuthToken
+          console.log('✅ Extension auth token:', extensionAuthToken ? 'obtained' : 'not available')
+        } catch (error) {
+          console.log('⚠️ Extension auth token JSON parse error:', error)
+        }
+      } else {
+        console.log('⚠️ Extension auth token not available, status:', authTokenResponse.status)
+      }
+
+      // Step 2: Add Extension Script Tag
+      console.log('📜 Adding SharpSports extension script...')
+      
+      // Get public key for extension script
+      const configResponse = await fetch('/api/sharpsports/script-config')
+      if (!configResponse.ok) {
+        throw new Error(`Script config failed: ${configResponse.status}`)
+      }
+      const configResult = await configResponse.json()
+      const publicKey = configResult.publicKey
+
+      // Get bettor ID from user profile
+      const profileResponse = await fetch(`/api/profile?userId=${user.id}`)
+      if (!profileResponse.ok) {
+        throw new Error(`Profile fetch failed: ${profileResponse.status}`)
+      }
+      const profileResult = await profileResponse.json()
+      const bettorId = profileResult.data?.sharpsports_bettor_id
+
+      if (!bettorId) {
+        throw new Error('No SharpSports bettor ID found for user')
+      }
+
+      // Remove any existing extension scripts
+      const existingScripts = document.querySelectorAll('script[src*="extension-cdn.js"]')
+      existingScripts.forEach(script => script.remove())
+
+      // Create and inject the extension script with proper attributes
+      const extensionScript = document.createElement('script')
+      extensionScript.src = 'https://d1vhnbpkpweicq.cloudfront.net/extension-cdn.js'
+      extensionScript.setAttribute('internalId', bettorId)
+      extensionScript.setAttribute('publicKey', publicKey)
+      
+      if (extensionAuthToken) {
+        extensionScript.setAttribute('extensionAuthToken', extensionAuthToken)
+      }
+
+      document.head.appendChild(extensionScript)
+      console.log('✅ Extension script injected with:', {
+        internalId: bettorId,
+        publicKey: publicKey.substring(0, 10) + '...',
+        hasAuthToken: !!extensionAuthToken
+      })
+
+      // Step 3: Get extension version from sessionStorage
+      const extensionVersion = sessionStorage.getItem('sharpSportsExtensionVersion')
+      console.log('📱 Extension version from sessionStorage:', extensionVersion || 'not found')
+
+      // Step 4: Generate context with extension data
+      console.log('🔗 Generating SharpSports context for Booklink UI with extension data')
+
+      const contextPayload: any = {
+        userId: user.id,
+        redirectUrl:
+          window.location.hostname === 'localhost'
+            ? 'https://ddb528ce02c4.ngrok-free.app/api/sharpsports/accounts'
+            : `${window.location.origin}/api/sharpsports/accounts`,
+      }
+
+      // Add extension data to context call
+      if (extensionAuthToken) {
+        contextPayload.extensionAuthToken = extensionAuthToken
+      }
+      if (extensionVersion) {
+        contextPayload.extensionVersion = extensionVersion
+      }
+
+      const response = await fetch('/api/sharpsports/context', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contextPayload),
       })
 
       if (!response.ok) {
@@ -1034,6 +1288,13 @@ export default function AnalyticsPage() {
               </div>
             )}
 
+            {/* Browser Compatibility Note */}
+            {!isBrowserSupported() && (
+              <div className="mb-2 max-w-sm rounded-lg border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-800">
+                🌐 For best extension support, use Chrome or Edge
+              </div>
+            )}
+
             {/* Link Sportsbooks Button */}
             <Button
               onClick={handleLinkSportsbooks}
@@ -1046,7 +1307,7 @@ export default function AnalyticsPage() {
               ) : (
                 <Link className="mr-2 h-5 w-5" />
               )}
-              Link Sportsbooks
+              Manage Sportsbooks
             </Button>
 
             {/* Refresh Bets Button */}
