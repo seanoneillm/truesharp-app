@@ -24,7 +24,29 @@ interface FilterConfig {
   customEndDate?: string
 }
 
-function validateBetAgainstStrategy(bet: any, strategy: any): boolean {
+interface Bet {
+  id: string
+  sport: string
+  bet_type: string
+  side?: string
+  is_parlay: boolean
+  sportsbook: string
+  odds: number
+  stake: number
+  line_value?: number
+  game_date: string
+  status: string
+  user_id: string
+}
+
+interface Strategy {
+  id: string
+  sport?: string
+  filter_config: FilterConfig
+  user_id: string
+}
+
+function validateBetAgainstStrategy(bet: Bet, strategy: Strategy): boolean {
   const filters = strategy.filter_config as FilterConfig
 
   // Check sport/league filter
@@ -267,29 +289,8 @@ export async function POST(request: NextRequest) {
 
       insertedCount = strategyBetsToInsert.length
 
-      // Update strategy_leaderboard total_bets count
-      for (const [strategyId, betCount] of strategyUpdates) {
-        // First get current total_bets, then update
-        const { data: currentData } = await serviceSupabase
-          .from('strategy_leaderboard')
-          .select('total_bets')
-          .eq('strategy_id', strategyId)
-          .single()
-
-        const newTotal = (currentData?.total_bets || 0) + betCount
-
-        const { error: updateError } = await serviceSupabase
-          .from('strategy_leaderboard')
-          .update({
-            total_bets: newTotal,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('strategy_id', strategyId)
-
-        if (updateError) {
-          console.error('Error updating strategy_leaderboard:', updateError)
-        }
-      }
+      // The strategy_leaderboard will be updated automatically by the database trigger
+      // when strategy_bets are inserted
 
       // Send notifications to subscribers (simplified version)
       for (const [strategyId, betCount] of strategyUpdates) {
