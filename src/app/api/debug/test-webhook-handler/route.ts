@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // Service role client to bypass RLS
 const supabase = createClient(
@@ -7,8 +7,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+interface SessionData {
+  id: string
+  customer?: string
+  subscription?: string
+  payment_status?: string
+  status?: string
+  metadata?: {
+    strategy_id?: string
+    subscriber_id?: string
+    seller_id?: string
+    frequency?: string
+    seller_connect_account_id?: string
+  }
+}
+
 // Mock the webhook handler logic directly
-async function handleMockCheckoutSessionCompleted(sessionData: any) {
+async function handleMockCheckoutSessionCompleted(sessionData: SessionData) {
   console.log('🎯 Processing mock checkout session completed:', sessionData.id)
   console.log('📋 Session metadata:', sessionData.metadata)
 
@@ -109,7 +124,7 @@ async function handleMockCheckoutSessionCompleted(sessionData: any) {
   return { success: true, subscription: newSubscription }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🧪 Testing webhook handler directly...')
 
