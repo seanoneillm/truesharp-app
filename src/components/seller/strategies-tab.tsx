@@ -296,26 +296,12 @@ export function StrategiesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Your Strategies</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Manage your betting strategies and monetization settings
-          </p>
-        </div>
-        <Button
-          onClick={handleCreateStrategy}
-          disabled={actionLoading}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          {actionLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="mr-2 h-4 w-4" />
-          )}
-          Create Strategy
-        </Button>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900">Your Strategies</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Manage your betting strategies and monetization settings
+        </p>
       </div>
 
       {/* Strategy Cards */}

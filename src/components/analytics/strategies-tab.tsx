@@ -152,7 +152,6 @@ export function StrategiesTab({
   console.log('StrategiesTab - isLoading:', isLoading)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [_editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
   const [createForm, setCreateForm] = useState<CreateStrategyForm>({
     name: '',
     description: '',
@@ -275,208 +274,261 @@ export function StrategiesTab({
             </Button>
           </DialogTrigger>
           <DialogContent
-            className="max-h-[80vh] max-w-3xl overflow-y-auto sm:max-w-3xl"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           >
-            <DialogHeader>
-              <div className="mb-4 flex justify-center">
-                <TrueSharpShield className="h-12 w-12" />
+            <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-gray-200 bg-white shadow-2xl"
+          >
+              {/* Header Section - Fixed */}
+              <div className="flex-shrink-0 rounded-t-3xl border-b border-gray-100 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-8 py-6">
+                <DialogHeader>
+                  <div className="text-center">
+                    <div className="mb-6 flex justify-center">
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-blue-600 opacity-20 blur-xl"></div>
+                        <TrueSharpShield className="relative h-16 w-16 drop-shadow-lg" />
+                      </div>
+                    </div>
+                    <DialogTitle>
+                      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 bg-clip-text text-3xl font-bold text-transparent">
+                        Create New Strategy
+                      </div>
+                    </DialogTitle>
+                    <div className="mx-auto max-w-lg text-base leading-relaxed text-gray-700">
+                      Build a custom strategy from your current filters to track performance patterns and
+                      identify winning opportunities with professional analytics
+                    </div>
+                  </div>
+                </DialogHeader>
               </div>
-              <DialogTitle>
-                <div className="mb-2 text-2xl font-bold text-gray-900">Create New Strategy</div>
-              </DialogTitle>
-              <div className="mx-auto max-w-md text-sm text-gray-600">
-                Build a custom strategy from your current filters to track performance patterns and
-                identify winning opportunities
-              </div>
-            </DialogHeader>
 
-            <div className="space-y-6 py-6">
-              {/* Validation Alert */}
-              {validation?.isValid === false && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-                    <div className="flex-1">
-                      <h4 className="mb-2 font-medium text-red-800">Filter Validation Required</h4>
-                      <div className="space-y-1">
-                        {validation.errors.map((error, index) => (
-                          <p key={index} className="text-sm text-red-700">
-                            • {error}
+            {/* Scrollable Content Section */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <div className="space-y-8">
+                {/* Validation Alert */}
+                {validation?.isValid === false && (
+                  <div className="animate-in fade-in-50 slide-in-from-top-2 rounded-xl border border-red-200 bg-gradient-to-r from-red-50 to-pink-50 p-6 shadow-lg">
+                    <div className="flex items-start space-x-4">
+                      <div className="rounded-full bg-red-100 p-2">
+                        <AlertTriangle className="h-6 w-6 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="mb-3 text-lg font-semibold text-red-900">Filter Validation Required</h4>
+                        <div className="space-y-2">
+                          {validation.errors.map((error, index) => (
+                            <p key={index} className="text-sm text-red-800 flex items-center">
+                              <span className="mr-2 h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                              {error}
+                            </p>
+                          ))}
+                        </div>
+                        {onFiltersChange && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 border-red-300 bg-white text-red-700 hover:bg-red-50 hover:border-red-400 transition-all duration-200"
+                            onClick={autoFixFilters}
+                          >
+                            <Wand2 className="mr-2 h-4 w-4" />
+                            Auto-Fix Filters
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Strategy Details Form */}
+                <div className="space-y-8 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-8 shadow-lg">
+                  <div className="space-y-4">
+                    <label className="flex items-center text-lg font-semibold text-gray-900">
+                      <div className="mr-3 rounded-lg bg-blue-100 p-2">
+                        <Target className="h-5 w-5 text-blue-600" />
+                      </div>
+                      Strategy Name 
+                      <span className="ml-2 text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={createForm.name}
+                      onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                      placeholder="e.g., NBA Favorites, NFL Underdogs, MLB Over Strategy"
+                      className="w-full rounded-xl border-2 border-gray-300 bg-white px-6 py-4 text-lg font-medium shadow-sm transition-all duration-300 placeholder:text-gray-400 focus:border-blue-500 focus:shadow-lg focus:ring-4 focus:ring-blue-200"
+                    />
+                    <div className="flex items-center rounded-lg bg-blue-50 p-3">
+                      <BarChart3 className="mr-2 h-4 w-4 text-blue-600" />
+                      <p className="text-sm text-blue-700">
+                        Choose a descriptive name that reflects your betting approach and strategy focus
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="flex items-center text-lg font-semibold text-gray-900">
+                      <div className="mr-3 rounded-lg bg-purple-100 p-2">
+                        <Settings className="h-5 w-5 text-purple-600" />
+                      </div>
+                      Strategy Description
+                      <span className="ml-3 text-base font-normal text-gray-500">(Optional)</span>
+                    </label>
+                    <Textarea
+                      value={createForm.description}
+                      onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
+                      placeholder="Describe your strategy's logic, target situations, key criteria, or any specific methodology you follow..."
+                      rows={5}
+                      className="w-full resize-none rounded-xl border-2 border-gray-300 bg-white px-6 py-4 text-base leading-relaxed shadow-sm transition-all duration-300 placeholder:text-gray-400 focus:border-purple-500 focus:shadow-lg focus:ring-4 focus:ring-purple-200"
+                    />
+                    <div className="flex items-center rounded-lg bg-purple-50 p-3">
+                      <Filter className="mr-2 h-4 w-4 text-purple-600" />
+                      <p className="text-sm text-purple-700">
+                        Provide optional details about your strategy approach, methodology, and key insights
+                      </p>
+                    </div>
+                  </div>
+              </div>
+
+                {/* Current Filters Preview */}
+                {currentFilters && (
+                  <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 p-8 shadow-xl">
+                    <div className="mb-6 flex items-center justify-center">
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-indigo-600 opacity-30 blur-lg"></div>
+                        <div className="relative rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 p-3 shadow-lg">
+                          <Filter className="h-6 w-6 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                    <h4 className="mb-6 text-center text-2xl font-bold text-gray-900">
+                      Strategy Filters Preview
+                    </h4>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      {currentFilters.sports &&
+                        currentFilters.sports.length > 0 &&
+                        !currentFilters.sports.includes('All') && (
+                          <div className="rounded-xl border border-blue-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                            <span className="mb-3 flex items-center text-base font-semibold text-blue-800">
+                              <span className="mr-2 h-2 w-2 rounded-full bg-blue-600"></span>
+                              Sports
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {currentFilters.sports.map(sport => (
+                                <Badge key={sport} variant="secondary" className="rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                  {sport}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      {currentFilters.betTypes &&
+                        currentFilters.betTypes.length > 0 &&
+                        !currentFilters.betTypes.includes('All') && (
+                          <div className="rounded-xl border border-green-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                            <span className="mb-3 flex items-center text-base font-semibold text-green-800">
+                              <span className="mr-2 h-2 w-2 rounded-full bg-green-600"></span>
+                              Bet Types
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {currentFilters.betTypes.map(type => (
+                                <Badge key={type} variant="secondary" className="rounded-full bg-green-100 text-green-800 hover:bg-green-200">
+                                  {type}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      {currentFilters.leagues &&
+                        currentFilters.leagues.length > 0 &&
+                        !currentFilters.leagues.includes('All') && (
+                          <div className="rounded-xl border border-purple-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                            <span className="mb-3 flex items-center text-base font-semibold text-purple-800">
+                              <span className="mr-2 h-2 w-2 rounded-full bg-purple-600"></span>
+                              Leagues
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {currentFilters.leagues.map(league => (
+                                <Badge key={league} variant="secondary" className="rounded-full bg-purple-100 text-purple-800 hover:bg-purple-200">
+                                  {league}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      {currentFilters.statuses &&
+                        currentFilters.statuses.length > 0 &&
+                        !currentFilters.statuses.includes('All') && (
+                          <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                            <span className="mb-3 flex items-center text-base font-semibold text-orange-800">
+                              <span className="mr-2 h-2 w-2 rounded-full bg-orange-600"></span>
+                              Status
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {currentFilters.statuses.map(status => (
+                                <Badge key={status} variant="secondary" className="rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200">
+                                  {status}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                    {!currentFilters.sports?.some(s => s !== 'All') &&
+                      !currentFilters.betTypes?.some(t => t !== 'All') &&
+                      !currentFilters.leagues?.some(l => l !== 'All') &&
+                      !currentFilters.statuses?.some(s => s !== 'All') && (
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center">
+                          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                            <Filter className="h-6 w-6 text-gray-400" />
+                          </div>
+                          <p className="text-base font-medium text-gray-600">
+                            No specific filters applied
                           </p>
-                        ))}
-                      </div>
-                      {onFiltersChange && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 border-red-300 text-red-700 hover:bg-red-50"
-                          onClick={autoFixFilters}
-                        >
-                          <Wand2 className="mr-2 h-4 w-4" />
-                          Auto-Fix Filters
-                        </Button>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Strategy will include all bets in your history
+                          </p>
+                        </div>
                       )}
-                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Strategy Details Form */}
-              <div className="space-y-6 rounded-lg border border-gray-100 bg-white p-6 shadow-sm">
-                <div className="space-y-3">
-                  <label className="block flex items-center text-sm font-semibold text-gray-800">
-                    <Target className="mr-2 h-4 w-4 text-blue-600" />
-                    Strategy Name <span className="ml-1 text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={createForm.name}
-                    onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
-                    placeholder="e.g., NBA Favorites, NFL Underdogs, MLB Over Strategy"
-                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-base transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                  <p className="flex items-center text-xs text-gray-500">
-                    <BarChart3 className="mr-1 h-3 w-3" />
-                    Choose a descriptive name that reflects your betting approach
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block flex items-center text-sm font-semibold text-gray-800">
-                    <Settings className="mr-2 h-4 w-4 text-blue-600" />
-                    Strategy Description
-                    <span className="ml-2 font-normal text-gray-500">(Optional)</span>
-                  </label>
-                  <Textarea
-                    value={createForm.description}
-                    onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
-                    placeholder="Describe your strategy's logic, target situations, or any specific criteria you focus on..."
-                    rows={4}
-                    className="w-full resize-none rounded-lg border-2 border-gray-200 px-4 py-3 text-base transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                  <p className="flex items-center text-xs text-gray-500">
-                    <Filter className="mr-1 h-3 w-3" />
-                    Optional details about your strategy approach and methodology
-                  </p>
-                </div>
               </div>
+            </div>
 
-              {/* Current Filters Preview */}
-              {currentFilters && (
-                <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-sm">
-                  <div className="mb-4 flex items-center justify-center">
-                    <div className="rounded-full bg-blue-600 p-2">
-                      <Filter className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                  <h4 className="mb-4 text-center text-lg font-semibold text-gray-800">
-                    Strategy Filters Preview
-                  </h4>
-                  <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-                    {currentFilters.sports &&
-                      currentFilters.sports.length > 0 &&
-                      !currentFilters.sports.includes('All') && (
-                        <div className="rounded-lg border border-blue-100 bg-white p-3">
-                          <span className="font-medium text-blue-700">Sports:</span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {currentFilters.sports.map(sport => (
-                              <Badge key={sport} variant="secondary" className="text-xs">
-                                {sport}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    {currentFilters.betTypes &&
-                      currentFilters.betTypes.length > 0 &&
-                      !currentFilters.betTypes.includes('All') && (
-                        <div className="rounded-lg border border-blue-100 bg-white p-3">
-                          <span className="font-medium text-blue-700">Bet Types:</span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {currentFilters.betTypes.map(type => (
-                              <Badge key={type} variant="secondary" className="text-xs">
-                                {type}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    {currentFilters.leagues &&
-                      currentFilters.leagues.length > 0 &&
-                      !currentFilters.leagues.includes('All') && (
-                        <div className="rounded-lg border border-blue-100 bg-white p-3">
-                          <span className="font-medium text-blue-700">Leagues:</span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {currentFilters.leagues.map(league => (
-                              <Badge key={league} variant="secondary" className="text-xs">
-                                {league}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    {currentFilters.statuses &&
-                      currentFilters.statuses.length > 0 &&
-                      !currentFilters.statuses.includes('All') && (
-                        <div className="rounded-lg border border-blue-100 bg-white p-3">
-                          <span className="font-medium text-blue-700">Status:</span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {currentFilters.statuses.map(status => (
-                              <Badge key={status} variant="secondary" className="text-xs">
-                                {status}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                  {!currentFilters.sports?.some(s => s !== 'All') &&
-                    !currentFilters.betTypes?.some(t => t !== 'All') &&
-                    !currentFilters.leagues?.some(l => l !== 'All') &&
-                    !currentFilters.statuses?.some(s => s !== 'All') && (
-                      <div className="mt-2 text-center text-sm text-gray-500">
-                        No specific filters applied - strategy will include all bets
-                      </div>
-                    )}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="rounded-lg border-t border-gray-200 bg-gray-50 p-6">
-                <div className="flex justify-center space-x-4">
+              {/* Footer Section - Fixed */}
+              <div className="flex-shrink-0 rounded-b-3xl border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-6">
+              <div className="flex flex-col items-center space-y-6">
+                <div className="flex w-full justify-center space-x-6">
                   <Button
                     variant="outline"
                     onClick={() => setShowCreateModal(false)}
                     disabled={isCreating}
-                    className="border-2 border-gray-300 px-8 py-3 text-base font-medium hover:border-gray-400"
+                    className="min-w-[140px] border-2 border-gray-300 bg-white px-8 py-4 text-base font-semibold text-gray-700 transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 hover:shadow-md"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleCreateStrategy}
                     disabled={!createForm.name || validation?.isValid === false || isCreating}
-                    className="min-w-[160px] bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-3 text-base font-medium text-white shadow-lg hover:from-blue-700 hover:to-blue-800"
+                    className="min-w-[180px] bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-8 py-4 text-base font-semibold text-white shadow-xl transition-all duration-300 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 hover:shadow-2xl hover:scale-105 disabled:scale-100 disabled:opacity-50"
                   >
                     {isCreating ? (
                       <div className="flex items-center">
-                        <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+                        <div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                         Creating Strategy...
                       </div>
                     ) : (
                       <div className="flex items-center">
-                        <Target className="mr-2 h-5 w-5" />
+                        <Target className="mr-3 h-5 w-5" />
                         Create Strategy
                       </div>
                     )}
                   </Button>
                 </div>
-                <div className="mt-3 text-center">
-                  <p className="flex items-center justify-center text-xs text-gray-500">
-                    <TrueSharpShield className="mr-1 h-4 w-4" />
-                    Powered by TrueSharp Analytics
-                  </p>
+                
+                <div className="flex items-center justify-center space-x-2 rounded-full bg-white px-6 py-3 shadow-sm">
+                  <TrueSharpShield className="h-5 w-5" />
+                  <span className="text-sm font-medium text-gray-600">Powered by TrueSharp Analytics</span>
                 </div>
               </div>
             </div>
+          </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -520,7 +572,7 @@ export function StrategiesTab({
                         <EyeOff className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingStrategy(strategy)}>
+                    <Button variant="ghost" size="sm" disabled>
                       <Settings className="h-4 w-4" />
                     </Button>
                     <Button

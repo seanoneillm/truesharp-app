@@ -367,14 +367,15 @@ export async function POST(request: NextRequest) {
     // First, let's see what bets this user actually has
     const { data: allUserBets, error: allBetsError } = await serviceSupabase
       .from('bets')
-      .select('id, sport, bet_type, status, side, is_parlay, sportsbook, created_at')
+      .select('id, sport, league, bet_type, status, side, is_parlay, sportsbook, created_at')
       .eq('user_id', finalUser.id)
       .limit(20)
 
     if (!allBetsError && allUserBets) {
       console.log('🔍 User has', allUserBets.length, 'total bets:')
       console.log('🔍 Sample bets:', allUserBets.slice(0, 5))
-      console.log('🔍 Unique sports:', [...new Set(allUserBets.map(b => b.sport))])
+      console.log('🔍 Unique sports:', [...new Set(allUserBets.map(b => b.sport).filter(Boolean))])
+      console.log('🔍 Unique leagues:', [...new Set(allUserBets.map(b => b.league).filter(Boolean))])
       console.log('🔍 Unique bet_types:', [...new Set(allUserBets.map(b => b.bet_type))])
       console.log('🔍 Unique statuses:', [...new Set(allUserBets.map(b => b.status))])
       console.log('🔍 Unique sides:', [...new Set(allUserBets.map(b => b.side))])
@@ -385,28 +386,46 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Initialize variation arrays outside of conditionals for debugging
+    let sportVariations: string[] = []
+    let betTypeVariations: string[] = []
+
     // Apply sport/league filter with case-insensitive matching and sport mapping
+    // IMPORTANT: Search both 'sport' AND 'league' columns since NCAAF might be in either
     if (sport && sport !== 'All') {
-      console.log('🔍 Applying sport filter:', sport)
+      console.log('🔍 Applying sport/league filter:', sport)
 
       // Create a list of possible sport variations to match
-      const sportVariations = []
-
       if (sport === 'NFL') {
-        sportVariations.push('NFL', 'nfl', 'football', 'Football', 'American Football')
+        sportVariations = ['NFL', 'nfl', 'football', 'Football', 'American Football']
       } else if (sport === 'NBA') {
-        sportVariations.push('NBA', 'nba', 'basketball', 'Basketball')
+        sportVariations = ['NBA', 'nba', 'basketball', 'Basketball']
       } else if (sport === 'MLB') {
-        sportVariations.push('MLB', 'mlb', 'baseball', 'Baseball')
+        sportVariations = ['MLB', 'mlb', 'baseball', 'Baseball']
       } else if (sport === 'NHL') {
-        sportVariations.push('NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey')
+        sportVariations = ['NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey']
+      } else if (sport === 'NCAAF') {
+        sportVariations = ['NCAAF', 'ncaaf', 'College Football', 'college football', 'NCAA Football', 'ncaa football']
+      } else if (sport === 'NCAAB') {
+        sportVariations = ['NCAAB', 'ncaab', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball']
+      } else if (sport === 'MLS') {
+        sportVariations = ['MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football']
+      } else if (sport === 'UCL') {
+        sportVariations = ['UCL', 'ucl', 'Champions League', 'champions league', 'UEFA Champions League', 'uefa champions league']
       } else {
         // Default case - try both exact match and lowercase
-        sportVariations.push(sport, sport.toLowerCase(), sport.toUpperCase())
+        sportVariations = [sport, sport.toLowerCase(), sport.toUpperCase()]
       }
 
       console.log('🔍 Sport variations to match:', sportVariations)
-      betsQuery = betsQuery.in('sport', sportVariations)
+      
+      // Create OR condition to search both sport AND league columns
+      const sportConditions = sportVariations.map(variation => `sport.eq.${variation}`).join(',')
+      const leagueConditions = sportVariations.map(variation => `league.eq.${variation}`).join(',')
+      const combinedConditions = `${sportConditions},${leagueConditions}`
+      
+      console.log('🔍 Applying OR filter to both sport and league columns:', combinedConditions)
+      betsQuery = betsQuery.or(combinedConditions)
     } else {
       console.log('🔍 No sport filter applied (sport is All)')
     }
@@ -416,20 +435,23 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Applying bet_type filter:', betType)
 
       // Create a list of possible bet type variations
-      const betTypeVariations = []
       const lowerBetType = betType.toLowerCase()
 
       if (lowerBetType === 'moneyline') {
-        betTypeVariations.push('moneyline', 'ml', 'money_line')
+        betTypeVariations = ['moneyline', 'ml', 'money_line', 'Moneyline', 'ML', 'Money Line']
       } else if (lowerBetType === 'spread') {
-        betTypeVariations.push('spread', 'point_spread', 'ps')
+        betTypeVariations = ['spread', 'point_spread', 'ps', 'Spread', 'Point Spread', 'PS']
       } else if (lowerBetType === 'total') {
-        betTypeVariations.push('total', 'over_under', 'ou', 'totals')
+        betTypeVariations = ['total', 'over_under', 'ou', 'totals', 'Total', 'Over/Under', 'OU', 'Totals']
       } else if (lowerBetType === 'player_prop') {
-        betTypeVariations.push('player_prop', 'prop', 'player_props')
+        betTypeVariations = ['player_prop', 'prop', 'player_props', 'Player Prop', 'Prop', 'Player Props', 'player prop']
+      } else if (lowerBetType === 'team_prop') {
+        betTypeVariations = ['team_prop', 'team_props', 'Team Prop', 'Team Props', 'team prop']
+      } else if (lowerBetType === 'game_prop') {
+        betTypeVariations = ['game_prop', 'game_props', 'Game Prop', 'Game Props', 'game prop']
       } else {
         // Default case - try both exact match and lowercase
-        betTypeVariations.push(betType, lowerBetType, betType.toUpperCase())
+        betTypeVariations = [betType, lowerBetType, betType.toUpperCase()]
       }
 
       console.log('🔍 Bet type variations to match:', betTypeVariations)
@@ -439,14 +461,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply other filters with proper null handling
-    if (filters.sides && !filters.sides.includes('All')) {
-      console.log(
-        '🔍 Applying sides filter:',
-        filters.sides.map(s => s.toLowerCase())
-      )
-      const sideValues = filters.sides.map(s => s.toLowerCase())
-      // Handle both null sides and the specific side values
-      betsQuery = betsQuery.or(`side.in.(${sideValues.join(',')}),side.is.null`)
+    if (filters.sides && !filters.sides.includes('All') && filters.sides.length > 0) {
+      console.log('🔍 Applying sides filter:', filters.sides)
+      
+      // Map sides to common variations and handle case sensitivity
+      const sideVariations = []
+      for (const side of filters.sides) {
+        const lowerSide = side.toLowerCase()
+        if (lowerSide === 'home') {
+          sideVariations.push('home', 'Home', 'HOME', 'h', 'H')
+        } else if (lowerSide === 'away') {
+          sideVariations.push('away', 'Away', 'AWAY', 'a', 'A')
+        } else if (lowerSide === 'over') {
+          sideVariations.push('over', 'Over', 'OVER', 'o', 'O')
+        } else if (lowerSide === 'under') {
+          sideVariations.push('under', 'Under', 'UNDER', 'u', 'U')
+        } else {
+          sideVariations.push(side, lowerSide, side.toUpperCase())
+        }
+      }
+      
+      console.log('🔍 Side variations to match:', sideVariations)
+      betsQuery = betsQuery.in('side', sideVariations)
     } else {
       console.log('🔍 No sides filter applied (sides is All or empty)')
     }
@@ -464,12 +500,17 @@ export async function POST(request: NextRequest) {
       // Handle sportsbook name variations
       const sportsbookVariations = []
       for (const sportsbook of filters.sportsbooks) {
-        if (sportsbook.toLowerCase() === 'draftkings') {
-          sportsbookVariations.push('DraftKings', 'draftkings', 'DK')
-        } else if (sportsbook.toLowerCase() === 'fanduel') {
-          sportsbookVariations.push('FanDuel', 'fanduel', 'FD')
-        } else if (sportsbook.toLowerCase() === 'sportsgameodds') {
-          sportsbookVariations.push('SportsGameOdds', 'sportsgameodds')
+        const lowerSportsbook = sportsbook.toLowerCase()
+        if (lowerSportsbook === 'draftkings' || lowerSportsbook === 'dk') {
+          sportsbookVariations.push('DraftKings', 'draftkings', 'DK', 'dk', 'Draft Kings')
+        } else if (lowerSportsbook === 'fanduel' || lowerSportsbook === 'fd') {
+          sportsbookVariations.push('FanDuel', 'fanduel', 'FD', 'fd', 'Fan Duel')
+        } else if (lowerSportsbook === 'caesars' || lowerSportsbook === 'cz') {
+          sportsbookVariations.push('Caesars', 'caesars', 'CZ', 'cz', 'Caesars Sportsbook')
+        } else if (lowerSportsbook === 'betmgm' || lowerSportsbook === 'mgm') {
+          sportsbookVariations.push('BetMGM', 'betmgm', 'MGM', 'mgm', 'Bet MGM')
+        } else if (lowerSportsbook === 'sportsgameodds' || lowerSportsbook === 'sgo') {
+          sportsbookVariations.push('SportsGameOdds', 'sportsgameodds', 'SGO', 'sgo')
         } else {
           sportsbookVariations.push(sportsbook, sportsbook.toLowerCase(), sportsbook.toUpperCase())
         }
@@ -482,10 +523,25 @@ export async function POST(request: NextRequest) {
     // Add additional filters that might be missing
     if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes('All')) {
       console.log('🔍 Applying status filter:', filters.statuses)
-      betsQuery = betsQuery.in(
-        'status',
-        filters.statuses.map(s => s.toLowerCase())
-      )
+      
+      // Handle status variations
+      const statusVariations = []
+      for (const status of filters.statuses) {
+        const lowerStatus = status.toLowerCase()
+        if (lowerStatus === 'won') {
+          statusVariations.push('won', 'Won', 'WON', 'win', 'Win', 'WIN')
+        } else if (lowerStatus === 'lost') {
+          statusVariations.push('lost', 'Lost', 'LOST', 'lose', 'Lose', 'LOSE', 'loss', 'Loss', 'LOSS')
+        } else if (lowerStatus === 'pending') {
+          statusVariations.push('pending', 'Pending', 'PENDING', 'open', 'Open', 'OPEN')
+        } else if (lowerStatus === 'void') {
+          statusVariations.push('void', 'Void', 'VOID', 'push', 'Push', 'PUSH', 'cancelled', 'Cancelled', 'CANCELLED')
+        } else {
+          statusVariations.push(status, lowerStatus, status.toUpperCase())
+        }
+      }
+      
+      betsQuery = betsQuery.in('status', statusVariations)
     } else {
       console.log('🔍 No status filter applied')
     }
@@ -500,6 +556,46 @@ export async function POST(request: NextRequest) {
       betsQuery = betsQuery.lte('placed_at', filters.customEndDate)
     }
 
+    // Add a check to see what we would get without the sport filter
+    if (sport && sport !== 'All') {
+      console.log('🔍 DEBUG: Checking bets without sport filter first...')
+      const debugQuery = serviceSupabase
+        .from('bets')
+        .select('id, sport, league, bet_type, status, sportsbook, created_at')
+        .eq('user_id', finalUser.id)
+        .limit(10)
+
+      const { data: debugBets, error: debugError } = await debugQuery
+
+      if (!debugError && debugBets && debugBets.length > 0) {
+        console.log('🔍 DEBUG: Sample bets without sport filter:')
+        debugBets.forEach(bet => {
+          console.log(`   Bet: sport="${bet.sport}", league="${bet.league}", bet_type="${bet.bet_type}", status="${bet.status}", sportsbook="${bet.sportsbook}", date="${bet.created_at}"`)
+        })
+        
+        // Check specifically for NCAAF in both sport and league columns
+        const ncaafBets = debugBets.filter(bet => {
+          const sportMatch = bet.sport && (
+            bet.sport.toLowerCase().includes('ncaaf') || 
+            bet.sport.toLowerCase().includes('college football') ||
+            bet.sport.toLowerCase().includes('college') ||
+            bet.sport.toLowerCase().includes('ncaa')
+          )
+          const leagueMatch = bet.league && (
+            bet.league.toLowerCase().includes('ncaaf') || 
+            bet.league.toLowerCase().includes('college football') ||
+            bet.league.toLowerCase().includes('college') ||
+            bet.league.toLowerCase().includes('ncaa')
+          )
+          return sportMatch || leagueMatch
+        })
+        console.log('🔍 DEBUG: NCAAF-related bets found in sport OR league columns:', ncaafBets.length)
+        if (ncaafBets.length > 0) {
+          console.log('🔍 DEBUG: NCAAF bet examples:', ncaafBets.map(b => ({ sport: b.sport, league: b.league, bet_type: b.bet_type })))
+        }
+      }
+    }
+
     const { data: matchingBets, error: betsError } = await betsQuery
 
     if (betsError) {
@@ -511,6 +607,20 @@ export async function POST(request: NextRequest) {
     if (matchingBets && matchingBets.length > 0) {
       console.log('🔍 Sample matching bets:', matchingBets.slice(0, 2))
       console.log('🔍 Bet statuses:', [...new Set(matchingBets.map(b => b.status))])
+    } else {
+      console.log('❌ No matching bets found. Final query conditions were:')
+      console.log('   Sport filter:', sport, sport !== 'All' ? `(variations: ${JSON.stringify(sportVariations)})` : '(no filter)')
+      console.log('   BetType filter:', betType, betType !== 'All' ? `(variations: ${JSON.stringify(betTypeVariations)})` : '(no filter)')
+      console.log('   Date filters:', {
+        startDate: filters.customStartDate || 'none',
+        endDate: filters.customEndDate || 'none'
+      })
+      console.log('   Other filters:', {
+        sides: filters.sides,
+        isParlays: filters.isParlays,
+        sportsbooks: filters.sportsbooks,
+        statuses: filters.statuses
+      })
     }
 
     // Insert strategy_bets relationships

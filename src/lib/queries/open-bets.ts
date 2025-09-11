@@ -450,7 +450,7 @@ export function formatBetForDisplay(bet: OpenBet) {
   }
 
   // Format bet type
-  const formatBetType = (betType?: string) => {
+  const formatBetType = (betType?: string): string => {
     if (!betType) return 'moneyline'
     const typeMap: { [key: string]: string } = {
       'moneyline': 'moneyline',
@@ -474,7 +474,9 @@ export function formatBetForDisplay(bet: OpenBet) {
         const direction = bet.side?.toLowerCase() === 'over' ? 'Over' : 'Under'
         const line = bet.line_value ? ` ${bet.line_value}` : ''
         if (teams) {
-          return `${teams} - Total - Total Runs - ${direction}${line}`
+          // Sport-specific total terminology
+          const totalType = bet.sport?.toLowerCase() === 'baseball' ? 'Total Runs' : 'Total Points'
+          return `${teams} - Total - ${totalType} - ${direction}${line}`
         }
         return `${direction} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
       }
@@ -483,7 +485,15 @@ export function formatBetForDisplay(bet: OpenBet) {
         const line = bet.line_value ? ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}` : ''
         if (teams) {
           const favoriteTeam = bet.side === 'home' ? bet.home_team : bet.away_team
-          return `${teams} - Spread - Run Line - ${favoriteTeam}${line}`
+          // Sport-specific spread terminology
+          let spreadType = 'Point Spread'
+          const sport = bet.sport?.toLowerCase()
+          if (sport === 'baseball') {
+            spreadType = 'Run Line'
+          } else if (sport === 'hockey') {
+            spreadType = 'Puck Line'
+          }
+          return `${teams} - Spread - ${spreadType} - ${favoriteTeam}${line}`
         }
         return bet.bet_description || `Spread${line}`
       }
