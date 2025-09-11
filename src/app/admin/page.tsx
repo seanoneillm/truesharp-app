@@ -846,50 +846,7 @@ export default function AdminPage() {
     }
   }, [])
 
-  if (authLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <RefreshCw className="mx-auto mb-4 h-8 w-8 animate-spin text-blue-600" />
-            <p className="text-slate-600">Loading...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!user) {
-    return (
-      <DashboardLayout>
-        <div className="flex min-h-[400px] items-center justify-center">
-          <Card className="max-w-md p-8 text-center">
-            <User className="mx-auto mb-4 h-16 w-16 text-red-500" />
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">Authentication Required</h2>
-            <p className="text-slate-600">Please log in to access this page.</p>
-          </Card>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="flex min-h-[400px] items-center justify-center">
-          <Card className="max-w-md p-8 text-center">
-            <AlertTriangle className="mx-auto mb-4 h-16 w-16 text-red-500" />
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">Access Denied</h2>
-            <p className="mb-4 text-slate-600">
-              You don't have permission to access this admin page.
-            </p>
-            <p className="text-sm text-slate-500">User ID: {user.id}</p>
-          </Card>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
+  // Handle fetch current odds - moved here to follow Rules of Hooks
   const handleFetchCurrentOdds = useCallback(async () => {
     if (!selectedDate || isFetching) return
 
@@ -942,6 +899,50 @@ export default function AdminPage() {
       currentFetchRequest.current = null
     }
   }, [selectedDate, isFetching])
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="mx-auto mb-4 h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-slate-600">Loading...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Card className="max-w-md p-8 text-center">
+            <User className="mx-auto mb-4 h-16 w-16 text-red-500" />
+            <h2 className="mb-2 text-xl font-semibold text-slate-900">Authentication Required</h2>
+            <p className="text-slate-600">Please log in to access this page.</p>
+          </Card>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Card className="max-w-md p-8 text-center">
+            <AlertTriangle className="mx-auto mb-4 h-16 w-16 text-red-500" />
+            <h2 className="mb-2 text-xl font-semibold text-slate-900">Access Denied</h2>
+            <p className="mb-4 text-slate-600">
+              You don't have permission to access this admin page.
+            </p>
+            <p className="text-sm text-slate-500">User ID: {user.id}</p>
+          </Card>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   const handleSettleBets = async () => {
     setIsSettling(true)
