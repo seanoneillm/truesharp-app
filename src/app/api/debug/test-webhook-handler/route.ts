@@ -43,7 +43,10 @@ async function handleMockCheckoutSessionCompleted(sessionData: SessionData) {
     .single()
 
   if (existingSubscription) {
-    console.log('ℹ️ Subscription already exists in database, skipping creation:', existingSubscription.id)
+    console.log(
+      'ℹ️ Subscription already exists in database, skipping creation:',
+      existingSubscription.id
+    )
     return { error: 'Subscription already exists', existing_id: existingSubscription.id }
   }
 
@@ -140,8 +143,8 @@ export async function POST() {
         subscriber_id: '28991397-dae7-42e8-a822-0dffc6ff49b7', // Use existing user
         seller_id: '0e16e4f5-f206-4e62-8282-4188ff8af48a', // Use existing seller
         frequency: 'monthly',
-        seller_connect_account_id: 'acct_1S48mwJvV9fUMgsu'
-      }
+        seller_connect_account_id: 'acct_1S48mwJvV9fUMgsu',
+      },
     }
 
     // Test the handler
@@ -151,22 +154,27 @@ export async function POST() {
       success: !result.error,
       mock_session: mockSession,
       handler_result: result,
-      message: result.error ? 'Handler test failed' : 'Handler test successful! Mock subscription created.'
+      message: result.error
+        ? 'Handler test failed'
+        : 'Handler test successful! Mock subscription created.',
     })
-
   } catch (error) {
     console.error('❌ Test webhook handler error:', error)
-    return NextResponse.json({
-      error: 'Test failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Test failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
 export async function GET() {
   return NextResponse.json({
     message: 'Webhook handler test endpoint ready.',
-    description: 'This tests the webhook handler logic directly without going through Stripe signature verification.',
-    usage: 'POST to this endpoint to simulate a checkout.session.completed event'
+    description:
+      'This tests the webhook handler logic directly without going through Stripe signature verification.',
+    usage: 'POST to this endpoint to simulate a checkout.session.completed event',
   })
 }

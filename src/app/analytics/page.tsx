@@ -536,8 +536,9 @@ export default function AnalyticsPage() {
       const profileResult = await profileResponse.json()
       const bettorId = profileResult.data?.sharpsports_bettor_id
 
+      // Allow users without bettor ID to still access the sportsbook linking UI
       if (!bettorId) {
-        throw new Error('No SharpSports bettor ID found for user')
+        console.log('⚠️ No SharpSports bettor ID found - user will be able to set up their account')
       }
 
       // Remove any existing extension scripts
@@ -547,7 +548,11 @@ export default function AnalyticsPage() {
       // Create and inject the extension script with proper attributes
       const extensionScript = document.createElement('script')
       extensionScript.src = 'https://d1vhnbpkpweicq.cloudfront.net/extension-cdn.js'
-      extensionScript.setAttribute('internalId', bettorId)
+      
+      // Only set bettor ID if available, otherwise script will handle initial setup
+      if (bettorId) {
+        extensionScript.setAttribute('internalId', bettorId)
+      }
       extensionScript.setAttribute('publicKey', publicKey)
       
       if (extensionAuthToken) {
@@ -556,7 +561,7 @@ export default function AnalyticsPage() {
 
       document.head.appendChild(extensionScript)
       console.log('✅ Extension script injected with:', {
-        internalId: bettorId,
+        internalId: bettorId || 'not set (new user setup)',
         publicKey: publicKey.substring(0, 10) + '...',
         hasAuthToken: !!extensionAuthToken
       })

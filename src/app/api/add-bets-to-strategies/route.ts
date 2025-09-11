@@ -278,19 +278,61 @@ export async function POST(request: NextRequest) {
 
     // Insert valid strategy_bets
     if (strategyBetsToInsert.length > 0) {
-      const { error: insertError } = await serviceSupabase
-        .from('strategy_bets')
-        .insert(strategyBetsToInsert)
+      // Try to insert strategy_bets in smaller batches to avoid constraint issues
+      const batchSize = 10
+      let totalInserted = 0
 
-      if (insertError) {
-        console.error('Error inserting strategy_bets:', insertError)
-        return NextResponse.json({ error: 'Failed to add bets to strategies' }, { status: 500 })
+      for (let i = 0; i < strategyBetsToInsert.length; i += batchSize) {
+        const batch = strategyBetsToInsert.slice(i, i + batchSize)
+
+        try {
+          const { error: insertError } = await serviceSupabase.from('strategy_bets').insert(batch)
+
+          if (insertError) {
+            console.error(`Error inserting batch ${i}-${i + batch.length}:`, insertError)
+
+            // If we get a constraint violation, try to insert one by one
+            if (insertError.code === '23514') {
+              console.log('Constraint violation detected, trying individual inserts...')
+
+              for (const item of batch) {
+                try {
+                  const { error: singleError } = await serviceSupabase
+                    .from('strategy_bets')
+                    .insert([item])
+
+                  if (singleError) {
+                    console.error('Error inserting single item:', singleError)
+                  } else {
+                    totalInserted++
+                  }
+                } catch (singleInsertError) {
+                  console.error('Single insert failed:', singleInsertError)
+                }
+              }
+            } else {
+              // For other errors, just continue to next batch
+              continue
+            }
+          } else {
+            totalInserted += batch.length
+          }
+        } catch (batchError) {
+          console.error(`Batch insert failed:`, batchError)
+          continue
+        }
       }
 
-      insertedCount = strategyBetsToInsert.length
+      insertedCount = totalInserted
 
-      // The strategy_leaderboard will be updated automatically by the database trigger
-      // when strategy_bets are inserted
+      if (insertedCount === 0) {
+        return NextResponse.json(
+          {
+            error: 'Failed to add any bets to strategies due to constraint violations',
+          },
+          { status: 500 }
+        )
+      }
 
       // Send notifications to subscribers (simplified version)
       for (const [strategyId, betCount] of strategyUpdates) {

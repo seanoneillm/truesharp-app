@@ -25,7 +25,7 @@ import {
   Link,
   Star
 } from 'lucide-react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import {
   LineChart,
@@ -59,6 +59,9 @@ export default function AdminPage() {
   const [fetchResult, setFetchResult] = useState<string | null>(null)
   const [settleResult, setSettleResult] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  
+  // Ref to track current fetch request
+  const currentFetchRequest = useRef<AbortController | null>(null)
 
   // SharpSports states
   const [isFetchingBettors, setIsFetchingBettors] = useState(false)
@@ -834,6 +837,15 @@ export default function AdminPage() {
     }
   }, [isAdmin, fetchFeedback, fetchAnalyticsData, fetchBetsAnalyticsData])
 
+  // Cleanup effect to cancel any pending odds fetch requests
+  useEffect(() => {
+    return () => {
+      if (currentFetchRequest.current) {
+        currentFetchRequest.current.abort()
+      }
+    }
+  }, [])
+
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -878,8 +890,16 @@ export default function AdminPage() {
     )
   }
 
-  const handleFetchCurrentOdds = async () => {
-    if (!selectedDate) return
+  const handleFetchCurrentOdds = useCallback(async () => {
+    if (!selectedDate || isFetching) return
+
+    // Cancel any existing request
+    if (currentFetchRequest.current) {
+      currentFetchRequest.current.abort()
+    }
+
+    // Create new abort controller for this request
+    currentFetchRequest.current = new AbortController()
 
     setIsFetching(true)
     setFetchResult(null)
@@ -896,6 +916,7 @@ export default function AdminPage() {
           sport: 'ALL', // Fetch all sports
           date: selectedDate.toISOString().split('T')[0],
         }),
+        signal: currentFetchRequest.current.signal,
       })
 
       const result = await response.json()
@@ -909,12 +930,18 @@ export default function AdminPage() {
         setFetchResult(`❌ Fetch failed: ${result.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('❌ Admin: Error during fetch:', error)
-      setFetchResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🔄 Admin: Odds fetch request was cancelled')
+        setFetchResult('⚠️ Request was cancelled')
+      } else {
+        console.error('❌ Admin: Error during fetch:', error)
+        setFetchResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setIsFetching(false)
+      currentFetchRequest.current = null
     }
-  }
+  }, [selectedDate, isFetching])
 
   const handleSettleBets = async () => {
     setIsSettling(true)

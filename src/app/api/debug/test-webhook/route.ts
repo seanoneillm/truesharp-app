@@ -19,10 +19,10 @@ export async function POST() {
             subscriber_id: '28991397-dae7-42e8-a822-0dffc6ff49b7', // Use an existing user ID
             seller_id: '0e16e4f5-f206-4e62-8282-4188ff8af48a', // Use an existing seller ID
             frequency: 'monthly',
-            seller_connect_account_id: 'acct_1S48mwJvV9fUMgsu'
-          }
-        }
-      }
+            seller_connect_account_id: 'acct_1S48mwJvV9fUMgsu',
+          },
+        },
+      },
     }
 
     console.log('📦 Mock event:', JSON.stringify(mockEvent, null, 2))
@@ -32,9 +32,9 @@ export async function POST() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'stripe-signature': 'mock_signature_for_testing'
+        'stripe-signature': 'mock_signature_for_testing',
       },
-      body: JSON.stringify(mockEvent)
+      body: JSON.stringify(mockEvent),
     })
 
     const responseText = await webhookResponse.text()
@@ -46,16 +46,18 @@ export async function POST() {
       test_event: mockEvent,
       webhook_response: {
         status: webhookResponse.status,
-        body: responseText
-      }
+        body: responseText,
+      },
     })
-
   } catch (error) {
     console.error('❌ Test webhook error:', error)
-    return NextResponse.json({
-      error: 'Test failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Test failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -65,7 +67,7 @@ export async function GET() {
     instructions: [
       'POST to this endpoint to send a mock webhook event',
       'This will test your webhook handler without going through Stripe',
-      'Mock event includes sample strategy subscription data'
-    ]
+      'Mock event includes sample strategy subscription data',
+    ],
   })
 }
