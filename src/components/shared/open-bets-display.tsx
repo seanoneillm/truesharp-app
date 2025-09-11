@@ -1,7 +1,8 @@
 'use client'
 
-import { OpenBet, formatBetForDisplay } from '@/lib/queries/open-bets'
+import { OpenBet, formatBetForDisplay, groupBetsByParlay } from '@/lib/queries/open-bets'
 import { Calendar, Clock, DollarSign, Target, TrendingUp, Trophy, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface OpenBetsDisplayProps {
   bets: OpenBet[]
@@ -27,8 +28,8 @@ export function OpenBetsDisplay({
     )
   }
 
-  // Show all bets in a scrollable container instead of limiting with maxBets
-  const displayBets = bets
+  // Group bets by parlay_id for consistent display
+  const groupedBets = groupBetsByParlay(bets)
   const shouldScroll = bets.length > 3 // Enable scrolling if more than 3 bets
 
   const totalPotentialProfit = bets.reduce((sum, bet) => {
@@ -51,8 +52,62 @@ export function OpenBetsDisplay({
         </div>
       )}
 
-      <div className={`space-y-2 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
-        {displayBets.map(bet => {
+      <div className={`space-y-3 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
+        {/* Render Parlay Groups */}
+        {groupedBets.groups.map(parlayGroup => (
+          <div key={parlayGroup.parlayId} className="rounded-lg border-2 border-purple-200 bg-purple-50">
+            {/* Parlay Header */}
+            <div className="border-b border-purple-200 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                    PARLAY ({parlayGroup.bets.length} legs)
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {parlayGroup.bets[0]?.sport}
+                  </Badge>
+                </div>
+                {!compact && (
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-green-600">
+                      +${(parlayGroup.totalPayout - parlayGroup.totalStake).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-500">potential profit</div>
+                  </div>
+                )}
+              </div>
+              {!compact && (
+                <p className="mt-1 text-sm text-purple-700">
+                  Total stake: ${parlayGroup.totalStake.toFixed(2)} • 
+                  Potential payout: ${parlayGroup.totalPayout.toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            {/* Parlay Legs */}
+            <div className="space-y-2 p-3">
+              {parlayGroup.bets.map((bet, index) => {
+                const formattedBet = formatBetForDisplay(bet)
+                return (
+                  <div key={bet.id} className="rounded-md border border-purple-100 bg-white p-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-purple-600">
+                        Leg {index + 1}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {formattedBet.betType}
+                      </Badge>
+                    </div>
+                    <OpenBetCard bet={formattedBet} compact={true} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Render Single Bets */}
+        {groupedBets.singles.map(bet => {
           const formattedBet = formatBetForDisplay(bet)
           return <OpenBetCard key={bet.id} bet={formattedBet} compact={compact} />
         })}

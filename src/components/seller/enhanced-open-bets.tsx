@@ -29,6 +29,8 @@ interface OpenBet {
   prop_type?: string
   line_value?: number
   side?: string
+  parlay_id?: string
+  is_parlay?: boolean
 }
 
 interface EnhancedOpenBetsProps {
@@ -46,6 +48,36 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
   const [isStrategyModalOpen, setIsStrategyModalOpen] = useState(false)
   const [isAddingToStrategies, setIsAddingToStrategies] = useState(false)
   const { addToast } = useToast()
+
+  const groupedBets = useMemo(() => {
+    if (!Array.isArray(openBets)) {
+      return { groups: [], singles: [] }
+    }
+
+    const parlayGroups = new Map<string, OpenBet[]>()
+    const singles: OpenBet[] = []
+
+    openBets.forEach(bet => {
+      if (bet.is_parlay && bet.parlay_id) {
+        if (!parlayGroups.has(bet.parlay_id)) {
+          parlayGroups.set(bet.parlay_id, [])
+        }
+        parlayGroups.get(bet.parlay_id)!.push(bet)
+      } else {
+        singles.push(bet)
+      }
+    })
+
+    return {
+      groups: Array.from(parlayGroups.entries()).map(([parlayId, bets]) => ({
+        parlayId,
+        bets,
+        totalStake: bets.reduce((sum, bet) => sum + (bet.stake || 0), 0),
+        totalPayout: bets.reduce((sum, bet) => sum + (bet.potential_payout || 0), 0),
+      })),
+      singles,
+    }
+  }, [openBets])
 
   const openBetsSummary = useMemo(() => {
     if (!Array.isArray(openBets)) {
@@ -81,6 +113,22 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
 
   const clearSelection = () => {
     setSelectedBetIds([])
+  }
+
+  const selectParlay = (parlayId: string) => {
+    const parlayGroup = groupedBets.groups.find(g => g.parlayId === parlayId)
+    if (parlayGroup) {
+      const parlayBetIds = parlayGroup.bets.map(bet => bet.id)
+      const allSelected = parlayBetIds.every(id => selectedBetIds.includes(id))
+      
+      if (allSelected) {
+        // Deselect all bets in parlay
+        setSelectedBetIds(prev => prev.filter(id => !parlayBetIds.includes(id)))
+      } else {
+        // Select all bets in parlay
+        setSelectedBetIds(prev => [...new Set([...prev, ...parlayBetIds])])
+      }
+    }
   }
 
   const handleAddToStrategies = () => {
@@ -226,8 +274,127 @@ export const EnhancedOpenBets: React.FC<EnhancedOpenBetsProps> = ({
             ))}
           </div>
         ) : Array.isArray(openBets) && openBets.length > 0 ? (
-          <div className="space-y-3">
-            {openBets.map(bet => {
+          <div className="space-y-4">
+            {/* Render Parlay Groups */}
+            {groupedBets.groups.map(parlayGroup => {
+              const allParlayBetsSelected = parlayGroup.bets.every(bet => selectedBetIds.includes(bet.id))
+              const someParlayBetsSelected = parlayGroup.bets.some(bet => selectedBetIds.includes(bet.id))
+
+              return (
+                <div
+                  key={parlayGroup.parlayId}
+                  className={cn(
+                    'rounded-lg border-2 transition-all duration-200',
+                    allParlayBetsSelected ? 'border-blue-500 bg-blue-50' : 
+                    someParlayBetsSelected ? 'border-blue-300 bg-blue-25' : 'border-gray-200 bg-gray-50'
+                  )}
+                >
+                  {/* Parlay Header */}
+                  <div 
+                    className="cursor-pointer p-4 border-b border-gray-200"
+                    onClick={() => selectParlay(parlayGroup.parlayId)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          {allParlayBetsSelected ? (
+                            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                          ) : (
+                            <Circle className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                              PARLAY ({parlayGroup.bets.length} legs)
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {parlayGroup.bets[0]?.sport}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Combined stake: ${parlayGroup.totalStake.toFixed(2)} • 
+                            Potential payout: ${parlayGroup.totalPayout.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-600">
+                          +{formatCurrency(parlayGroup.totalPayout - parlayGroup.totalStake)}
+                        </div>
+                        <div className="text-xs text-gray-500">potential profit</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Parlay Legs */}
+                  <div className="space-y-2 p-4">
+                    {parlayGroup.bets.map((bet, index) => {
+                      const isSelected = selectedBetIds.includes(bet.id)
+                      const formattedBet = formatBetForDisplay(bet)
+
+                      return (
+                        <div
+                          key={bet.id}
+                          className={cn(
+                            'cursor-pointer rounded-md bg-white border p-3 transition-all duration-200 hover:shadow-sm',
+                            isSelected && 'border-blue-300 bg-blue-50'
+                          )}
+                          onClick={() => toggleBetSelection(bet.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              {isSelected ? (
+                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-gray-400" />
+                              )}
+                            </div>
+
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="mb-1 flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">
+                                      Leg {index + 1}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="border-purple-300 bg-purple-100 text-xs text-purple-700"
+                                    >
+                                      {formattedBet.betType}
+                                    </Badge>
+                                  </div>
+
+                                  <p className="mb-1 text-sm font-medium text-gray-900">
+                                    {formattedBet.mainDescription}
+                                  </p>
+
+                                  <div className="flex items-center gap-4 text-xs text-gray-600">
+                                    <span>Odds: {formattedBet.odds}</span>
+                                    {formattedBet.lineDisplay && (
+                                      <span>Line: {formattedBet.lineDisplay}</span>
+                                    )}
+                                    {getDisplaySide(bet) && (
+                                      <span className="rounded bg-blue-100 px-1 py-0.5 text-xs font-medium text-blue-700">
+                                        {getDisplaySide(bet)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Render Single Bets */}
+            {groupedBets.singles.map(bet => {
               const isSelected = selectedBetIds.includes(bet.id)
 
               return (

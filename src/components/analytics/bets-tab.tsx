@@ -120,9 +120,42 @@ export function BetsTab({
       case 'pending':
         return <Badge className="border-yellow-300 bg-yellow-100 text-yellow-800">Pending</Badge>
       case 'void':
-        return <Badge className="border-gray-300 bg-gray-100 text-gray-800">Void</Badge>
+      case 'cancelled':
+        return <Badge className="border-gray-300 bg-gray-100 text-gray-800">Push</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const getStatusBorderClass = (status: string) => {
+    switch (status) {
+      case 'won':
+        return 'border-l-4 border-l-green-500 bg-green-50/30'
+      case 'lost':
+        return 'border-l-4 border-l-red-500 bg-red-50/30'
+      case 'pending':
+        return 'border-l-4 border-l-yellow-500 bg-yellow-50/30'
+      case 'void':
+      case 'cancelled':
+        return 'border-l-4 border-l-gray-500 bg-gray-50/30'
+      default:
+        return 'border-l-4 border-l-gray-300'
+    }
+  }
+
+  const getLegStatusBadge = (status: string) => {
+    switch (status) {
+      case 'won':
+        return <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">✓ Won</span>
+      case 'lost':
+        return <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">✗ Lost</span>
+      case 'pending':
+        return <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">⏳ Pending</span>
+      case 'void':
+      case 'cancelled':
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">— Push</span>
+      default:
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">{status}</span>
     }
   }
 
@@ -166,44 +199,44 @@ export function BetsTab({
   return (
     <div className="space-y-6">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <Filter className="h-5 w-5 text-blue-600" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3 shadow-md">
+                <Filter className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Showing</p>
-                <p className="text-xl font-bold">{bets.length.toLocaleString()}</p>
+                <p className="text-sm font-medium text-blue-700">Showing</p>
+                <p className="text-2xl font-bold text-blue-900">{bets.length.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="rounded-lg bg-purple-100 p-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
+        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-3 shadow-md">
+                <Calendar className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Bets</p>
-                <p className="text-xl font-bold">{totalBets.toLocaleString()}</p>
+                <p className="text-sm font-medium text-purple-700">Total Bets</p>
+                <p className="text-2xl font-bold text-purple-900">{totalBets.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+        <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 p-3 shadow-md animate-pulse">
+                <TrendingUp className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-xl font-bold">
+                <p className="text-sm font-medium text-amber-700">Pending</p>
+                <p className="text-2xl font-bold text-amber-900">
                   {bets.filter(bet => bet.status === 'pending').length}
                 </p>
               </div>
@@ -211,15 +244,15 @@ export function BetsTab({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="rounded-lg bg-amber-100 p-2">
-                <DollarSign className="h-5 w-5 text-amber-600" />
+        <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-3 shadow-md">
+                <DollarSign className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Avg Stake</p>
-                <p className="text-xl font-bold">
+                <p className="text-sm font-medium text-emerald-700">Avg Stake</p>
+                <p className="text-2xl font-bold text-emerald-900">
                   $
                   {(
                     bets.reduce((sum, bet) => sum + bet.stake, 0) / Math.max(bets.length, 1)
@@ -281,7 +314,7 @@ export function BetsTab({
                   <TableBody>
                     {bets.map(bet => (
                       <React.Fragment key={bet.id}>
-                        <TableRow className="cursor-pointer hover:bg-gray-50">
+                        <TableRow className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.01] ${getStatusBorderClass(bet.status)}`}>
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -301,60 +334,67 @@ export function BetsTab({
                             {(() => {
                               const formattedBet = formatBetForDisplay(bet)
                               return (
-                                <div className="space-y-1">
-                                  <div className="flex items-center space-x-2">
-                                    <Badge variant="outline" className="text-xs">
-                                      {formattedBet.sport}
-                                    </Badge>
-                                    <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 font-medium text-xs">
-                                      {formattedBet.betType}
-                                    </span>
-                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700 font-medium text-xs">
-                                      {formattedBet.sportsbook}
-                                    </span>
-                                    <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 font-medium text-xs">
-                                      {formattedBet.status}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="space-y-1">
-                                    <p className="line-clamp-2 font-medium">{formattedBet.mainDescription}</p>
-                                    
-                                    <div className="flex items-center space-x-2 text-xs text-gray-600">
-                                      <span className="font-medium">Odds: {formattedBet.odds}</span>
-                                      <span>Stake: {formattedBet.stake}</span>
-                                      {formattedBet.gameDateTime && (
-                                        <span>Game: {formattedBet.gameDateTime}</span>
-                                      )}
-                                      {formattedBet.lineDisplay && (
-                                        <span>Line: {formattedBet.lineDisplay}</span>
-                                      )}
-                                      {getDisplaySide(bet) && (
-                                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 font-medium">
-                                          {getDisplaySide(bet)}
+                                <div className="space-y-2">
+                                  {/* Header with key info */}
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <Badge variant="outline" className="text-xs font-medium">
+                                        {formattedBet.sport}
+                                      </Badge>
+                                      <span className="rounded bg-purple-100 px-2 py-0.5 text-purple-700 font-medium text-xs">
+                                        {formattedBet.betType}
+                                      </span>
+                                      {formattedBet.sportsbook && (
+                                        <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700 font-medium text-xs">
+                                          {formattedBet.sportsbook}
                                         </span>
                                       )}
                                     </div>
-                                    
+                                    <div className="text-sm font-medium">
+                                      {formattedBet.odds}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Main description - more prominent */}
+                                  <div className="font-medium text-gray-900 text-sm leading-tight">
+                                    {formattedBet.mainDescription}
+                                  </div>
+                                  
+                                  {/* Teams and line info - compact */}
+                                  <div className="flex items-center space-x-3 text-xs text-gray-600">
                                     {formattedBet.teamsDisplay && (
-                                      <div className="text-xs text-gray-500">
-                                        {formattedBet.teamsDisplay}
-                                      </div>
+                                      <span className="font-medium">{formattedBet.teamsDisplay}</span>
+                                    )}
+                                    {formattedBet.lineDisplay && (
+                                      <span className="bg-blue-50 px-1.5 py-0.5 rounded text-blue-700">Line: {formattedBet.lineDisplay}</span>
+                                    )}
+                                    {getDisplaySide(bet) && (
+                                      <span className="bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700 font-medium">
+                                        {getDisplaySide(bet)}
+                                      </span>
                                     )}
                                   </div>
                                   
-                                  {/* Parlay legs preview */}
+                                  {/* Parlay legs preview - more compact */}
                                   {bet.is_parlay && bet.legs && bet.legs.length > 0 && (
-                                    <div className="space-y-1 border-l-2 border-gray-200 pl-2 text-xs text-gray-600">
-                                      {bet.legs.slice(0, 2).map(leg => (
-                                        <div key={leg.id}>
-                                          <span className="font-medium">{leg.sport}:</span>{' '}
-                                          {leg.bet_description} ({formatOdds(leg.odds)})
+                                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200 p-3 space-y-2 shadow-sm">
+                                      <div className="text-xs font-medium text-slate-700 mb-1">
+                                        {bet.legs.length} Legs:
+                                      </div>
+                                      {bet.legs.slice(0, 3).map(leg => (
+                                        <div key={leg.id} className="flex items-center justify-between text-xs">
+                                          <span className="text-gray-700">
+                                            <span className="font-medium">{leg.sport}</span>: {leg.bet_description.substring(0, 40)}{leg.bet_description.length > 40 ? '...' : ''}
+                                          </span>
+                                          <div className="flex items-center space-x-2">
+                                            <span className="font-mono text-gray-600">{formatOdds(leg.odds)}</span>
+                                            {getLegStatusBadge(leg.status)}
+                                          </div>
                                         </div>
                                       ))}
-                                      {bet.legs.length > 2 && (
-                                        <div className="text-gray-500">
-                                          +{bet.legs.length - 2} more legs
+                                      {bet.legs.length > 3 && (
+                                        <div className="text-xs text-gray-500 text-center pt-1">
+                                          +{bet.legs.length - 3} more legs (expand to see all)
                                         </div>
                                       )}
                                     </div>
@@ -385,25 +425,27 @@ export function BetsTab({
                           <TableCell>
                             {bet.status === 'pending' ? (
                               <div className="text-sm">
-                                <p className="text-blue-600">
+                                <p className="text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
                                   To Win: {formatCurrency(bet.potential_payout - bet.stake)}
                                 </p>
                               </div>
                             ) : bet.profit !== undefined ? (
-                              <p
-                                className={`font-medium ${bet.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                              >
-                                {formatCurrency(bet.profit)}
-                              </p>
+                              <div className={`inline-flex items-center px-3 py-1.5 rounded-lg font-bold text-sm shadow-md border-2 ${
+                                bet.profit >= 0 
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white border-green-600' 
+                                  : 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-600'
+                              }`}>
+                                {bet.profit >= 0 ? '↗' : '↘'} {formatCurrency(bet.profit)}
+                              </div>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <span className="text-gray-400 font-medium">-</span>
                             )}
                           </TableCell>
                         </TableRow>
 
                         {expandedRows.has(bet.id) && (
                           <TableRow>
-                            <TableCell colSpan={6} className="bg-gray-50 p-4">
+                            <TableCell colSpan={6} className="bg-gradient-to-br from-slate-50 to-slate-100/80 p-6 border-t-4 border-t-slate-200">
                               {/* Parlay legs full details */}
                               {bet.is_parlay && bet.legs && bet.legs.length > 0 ? (
                                 <div className="space-y-4">
@@ -413,23 +455,29 @@ export function BetsTab({
                                     </p>
                                     <div className="space-y-2">
                                       {bet.legs.map((leg, index) => (
-                                        <div key={leg.id} className="rounded border bg-white p-3">
+                                        <div key={leg.id} className={`rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-lg ${getStatusBorderClass(leg.status)}`}>
                                           <div className="flex items-center justify-between">
                                             <div className="flex-1">
-                                              <div className="mb-1 flex items-center space-x-2">
+                                              <div className="mb-2 flex items-center space-x-2">
                                                 <Badge variant="outline" className="text-xs">
                                                   {leg.sport}
                                                 </Badge>
                                                 <span className="text-xs text-gray-500">
                                                   Leg {index + 1}
                                                 </span>
+                                                {getLegStatusBadge(leg.status)}
                                               </div>
-                                              <p className="text-sm font-medium">
+                                              <p className="text-sm font-medium mb-1">
                                                 {leg.bet_description}
                                               </p>
                                               {leg.home_team && leg.away_team && (
                                                 <p className="text-xs text-gray-600">
                                                   {leg.away_team} @ {leg.home_team}
+                                                </p>
+                                              )}
+                                              {leg.player_name && (
+                                                <p className="text-xs text-blue-600 font-medium">
+                                                  {leg.player_name}
                                                 </p>
                                               )}
                                             </div>
@@ -439,6 +487,11 @@ export function BetsTab({
                                                 <p className="text-xs text-gray-600">
                                                   Line: {leg.line_value > 0 ? '+' : ''}
                                                   {leg.line_value}
+                                                </p>
+                                              )}
+                                              {leg.side && (
+                                                <p className="text-xs text-indigo-600 font-medium">
+                                                  {leg.side.toUpperCase()}
                                                 </p>
                                               )}
                                             </div>

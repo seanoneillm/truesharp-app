@@ -30,6 +30,8 @@ export interface OpenBet {
   sportsbook?: string
   strategy_id?: string
   side?: string
+  parlay_id?: string
+  is_parlay?: boolean
 }
 
 export interface StrategyWithOpenBets {
@@ -90,7 +92,9 @@ export async function getOpenBetsForStrategies(
           placed_at,
           game_date,
           sportsbook,
-          side
+          side,
+          parlay_id,
+          is_parlay
         )
       `
       )
@@ -178,7 +182,9 @@ export async function getOpenBetsDirectByStrategy(
         game_date,
         sportsbook,
         strategy_id,
-        side
+        side,
+        parlay_id,
+        is_parlay
       `
       )
       .in('strategy_id', strategyIds)
@@ -428,6 +434,35 @@ export async function getSubscriberStrategiesWithOpenBets(
   } catch (error) {
     console.error('Error fetching subscriber strategies with open bets:', error)
     return []
+  }
+}
+
+/**
+ * Helper function to group bets by parlay_id for consistent display
+ */
+export function groupBetsByParlay(bets: OpenBet[]) {
+  const parlayGroups = new Map<string, OpenBet[]>()
+  const singles: OpenBet[] = []
+
+  bets.forEach(bet => {
+    if (bet.is_parlay && bet.parlay_id) {
+      if (!parlayGroups.has(bet.parlay_id)) {
+        parlayGroups.set(bet.parlay_id, [])
+      }
+      parlayGroups.get(bet.parlay_id)!.push(bet)
+    } else {
+      singles.push(bet)
+    }
+  })
+
+  return {
+    groups: Array.from(parlayGroups.entries()).map(([parlayId, bets]) => ({
+      parlayId,
+      bets,
+      totalStake: bets.reduce((sum, bet) => sum + (bet.stake || 0), 0),
+      totalPayout: bets.reduce((sum, bet) => sum + (bet.potential_payout || 0), 0),
+    })),
+    singles,
   }
 }
 

@@ -30,6 +30,7 @@ interface Bet {
   bet_type: string
   side?: string
   is_parlay: boolean
+  parlay_id?: string
   sportsbook: string
   odds: number
   stake: number
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
     // Fetch the selected bets
     const { data: bets, error: betsError } = await serviceSupabase
       .from('bets')
-      .select('*')
+      .select('*, parlay_id')
       .in('id', betIds)
       .eq('user_id', user.id)
       .eq('status', 'pending')
@@ -263,6 +264,7 @@ export async function POST(request: NextRequest) {
             strategy_id: strategy.id,
             bet_id: bet.id,
             added_at: new Date().toISOString(),
+            parlay_id: bet.parlay_id || null,
           })
 
           // Track strategy updates

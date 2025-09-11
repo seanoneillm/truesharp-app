@@ -230,7 +230,18 @@ export async function GET(request: NextRequest) {
       let nextCursor: string | null = null
       let allEvents: Record<string, unknown>[] = []
 
+      let pageCount = 0
+      const maxPages = 20 // Additional safety limit for maximum pages
+      
       do {
+        pageCount++
+        
+        // Safety check for maximum pages
+        if (pageCount > maxPages) {
+          console.log(`⚠️ Hit maximum page limit (${maxPages}), stopping pagination`)
+          break
+        }
+        
         const params = new URLSearchParams()
         params.append('leagueID', sportMapping.leagueID)
         params.append('type', 'match')
@@ -242,7 +253,7 @@ export async function GET(request: NextRequest) {
         }
 
         const apiUrl = `${SPORTSGAMEODDS_API_BASE}/events?${params.toString()}`
-        console.log('🌐 Making API request to:', apiUrl)
+        console.log('🌐 Making API request to:', apiUrl, `(page ${pageCount})`)
         console.log('📅 Date range:', { startsAfter: startISO, startsBefore: futureDateISO })
         console.log('🏟️ Sport details:', {
           sport,
@@ -281,9 +292,22 @@ export async function GET(request: NextRequest) {
         console.log('📊 API page response:', pageData?.data?.length || 0, 'games')
 
         if (pageData?.success && pageData?.data) {
+          // Check if we actually got new data
+          if (pageData.data.length === 0) {
+            console.log('⚠️ API returned empty data array, stopping pagination')
+            break
+          }
+          
           allEvents = allEvents.concat(pageData.data)
           nextCursor = pageData.nextCursor
+          
+          // If no nextCursor is provided, we're done
+          if (!nextCursor) {
+            console.log('✅ No more pages available, pagination complete')
+            break
+          }
         } else {
+          console.log('⚠️ API response invalid or unsuccessful, stopping pagination')
           break
         }
 
@@ -292,7 +316,7 @@ export async function GET(request: NextRequest) {
           console.log('⚠️ Hit safety limit of 500 events, stopping pagination')
           break
         }
-      } while (nextCursor)
+      } while (nextCursor && pageCount <= maxPages)
 
       console.log('📊 Total events fetched:', allEvents.length)
 

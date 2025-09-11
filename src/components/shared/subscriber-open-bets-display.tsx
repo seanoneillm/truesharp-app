@@ -1,7 +1,8 @@
 'use client'
 
-import { OpenBet, formatBetForDisplay } from '@/lib/queries/open-bets'
+import { OpenBet, formatBetForDisplay, groupBetsByParlay } from '@/lib/queries/open-bets'
 import { Calendar, Clock, Target, TrendingUp, Trophy, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface SubscriberOpenBetsDisplayProps {
   bets: OpenBet[]
@@ -25,8 +26,8 @@ export function SubscriberOpenBetsDisplay({
     )
   }
 
-  // Show all bets in a scrollable container instead of limiting with maxBets
-  const displayBets = bets
+  // Group bets by parlay_id for consistent display
+  const groupedBets = groupBetsByParlay(bets)
   const shouldScroll = bets.length > 3 // Enable scrolling if more than 3 bets
 
   return (
@@ -40,8 +41,51 @@ export function SubscriberOpenBetsDisplay({
         </div>
       )}
 
-      <div className={`space-y-2 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
-        {displayBets.map(bet => {
+      <div className={`space-y-3 ${shouldScroll ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
+        {/* Render Parlay Groups */}
+        {groupedBets.groups.map(parlayGroup => (
+          <div key={parlayGroup.parlayId} className="rounded-lg border-2 border-purple-200 bg-purple-50">
+            {/* Parlay Header */}
+            <div className="border-b border-purple-200 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                    PARLAY ({parlayGroup.bets.length} legs)
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {parlayGroup.bets[0]?.sport}
+                  </Badge>
+                </div>
+              </div>
+              <p className="mt-1 text-sm text-purple-700">
+                {parlayGroup.bets.length} leg parlay
+              </p>
+            </div>
+
+            {/* Parlay Legs */}
+            <div className="space-y-2 p-3">
+              {parlayGroup.bets.map((bet, index) => {
+                const formattedBet = formatBetForDisplay(bet)
+                return (
+                  <div key={bet.id} className="rounded-md border border-purple-100 bg-white p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-medium text-purple-600">
+                        Leg {index + 1}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {formattedBet.betType}
+                      </Badge>
+                    </div>
+                    <SubscriberBetCard bet={formattedBet} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Render Single Bets */}
+        {groupedBets.singles.map(bet => {
           const formattedBet = formatBetForDisplay(bet)
           return <SubscriberBetCard key={bet.id} bet={formattedBet} />
         })}

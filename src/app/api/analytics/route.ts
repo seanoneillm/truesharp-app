@@ -298,10 +298,61 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Calculate analytics using proper profit handling
-    // ONLY use settled bets for profit calculations and metrics
-    const totalBets = bets.length
-    const settledBets = bets.filter(bet => ['won', 'lost', 'void'].includes(bet.status))
+    // Group bets for analytics calculation (treat parlays as single bets)
+    function createGroupedBetsForAnalytics(rawBets: Bet[]): Bet[] {
+      const groupedBets: Bet[] = []
+      const processedParlayIds = new Set<string>()
+
+      for (const bet of rawBets) {
+        if (bet.is_parlay && bet.parlay_id) {
+          // Skip if we've already processed this parlay
+          if (processedParlayIds.has(bet.parlay_id)) {
+            continue
+          }
+
+          // Find all legs of this parlay
+          const parlayLegs = rawBets.filter(b => b.parlay_id === bet.parlay_id)
+          const mainLeg = parlayLegs.find(leg => leg.stake > 0 && leg.potential_payout > 0) || parlayLegs[0]
+          
+          // Calculate parlay status and profit
+          const parlayStatus = calculateParlayStatus(parlayLegs)
+          let parlayProfit = mainLeg?.profit || bet.profit
+          if (parlayProfit === null || parlayProfit === undefined) {
+            if (parlayStatus === 'won') {
+              parlayProfit = (mainLeg?.potential_payout || 0) - (mainLeg?.stake || 0)
+            } else if (parlayStatus === 'lost') {
+              parlayProfit = -(mainLeg?.stake || 0)
+            } else {
+              parlayProfit = 0
+            }
+          }
+
+          // Create a single parlay bet for analytics
+          groupedBets.push({
+            ...mainLeg!,
+            id: bet.parlay_id,
+            status: parlayStatus,
+            profit: parlayProfit,
+            bet_type: 'parlay',
+            sport: 'Parlay', // Mark as parlay sport for breakdowns
+          })
+          
+          processedParlayIds.add(bet.parlay_id)
+        } else {
+          // Regular straight bet
+          groupedBets.push(bet)
+        }
+      }
+      
+      return groupedBets
+    }
+
+    // Use grouped bets for all analytics calculations
+    const groupedBets = createGroupedBetsForAnalytics(bets)
+    
+    // Calculate analytics using grouped bets (parlays counted as single bets)
+    const totalBets = groupedBets.length
+    const settledBets = groupedBets.filter(bet => ['won', 'lost', 'void'].includes(bet.status))
     const wonBets = settledBets.filter(bet => bet.status === 'won')
     const voidBets = settledBets.filter(bet => bet.status === 'void')
 
@@ -352,9 +403,9 @@ export async function GET(request: NextRequest) {
 
     const avgClv = clvCount > 0 ? totalClv / clvCount : null
 
-    // Separate straight bets and parlays
-    const straightBets = settledBets.filter(bet => !bet.is_parlay)
-    const parlayBets = settledBets.filter(bet => bet.is_parlay)
+    // Separate straight bets and parlays from grouped data
+    const straightBets = settledBets.filter(bet => bet.bet_type !== 'parlay')
+    const parlayBets = settledBets.filter(bet => bet.bet_type === 'parlay')
 
     // Enhanced breakdowns
     interface BreakdownStats {
@@ -377,13 +428,14 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Sport breakdown - only use settled bets for accurate profit/winrate calculations
+    // Sport breakdown - use grouped bets (parlays counted as single "Parlay" sport)
     const sportBreakdown = settledBets.reduce(
       (acc, bet) => {
-        if (!acc[bet.sport]) {
-          acc[bet.sport] = { bets: 0, won: 0, stake: 0, profit: 0 }
+        const sportKey = bet.sport || 'Unknown'
+        if (!acc[sportKey]) {
+          acc[sportKey] = { bets: 0, won: 0, stake: 0, profit: 0 }
         }
-        const stats = acc[bet.sport]!
+        const stats = acc[sportKey]!
         stats.bets += 1
         stats.stake += bet.stake
 
@@ -506,7 +558,7 @@ export async function GET(request: NextRequest) {
     const propTypeStats = convertBreakdownToStats(propTypeBreakdown, 'propType')
     const sideStats = convertBreakdownToStats(sideBreakdown, 'side')
 
-    // Line movement analysis - only use settled bets for accurate profit data
+    // Line movement analysis - use grouped settled bets for accurate profit data
     const lineMovementData = settledBets
       .filter(bet => bet.line_value !== null && bet.line_value !== undefined)
       .map(bet => {
@@ -529,6 +581,37 @@ export async function GET(request: NextRequest) {
       })
       .sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
 
+    // Helper function to calculate parlay status based on legs
+    function calculateParlayStatus(legs: Bet[]): string {
+      const pendingLegs = legs.filter(leg => leg.status === 'pending')
+      const lostLegs = legs.filter(leg => leg.status === 'lost')
+      const voidLegs = legs.filter(leg => ['void', 'cancelled'].includes(leg.status))
+      
+      // If any leg is lost, the parlay is lost
+      if (lostLegs.length > 0) {
+        return 'lost'
+      }
+      
+      // If there are pending legs, the parlay is pending
+      if (pendingLegs.length > 0) {
+        return 'pending'
+      }
+      
+      // If all non-void legs are won, the parlay is won
+      const nonVoidLegs = legs.filter(leg => !['void', 'cancelled'].includes(leg.status))
+      if (nonVoidLegs.length > 0 && nonVoidLegs.every(leg => leg.status === 'won')) {
+        return 'won'
+      }
+      
+      // If all legs are void, the parlay is void
+      if (voidLegs.length === legs.length) {
+        return 'void'
+      }
+      
+      // Default to the status of the first leg if unclear
+      return legs[0]?.status || 'pending'
+    }
+
     // Helper function to group parlay bets for display
     function groupBetsForDisplay(rawBets: Bet[], allBetsForParlays: Bet[]) {
       const groupedBets: Array<Record<string, unknown>> = []
@@ -548,12 +631,27 @@ export async function GET(request: NextRequest) {
           const mainLeg =
             parlayLegs.find(leg => leg.stake > 0 && leg.potential_payout > 0) || parlayLegs[0]
 
+          // Calculate correct parlay status based on all legs
+          const calculatedStatus = calculateParlayStatus(parlayLegs)
+
           // Create parlay object with enhanced description
           const uniqueSports = [...new Set(parlayLegs.map(leg => leg.sport))].sort()
           const sportsList =
             uniqueSports.length > 3
               ? `${uniqueSports.slice(0, 3).join(', ')}...`
               : uniqueSports.join(', ')
+
+          // Calculate profit based on calculated status
+          let parlayProfit = mainLeg?.profit || bet.profit
+          if (parlayProfit === null || parlayProfit === undefined) {
+            if (calculatedStatus === 'won') {
+              parlayProfit = (mainLeg?.potential_payout || 0) - (mainLeg?.stake || 0)
+            } else if (calculatedStatus === 'lost') {
+              parlayProfit = -(mainLeg?.stake || 0)
+            } else {
+              parlayProfit = 0
+            }
+          }
 
           const parlayBet = {
             id: bet.parlay_id,
@@ -565,11 +663,11 @@ export async function GET(request: NextRequest) {
             odds: mainLeg?.odds || 0,
             stake: mainLeg?.stake || 0,
             potential_payout: mainLeg?.potential_payout || 0,
-            status: bet.status,
+            status: calculatedStatus, // Use calculated status
             placed_at: bet.placed_at,
-            settled_at: bet.settled_at,
+            settled_at: calculatedStatus !== 'pending' ? (bet.settled_at || new Date().toISOString()) : bet.settled_at,
             game_date: bet.game_date,
-            profit: mainLeg?.profit || bet.profit,
+            profit: parlayProfit,
             sportsbook: bet.sportsbook,
             bet_source: bet.bet_source,
             is_copy_bet: bet.is_copy_bet,
@@ -589,7 +687,7 @@ export async function GET(request: NextRequest) {
               home_team: leg.home_team,
               away_team: leg.away_team,
               side: leg.side,
-              status: leg.status,
+              status: leg.status, // Each leg keeps its individual status
             })),
           }
 
@@ -637,7 +735,7 @@ export async function GET(request: NextRequest) {
         .slice(0, 20)
     }
 
-    // Calculate running profit for chart
+    // Calculate running profit for chart using grouped bets
     let runningProfit = 0
     const chartData = settledBets
       .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime())
@@ -666,7 +764,7 @@ export async function GET(request: NextRequest) {
         roi: Math.round(roi * 100) / 100,
         totalProfit: Math.round(netProfit * 100) / 100,
         totalStaked: Math.round(totalStake * 100) / 100,
-        avgOdds: bets.length > 0 ? bets.reduce((sum, bet) => sum + bet.odds, 0) / bets.length : 0,
+        avgOdds: groupedBets.length > 0 ? groupedBets.reduce((sum, bet) => sum + bet.odds, 0) / groupedBets.length : 0,
         avgStake: Math.round(avgBetSize * 100) / 100,
         biggestWin: Math.max(
           ...settledBets.map(bet => {
@@ -713,7 +811,7 @@ export async function GET(request: NextRequest) {
       })),
       monthlyData: [],
       recentBets: (() => {
-        // Group all bets first, then paginate the grouped results
+        // Use the display grouping function for the bets table (different from analytics grouping)
         const allGroupedBets = groupBetsForDisplay(bets, allBets)
         
         if (pageType === 'pagination') {

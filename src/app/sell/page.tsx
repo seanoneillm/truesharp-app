@@ -100,6 +100,8 @@ export default function SellPage() {
       player_name?: string
       line_value?: number
       side?: string
+      parlay_id?: string
+      is_parlay?: boolean
     }>
   >([])
   const [openBetsLoading, setOpenBetsLoading] = useState(false)
@@ -178,7 +180,9 @@ export default function SellPage() {
               prop_type,
               player_name,
               line_value,
-              side
+              side,
+              parlay_id,
+              is_parlay
             `
             )
             .eq('user_id', user.id)

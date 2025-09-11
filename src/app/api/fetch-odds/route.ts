@@ -6,8 +6,9 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Manual odds fetch requested for:', { sport, date })
 
-    // Fetch odds for 1 day before through 7 days after the base date (8 days total)
+    // Fetch odds for the selected date only (single day)
     const baseDate = new Date(date || new Date().toISOString().split('T')[0])
+    const dateStr = baseDate.toISOString().split('T')[0]!
 
     // Define all sports to fetch (or use specific sport if provided)
     const sportsToFetch =
@@ -18,45 +19,41 @@ export async function POST(request: NextRequest) {
     // Process requests sequentially to avoid rate limiting
     const results = []
 
-    for (let i = -1; i <= 6; i++) {
-      const fetchDate = new Date(baseDate)
-      fetchDate.setDate(baseDate.getDate() + i)
-      const dateStr = fetchDate.toISOString().split('T')[0] || fetchDate.toISOString()
+    console.log(`🎯 Fetching odds for ${sportsToFetch.length} sports on ${dateStr}`)
 
-      // Process sports sequentially for this date
-      for (const sportKey of sportsToFetch) {
-        console.log(`🔄 Processing ${sportKey} for ${dateStr}`)
+    // Process each sport once for the selected date
+    for (const sportKey of sportsToFetch) {
+      console.log(`🔄 Processing ${sportKey} for ${dateStr}`)
 
-        try {
-          const apiUrl = new URL('/api/games/sportsgameodds', request.url)
-          apiUrl.searchParams.set('sport', sportKey)
-          apiUrl.searchParams.set('date', dateStr)
-          apiUrl.searchParams.set('refresh', 'true')
+      try {
+        const apiUrl = new URL('/api/games/sportsgameodds', request.url)
+        apiUrl.searchParams.set('sport', sportKey)
+        apiUrl.searchParams.set('date', dateStr)
+        apiUrl.searchParams.set('refresh', 'true')
 
-          const response = await fetch(apiUrl.toString())
-          const data = await response.json()
+        const response = await fetch(apiUrl.toString())
+        const data = await response.json()
 
-          results.push({
-            date: dateStr,
-            sport: sportKey,
-            gameCount: data.games?.length || 0,
-            success: !data.error,
-          })
+        results.push({
+          date: dateStr,
+          sport: sportKey,
+          gameCount: data.games?.length || 0,
+          success: !data.error,
+        })
 
-          console.log(`✅ Completed ${sportKey} for ${dateStr}: ${data.games?.length || 0} games`)
+        console.log(`✅ Completed ${sportKey} for ${dateStr}: ${data.games?.length || 0} games`)
 
-          // Add a small delay between requests to be respectful to the API
-          await new Promise(resolve => setTimeout(resolve, 100))
-        } catch (error) {
-          console.error(`❌ Error fetching ${sportKey} for ${dateStr}:`, error)
-          results.push({
-            date: dateStr,
-            sport: sportKey,
-            gameCount: 0,
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          })
-        }
+        // Add a small delay between requests to be respectful to the API
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (error) {
+        console.error(`❌ Error fetching ${sportKey} for ${dateStr}:`, error)
+        results.push({
+          date: dateStr,
+          sport: sportKey,
+          gameCount: 0,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
       }
     }
     const totalGames = results.reduce((sum, result) => sum + result.gameCount, 0)
@@ -95,8 +92,8 @@ export async function POST(request: NextRequest) {
       >
     )
 
-    // Calculate total expected requests
-    const totalExpectedRequests = sportsToFetch.length * 8 // 8 days
+    // Calculate total expected requests (1 day per sport)
+    const totalExpectedRequests = sportsToFetch.length
 
     // Determine overall success and create appropriate message
     const isPartialSuccess = successfulRequests > 0 && successfulRequests < totalExpectedRequests
@@ -121,8 +118,7 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Manual odds fetch completed:', {
       sports: sportsToFetch,
-      baseDate: baseDate.toISOString().split('T')[0],
-      dateRange: `${new Date(baseDate.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} to ${new Date(baseDate.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`,
+      targetDate: dateStr,
       totalGames,
       successfulRequests,
       rateLimitedRequests,
@@ -134,12 +130,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success,
       sports: sportsToFetch,
-      baseDate: baseDate.toISOString().split('T')[0],
+      targetDate: dateStr,
       totalGames,
       successfulRequests,
       rateLimitedRequests,
       totalRequests: totalExpectedRequests,
-      daysProcessed: 8,
+      daysProcessed: 1,
       sportResults,
       results,
       message,

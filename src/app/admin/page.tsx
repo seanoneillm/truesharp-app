@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { 
   Clock, 
@@ -23,7 +26,15 @@ import {
   UserCheck,
   CreditCard,
   Link,
-  Star
+  Star,
+  Trophy,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  TrendingUp,
+  Award,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -62,6 +73,7 @@ export default function AdminPage() {
   
   // Ref to track current fetch request
   const currentFetchRequest = useRef<AbortController | null>(null)
+  const lastFetchTime = useRef<number>(0)
 
   // SharpSports states
   const [isFetchingBettors, setIsFetchingBettors] = useState(false)
@@ -78,6 +90,30 @@ export default function AdminPage() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState('overview')
+
+  // Strategy states
+  const [strategyData, setStrategyData] = useState<any[]>([])
+  const [isLoadingStrategies, setIsLoadingStrategies] = useState(false)
+  const [strategyFilters, setStrategyFilters] = useState({
+    sport: 'all',
+    verification: 'all',
+    monetization: 'all',
+    search: ''
+  })
+  const [strategySortConfig, setStrategySortConfig] = useState<{
+    key: string
+    direction: 'asc' | 'desc'
+  } | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
+  const [strategyOverview, setStrategyOverview] = useState({
+    totalStrategies: 0,
+    verifiedStrategies: 0,
+    monetizedStrategies: 0,
+    eligibleStrategies: 0,
+    avgRoi: 0,
+    avgWinRate: 0
+  })
 
   // Analytics data states
   const [analyticsData, setAnalyticsData] = useState<{
@@ -828,14 +864,175 @@ export default function AdminPage() {
     }
   }, [isAdmin])
 
+  // Fetch strategy data
+  const fetchStrategyData = useCallback(async () => {
+    if (!isAdmin) return
+
+    setIsLoadingStrategies(true)
+    try {
+      const supabase = createClient()
+      
+      console.log('🎯 Fetching strategy data from strategy_leaderboard table...')
+      
+      const { data, error } = await supabase
+        .from('strategy_leaderboard')
+        .select('*')
+        .order('overall_rank', { ascending: true })
+
+      console.log('📊 Strategy data response:', { 
+        data: data?.length || 0, 
+        error, 
+        sampleData: data?.slice(0, 2) 
+      })
+
+      if (error) {
+        console.error('❌ Error fetching strategy data:', error)
+        // Set empty state but don't fail completely
+        setStrategyData([])
+        setStrategyOverview({
+          totalStrategies: 0,
+          verifiedStrategies: 0,
+          monetizedStrategies: 0,
+          eligibleStrategies: 0,
+          avgRoi: 0,
+          avgWinRate: 0
+        })
+      } else {
+        const strategies = data || []
+        setStrategyData(strategies)
+        
+        console.log('📈 Processing strategy metrics for', strategies.length, 'strategies')
+        
+        // Calculate overview metrics
+        const totalStrategies = strategies.length
+        const verifiedStrategies = strategies.filter(s => s.is_verified_seller).length
+        const monetizedStrategies = strategies.filter(s => s.is_monetized).length
+        const eligibleStrategies = strategies.filter(s => s.is_eligible).length
+        const avgRoi = totalStrategies > 0 
+          ? strategies.reduce((sum, s) => sum + (parseFloat(s.roi_percentage) || 0), 0) / totalStrategies 
+          : 0
+        const avgWinRate = totalStrategies > 0 
+          ? strategies.reduce((sum, s) => sum + (parseFloat(s.win_rate) || 0), 0) / totalStrategies 
+          : 0
+
+        const overview = {
+          totalStrategies,
+          verifiedStrategies,
+          monetizedStrategies,
+          eligibleStrategies,
+          avgRoi,
+          avgWinRate
+        }
+        
+        console.log('📊 Strategy overview calculated:', overview)
+        setStrategyOverview(overview)
+      }
+    } catch (error) {
+      console.error('❌ Unexpected error fetching strategy data:', error)
+      // Set empty state on error
+      setStrategyData([])
+      setStrategyOverview({
+        totalStrategies: 0,
+        verifiedStrategies: 0,
+        monetizedStrategies: 0,
+        eligibleStrategies: 0,
+        avgRoi: 0,
+        avgWinRate: 0
+      })
+    } finally {
+      setIsLoadingStrategies(false)
+    }
+  }, [isAdmin])
+
+  // Strategy helper functions
+  const handleStrategySort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc'
+    if (strategySortConfig && strategySortConfig.key === key && strategySortConfig.direction === 'desc') {
+      direction = 'asc'
+    }
+    setStrategySortConfig({ key, direction })
+  }
+
+  const getFilteredAndSortedStrategies = () => {
+    let filtered = [...strategyData]
+
+    // Apply search filter
+    if (strategyFilters.search) {
+      filtered = filtered.filter(strategy =>
+        strategy.strategy_name.toLowerCase().includes(strategyFilters.search.toLowerCase()) ||
+        strategy.username.toLowerCase().includes(strategyFilters.search.toLowerCase())
+      )
+    }
+
+    // Apply sport filter
+    if (strategyFilters.sport !== 'all') {
+      filtered = filtered.filter(strategy => strategy.primary_sport === strategyFilters.sport)
+    }
+
+    // Apply verification filter
+    if (strategyFilters.verification !== 'all') {
+      if (strategyFilters.verification === 'verified') {
+        filtered = filtered.filter(strategy => strategy.is_verified_seller)
+      } else if (strategyFilters.verification === 'unverified') {
+        filtered = filtered.filter(strategy => !strategy.is_verified_seller)
+      } else if (strategyFilters.verification === 'premium') {
+        filtered = filtered.filter(strategy => strategy.verification_status === 'premium')
+      }
+    }
+
+    // Apply monetization filter
+    if (strategyFilters.monetization !== 'all') {
+      if (strategyFilters.monetization === 'monetized') {
+        filtered = filtered.filter(strategy => strategy.is_monetized)
+      } else if (strategyFilters.monetization === 'free') {
+        filtered = filtered.filter(strategy => !strategy.is_monetized)
+      }
+    }
+
+    // Apply sorting
+    if (strategySortConfig) {
+      filtered.sort((a, b) => {
+        let aValue = a[strategySortConfig.key]
+        let bValue = b[strategySortConfig.key]
+
+        if (typeof aValue === 'string') {
+          aValue = aValue.toLowerCase()
+          bValue = bValue.toLowerCase()
+        }
+
+        if (aValue < bValue) {
+          return strategySortConfig.direction === 'asc' ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return strategySortConfig.direction === 'asc' ? 1 : -1
+        }
+        return 0
+      })
+    }
+
+    return filtered
+  }
+
+  const getPaginatedStrategies = () => {
+    const filtered = getFilteredAndSortedStrategies()
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return {
+      strategies: filtered.slice(startIndex, endIndex),
+      totalCount: filtered.length,
+      totalPages: Math.ceil(filtered.length / itemsPerPage)
+    }
+  }
+
   // Fetch feedback and analytics on component mount
   useEffect(() => {
     if (isAdmin) {
       fetchFeedback()
       fetchAnalyticsData()
       fetchBetsAnalyticsData()
+      fetchStrategyData()
     }
-  }, [isAdmin, fetchFeedback, fetchAnalyticsData, fetchBetsAnalyticsData])
+  }, [isAdmin, fetchFeedback, fetchAnalyticsData, fetchBetsAnalyticsData, fetchStrategyData])
 
   // Cleanup effect to cancel any pending odds fetch requests
   useEffect(() => {
@@ -848,10 +1045,39 @@ export default function AdminPage() {
 
   // Handle fetch current odds - moved here to follow Rules of Hooks
   const handleFetchCurrentOdds = useCallback(async () => {
-    if (!selectedDate || isFetching) return
+    const executionId = Math.random().toString(36).substr(2, 9)
+    const startTime = new Date().toISOString()
+    
+    console.log(`🚀 [${executionId}] Starting odds fetch at ${startTime}`)
+    
+    // Enhanced early return checks
+    if (!selectedDate) {
+      console.log(`❌ [${executionId}] Early return: No selected date`)
+      return
+    }
+    
+    if (isFetching) {
+      console.log(`❌ [${executionId}] Early return: Already fetching (isFetching=${isFetching})`)
+      return
+    }
+
+    // Prevent rapid successive calls (10 second cooldown)
+    const now = Date.now()
+    const timeSinceLastFetch = now - lastFetchTime.current
+    const cooldownPeriod = 10000 // 10 seconds
+    
+    if (timeSinceLastFetch < cooldownPeriod) {
+      const remainingTime = Math.ceil((cooldownPeriod - timeSinceLastFetch) / 1000)
+      console.log(`❌ [${executionId}] Early return: Cooldown active. Wait ${remainingTime} more seconds`)
+      setFetchResult(`⏳ Please wait ${remainingTime} seconds before fetching again`)
+      return
+    }
+    
+    lastFetchTime.current = now
 
     // Cancel any existing request
     if (currentFetchRequest.current) {
+      console.log(`🔄 [${executionId}] Cancelling existing request`)
       currentFetchRequest.current.abort()
     }
 
@@ -862,7 +1088,7 @@ export default function AdminPage() {
     setFetchResult(null)
 
     try {
-      console.log('🔧 Admin: Starting odds fetch for all sports')
+      console.log(`🔧 [${executionId}] Admin: Starting odds fetch for all sports on ${selectedDate.toISOString().split('T')[0]}`)
 
       const response = await fetch('/api/fetch-odds', {
         method: 'POST',
@@ -879,22 +1105,24 @@ export default function AdminPage() {
       const result = await response.json()
 
       if (result.success) {
-        console.log('✅ Admin: Odds fetch completed:', result)
-        setFetchResult(`✅ Successfully fetched odds for all sports. Check console for details.`)
+        console.log(`✅ [${executionId}] Admin: Odds fetch completed:`, result)
+        setFetchResult(`✅ Successfully fetched odds for all sports. Total games: ${result.totalGames || 0}. Completed at ${new Date().toLocaleTimeString()}`)
         setLastUpdated(new Date())
       } else {
-        console.error('❌ Admin: Fetch failed:', result)
-        setFetchResult(`❌ Fetch failed: ${result.error || 'Unknown error'}`)
+        console.error(`❌ [${executionId}] Admin: Fetch failed:`, result)
+        setFetchResult(`❌ Fetch failed: ${result.error || result.message || 'Unknown error'}`)
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('🔄 Admin: Odds fetch request was cancelled')
+        console.log(`🔄 [${executionId}] Admin: Odds fetch request was cancelled`)
         setFetchResult('⚠️ Request was cancelled')
       } else {
-        console.error('❌ Admin: Error during fetch:', error)
+        console.error(`❌ [${executionId}] Admin: Error during fetch:`, error)
         setFetchResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
     } finally {
+      const endTime = new Date().toISOString()
+      console.log(`🏁 [${executionId}] Odds fetch completed at ${endTime}. Duration: ${((new Date().getTime() - new Date(startTime).getTime()) / 1000).toFixed(1)}s`)
       setIsFetching(false)
       currentFetchRequest.current = null
     }
@@ -1141,7 +1369,7 @@ export default function AdminPage() {
 
         {/* Tabbed Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 bg-slate-100">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 bg-slate-100">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -1161,6 +1389,10 @@ export default function AdminPage() {
             <TabsTrigger value="revenue" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Revenue</span>
+            </TabsTrigger>
+            <TabsTrigger value="strategies" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              <span className="hidden sm:inline">Strategies</span>
             </TabsTrigger>
             <TabsTrigger value="health" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -2180,6 +2412,488 @@ export default function AdminPage() {
                     </CardContent>
                   </Card>
                 </div>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Strategies Tab */}
+          <TabsContent value="strategies" className="space-y-6">
+            {isLoadingStrategies ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="p-6">
+                    <div className="animate-pulse">
+                      <div className="h-4 w-16 bg-slate-200 rounded mb-2"></div>
+                      <div className="h-8 w-24 bg-slate-200 rounded"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : strategyData.length === 0 ? (
+              // Empty state when no data
+              <div className="text-center py-12">
+                <Card className="p-12 max-w-md mx-auto">
+                  <Trophy className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">No Strategy Data Available</h3>
+                  <p className="text-slate-600 mb-4">
+                    The strategy_leaderboard table appears to be empty. This could mean:
+                  </p>
+                  <ul className="text-sm text-slate-500 text-left space-y-1 mb-6">
+                    <li>• No strategies have been added yet</li>
+                    <li>• The leaderboard calculation hasn't run</li>
+                    <li>• There might be a database connection issue</li>
+                  </ul>
+                  <Button 
+                    onClick={fetchStrategyData}
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                  
+                  {/* Debug Info - only show in development */}
+                  <div className="mt-6 p-4 bg-slate-50 rounded-lg text-left">
+                    <p className="text-xs text-slate-600 font-medium mb-2">Debug Information:</p>
+                    <div className="text-xs text-slate-500 space-y-1">
+                      <div>• Strategy data length: {strategyData.length}</div>
+                      <div>• Loading state: {isLoadingStrategies ? 'true' : 'false'}</div>
+                      <div>• Admin status: {isAdmin ? 'true' : 'false'}</div>
+                      <div>• Check browser console for detailed logs</div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <>
+                {/* Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
+                        <Trophy className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Total Strategies</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.totalStrategies.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-green-100 rounded-full flex-shrink-0">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Verified</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.verifiedStrategies.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-purple-100 rounded-full flex-shrink-0">
+                        <DollarSign className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Monetized</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.monetizedStrategies.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-orange-100 rounded-full flex-shrink-0">
+                        <Award className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Eligible</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.eligibleStrategies.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-red-100 rounded-full flex-shrink-0">
+                        <TrendingUp className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Avg ROI %</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.avgRoi.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-indigo-100 rounded-full flex-shrink-0">
+                        <Target className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-600 truncate">Avg Win Rate</p>
+                        <p className="text-lg font-bold text-slate-900">{strategyOverview.avgWinRate.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* ROI Over Time Chart */}
+                  <Card className="p-6">
+                    <CardHeader className="px-0 pt-0">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        ROI % Over Time
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-0 pb-0">
+                      <div className="h-64 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border-2 border-dashed border-slate-200">
+                        <BarChart3 className="h-12 w-12 text-slate-400 mb-3" />
+                        <p className="text-slate-600 font-medium text-center">ROI Trend Analysis</p>
+                        <p className="text-slate-500 text-sm text-center mt-1">Line chart showing average ROI over time</p>
+                        <p className="text-xs text-slate-400 mt-2">Ready for Recharts integration</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Win Rate Over Time Chart */}
+                  <Card className="p-6">
+                    <CardHeader className="px-0 pt-0">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <Target className="h-5 w-5" />
+                        Win Rate % Over Time
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-0 pb-0">
+                      <div className="h-64 flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-dashed border-green-200">
+                        <Target className="h-12 w-12 text-green-500 mb-3" />
+                        <p className="text-green-700 font-medium text-center">Win Rate Trends</p>
+                        <p className="text-green-600 text-sm text-center mt-1">Track success rates over time periods</p>
+                        <p className="text-xs text-green-500 mt-2">Ready for Recharts integration</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Strategies by Sport */}
+                  <Card className="p-6">
+                    <CardHeader className="px-0 pt-0">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Strategies by Sport
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-0 pb-0">
+                      <div className="h-64 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-200">
+                        <Trophy className="h-12 w-12 text-blue-500 mb-3" />
+                        <p className="text-blue-700 font-medium text-center">Sport Distribution</p>
+                        <p className="text-blue-600 text-sm text-center mt-1">Bar chart of strategies per sport category</p>
+                        <div className="text-xs text-blue-500 mt-2 text-center">
+                          <div>Current sports: {[...new Set(strategyData.map(s => s.primary_sport).filter(Boolean))].length} types</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Subscription Pricing */}
+                  <Card className="p-6">
+                    <CardHeader className="px-0 pt-0">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Subscription Pricing
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-0 pb-0">
+                      <div className="h-64 flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-dashed border-purple-200">
+                        <DollarSign className="h-12 w-12 text-purple-500 mb-3" />
+                        <p className="text-purple-700 font-medium text-center">Pricing Breakdown</p>
+                        <p className="text-purple-600 text-sm text-center mt-1">Distribution of weekly/monthly/yearly prices</p>
+                        <div className="text-xs text-purple-500 mt-2 text-center">
+                          <div>Monetized strategies: {strategyOverview.monetizedStrategies}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Filters and Search */}
+                <Card className="p-6">
+                  <div className="flex flex-wrap gap-4 mb-6">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                        <Input
+                          placeholder="Search strategies or users..."
+                          value={strategyFilters.search}
+                          onChange={(e) => {
+                            setStrategyFilters({ ...strategyFilters, search: e.target.value })
+                            setCurrentPage(1)
+                          }}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Select 
+                      value={strategyFilters.sport} 
+                      onValueChange={(value) => {
+                        setStrategyFilters({ ...strategyFilters, sport: value })
+                        setCurrentPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="All Sports" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Sports</SelectItem>
+                        {[...new Set(strategyData.map(s => s.primary_sport).filter(Boolean))].map(sport => (
+                          <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select 
+                      value={strategyFilters.verification} 
+                      onValueChange={(value) => {
+                        setStrategyFilters({ ...strategyFilters, verification: value })
+                        setCurrentPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="All Verification" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="verified">Verified</SelectItem>
+                        <SelectItem value="unverified">Unverified</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select 
+                      value={strategyFilters.monetization} 
+                      onValueChange={(value) => {
+                        setStrategyFilters({ ...strategyFilters, monetization: value })
+                        setCurrentPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="All Monetization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="monetized">Monetized</SelectItem>
+                        <SelectItem value="free">Free</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Strategies Table */}
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('strategy_name')}
+                          >
+                            <div className="flex items-center gap-2">
+                              Strategy Name
+                              {strategySortConfig?.key === 'strategy_name' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('username')}
+                          >
+                            <div className="flex items-center gap-2">
+                              Username
+                              {strategySortConfig?.key === 'username' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead>Verified</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('total_bets')}
+                          >
+                            <div className="flex items-center gap-2">
+                              Total Bets
+                              {strategySortConfig?.key === 'total_bets' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('win_rate')}
+                          >
+                            <div className="flex items-center gap-2">
+                              Win Rate %
+                              {strategySortConfig?.key === 'win_rate' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('roi_percentage')}
+                          >
+                            <div className="flex items-center gap-2">
+                              ROI %
+                              {strategySortConfig?.key === 'roi_percentage' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-slate-50"
+                            onClick={() => handleStrategySort('overall_rank')}
+                          >
+                            <div className="flex items-center gap-2">
+                              Overall Rank
+                              {strategySortConfig?.key === 'overall_rank' && (
+                                strategySortConfig.direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead>Sport Rank</TableHead>
+                          <TableHead>Primary Sport</TableHead>
+                          <TableHead>Strategy Type</TableHead>
+                          <TableHead>Monetized</TableHead>
+                          <TableHead>Subscription Prices</TableHead>
+                          <TableHead>Created At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getPaginatedStrategies().strategies.map((strategy) => (
+                          <TableRow key={strategy.id}>
+                            <TableCell className="font-medium">{strategy.strategy_name}</TableCell>
+                            <TableCell>{strategy.username}</TableCell>
+                            <TableCell>
+                              {strategy.is_verified_seller ? (
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Verified
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Unverified
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{strategy.total_bets.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <span className={strategy.win_rate >= 50 ? 'text-green-600 font-medium' : 'text-red-600'}>
+                                {strategy.win_rate?.toFixed(2)}%
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={strategy.roi_percentage >= 0 ? 'text-green-600 font-medium' : 'text-red-600'}>
+                                {strategy.roi_percentage >= 0 ? '+' : ''}{strategy.roi_percentage?.toFixed(2)}%
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {strategy.overall_rank ? (
+                                <Badge variant="outline">#{strategy.overall_rank}</Badge>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {strategy.sport_rank ? (
+                                <Badge variant="outline">#{strategy.sport_rank}</Badge>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{strategy.primary_sport || '-'}</Badge>
+                            </TableCell>
+                            <TableCell>{strategy.strategy_type || '-'}</TableCell>
+                            <TableCell>
+                              {strategy.is_monetized ? (
+                                <Badge className="bg-purple-100 text-purple-800">Yes</Badge>
+                              ) : (
+                                <Badge variant="secondary">No</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="space-y-1">
+                                {strategy.subscription_price_weekly && (
+                                  <div>W: ${strategy.subscription_price_weekly}</div>
+                                )}
+                                {strategy.subscription_price_monthly && (
+                                  <div>M: ${strategy.subscription_price_monthly}</div>
+                                )}
+                                {strategy.subscription_price_yearly && (
+                                  <div>Y: ${strategy.subscription_price_yearly}</div>
+                                )}
+                                {!strategy.subscription_price_weekly && !strategy.subscription_price_monthly && !strategy.subscription_price_yearly && (
+                                  <div>-</div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-500">
+                              {strategy.created_at ? new Date(strategy.created_at).toLocaleDateString() : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Pagination */}
+                  {getPaginatedStrategies().totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6">
+                      <div className="text-sm text-slate-600">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, getPaginatedStrategies().totalCount)} of {getPaginatedStrategies().totalCount} strategies
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex gap-1">
+                          {[...Array(Math.min(5, getPaginatedStrategies().totalPages))].map((_, i) => {
+                            const pageNum = i + 1
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(pageNum)}
+                                className="w-8"
+                              >
+                                {pageNum}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === getPaginatedStrategies().totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
               </>
             )}
           </TabsContent>
