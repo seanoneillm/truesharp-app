@@ -27,6 +27,7 @@ import {
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
   AlertCircle,
+  Crown,
 } from 'lucide-react'
 import type { ChartConfig, CustomChartData } from '@/lib/types/custom-charts'
 import {
@@ -40,6 +41,7 @@ interface CustomChartRendererProps {
   config: ChartConfig
   userId: string
   onDelete: (chartId: string) => void
+  isPro?: boolean
 }
 
 const CHART_COLORS = [
@@ -59,7 +61,7 @@ const CHART_ICONS = {
   pie: PieChartIcon,
 }
 
-export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRendererProps) {
+export function CustomChartRenderer({ config, userId, onDelete, isPro = false }: CustomChartRendererProps) {
   const [data, setData] = useState<CustomChartData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -360,7 +362,18 @@ export function CustomChartRenderer({ config, userId, onDelete }: CustomChartRen
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent>{renderChart()}</CardContent>
+        <CardContent className="relative">
+          {!isPro && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+              <div className="text-center">
+                <Crown className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                <div className="text-sm font-medium text-gray-900">Custom Charts - Pro Only</div>
+                <div className="text-xs text-gray-600">Upgrade to create custom analytics</div>
+              </div>
+            </div>
+          )}
+          {renderChart()}
+        </CardContent>
       </Card>
     </motion.div>
   )

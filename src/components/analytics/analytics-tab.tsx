@@ -20,9 +20,11 @@ import {
   BarChart3,
   Calendar,
   Copy,
+  Crown,
   DollarSign,
   Download,
   LineChart,
+  Lock,
   PieChart as PieChartIcon,
   Plus,
   Settings,
@@ -547,7 +549,14 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Bets</p>
-                <p className="text-2xl font-bold">{safeData.totalBets}</p>
+                <div className="relative">
+                  {!isPro && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                      <Lock className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <p className="text-2xl font-bold">{safeData.totalBets}</p>
+                </div>
                 <p className="mt-1 text-xs text-gray-500">All time</p>
               </div>
               <div className="rounded-lg bg-blue-100 p-3">
@@ -562,8 +571,15 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Win Rate</p>
-                <p className="text-2xl font-bold">{safeData.winRate.toFixed(1)}%</p>
-                <Progress value={safeData.winRate} className="mt-2 h-2 w-full" />
+                <div className="relative">
+                  {!isPro && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                      <Lock className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <p className="text-2xl font-bold">{safeData.winRate.toFixed(1)}%</p>
+                  <Progress value={safeData.winRate} className="mt-2 h-2 w-full" />
+                </div>
               </div>
               <div className="rounded-lg bg-green-100 p-3">
                 <TrendingUp className="h-6 w-6 text-green-600" />
@@ -577,12 +593,19 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">ROI</p>
-                <p
-                  className={`text-2xl font-bold ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {safeData.roi >= 0 ? '+' : ''}
-                  {safeData.roi.toFixed(1)}%
-                </p>
+                <div className="relative">
+                  {!isPro && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                      <Lock className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <p
+                    className={`text-2xl font-bold ${safeData.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {safeData.roi >= 0 ? '+' : ''}
+                    {safeData.roi.toFixed(1)}%
+                  </p>
+                </div>
                 <p className="mt-1 text-xs text-gray-500">Return on investment</p>
               </div>
               <div
@@ -601,11 +624,18 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Net Profit</p>
-                <p
-                  className={`text-2xl font-bold ${safeData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {formatCurrency(safeData.netProfit)}
-                </p>
+                <div className="relative">
+                  {!isPro && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                      <Lock className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <p
+                    className={`text-2xl font-bold ${safeData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {formatCurrency(safeData.netProfit)}
+                  </p>
+                </div>
                 <p className="mt-1 text-xs text-gray-500">Total profit/loss</p>
               </div>
               <div
@@ -686,16 +716,20 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                       </SelectContent>
                     </Select>
                   )}
-                  {!isPro && (
-                    <Badge variant="outline" className="border-amber-600 text-amber-600">
-                      <span className="text-xs">Last 6 months only</span>
-                    </Badge>
-                  )}
                 </div>
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
+            {!isPro && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+                <div className="text-center">
+                  <Crown className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                  <div className="text-sm font-medium text-gray-900">Upgrade to Pro</div>
+                  <div className="text-xs text-gray-600">Unlock detailed performance charts</div>
+                </div>
+              </div>
+            )}
             <ResponsiveContainer width="100%" height={300}>
               <RechartsLineChart data={getPerformanceChartData()}>
                 <CartesianGrid
@@ -785,7 +819,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="py-0 pb-4">
+          <CardContent className="relative py-0 pb-4">
+            {!isPro && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+                <div className="text-center">
+                  <Crown className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                  <div className="text-sm font-medium text-gray-900">Upgrade to Pro</div>
+                  <div className="text-xs text-gray-600">Unlock league performance analysis</div>
+                </div>
+              </div>
+            )}
             <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 max-h-64 overflow-y-auto">
               <div className="space-y-2 pr-2">
                 {(data.leagueBreakdown || []).map(league => (
@@ -862,7 +905,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
               />
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
+            {!isPro && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+                <div className="text-center">
+                  <Crown className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                  <div className="text-sm font-medium text-gray-900">Upgrade to Pro</div>
+                  <div className="text-xs text-gray-600">Unlock betting activity charts</div>
+                </div>
+              </div>
+            )}
             <ResponsiveContainer width="100%" height={320}>
               <RechartsLineChart
                 data={getBetsChartData()}
@@ -975,7 +1027,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
+            {!isPro && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm">
+                <div className="text-center">
+                  <Crown className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                  <div className="text-sm font-medium text-gray-900">Upgrade to Pro</div>
+                  <div className="text-xs text-gray-600">Unlock odds calibration analysis</div>
+                </div>
+              </div>
+            )}
             {/* Legend and Explanation */}
             <div className="mb-4 rounded-lg border border-gray-200/50 bg-gray-50/50 p-4">
               <div className="mb-2 flex items-center justify-between">
@@ -1143,7 +1204,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
       </div>
 
       {/* Custom Charts Section */}
-      <div className="space-y-6">
+      <div className="relative space-y-6">
+        {!isPro && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+            <div className="text-center">
+              <Crown className="mx-auto mb-3 h-12 w-12 text-amber-500" />
+              <div className="text-lg font-semibold text-gray-900 mb-1">Custom Charts - Pro Feature</div>
+              <div className="text-sm text-gray-600">Upgrade to Pro to create custom analytics charts</div>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Custom Charts</h3>
@@ -1287,6 +1357,7 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
                           config={chart}
                           userId={user?.id || ''}
                           onDelete={() => handleDeleteCustomChart(chart.id)}
+                          isPro={isPro}
                         />
                       </div>
 
@@ -1374,14 +1445,21 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           <CardContent className="p-4">
             <div className="text-center">
               <p className="mb-1 text-sm text-gray-600">Current Streak</p>
-              <p
-                className={`text-3xl font-bold ${
-                  data.currentStreak.type === 'win' ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {data.currentStreak.count}
-                {data.currentStreak.type === 'win' ? 'W' : 'L'}
-              </p>
+              <div className="relative">
+                {!isPro && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
+                <p
+                  className={`text-3xl font-bold ${
+                    data.currentStreak.type === 'win' ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {data.currentStreak.count}
+                  {data.currentStreak.type === 'win' ? 'W' : 'L'}
+                </p>
+              </div>
               <p className="mt-1 text-xs text-gray-500">
                 {data.currentStreak.type === 'win' ? 'Winning' : 'Losing'} streak
               </p>
@@ -1393,9 +1471,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           <CardContent className="p-4">
             <div className="text-center">
               <p className="mb-1 text-sm text-gray-600">Largest Win</p>
-              <p className="text-3xl font-bold text-green-600">
-                {formatCurrency(safeData.largestWin)}
-              </p>
+              <div className="relative">
+                {!isPro && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
+                <p className="text-3xl font-bold text-green-600">
+                  {formatCurrency(safeData.largestWin)}
+                </p>
+              </div>
               <p className="mt-1 text-xs text-gray-500">Single bet profit</p>
             </div>
           </CardContent>
@@ -1405,9 +1490,16 @@ export function AnalyticsTab({ data, isPro, isLoading = false, user }: Analytics
           <CardContent className="p-4">
             <div className="text-center">
               <p className="mb-1 text-sm text-gray-600">Largest Loss</p>
-              <p className="text-3xl font-bold text-red-600">
-                {formatCurrency(safeData.largestLoss)}
-              </p>
+              <div className="relative">
+                {!isPro && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
+                <p className="text-3xl font-bold text-red-600">
+                  {formatCurrency(safeData.largestLoss)}
+                </p>
+              </div>
               <p className="mt-1 text-xs text-gray-500">Single bet loss</p>
             </div>
           </CardContent>

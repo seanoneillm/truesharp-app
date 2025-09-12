@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { createClient } from '@/lib/supabase'
+import { createClient, createServiceRoleClient } from '@/lib/supabase'
 import {
   Activity,
   AlertTriangle,
@@ -431,7 +431,15 @@ export default function AdminPage() {
 
     setIsLoadingBetsAnalytics(true)
     try {
-      const supabase = createClient()
+      // Try service role client first, fallback to regular client
+      let supabase
+      try {
+        supabase = await createServiceRoleClient()
+        console.log('✅ Using service role client for bets data')
+      } catch (serviceRoleError) {
+        console.warn('⚠️ Service role client failed, falling back to regular client:', serviceRoleError)
+        supabase = createClient()
+      }
 
       // Calculate date range based on timeframe
       const now = new Date()
@@ -451,10 +459,17 @@ export default function AdminPage() {
       }
 
       // Fetch ALL bets data (no date filtering for basic metrics)
+      console.log('🔍 Fetching bets data...')
       const { data: allBets, error } = await supabase
         .from('bets')
         .select('*')
         .order('placed_at', { ascending: true })
+      
+      console.log('📊 Bets query result:', { 
+        betsCount: allBets?.length || 0, 
+        error: error?.message,
+        sampleBet: allBets?.[0] 
+      })
 
       // Also get filtered bets for charts only
       const filteredBets =
