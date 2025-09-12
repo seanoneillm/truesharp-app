@@ -3,6 +3,7 @@
 import BetSlip from '@/components/bet-slip/BetSlip'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import ComplianceDisclaimerModal from '@/components/games/compliance-disclaimer-modal'
+import ConferenceFilter, { ConferenceFilterType } from '@/components/games/conference-filter'
 import DateSelector from '@/components/games/date-selector'
 import EnhancedGamesList from '@/components/games/enhanced-games-list'
 import HowToUseModal from '@/components/games/how-to-use-modal'
@@ -13,7 +14,9 @@ import { useBetSlipToast } from '@/lib/hooks/use-bet-slip-toast'
 import { useComplianceDisclaimer } from '@/lib/hooks/use-compliance-disclaimer'
 import { gamesDataService } from '@/lib/services/games-data'
 import { Game } from '@/lib/types/games'
+import { filterGamesByConference } from '@/lib/utils/college-conference-filter'
 import { convertDatabaseGamesToGames } from '@/lib/utils/database-to-game-converter'
+import { deduplicateGames, isCollegeSport } from '@/lib/utils/game-deduplication'
 import { Calendar, Clock, HelpCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -27,6 +30,12 @@ function GamesPageContent() {
   const [, setIsFetching] = useState(false)
   const [, setRetryCount] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  
+  // Conference filter state
+  const [conferenceFilters, setConferenceFilters] = useState<Record<string, ConferenceFilterType>>({
+    'americanfootball_ncaaf': 'All Games',
+    'basketball_ncaab': 'All Games',
+  })
 
   // Toast notifications for bet slip actions
   const { ToastContainer } = useBetSlipToast()
@@ -323,9 +332,29 @@ function GamesPageContent() {
     return sportKeyMap[league]
   }
 
-  // Get current sport games
+  // Conference filter handler
+  const handleConferenceFilterChange = (filter: ConferenceFilterType) => {
+    const activeSportKey = getSportKey(activeLeague)
+    setConferenceFilters(prev => ({
+      ...prev,
+      [activeSportKey]: filter,
+    }))
+  }
+
+  // Get current sport games and apply deduplication and conference filter
   const activeSportKey = getSportKey(activeLeague)
-  const currentGames = games[activeSportKey] || []
+  const rawGames = games[activeSportKey] || []
+  
+  // Apply deduplication and conference filter for college sports
+  const currentGames = (activeLeague === 'NCAAF' || activeLeague === 'NCAAB') 
+    ? filterGamesByConference(
+        rawGames, 
+        conferenceFilters[activeSportKey] || 'All Games',
+        activeLeague
+      )
+    : isCollegeSport(activeSportKey)
+    ? deduplicateGames(rawGames)
+    : rawGames
 
   // Available leagues with games (dynamic based on data)
   const availableLeagues: LeagueType[] = [
@@ -370,10 +399,23 @@ function GamesPageContent() {
     }
   }
 
-  // Calculate game counts for tabs
+  // Calculate game counts for tabs (with deduplication and conference filter applied for college sports)
   const gameCounts = Object.entries(games).reduce(
     (acc, [sport, sportGames]) => {
-      acc[sport] = sportGames.length
+      if (sport === 'americanfootball_ncaaf' || sport === 'basketball_ncaab') {
+        const filterType = sport === 'americanfootball_ncaaf' ? 'NCAAF' : 'NCAAB'
+        const filteredGames = filterGamesByConference(
+          sportGames, 
+          conferenceFilters[sport] || 'All Games',
+          filterType
+        )
+        acc[sport] = filteredGames.length
+      } else if (isCollegeSport(sport)) {
+        // Apply deduplication for other college sports if any
+        acc[sport] = deduplicateGames(sportGames).length
+      } else {
+        acc[sport] = sportGames.length
+      }
       return acc
     },
     {} as Record<string, number>
@@ -470,6 +512,17 @@ function GamesPageContent() {
             {} as Record<LeagueType, boolean>
           )}
         />
+
+        {/* Conference Filter for College Sports */}
+        {(activeLeague === 'NCAAF' || activeLeague === 'NCAAB') && (
+          <div className="rounded-lg border border-slate-200/50 bg-white px-4 py-3 shadow-sm">
+            <ConferenceFilter
+              sport={activeLeague}
+              selectedFilter={conferenceFilters[activeSportKey] || 'All Games'}
+              onFilterChange={handleConferenceFilterChange}
+            />
+          </div>
+        )}
 
         {/* Games List */}
         <EnhancedGamesList

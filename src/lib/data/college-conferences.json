@@ -1,0 +1,1094 @@
+[
+  {
+    "team": "Alabama",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Auburn",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Florida",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Georgia",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Kentucky",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "LSU",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Mississippi",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Mississippi State",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "South Carolina",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Tennessee",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Vanderbilt",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Arkansas",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Missouri",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Oklahoma",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Texas",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Texas A&M",
+    "footballConference": "SEC",
+    "basketballConference": "SEC",
+    "division": "FBS"
+  },
+  {
+    "team": "Ohio State",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Michigan",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Michigan State",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Penn State",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Wisconsin",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Iowa",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Illinois",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Indiana",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Minnesota",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Nebraska",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Northwestern",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Purdue",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Maryland",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Rutgers",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Oregon",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "UCLA",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "USC",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Washington",
+    "footballConference": "Big Ten",
+    "basketballConference": "Big Ten",
+    "division": "FBS"
+  },
+  {
+    "team": "Clemson",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Duke",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Florida State",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Georgia Tech",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Louisville",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Miami",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "North Carolina",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "NC State",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Pittsburgh",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Syracuse",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Virginia",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Virginia Tech",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Wake Forest",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Boston College",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "California",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "SMU",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Stanford",
+    "footballConference": "ACC",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Arizona",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Arizona State",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Baylor",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "BYU",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Cincinnati",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Colorado",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Houston",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Iowa State",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Kansas",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Kansas State",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Oklahoma State",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "TCU",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Texas Tech",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "UCF",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Utah",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "West Virginia",
+    "footballConference": "Big 12",
+    "basketballConference": "Big 12",
+    "division": "FBS"
+  },
+  {
+    "team": "Oregon State",
+    "footballConference": "Pac-12",
+    "basketballConference": "Pac-12",
+    "division": "FBS"
+  },
+  {
+    "team": "Washington State",
+    "footballConference": "Pac-12",
+    "basketballConference": "Pac-12",
+    "division": "FBS"
+  },
+  {
+    "team": "East Carolina",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Memphis",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Navy",
+    "footballConference": "AAC",
+    "basketballConference": "Patriot",
+    "division": "FBS"
+  },
+  {
+    "team": "South Florida",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Temple",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Tulane",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Tulsa",
+    "footballConference": "AAC",
+    "basketballConference": "AAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Air Force",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Boise State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Colorado State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Fresno State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Hawaii",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Nevada",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "New Mexico",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "San Diego State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "San Jose State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "UNLV",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Utah State",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Wyoming",
+    "footballConference": "Mountain West",
+    "basketballConference": "Mountain West",
+    "division": "FBS"
+  },
+  {
+    "team": "Appalachian State",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Arkansas State",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Coastal Carolina",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Georgia Southern",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Georgia State",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "James Madison",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Louisiana",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Louisiana Monroe",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Marshall",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Old Dominion",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "South Alabama",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Southern Miss",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Texas State",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Troy",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "Akron",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Ball State",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Bowling Green",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Buffalo",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Central Michigan",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Eastern Michigan",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Kent State",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Miami (OH)",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Northern Illinois",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Ohio",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Toledo",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Western Michigan",
+    "footballConference": "MAC",
+    "basketballConference": "MAC",
+    "division": "FBS"
+  },
+  {
+    "team": "Charlotte",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "FAU",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "FIU",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Jacksonville State",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Kennesaw State",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Liberty",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Louisiana Tech",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Middle Tennessee",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "New Mexico State",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "North Texas",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Rice",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Sam Houston",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "UTEP",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "UTSA",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Western Kentucky",
+    "footballConference": "Conference USA",
+    "basketballConference": "Conference USA",
+    "division": "FBS"
+  },
+  {
+    "team": "Notre Dame",
+    "footballConference": "Independents",
+    "basketballConference": "ACC",
+    "division": "FBS"
+  },
+  {
+    "team": "Army",
+    "footballConference": "Independents",
+    "basketballConference": "Patriot",
+    "division": "FBS"
+  },
+  {
+    "team": "UConn",
+    "footballConference": "Independents",
+    "basketballConference": "Big East",
+    "division": "FBS"
+  },
+  {
+    "team": "UMass",
+    "footballConference": "Independents",
+    "basketballConference": "Atlantic 10",
+    "division": "FBS"
+  },
+  {
+    "team": "Harvard",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Yale",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Princeton",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Brown",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Columbia",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Cornell",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Dartmouth",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Pennsylvania",
+    "footballConference": "Ivy League",
+    "basketballConference": "Ivy League",
+    "division": "FCS"
+  },
+  {
+    "team": "Montana",
+    "footballConference": "Big Sky",
+    "basketballConference": "Big Sky",
+    "division": "FCS"
+  },
+  {
+    "team": "Montana State",
+    "footballConference": "Big Sky",
+    "basketballConference": "Big Sky",
+    "division": "FCS"
+  },
+  {
+    "team": "North Dakota State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Summit",
+    "division": "FCS"
+  },
+  {
+    "team": "South Dakota State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Summit",
+    "division": "FCS"
+  },
+  {
+    "team": "Northern Iowa",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Missouri Valley",
+    "division": "FCS"
+  },
+  {
+    "team": "Southern Illinois",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Missouri Valley",
+    "division": "FCS"
+  },
+  {
+    "team": "Illinois State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Missouri Valley",
+    "division": "FCS"
+  },
+  {
+    "team": "Indiana State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Missouri Valley",
+    "division": "FCS"
+  },
+  {
+    "team": "Missouri State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Missouri Valley",
+    "division": "FCS"
+  },
+  {
+    "team": "North Dakota",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Summit",
+    "division": "FCS"
+  },
+  {
+    "team": "South Dakota",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Summit",
+    "division": "FCS"
+  },
+  {
+    "team": "Youngstown State",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Horizon",
+    "division": "FCS"
+  },
+  {
+    "team": "Western Illinois",
+    "footballConference": "Missouri Valley",
+    "basketballConference": "Summit",
+    "division": "FCS"
+  },
+  {
+    "team": "Delaware",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Villanova",
+    "footballConference": "CAA",
+    "basketballConference": "Big East",
+    "division": "FCS"
+  },
+  {
+    "team": "William & Mary",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Richmond",
+    "footballConference": "CAA",
+    "basketballConference": "Atlantic 10",
+    "division": "FCS"
+  },
+  {
+    "team": "James Madison",
+    "footballConference": "Sun Belt",
+    "basketballConference": "Sun Belt",
+    "division": "FBS"
+  },
+  {
+    "team": "New Hampshire",
+    "footballConference": "CAA",
+    "basketballConference": "America East",
+    "division": "FCS"
+  },
+  {
+    "team": "Maine",
+    "footballConference": "CAA",
+    "basketballConference": "America East",
+    "division": "FCS"
+  },
+  {
+    "team": "Rhode Island",
+    "footballConference": "CAA",
+    "basketballConference": "Atlantic 10",
+    "division": "FCS"
+  },
+  {
+    "team": "Towson",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Elon",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Stony Brook",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Albany",
+    "footballConference": "CAA",
+    "basketballConference": "CAA",
+    "division": "FCS"
+  },
+  {
+    "team": "Bucknell",
+    "footballConference": "Patriot",
+    "basketballConference": "Patriot",
+    "division": "FCS"
+  },
+  {
+    "team": "Colgate",
+    "footballConference": "Patriot",
+    "basketballConference": "Patriot",
+    "division": "FCS"
+  },
+  {
+    "team": "Fordham",
+    "footballConference": "Patriot",
+    "basketballConference": "Atlantic 10",
+    "division": "FCS"
+  },
+  {
+    "team": "Georgetown",
+    "footballConference": "Patriot",
+    "basketballConference": "Big East",
+    "division": "FCS"
+  },
+  {
+    "team": "Holy Cross",
+    "footballConference": "Patriot",
+    "basketballConference": "Patriot",
+    "division": "FCS"
+  },
+  {
+    "team": "Lafayette",
+    "footballConference": "Patriot",
+    "basketballConference": "Patriot",
+    "division": "FCS"
+  },
+  {
+    "team": "Lehigh",
+    "footballConference": "Patriot",
+    "basketballConference": "Patriot",
+    "division": "FCS"
+  },
+  {
+    "team": "Furman",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "The Citadel",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "VMI",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "Western Carolina",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "Wofford",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "East Tennessee State",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "Chattanooga",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "Mercer",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  },
+  {
+    "team": "Samford",
+    "footballConference": "SoCon",
+    "basketballConference": "Southern",
+    "division": "FCS"
+  }
+]
