@@ -86,15 +86,18 @@ export default function LeagueTabs({
   },
 }: LeagueTabsProps) {
   return (
-    <div className="rounded-2xl border border-slate-200/50 bg-white p-6 shadow-sm">
-      <div className="flex flex-col space-y-4">
+    <div className="rounded-lg border border-slate-200/50 bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-col space-y-2">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">Sports & Markets</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Leagues & Markets</h3>
+          <div className="text-xs text-slate-500">
+            {gameCounts[LEAGUE_CONFIGS[activeLeague].sport_key] || 0} available
+          </div>
         </div>
 
         {/* League Tabs */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {availableLeagues.map(league => {
             const config = LEAGUE_CONFIGS[league]
             const gameCount = gameCounts[config.sport_key] || 0
@@ -105,24 +108,24 @@ export default function LeagueTabs({
               <button
                 key={league}
                 onClick={() => onLeagueChange(league)}
-                className={`relative flex items-center space-x-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                className={`relative flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? `bg-gradient-to-r ${config.color} scale-105 transform text-white shadow-lg`
+                    ? `bg-gradient-to-r ${config.color} text-white shadow-sm`
                     : inSeason
-                      ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:shadow-md'
+                      ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                       : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50 hover:text-slate-500'
                 } `}
                 title={inSeason ? undefined : `${league} is currently off-season`}
               >
                 {!inSeason && (
-                  <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full border border-white bg-amber-400" />
+                  <div className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-white bg-amber-400" />
                 )}
-                <span className="text-lg">{config.icon}</span>
+                <span className="text-sm">{config.icon}</span>
                 <span>{config.name}</span>
                 {gameCount > 0 && (
                   <span
-                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
+                    className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-green-100 text-green-700'
                     } `}
                   >
                     {gameCount}
@@ -134,21 +137,6 @@ export default function LeagueTabs({
               </button>
             )
           })}
-        </div>
-
-        {/* Active League Info */}
-        <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-          <div className="flex items-center space-x-3">
-            <div
-              className={`h-3 w-3 rounded-full bg-gradient-to-r ${LEAGUE_CONFIGS[activeLeague].color}`}
-            ></div>
-            <span className="text-sm font-medium text-slate-700">
-              {LEAGUE_CONFIGS[activeLeague].name} Games
-            </span>
-          </div>
-          <div className="text-sm text-slate-500">
-            {gameCounts[LEAGUE_CONFIGS[activeLeague].sport_key] || 0} games available
-          </div>
         </div>
       </div>
     </div>

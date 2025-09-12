@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
     // Find matching bets for this strategy using service role
     let betsQuery = serviceSupabase
       .from('bets')
-      .select('id, profit, stake, status')
+      .select('id, profit, stake, status, parlay_id')
       .eq('user_id', finalUser.id)
 
     console.log('🔍 Building bets query with filters:', {
@@ -375,7 +375,9 @@ export async function POST(request: NextRequest) {
       console.log('🔍 User has', allUserBets.length, 'total bets:')
       console.log('🔍 Sample bets:', allUserBets.slice(0, 5))
       console.log('🔍 Unique sports:', [...new Set(allUserBets.map(b => b.sport).filter(Boolean))])
-      console.log('🔍 Unique leagues:', [...new Set(allUserBets.map(b => b.league).filter(Boolean))])
+      console.log('🔍 Unique leagues:', [
+        ...new Set(allUserBets.map(b => b.league).filter(Boolean)),
+      ])
       console.log('🔍 Unique bet_types:', [...new Set(allUserBets.map(b => b.bet_type))])
       console.log('🔍 Unique statuses:', [...new Set(allUserBets.map(b => b.status))])
       console.log('🔍 Unique sides:', [...new Set(allUserBets.map(b => b.side))])
@@ -405,25 +407,46 @@ export async function POST(request: NextRequest) {
       } else if (sport === 'NHL') {
         sportVariations = ['NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey']
       } else if (sport === 'NCAAF') {
-        sportVariations = ['NCAAF', 'ncaaf', 'College Football', 'college football', 'NCAA Football', 'ncaa football']
+        sportVariations = [
+          'NCAAF',
+          'ncaaf',
+          'College Football',
+          'college football',
+          'NCAA Football',
+          'ncaa football',
+        ]
       } else if (sport === 'NCAAB') {
-        sportVariations = ['NCAAB', 'ncaab', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball']
+        sportVariations = [
+          'NCAAB',
+          'ncaab',
+          'College Basketball',
+          'college basketball',
+          'NCAA Basketball',
+          'ncaa basketball',
+        ]
       } else if (sport === 'MLS') {
         sportVariations = ['MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football']
       } else if (sport === 'UCL') {
-        sportVariations = ['UCL', 'ucl', 'Champions League', 'champions league', 'UEFA Champions League', 'uefa champions league']
+        sportVariations = [
+          'UCL',
+          'ucl',
+          'Champions League',
+          'champions league',
+          'UEFA Champions League',
+          'uefa champions league',
+        ]
       } else {
         // Default case - try both exact match and lowercase
         sportVariations = [sport, sport.toLowerCase(), sport.toUpperCase()]
       }
 
       console.log('🔍 Sport variations to match:', sportVariations)
-      
+
       // Create OR condition to search both sport AND league columns
       const sportConditions = sportVariations.map(variation => `sport.eq.${variation}`).join(',')
       const leagueConditions = sportVariations.map(variation => `league.eq.${variation}`).join(',')
       const combinedConditions = `${sportConditions},${leagueConditions}`
-      
+
       console.log('🔍 Applying OR filter to both sport and league columns:', combinedConditions)
       betsQuery = betsQuery.or(combinedConditions)
     } else {
@@ -442,9 +465,26 @@ export async function POST(request: NextRequest) {
       } else if (lowerBetType === 'spread') {
         betTypeVariations = ['spread', 'point_spread', 'ps', 'Spread', 'Point Spread', 'PS']
       } else if (lowerBetType === 'total') {
-        betTypeVariations = ['total', 'over_under', 'ou', 'totals', 'Total', 'Over/Under', 'OU', 'Totals']
+        betTypeVariations = [
+          'total',
+          'over_under',
+          'ou',
+          'totals',
+          'Total',
+          'Over/Under',
+          'OU',
+          'Totals',
+        ]
       } else if (lowerBetType === 'player_prop') {
-        betTypeVariations = ['player_prop', 'prop', 'player_props', 'Player Prop', 'Prop', 'Player Props', 'player prop']
+        betTypeVariations = [
+          'player_prop',
+          'prop',
+          'player_props',
+          'Player Prop',
+          'Prop',
+          'Player Props',
+          'player prop',
+        ]
       } else if (lowerBetType === 'team_prop') {
         betTypeVariations = ['team_prop', 'team_props', 'Team Prop', 'Team Props', 'team prop']
       } else if (lowerBetType === 'game_prop') {
@@ -463,7 +503,7 @@ export async function POST(request: NextRequest) {
     // Apply other filters with proper null handling
     if (filters.sides && !filters.sides.includes('All') && filters.sides.length > 0) {
       console.log('🔍 Applying sides filter:', filters.sides)
-      
+
       // Map sides to common variations and handle case sensitivity
       const sideVariations = []
       for (const side of filters.sides) {
@@ -480,7 +520,7 @@ export async function POST(request: NextRequest) {
           sideVariations.push(side, lowerSide, side.toUpperCase())
         }
       }
-      
+
       console.log('🔍 Side variations to match:', sideVariations)
       betsQuery = betsQuery.in('side', sideVariations)
     } else {
@@ -523,7 +563,7 @@ export async function POST(request: NextRequest) {
     // Add additional filters that might be missing
     if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes('All')) {
       console.log('🔍 Applying status filter:', filters.statuses)
-      
+
       // Handle status variations
       const statusVariations = []
       for (const status of filters.statuses) {
@@ -531,16 +571,36 @@ export async function POST(request: NextRequest) {
         if (lowerStatus === 'won') {
           statusVariations.push('won', 'Won', 'WON', 'win', 'Win', 'WIN')
         } else if (lowerStatus === 'lost') {
-          statusVariations.push('lost', 'Lost', 'LOST', 'lose', 'Lose', 'LOSE', 'loss', 'Loss', 'LOSS')
+          statusVariations.push(
+            'lost',
+            'Lost',
+            'LOST',
+            'lose',
+            'Lose',
+            'LOSE',
+            'loss',
+            'Loss',
+            'LOSS'
+          )
         } else if (lowerStatus === 'pending') {
           statusVariations.push('pending', 'Pending', 'PENDING', 'open', 'Open', 'OPEN')
         } else if (lowerStatus === 'void') {
-          statusVariations.push('void', 'Void', 'VOID', 'push', 'Push', 'PUSH', 'cancelled', 'Cancelled', 'CANCELLED')
+          statusVariations.push(
+            'void',
+            'Void',
+            'VOID',
+            'push',
+            'Push',
+            'PUSH',
+            'cancelled',
+            'Cancelled',
+            'CANCELLED'
+          )
         } else {
           statusVariations.push(status, lowerStatus, status.toUpperCase())
         }
       }
-      
+
       betsQuery = betsQuery.in('status', statusVariations)
     } else {
       console.log('🔍 No status filter applied')
@@ -570,28 +630,36 @@ export async function POST(request: NextRequest) {
       if (!debugError && debugBets && debugBets.length > 0) {
         console.log('🔍 DEBUG: Sample bets without sport filter:')
         debugBets.forEach(bet => {
-          console.log(`   Bet: sport="${bet.sport}", league="${bet.league}", bet_type="${bet.bet_type}", status="${bet.status}", sportsbook="${bet.sportsbook}", date="${bet.created_at}"`)
+          console.log(
+            `   Bet: sport="${bet.sport}", league="${bet.league}", bet_type="${bet.bet_type}", status="${bet.status}", sportsbook="${bet.sportsbook}", date="${bet.created_at}"`
+          )
         })
-        
+
         // Check specifically for NCAAF in both sport and league columns
         const ncaafBets = debugBets.filter(bet => {
-          const sportMatch = bet.sport && (
-            bet.sport.toLowerCase().includes('ncaaf') || 
-            bet.sport.toLowerCase().includes('college football') ||
-            bet.sport.toLowerCase().includes('college') ||
-            bet.sport.toLowerCase().includes('ncaa')
-          )
-          const leagueMatch = bet.league && (
-            bet.league.toLowerCase().includes('ncaaf') || 
-            bet.league.toLowerCase().includes('college football') ||
-            bet.league.toLowerCase().includes('college') ||
-            bet.league.toLowerCase().includes('ncaa')
-          )
+          const sportMatch =
+            bet.sport &&
+            (bet.sport.toLowerCase().includes('ncaaf') ||
+              bet.sport.toLowerCase().includes('college football') ||
+              bet.sport.toLowerCase().includes('college') ||
+              bet.sport.toLowerCase().includes('ncaa'))
+          const leagueMatch =
+            bet.league &&
+            (bet.league.toLowerCase().includes('ncaaf') ||
+              bet.league.toLowerCase().includes('college football') ||
+              bet.league.toLowerCase().includes('college') ||
+              bet.league.toLowerCase().includes('ncaa'))
           return sportMatch || leagueMatch
         })
-        console.log('🔍 DEBUG: NCAAF-related bets found in sport OR league columns:', ncaafBets.length)
+        console.log(
+          '🔍 DEBUG: NCAAF-related bets found in sport OR league columns:',
+          ncaafBets.length
+        )
         if (ncaafBets.length > 0) {
-          console.log('🔍 DEBUG: NCAAF bet examples:', ncaafBets.map(b => ({ sport: b.sport, league: b.league, bet_type: b.bet_type })))
+          console.log(
+            '🔍 DEBUG: NCAAF bet examples:',
+            ncaafBets.map(b => ({ sport: b.sport, league: b.league, bet_type: b.bet_type }))
+          )
         }
       }
     }
@@ -609,17 +677,25 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Bet statuses:', [...new Set(matchingBets.map(b => b.status))])
     } else {
       console.log('❌ No matching bets found. Final query conditions were:')
-      console.log('   Sport filter:', sport, sport !== 'All' ? `(variations: ${JSON.stringify(sportVariations)})` : '(no filter)')
-      console.log('   BetType filter:', betType, betType !== 'All' ? `(variations: ${JSON.stringify(betTypeVariations)})` : '(no filter)')
+      console.log(
+        '   Sport filter:',
+        sport,
+        sport !== 'All' ? `(variations: ${JSON.stringify(sportVariations)})` : '(no filter)'
+      )
+      console.log(
+        '   BetType filter:',
+        betType,
+        betType !== 'All' ? `(variations: ${JSON.stringify(betTypeVariations)})` : '(no filter)'
+      )
       console.log('   Date filters:', {
         startDate: filters.customStartDate || 'none',
-        endDate: filters.customEndDate || 'none'
+        endDate: filters.customEndDate || 'none',
       })
       console.log('   Other filters:', {
         sides: filters.sides,
         isParlays: filters.isParlays,
         sportsbooks: filters.sportsbooks,
-        statuses: filters.statuses
+        statuses: filters.statuses,
       })
     }
 
@@ -628,6 +704,7 @@ export async function POST(request: NextRequest) {
       const strategyBets = matchingBets.map(bet => ({
         strategy_id: strategy.id,
         bet_id: bet.id,
+        parlay_id: bet.parlay_id || null,
       }))
 
       const { error: strategyBetsError } = await serviceSupabase
@@ -641,24 +718,6 @@ export async function POST(request: NextRequest) {
         console.log('✅ Successfully inserted', strategyBets.length, 'strategy_bets relationships')
       }
 
-      // Calculate performance metrics
-      const totalBets = matchingBets.length
-      const settledBets = matchingBets.filter(bet => bet.status === 'won' || bet.status === 'lost')
-      const winningBets = settledBets.filter(bet => bet.status === 'won').length
-      const losingBets = settledBets.filter(bet => bet.status === 'lost').length
-      const pushBets = matchingBets.filter(bet => bet.status === 'void').length
-
-      // Ensure bet counts add up correctly (fix constraint violation)
-      const calculatedTotal = winningBets + losingBets + pushBets
-      const adjustedTotal = Math.max(totalBets, calculatedTotal)
-      const adjustedLosing = adjustedTotal - winningBets - pushBets
-
-      const totalProfit = matchingBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
-      const totalStake = matchingBets.reduce((sum, bet) => sum + (bet.stake || 0), 0)
-
-      const roiPercentage = totalStake > 0 ? (totalProfit / totalStake) * 100 : 0
-      const winRate = adjustedTotal > 0 ? (winningBets / adjustedTotal) * 100 : 0
-
       // Get user profile for username
       const { data: profile } = await serviceSupabase
         .from('profiles')
@@ -666,7 +725,8 @@ export async function POST(request: NextRequest) {
         .eq('id', finalUser.id)
         .single()
 
-      // Insert into strategy_leaderboard
+      // Insert into strategy_leaderboard with initial zero values
+      // The parlay-aware triggers will calculate the correct values automatically
       const { error: leaderboardError } = await serviceSupabase
         .from('strategy_leaderboard')
         .insert({
@@ -674,12 +734,12 @@ export async function POST(request: NextRequest) {
           user_id: finalUser.id,
           strategy_name: name,
           username: profile?.username || 'Unknown',
-          total_bets: adjustedTotal,
-          winning_bets: winningBets,
-          losing_bets: adjustedLosing,
-          push_bets: pushBets,
-          roi_percentage: roiPercentage,
-          win_rate: winRate / 100, // Store as decimal
+          total_bets: 0, // Will be calculated by trigger
+          winning_bets: 0, // Will be calculated by trigger
+          losing_bets: 0, // Will be calculated by trigger
+          push_bets: 0, // Will be calculated by trigger
+          roi_percentage: 0, // Will be calculated by trigger
+          win_rate: 0, // Will be calculated by trigger
           primary_sport: sport,
           bet_type: betType,
           is_monetized: monetized,
@@ -692,27 +752,23 @@ export async function POST(request: NextRequest) {
         console.error('Error inserting strategy_leaderboard:', leaderboardError)
         // Continue with strategy creation even if leaderboard fails
       } else {
-        console.log('✅ Successfully inserted strategy_leaderboard entry with metrics:', {
-          total_bets: adjustedTotal,
-          winning_bets: winningBets,
-          roi_percentage: roiPercentage,
-          win_rate: winRate / 100,
-        })
+        console.log('✅ Successfully inserted strategy_leaderboard entry')
+        
+        // Force trigger calculation by updating the strategy_leaderboard entry
+        // This will cause the parlay-aware triggers to calculate the correct metrics
+        const { error: triggerError } = await serviceSupabase
+          .from('strategy_leaderboard')
+          .update({ last_calculated_at: new Date().toISOString() })
+          .eq('strategy_id', strategy.id)
+        
+        if (triggerError) {
+          console.error('Error triggering leaderboard calculation:', triggerError)
+        } else {
+          console.log('✅ Triggered parlay-aware leaderboard calculation')
+        }
       }
 
-      // Update strategy with performance metrics
-      const { error: updateError } = await serviceSupabase
-        .from('strategies')
-        .update({
-          performance_total_bets: adjustedTotal,
-          performance_roi: roiPercentage,
-          performance_win_rate: winRate,
-        })
-        .eq('id', strategy.id)
-
-      if (updateError) {
-        console.error('Error updating strategy performance:', updateError)
-      }
+      // Strategy performance metrics will be calculated by the triggers
     } else {
       console.log('⚠️ No matching bets found - creating leaderboard entry with zero metrics')
 
@@ -756,7 +812,7 @@ export async function POST(request: NextRequest) {
       success: true,
       strategy: {
         ...strategy,
-        performance_total_bets: matchingBets?.length || 0,
+        performance_total_bets: 'Will be calculated by triggers',
       },
     })
   } catch (error) {
@@ -882,7 +938,9 @@ export async function PATCH(request: NextRequest) {
     // Verify strategy belongs to user and get current strategy data
     const { data: strategy, error: fetchError } = await supabase
       .from('strategies')
-      .select('id, name, description, monetized, pricing_weekly, pricing_monthly, pricing_yearly, stripe_product_id')
+      .select(
+        'id, name, description, monetized, pricing_weekly, pricing_monthly, pricing_yearly, stripe_product_id'
+      )
       .eq('id', strategyId)
       .eq('user_id', user.id)
       .single()
@@ -908,16 +966,16 @@ export async function PATCH(request: NextRequest) {
 
     // Check if we need to create/update Stripe products
     const isBeingMonetized = updates.monetized === true && strategy.monetized !== true
-    const isPricingUpdated = (
+    const isPricingUpdated =
       updates.pricing_weekly !== strategy.pricing_weekly ||
       updates.pricing_monthly !== strategy.pricing_monthly ||
       updates.pricing_yearly !== strategy.pricing_yearly
-    )
-    const shouldCreateStripeProduct = isBeingMonetized || (strategy.monetized && isPricingUpdated && !strategy.stripe_product_id)
+    const shouldCreateStripeProduct =
+      isBeingMonetized || (strategy.monetized && isPricingUpdated && !strategy.stripe_product_id)
 
     if (shouldCreateStripeProduct) {
       console.log('🎯 Creating/updating Stripe product for strategy:', strategyId)
-      
+
       try {
         // Get seller's Stripe Connect account
         const { data: sellerProfile, error: accountError } = await serviceSupabase
@@ -929,9 +987,10 @@ export async function PATCH(request: NextRequest) {
         if (accountError || !sellerProfile?.stripe_connect_account_id) {
           console.warn('⚠️ No Stripe Connect account found for seller')
           return NextResponse.json(
-            { 
+            {
               error: 'Stripe Connect account required',
-              details: 'Please complete your seller onboarding first. Go to Settings to set up your payout account.'
+              details:
+                'Please complete your seller onboarding first. Go to Settings to set up your payout account.',
             },
             { status: 400 }
           )
@@ -941,104 +1000,110 @@ export async function PATCH(request: NextRequest) {
         const { stripe } = await import('@/lib/stripe')
 
         // Verify the Connect account is ready to accept payments
-        const connectAccount = await stripe.accounts.retrieve(sellerProfile.stripe_connect_account_id)
+        const connectAccount = await stripe.accounts.retrieve(
+          sellerProfile.stripe_connect_account_id
+        )
         if (!connectAccount.details_submitted || !connectAccount.charges_enabled) {
           console.warn('⚠️ Stripe Connect account not ready for charges')
           return NextResponse.json(
-            { 
+            {
               error: 'Seller account setup incomplete',
-              details: 'Please complete your Stripe onboarding process to enable monetization. Check your Settings page.'
+              details:
+                'Please complete your Stripe onboarding process to enable monetization. Check your Settings page.',
             },
             { status: 400 }
           )
         }
 
         // Create Stripe product on the platform account (for application fees + transfers)
-          const product = await stripe.products.create({
-            name: `${updates.name || strategy.name} - Strategy Subscription`,
-            description: updates.description || strategy.description || `Access to ${updates.name || strategy.name} betting strategy`,
+        const product = await stripe.products.create({
+          name: `${updates.name || strategy.name} - Strategy Subscription`,
+          description:
+            updates.description ||
+            strategy.description ||
+            `Access to ${updates.name || strategy.name} betting strategy`,
+          metadata: {
+            strategy_id: strategyId,
+            user_id: user.id,
+            strategy_name: updates.name || strategy.name,
+            connect_account_id: sellerProfile.stripe_connect_account_id,
+          },
+        })
+        // Note: No stripeAccount parameter - product created on platform account
+
+        // Create prices for each frequency that has a value
+        const priceIds: Record<string, string | null> = {
+          weekly: null,
+          monthly: null,
+          yearly: null,
+        }
+
+        const weeklyPrice = updates.pricing_weekly || strategy.pricing_weekly
+        const monthlyPrice = updates.pricing_monthly || strategy.pricing_monthly
+        const yearlyPrice = updates.pricing_yearly || strategy.pricing_yearly
+
+        if (weeklyPrice && weeklyPrice > 0) {
+          const weeklyPriceObj = await stripe.prices.create({
+            product: product.id,
+            unit_amount: Math.round(weeklyPrice * 100), // Convert to cents
+            currency: 'usd',
+            recurring: {
+              interval: 'week',
+            },
             metadata: {
               strategy_id: strategyId,
-              user_id: user.id,
-              strategy_name: updates.name || strategy.name,
-              connect_account_id: sellerProfile.stripe_connect_account_id,
+              frequency: 'weekly',
             },
           })
-          // Note: No stripeAccount parameter - product created on platform account
+          priceIds.weekly = weeklyPriceObj.id
+        }
 
-          // Create prices for each frequency that has a value
-          const priceIds: Record<string, string | null> = {
-            weekly: null,
-            monthly: null,
-            yearly: null,
-          }
+        if (monthlyPrice && monthlyPrice > 0) {
+          const monthlyPriceObj = await stripe.prices.create({
+            product: product.id,
+            unit_amount: Math.round(monthlyPrice * 100), // Convert to cents
+            currency: 'usd',
+            recurring: {
+              interval: 'month',
+            },
+            metadata: {
+              strategy_id: strategyId,
+              frequency: 'monthly',
+            },
+          })
+          priceIds.monthly = monthlyPriceObj.id
+        }
 
-          const weeklyPrice = updates.pricing_weekly || strategy.pricing_weekly
-          const monthlyPrice = updates.pricing_monthly || strategy.pricing_monthly
-          const yearlyPrice = updates.pricing_yearly || strategy.pricing_yearly
+        if (yearlyPrice && yearlyPrice > 0) {
+          const yearlyPriceObj = await stripe.prices.create({
+            product: product.id,
+            unit_amount: Math.round(yearlyPrice * 100), // Convert to cents
+            currency: 'usd',
+            recurring: {
+              interval: 'year',
+            },
+            metadata: {
+              strategy_id: strategyId,
+              frequency: 'yearly',
+            },
+          })
+          priceIds.yearly = yearlyPriceObj.id
+        }
 
-          if (weeklyPrice && weeklyPrice > 0) {
-            const weeklyPriceObj = await stripe.prices.create({
-              product: product.id,
-              unit_amount: Math.round(weeklyPrice * 100), // Convert to cents
-              currency: 'usd',
-              recurring: {
-                interval: 'week',
-              },
-              metadata: {
-                strategy_id: strategyId,
-                frequency: 'weekly',
-              },
-            })
-            priceIds.weekly = weeklyPriceObj.id
-          }
+        // Add Stripe IDs to updates
+        updates.stripe_product_id = product.id
+        updates.stripe_price_weekly_id = priceIds.weekly
+        updates.stripe_price_monthly_id = priceIds.monthly
+        updates.stripe_price_yearly_id = priceIds.yearly
+        updates.creator_account_id = sellerProfile.stripe_connect_account_id
 
-          if (monthlyPrice && monthlyPrice > 0) {
-            const monthlyPriceObj = await stripe.prices.create({
-              product: product.id,
-              unit_amount: Math.round(monthlyPrice * 100), // Convert to cents
-              currency: 'usd',
-              recurring: {
-                interval: 'month',
-              },
-              metadata: {
-                strategy_id: strategyId,
-                frequency: 'monthly',
-              },
-            })
-            priceIds.monthly = monthlyPriceObj.id
-          }
-
-          if (yearlyPrice && yearlyPrice > 0) {
-            const yearlyPriceObj = await stripe.prices.create({
-              product: product.id,
-              unit_amount: Math.round(yearlyPrice * 100), // Convert to cents
-              currency: 'usd',
-              recurring: {
-                interval: 'year',
-              },
-              metadata: {
-                strategy_id: strategyId,
-                frequency: 'yearly',
-              },
-            })
-            priceIds.yearly = yearlyPriceObj.id
-          }
-
-          // Add Stripe IDs to updates
-          updates.stripe_product_id = product.id
-          updates.stripe_price_weekly_id = priceIds.weekly
-          updates.stripe_price_monthly_id = priceIds.monthly
-          updates.stripe_price_yearly_id = priceIds.yearly
-          updates.creator_account_id = sellerProfile.stripe_connect_account_id
-
-          console.log('✅ Stripe product created:', product.id, 'with prices:', priceIds)
+        console.log('✅ Stripe product created:', product.id, 'with prices:', priceIds)
       } catch (stripeError) {
         console.error('❌ Error creating Stripe product:', stripeError)
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create Stripe products',
-            details: stripeError instanceof Error ? stripeError.message : 'Unknown error'
+            details: stripeError instanceof Error ? stripeError.message : 'Unknown error',
           },
           { status: 500 }
         )

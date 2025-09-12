@@ -453,51 +453,76 @@ export function BetsTab({
                                     <p className="mb-3 font-medium text-gray-700">
                                       Parlay Legs ({bet.legs.length})
                                     </p>
-                                    <div className="space-y-2">
-                                      {bet.legs.map((leg, index) => (
-                                        <div key={leg.id} className={`rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-lg ${getStatusBorderClass(leg.status)}`}>
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                              <div className="mb-2 flex items-center space-x-2">
-                                                <Badge variant="outline" className="text-xs">
-                                                  {leg.sport}
-                                                </Badge>
-                                                <span className="text-xs text-gray-500">
-                                                  Leg {index + 1}
-                                                </span>
-                                                {getLegStatusBadge(leg.status)}
+                                    <div className="space-y-3">
+                                      {bet.legs.map((leg, index) => {
+                                        // Format each leg like a single bet for consistency
+                                        const formattedLeg = formatBetForDisplay(leg)
+                                        return (
+                                          <div key={leg.id} className={`rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-lg ${getStatusBorderClass(leg.status)}`}>
+                                            <div className="space-y-2">
+                                              {/* Header with key info - same as single bets */}
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-2">
+                                                  <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                                                    Leg {index + 1}
+                                                  </span>
+                                                  <Badge variant="outline" className="text-xs font-medium">
+                                                    {formattedLeg.sport}
+                                                  </Badge>
+                                                  <span className="rounded bg-purple-100 px-2 py-0.5 text-purple-700 font-medium text-xs">
+                                                    {formattedLeg.betType}
+                                                  </span>
+                                                  {formattedLeg.sportsbook && (
+                                                    <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700 font-medium text-xs">
+                                                      {formattedLeg.sportsbook}
+                                                    </span>
+                                                  )}
+                                                  {getLegStatusBadge(leg.status)}
+                                                </div>
+                                                <div className="text-sm font-medium">
+                                                  {formattedLeg.odds}
+                                                </div>
                                               </div>
-                                              <p className="text-sm font-medium mb-1">
-                                                {leg.bet_description}
-                                              </p>
-                                              {leg.home_team && leg.away_team && (
-                                                <p className="text-xs text-gray-600">
-                                                  {leg.away_team} @ {leg.home_team}
-                                                </p>
-                                              )}
+                                              
+                                              {/* Main description - same formatting as single bets */}
+                                              <div className="font-medium text-gray-900 text-sm leading-tight">
+                                                {formattedLeg.mainDescription}
+                                              </div>
+                                              
+                                              {/* Teams and line info - same compact format */}
+                                              <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                                {formattedLeg.teamsDisplay && (
+                                                  <span className="font-medium">{formattedLeg.teamsDisplay}</span>
+                                                )}
+                                                {formattedLeg.lineDisplay && (
+                                                  <span className="bg-blue-50 px-1.5 py-0.5 rounded text-blue-700">
+                                                    Line: {formattedLeg.lineDisplay}
+                                                  </span>
+                                                )}
+                                                {getDisplaySide(leg) && (
+                                                  <span className="bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700 font-medium">
+                                                    {getDisplaySide(leg)}
+                                                  </span>
+                                                )}
+                                                {formattedLeg.gameDateTime && (
+                                                  <span className="text-gray-500">
+                                                    Game: {formattedLeg.gameDateTime}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              
+                                              {/* Player name if available */}
                                               {leg.player_name && (
-                                                <p className="text-xs text-blue-600 font-medium">
-                                                  {leg.player_name}
-                                                </p>
-                                              )}
-                                            </div>
-                                            <div className="text-right">
-                                              <p className="font-medium">{formatOdds(leg.odds)}</p>
-                                              {leg.line_value && (
-                                                <p className="text-xs text-gray-600">
-                                                  Line: {leg.line_value > 0 ? '+' : ''}
-                                                  {leg.line_value}
-                                                </p>
-                                              )}
-                                              {leg.side && (
-                                                <p className="text-xs text-indigo-600 font-medium">
-                                                  {leg.side.toUpperCase()}
-                                                </p>
+                                                <div className="text-xs">
+                                                  <span className="bg-blue-50 px-2 py-1 rounded text-blue-700 font-medium">
+                                                    Player: {leg.player_name}
+                                                  </span>
+                                                </div>
                                               )}
                                             </div>
                                           </div>
-                                        </div>
-                                      ))}
+                                        )
+                                      })}
                                     </div>
                                   </div>
 

@@ -2,6 +2,7 @@
 
 import { OpenBetsDisplay } from '@/components/shared/open-bets-display'
 import ShareStrategyModal from '@/components/strategies/ShareStrategyModal'
+import { StrategyBetsModal } from './strategy-bets-modal'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,7 @@ import {
   Edit3,
   Eye,
   Globe,
+  List,
   Lock,
   Save,
   Share2,
@@ -73,6 +75,7 @@ const ProfessionalStrategyCardComponent = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showMonetizationModal, setShowMonetizationModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showAllBetsModal, setShowAllBetsModal] = useState(false)
 
   const [editedStrategy, setEditedStrategy] = useState<Partial<StrategyData>>({
     name: strategy.name,
@@ -345,13 +348,43 @@ const ProfessionalStrategyCardComponent = ({
           <div className="border-t border-gray-100 bg-gradient-to-r from-orange-50 to-red-50 p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-orange-800">Open Bets ({strategy.open_bets.length})</h4>
-              {strategy.total_potential_profit && (
-                <span className="text-xs font-medium text-green-700">
-                  Potential: {formatCurrency(strategy.total_potential_profit)}
-                </span>
-              )}
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllBetsModal(true)}
+                  className="border-orange-300 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs px-2 py-1 h-6"
+                >
+                  <List className="h-3 w-3 mr-1" />
+                  See All Bets
+                </Button>
+                {strategy.total_potential_profit && (
+                  <span className="text-xs font-medium text-green-700">
+                    Potential: {formatCurrency(strategy.total_potential_profit)}
+                  </span>
+                )}
+              </div>
             </div>
             <OpenBetsDisplay bets={strategy.open_bets} title="" compact={true} />
+          </div>
+        )}
+
+        {/* Show "See All Bets" button even when no open bets, if strategy has total bets */}
+        {(!strategy.open_bets || strategy.open_bets.length === 0) && strategy.performance_total_bets > 0 && (
+          <div className="border-t border-gray-100 bg-gray-50 p-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-700">No Open Bets</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllBetsModal(true)}
+                className="border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs px-2 py-1 h-6"
+              >
+                <List className="h-3 w-3 mr-1" />
+                See All Bets
+              </Button>
+            </div>
+            <p className="text-xs text-gray-600 mt-1">View all {strategy.performance_total_bets} bets from this strategy</p>
           </div>
         )}
 
@@ -663,6 +696,14 @@ const ProfessionalStrategyCardComponent = ({
           </div>
         </div>
       </Modal>
+
+      {/* All Bets Modal */}
+      <StrategyBetsModal
+        isOpen={showAllBetsModal}
+        onClose={() => setShowAllBetsModal(false)}
+        strategyId={strategy.id}
+        strategyName={strategy.name}
+      />
 
       {/* Share Strategy Modal */}
       <ShareStrategyModal

@@ -23,6 +23,7 @@ interface DatabaseBet {
   home_team: string
   away_team: string
   line_value?: number
+  game_date?: string
 }
 
 interface ParlayGroup {
@@ -67,8 +68,8 @@ export default function TodaysBets() {
           .from('bets')
           .select('*')
           .eq('user_id', user.id)
-          .gte('placed_at', startOfDay.toISOString())
-          .lt('placed_at', endOfDay.toISOString())
+          .gte('game_date', startOfDay.toISOString())
+          .lt('game_date', endOfDay.toISOString())
           .order('placed_at', { ascending: false })
 
         if (error) {

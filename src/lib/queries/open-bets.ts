@@ -123,7 +123,8 @@ export async function getOpenBetsForStrategies(
         // Handle bets - could be array or single object from Supabase join
         const bets = Array.isArray(strategyBet.bets) ? strategyBet.bets : [strategyBet.bets]
         bets.forEach((bet: unknown) => {
-          if (bet) { // Ensure bet exists
+          if (bet) {
+            // Ensure bet exists
             betsByStrategy[strategyBet.strategy_id]?.push({
               ...(bet as object),
               strategy_id: strategyBet.strategy_id,
@@ -438,6 +439,88 @@ export async function getSubscriberStrategiesWithOpenBets(
 }
 
 /**
+ * Fetch all bets (open and closed) for a specific strategy
+ */
+export async function getAllBetsForStrategy(
+  strategyId: string,
+  supabaseClient?: SupabaseClient
+): Promise<OpenBet[]> {
+  const supabase = supabaseClient || createClient()
+
+  console.log('🎯 getAllBetsForStrategy - Starting for strategy:', strategyId)
+
+  try {
+    // Fetch all bets for this strategy via strategy_bets table
+    const { data: strategyBets, error: strategyBetsError } = await supabase
+      .from('strategy_bets')
+      .select(
+        `
+        bet_id,
+        bets!inner (
+          id,
+          sport,
+          league,
+          home_team,
+          away_team,
+          bet_type,
+          bet_description,
+          line_value,
+          odds,
+          stake,
+          potential_payout,
+          status,
+          placed_at,
+          game_date,
+          sportsbook,
+          side,
+          parlay_id,
+          is_parlay,
+          profit
+        )
+      `
+      )
+      .eq('strategy_id', strategyId)
+      .order('bets(placed_at)', { ascending: false })
+
+    console.log('🎯 getAllBetsForStrategy - Strategy_bets query result:', {
+      error: strategyBetsError?.message,
+      dataCount: strategyBets?.length || 0,
+      sampleData: strategyBets?.slice(0, 2),
+    })
+
+    if (strategyBetsError) {
+      console.error('Error fetching all bets for strategy:', strategyBetsError)
+      return []
+    }
+
+    if (!strategyBets || strategyBets.length === 0) {
+      console.log('🎯 getAllBetsForStrategy - No bets found for strategy')
+      return []
+    }
+
+    // Transform the data
+    const allBets: OpenBet[] = strategyBets.map((strategyBet: { bets: unknown }) => {
+      const bet = strategyBet.bets
+      return {
+        ...(bet as object),
+        strategy_id: strategyId,
+      } as OpenBet
+    })
+
+    console.log('🎯 getAllBetsForStrategy - Final result:', {
+      totalBets: allBets.length,
+      openBets: allBets.filter(b => b.status === 'pending').length,
+      settledBets: allBets.filter(b => ['won', 'lost', 'push'].includes(b.status)).length,
+    })
+
+    return allBets
+  } catch (error) {
+    console.error('Error fetching all bets for strategy:', error)
+    return []
+  }
+}
+
+/**
  * Helper function to group bets by parlay_id for consistent display
  */
 export function groupBetsByParlay(bets: OpenBet[]) {
@@ -473,28 +556,32 @@ export function formatBetForDisplay(bet: OpenBet) {
   // Format sport name
   const formatSport = (sport: string) => {
     const sportMap: { [key: string]: string } = {
-      'mlb': 'Baseball',
-      'nfl': 'Football', 
-      'nba': 'Basketball',
-      'nhl': 'Hockey',
-      'soccer': 'Soccer',
-      'ncaaf': 'College Football',
-      'ncaab': 'College Basketball'
+      mlb: 'Baseball',
+      nfl: 'Football',
+      nba: 'Basketball',
+      nhl: 'Hockey',
+      soccer: 'Soccer',
+      ncaaf: 'College Football',
+      ncaab: 'College Basketball',
     }
-    return sportMap[sport?.toLowerCase()] || sport?.charAt(0).toUpperCase() + sport?.slice(1).toLowerCase() || 'Unknown'
+    return (
+      sportMap[sport?.toLowerCase()] ||
+      sport?.charAt(0).toUpperCase() + sport?.slice(1).toLowerCase() ||
+      'Unknown'
+    )
   }
 
   // Format bet type
   const formatBetType = (betType?: string): string => {
     if (!betType) return 'moneyline'
     const typeMap: { [key: string]: string } = {
-      'moneyline': 'moneyline',
-      'spread': 'spread', 
-      'point_spread': 'spread',
-      'total': 'total',
-      'over_under': 'total',
-      'prop': 'prop',
-      'player_prop': 'prop'
+      moneyline: 'moneyline',
+      spread: 'spread',
+      point_spread: 'spread',
+      total: 'total',
+      over_under: 'total',
+      prop: 'prop',
+      player_prop: 'prop',
     }
     return typeMap[betType.toLowerCase()] || betType.toLowerCase()
   }
@@ -503,7 +590,7 @@ export function formatBetForDisplay(bet: OpenBet) {
   const createMainDescription = () => {
     const teams = bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : ''
     const betType = formatBetType(bet.bet_type)
-    
+
     switch (betType) {
       case 'total': {
         const direction = bet.side?.toLowerCase() === 'over' ? 'Over' : 'Under'
@@ -515,7 +602,7 @@ export function formatBetForDisplay(bet: OpenBet) {
         }
         return `${direction} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
       }
-      
+
       case 'spread': {
         const line = bet.line_value ? ` ${bet.line_value > 0 ? '+' : ''}${bet.line_value}` : ''
         if (teams) {
@@ -532,7 +619,7 @@ export function formatBetForDisplay(bet: OpenBet) {
         }
         return bet.bet_description || `Spread${line}`
       }
-      
+
       case 'moneyline': {
         if (teams) {
           const selectedTeam = bet.side === 'home' ? bet.home_team : bet.away_team
@@ -541,9 +628,12 @@ export function formatBetForDisplay(bet: OpenBet) {
         const teamName = bet.side === 'home' ? bet.home_team : bet.away_team
         return `${teamName || 'Team'} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
       }
-      
+
       default:
-        return bet.bet_description || `${betType.charAt(0).toUpperCase() + betType.slice(1)} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+        return (
+          bet.bet_description ||
+          `${betType.charAt(0).toUpperCase() + betType.slice(1)} ${bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`}`
+        )
     }
   }
 
@@ -554,16 +644,21 @@ export function formatBetForDisplay(bet: OpenBet) {
   const mainDescription = createMainDescription()
   const odds = bet.odds > 0 ? `+${bet.odds}` : `${bet.odds}`
   const stake = `$${bet.stake.toFixed(2)}`
-  const gameDateTime = bet.game_date ? new Date(bet.game_date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  }) : ''
-  const lineDisplay = bet.line_value !== undefined && bet.line_value !== null 
-    ? (bet.line_value > 0 ? `+${bet.line_value}` : `${bet.line_value}`)
+  const gameDateTime = bet.game_date
+    ? new Date(bet.game_date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
     : ''
+  const lineDisplay =
+    bet.line_value !== undefined && bet.line_value !== null
+      ? bet.line_value > 0
+        ? `+${bet.line_value}`
+        : `${bet.line_value}`
+      : ''
   const teamsDisplay = bet.home_team && bet.away_team ? `${bet.away_team} @ ${bet.home_team}` : ''
 
   const potentialProfit = bet.potential_payout - bet.stake

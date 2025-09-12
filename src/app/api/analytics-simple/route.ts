@@ -32,11 +32,22 @@ export async function POST(request: Request) {
       const lastDay = new Date(currentYear, currentMonth, 0).getDate()
       endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDay}`
     } else {
-      // week
+      // week - Sunday to Saturday format
       const now = new Date()
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      startDate = oneWeekAgo.toISOString().split('T')[0] || ''
-      endDate = now.toISOString().split('T')[0] || ''
+      const currentDay = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+      
+      // Calculate start of current week (Sunday)
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - currentDay)
+      startOfWeek.setHours(0, 0, 0, 0)
+      
+      // Calculate end of current week (Saturday)
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 6)
+      endOfWeek.setHours(23, 59, 59, 999)
+      
+      startDate = startOfWeek.toISOString().split('T')[0] || ''
+      endDate = endOfWeek.toISOString().split('T')[0] || ''
     }
 
     console.log('Date range:', { startDate, endDate })

@@ -45,8 +45,8 @@ interface FilterSystemProps {
   onClearFilters: () => void
 }
 
-// Database schema-based filter options - specific bet types as requested
-const BET_TYPES = ['All', 'spread', 'moneyline', 'total', 'player_prop', 'game_prop', 'parlay']
+// Database schema-based filter options - specific bet types as requested (removed 'parlay')
+const BET_TYPES = ['All', 'spread', 'moneyline', 'total', 'player_prop', 'game_prop']
 const STATUS_OPTIONS = ['All', 'pending', 'won', 'lost', 'void', 'cancelled']
 // const IS_PARLAY_OPTIONS = ['All', 'true', 'false']
 const SIDE_OPTIONS = ['All', 'over', 'under', 'home', 'away']
@@ -295,6 +295,27 @@ export function FilterSystem({
               </Button>
             </CollapsibleTrigger>
             <div className="flex items-center space-x-3">
+              {/* Save/Cancel Buttons - Moved to top right */}
+              {hasUnsavedChanges && (
+                <div className="flex space-x-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={resetFilters}
+                    className="border-slate-300 text-slate-600 hover:bg-slate-50 px-4"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={saveFilters} 
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-4"
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Apply Filters
+                  </Button>
+                </div>
+              )}
+              
               {!isPro && (
                 <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-50 px-3 py-1">
                   <Crown className="mr-1.5 h-3.5 w-3.5" />
@@ -313,7 +334,7 @@ export function FilterSystem({
                   Unsaved
                 </Badge>
               )}
-              {getActiveFiltersCount() > 0 && (
+              {getActiveFiltersCount() > 0 && !hasUnsavedChanges && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -344,20 +365,20 @@ export function FilterSystem({
               </div>
               
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {/* Bet Types */}
+                {/* Markets (formerly Bet Types) */}
                 <div>
                   <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
                     <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <span>Bet Types</span>
+                    <span>Markets</span>
                   </label>
                   <MultiSelectDropdown
                     values={localFilters.betTypes || ['All']}
-                    options={BET_TYPES.map(type => type === 'All' ? 'All Types' : 
+                    options={BET_TYPES.map(type => type === 'All' ? 'All Markets' : 
                       type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()))}
                     onChange={values => updateLocalFilters({ 
-                      betTypes: values.map(v => v === 'All Types' ? 'All' : v.toLowerCase().replace(' ', '_'))
+                      betTypes: values.map(v => v === 'All Markets' ? 'All' : v.toLowerCase().replace(' ', '_'))
                     })}
-                    placeholder="Select bet types"
+                    placeholder="Select markets"
                   />
                 </div>
 
@@ -442,24 +463,24 @@ export function FilterSystem({
                   />
                 </div>
 
-                {/* Parlay Filter */}
+                {/* Bet Types (formerly Bet Style) */}
                 <div>
                   <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
                     <div className="h-3 w-3 rounded-full bg-purple-500"></div>
-                    <span>Bet Style</span>
+                    <span>Bet Types</span>
                   </label>
                   <MultiSelectDropdown
                     values={localFilters.isParlays || ['All']}
-                    options={['All Bets', 'Single Bets Only', 'Parlays Only']}
+                    options={['All', 'Straight', 'Parlay']}
                     onChange={values => updateLocalFilters({ 
                       isParlays: values.map(v => {
-                        if (v === 'All Bets') return 'All'
-                        if (v === 'Single Bets Only') return 'false'
-                        if (v === 'Parlays Only') return 'true'
+                        if (v === 'All') return 'All'
+                        if (v === 'Straight') return 'false'
+                        if (v === 'Parlay') return 'true'
                         return v
                       })
                     })}
-                    placeholder="Select bet style"
+                    placeholder="Select bet types"
                   />
                 </div>
 
@@ -836,26 +857,6 @@ export function FilterSystem({
               </div>
             </div>
 
-            {/* Save/Cancel Buttons */}
-            {hasUnsavedChanges && (
-              <div className="flex justify-end space-x-3 border-t border-slate-200 pt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={resetFilters}
-                  className="border-slate-300 text-slate-600 hover:bg-slate-50 px-6"
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={saveFilters} 
-                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-6"
-                >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Apply Filters
-                </Button>
-              </div>
-            )}
           </CollapsibleContent>
         </Collapsible>
       </CardContent>

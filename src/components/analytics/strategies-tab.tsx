@@ -259,25 +259,46 @@ export function StrategiesTab({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Betting Strategies</h2>
-          <p className="text-gray-600">Create and manage your custom betting strategies</p>
+      {/* Header - Enhanced with better spacing */}
+      <div className="space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-900">Betting Strategies</h2>
+            <p className="text-lg text-slate-600 mt-2">Create and manage your custom betting strategies</p>
+          </div>
+          
+          {/* Create Strategy Button - Moved higher and more prominent */}
+          <Button 
+            onClick={handleOpenCreateModal}
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-6 py-3 text-lg font-medium"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Create Strategy
+          </Button>
         </div>
 
-        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenCreateModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Strategy
-            </Button>
-          </DialogTrigger>
-          <DialogContent
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          >
-            <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-gray-200 bg-white shadow-2xl"
-          >
+        {/* Stats Summary */}
+        <div className="flex items-center space-x-6 text-sm text-slate-600">
+          <span className="flex items-center">
+            <BarChart3 className="mr-2 h-4 w-4 text-blue-600" />
+            {strategies.length} {strategies.length === 1 ? 'Strategy' : 'Strategies'}
+          </span>
+          {strategies.some(s => s.monetized) && (
+            <span className="flex items-center">
+              <DollarSign className="mr-2 h-4 w-4 text-green-600" />
+              {strategies.filter(s => s.monetized).length} Monetized
+            </span>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogTrigger asChild>
+          <div style={{ display: 'none' }} />
+        </DialogTrigger>
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl max-h-[90vh] mx-auto">
+          <div className="flex h-full max-h-[90vh] w-full flex-col">
               {/* Header Section - Fixed */}
               <div className="flex-shrink-0 rounded-t-3xl border-b border-gray-100 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-8 py-6">
                 <DialogHeader>
@@ -529,23 +550,9 @@ export function StrategiesTab({
               </div>
             </div>
           </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Create Strategy Section - Always Visible */}
-      <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <div>
-          <h3 className="font-medium text-gray-900">Create New Strategy</h3>
-          <p className="text-sm text-gray-600">
-            Build a strategy from your current filters or create a new one
-          </p>
-        </div>
-        <Button onClick={handleOpenCreateModal} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Strategy
-        </Button>
-      </div>
 
       {/* Strategies Grid */}
       {strategies.length > 0 ? (

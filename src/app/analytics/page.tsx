@@ -435,7 +435,7 @@ export default function AnalyticsPage() {
 
       if (result.success) {
         console.log('✅ Combined refresh completed:', result.message)
-        setRefreshResult(`✅ ${result.message}`)
+        setRefreshResult('✅ All bets refreshed successfully')
 
         // Check for extension update requirements in any step
         let extensionUpdateRequired = false
@@ -461,7 +461,7 @@ export default function AnalyticsPage() {
           if (step3?.success) details.push(`✅ Synced ${step3.stats?.newBets || 0} new bets`)
 
           if (details.length > 0) {
-            setRefreshResult(`✅ Success: ${details.join(', ')}`)
+            setRefreshResult('✅ All bets refreshed successfully')
           }
         }
 

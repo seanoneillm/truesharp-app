@@ -422,10 +422,10 @@ function GamesPageContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Clean Header */}
-        <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="mb-1 text-2xl font-bold">
                 {selectedDate ? formatDateHeader(selectedDate) : 'Loading...'}

@@ -83,85 +83,72 @@ export default function DateSelector({ selectedDate, onDateChange }: DateSelecto
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="p-4">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="px-4 py-2">
         {/* Compact Date Navigation */}
-        <div className="flex items-center justify-center space-x-3">
+        <div className="flex items-center justify-center space-x-2">
           {/* Left Arrow */}
           <button
             onClick={goToPreviousDay}
-            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
             aria-label="Previous day"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
 
-          {/* Date Selection Row */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            {/* Quick Date Buttons */}
-            <div className="flex items-center space-x-1 rounded-lg bg-slate-50 p-1">
-              <button
-                onClick={() => handleQuickDate(yesterday)}
-                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
-                  isYesterday(selectedDate)
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-                }`}
-              >
-                Yesterday
-              </button>
-              <button
-                onClick={() => handleQuickDate(today)}
-                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
-                  isToday(selectedDate)
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => handleQuickDate(tomorrow)}
-                className={`rounded-md px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium transition-all ${
-                  isTomorrow(selectedDate)
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
-                }`}
-              >
-                Tomorrow
-              </button>
-            </div>
+          {/* Quick Date Buttons */}
+          <div className="flex items-center space-x-1 rounded-md bg-slate-50 p-1">
+            <button
+              onClick={() => handleQuickDate(yesterday)}
+              className={`rounded-sm px-2 py-1 text-xs font-medium transition-all ${
+                isYesterday(selectedDate)
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+              }`}
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => handleQuickDate(today)}
+              className={`rounded-sm px-2 py-1 text-xs font-medium transition-all ${
+                isToday(selectedDate)
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => handleQuickDate(tomorrow)}
+              className={`rounded-sm px-2 py-1 text-xs font-medium transition-all ${
+                isTomorrow(selectedDate)
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+              }`}
+            >
+              Tomorrow
+            </button>
+          </div>
 
-            {/* Date Picker */}
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-slate-400" />
-              <input
-                type="date"
-                value={formatDateForInput(selectedDate)}
-                onChange={e => handleDateSelect(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          {/* Date Picker */}
+          <div className="flex items-center space-x-1.5">
+            <Calendar className="h-4 w-4 text-slate-400" />
+            <input
+              type="date"
+              value={formatDateForInput(selectedDate)}
+              onChange={e => handleDateSelect(e.target.value)}
+              className="rounded-md border border-slate-200 px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
 
           {/* Right Arrow */}
           <button
             onClick={goToNextDay}
-            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300 flex-shrink-0"
             aria-label="Next day"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
-        </div>
-
-        {/* Optional: Current date display (compact) */}
-        <div className="mt-3 text-center text-sm text-slate-600">
-          {selectedDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          })}
         </div>
       </div>
     </div>

@@ -52,15 +52,15 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
 
-      {/* Dialog Content */}
-      <div className="relative z-10 my-auto w-full">{children}</div>
+      {/* Dialog Content - properly centered */}
+      <div className="relative z-10 w-full max-w-[95vw]">{children}</div>
     </div>
   )
 }

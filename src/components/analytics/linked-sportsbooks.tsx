@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { HowToLinkSportsbooksModal } from './how-to-link-sportsbooks-modal'
 
 interface LinkedSportsbook {
   book_name: string
@@ -141,7 +142,12 @@ export function LinkedSportsbooks({ className }: LinkedSportsbooksProps) {
               <ExternalLink className="h-6 w-6 text-red-400" />
             </div>
             <p className="text-sm font-medium text-gray-900 mb-1">Unable to Load Sportsbooks</p>
-            <p className="text-xs text-red-600">{error}</p>
+            <p className="text-xs text-red-600 mb-4">{error}</p>
+            
+            {/* How to Link Sportsbooks Button */}
+            <div className="flex justify-center">
+              <HowToLinkSportsbooksModal />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -172,7 +178,12 @@ export function LinkedSportsbooks({ className }: LinkedSportsbooksProps) {
               <ExternalLink className="h-6 w-6 text-gray-400" />
             </div>
             <p className="text-sm font-medium text-gray-900 mb-1">No Sportsbooks Connected</p>
-            <p className="text-xs text-gray-500">Link your sportsbook accounts to start tracking your betting activity automatically.</p>
+            <p className="text-xs text-gray-500 mb-4">Link your sportsbook accounts to start tracking your betting activity automatically.</p>
+            
+            {/* How to Link Sportsbooks Button */}
+            <div className="flex justify-center">
+              <HowToLinkSportsbooksModal />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -204,7 +215,7 @@ export function LinkedSportsbooks({ className }: LinkedSportsbooksProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {sportsbooks.map((sportsbook, index) => (
             <div
               key={index}
@@ -223,6 +234,11 @@ export function LinkedSportsbooks({ className }: LinkedSportsbooksProps) {
               </div>
             </div>
           ))}
+        </div>
+        
+        {/* How to Link Sportsbooks Button */}
+        <div className="flex justify-center pt-2 border-t border-gray-100">
+          <HowToLinkSportsbooksModal />
         </div>
       </CardContent>
     </Card>

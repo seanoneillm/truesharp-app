@@ -11,10 +11,10 @@ interface BetData {
   bet_type?: string
   bet_description: string
   odds: string | number
-  stake: number
-  potential_payout: number
+  stake?: number
+  potential_payout?: number
   status: string
-  placed_at: string
+  placed_at?: string
   game_date?: string
   sportsbook?: string
   player_name?: string | null
@@ -38,8 +38,8 @@ export function formatBetForDisplay(bet: BetData) {
   // Format odds
   const formattedOdds = formatOdds(bet.odds)
 
-  // Format stake
-  const formattedStake = `$${bet.stake.toFixed(2)}`
+  // Format stake (optional for parlay legs)
+  const formattedStake = bet.stake ? `$${bet.stake.toFixed(2)}` : ''
 
   // Format game date/time
   const gameDateTime = formatGameDateTime(bet.game_date)
@@ -49,6 +49,9 @@ export function formatBetForDisplay(bet: BetData) {
 
   // Format teams
   const teamsDisplay = formatTeamsDisplay(bet.home_team, bet.away_team)
+
+  // Calculate potential profit (optional for parlay legs)
+  const potentialProfit = bet.potential_payout && bet.stake ? bet.potential_payout - bet.stake : 0
 
   return {
     sport,
@@ -61,6 +64,7 @@ export function formatBetForDisplay(bet: BetData) {
     gameDateTime,
     lineDisplay,
     teamsDisplay,
+    potentialProfit,
     rawBet: bet,
   }
 }

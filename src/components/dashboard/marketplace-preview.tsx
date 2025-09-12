@@ -40,7 +40,7 @@ export default function MarketplacePreview() {
     const fetchTopStrategies = async () => {
       try {
         const params = new URLSearchParams({
-          sort: 'roi',
+          sort: 'leaderboard',
           limit: '3',
         })
 
