@@ -122,6 +122,16 @@ function getSportVariations(sport: string): string[] {
     variations.push('MLB', 'mlb', 'baseball', 'Baseball')
   } else if (sport === 'NHL') {
     variations.push('NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey')
+  } else if (sport === 'NCAAF') {
+    // NCAAF bets can be stored with sport='football' (synced bets) OR sport='NCAAF' (manual bets)
+    variations.push('NCAAF', 'ncaaf', 'football', 'Football', 'College Football', 'college football', 'NCAA Football', 'ncaa football')
+  } else if (sport === 'NCAAB') {
+    // NCAAB bets can be stored with sport='basketball' (synced bets) OR sport='NCAAB' (manual bets)
+    variations.push('NCAAB', 'ncaab', 'basketball', 'Basketball', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball')
+  } else if (sport === 'MLS') {
+    variations.push('MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football')
+  } else if (sport === 'UCL') {
+    variations.push('UCL', 'ucl', 'Champions League', 'champions league', 'UEFA Champions League', 'uefa champions league', 'Soccer', 'soccer')
   } else {
     variations.push(sport, sport.toLowerCase(), sport.toUpperCase())
   }

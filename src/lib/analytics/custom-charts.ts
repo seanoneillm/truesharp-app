@@ -122,7 +122,9 @@ function processChartData(rawData: any[], config: ChartConfig): CustomChartData[
         break
 
       case 'void_count':
-        result[yAxis] = bets.filter(bet => ['void', 'cancelled'].includes(bet.status || bet.result)).length
+        result[yAxis] = bets.filter(bet =>
+          ['void', 'cancelled'].includes(bet.status || bet.result)
+        ).length
         break
 
       case 'longshot_hit_rate':
@@ -221,7 +223,15 @@ function groupDataByXAxis(data: any[], xAxis: string): Record<string, any[]> {
           // Group by day of week (0=Sunday, 6=Saturday)
           if (bet.placed_at) {
             const dayOfWeek = new Date(bet.placed_at).getDay()
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            const days = [
+              'Sunday',
+              'Monday',
+              'Tuesday',
+              'Wednesday',
+              'Thursday',
+              'Friday',
+              'Saturday',
+            ]
             key = days[dayOfWeek] || 'Unknown'
           } else {
             key = 'Unknown'
@@ -472,13 +482,14 @@ function calculateAverageOdds(bets: any[]): number {
  * Calculate median odds from bets
  */
 function calculateMedianOdds(bets: any[]): number {
-  const validOdds = bets.filter(bet => bet.odds != null).map(bet => bet.odds).sort((a, b) => a - b)
+  const validOdds = bets
+    .filter(bet => bet.odds != null)
+    .map(bet => bet.odds)
+    .sort((a, b) => a - b)
   if (validOdds.length === 0) return 0
-  
+
   const mid = Math.floor(validOdds.length / 2)
-  return validOdds.length % 2 === 0 
-    ? (validOdds[mid - 1] + validOdds[mid]) / 2 
-    : validOdds[mid]
+  return validOdds.length % 2 === 0 ? (validOdds[mid - 1] + validOdds[mid]) / 2 : validOdds[mid]
 }
 
 /**
@@ -487,10 +498,12 @@ function calculateMedianOdds(bets: any[]): number {
 function calculateLongshotHitRate(bets: any[]): number {
   const longshotBets = bets.filter(bet => bet.odds >= 200)
   if (longshotBets.length === 0) return 0
-  
-  const settledLongshots = longshotBets.filter(bet => ['won', 'lost'].includes(bet.status || bet.result))
+
+  const settledLongshots = longshotBets.filter(bet =>
+    ['won', 'lost'].includes(bet.status || bet.result)
+  )
   if (settledLongshots.length === 0) return 0
-  
+
   const wonLongshots = settledLongshots.filter(bet => (bet.status || bet.result) === 'won').length
   return (wonLongshots / settledLongshots.length) * 100
 }
@@ -501,10 +514,10 @@ function calculateLongshotHitRate(bets: any[]): number {
 function calculateChalkHitRate(bets: any[]): number {
   const chalkBets = bets.filter(bet => bet.odds <= -150)
   if (chalkBets.length === 0) return 0
-  
+
   const settledChalk = chalkBets.filter(bet => ['won', 'lost'].includes(bet.status || bet.result))
   if (settledChalk.length === 0) return 0
-  
+
   const wonChalk = settledChalk.filter(bet => (bet.status || bet.result) === 'won').length
   return (wonChalk / settledChalk.length) * 100
 }
@@ -515,11 +528,13 @@ function calculateChalkHitRate(bets: any[]): number {
 function calculateMaxWin(bets: any[]): number {
   const winningBets = bets.filter(bet => (bet.status || bet.result) === 'won')
   if (winningBets.length === 0) return 0
-  
-  return Math.max(...winningBets.map(bet => {
-    if (bet.profit !== null && bet.profit !== undefined) return bet.profit
-    return bet.potential_payout - bet.stake
-  }))
+
+  return Math.max(
+    ...winningBets.map(bet => {
+      if (bet.profit !== null && bet.profit !== undefined) return bet.profit
+      return bet.potential_payout - bet.stake
+    })
+  )
 }
 
 /**
@@ -528,7 +543,7 @@ function calculateMaxWin(bets: any[]): number {
 function calculateMaxLoss(bets: any[]): number {
   const losingBets = bets.filter(bet => (bet.status || bet.result) === 'lost')
   if (losingBets.length === 0) return 0
-  
+
   return Math.max(...losingBets.map(bet => bet.stake || 0))
 }
 
@@ -537,10 +552,10 @@ function calculateMaxLoss(bets: any[]): number {
  */
 function calculateProfitVariance(bets: any[]): number {
   if (bets.length === 0) return 0
-  
+
   const profits = bets.map(bet => {
     if (bet.profit !== null && bet.profit !== undefined) return bet.profit
-    
+
     const status = bet.status || bet.result
     switch (status) {
       case 'won':
@@ -551,10 +566,11 @@ function calculateProfitVariance(bets: any[]): number {
         return 0
     }
   })
-  
+
   const mean = profits.reduce((sum, profit) => sum + profit, 0) / profits.length
-  const variance = profits.reduce((sum, profit) => sum + Math.pow(profit - mean, 2), 0) / profits.length
-  
+  const variance =
+    profits.reduce((sum, profit) => sum + Math.pow(profit - mean, 2), 0) / profits.length
+
   return Math.sqrt(variance) // Return standard deviation
 }
 

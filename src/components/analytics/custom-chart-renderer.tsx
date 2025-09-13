@@ -1,44 +1,44 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ScatterChart,
-  Scatter,
-} from 'recharts'
-import {
-  Trash2,
-  Loader2,
-  BarChart3,
-  LineChart as LineChartIcon,
-  PieChart as PieChartIcon,
-  AlertCircle,
-  Crown,
-  Activity,
-} from 'lucide-react'
-import type { ChartConfig, CustomChartData } from '@/lib/types/custom-charts'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   fetchCustomChartData,
   formatCurrency,
   formatPercentage,
   getValueColor,
 } from '@/lib/analytics/custom-charts'
+import type { ChartConfig, CustomChartData } from '@/lib/types/custom-charts'
+import { motion } from 'framer-motion'
+import {
+  Activity,
+  AlertCircle,
+  BarChart3,
+  Crown,
+  LineChart as LineChartIcon,
+  Loader2,
+  PieChart as PieChartIcon,
+  Trash2,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 interface CustomChartRendererProps {
   config: ChartConfig
@@ -67,7 +67,12 @@ const CHART_ICONS = {
   scatter: Activity,
 }
 
-export function CustomChartRenderer({ config, userId, onDelete, isPro = false }: CustomChartRendererProps) {
+export function CustomChartRenderer({
+  config,
+  userId,
+  onDelete,
+  isPro = false,
+}: CustomChartRendererProps) {
   const [data, setData] = useState<CustomChartData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -96,9 +101,9 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
     if (value === null || value === undefined || isNaN(Number(value))) {
       return 'N/A'
     }
-    
+
     const numValue = Number(value)
-    
+
     switch (config.yAxis as any) {
       case 'wins_count':
         return `${numValue} win${numValue !== 1 ? 's' : ''}`
@@ -137,9 +142,9 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
     if (value === null || value === undefined || isNaN(Number(value))) {
       return '0'
     }
-    
+
     const numValue = Number(value)
-    
+
     switch (config.yAxis as any) {
       case 'profit':
       case 'total_staked':
@@ -160,7 +165,7 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
       case 'average_odds':
       case 'median_odds':
         return numValue > 0 ? `+${numValue.toFixed(0)}` : numValue.toFixed(0)
-      // Legacy support  
+      // Legacy support
       case 'count':
         return numValue.toFixed(0)
       case 'stake':
@@ -374,7 +379,12 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
                 }}
                 formatter={formatTooltipValue}
               />
-              <Bar dataKey={config.yAxis} stackId="a" fill={getChartColor()} radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey={config.yAxis}
+                stackId="a"
+                fill={getChartColor()}
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         )
