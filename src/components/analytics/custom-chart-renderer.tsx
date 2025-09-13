@@ -19,6 +19,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ScatterChart,
+  Scatter,
 } from 'recharts'
 import {
   Trash2,
@@ -28,6 +30,7 @@ import {
   PieChart as PieChartIcon,
   AlertCircle,
   Crown,
+  Activity,
 } from 'lucide-react'
 import type { ChartConfig, CustomChartData } from '@/lib/types/custom-charts'
 import {
@@ -59,6 +62,9 @@ const CHART_ICONS = {
   line: LineChartIcon,
   bar: BarChart3,
   pie: PieChartIcon,
+  stacked_bar: BarChart3,
+  histogram: BarChart3,
+  scatter: Activity,
 }
 
 export function CustomChartRenderer({ config, userId, onDelete, isPro = false }: CustomChartRendererProps) {
@@ -85,34 +91,82 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
     }
   }
 
-  const formatTooltipValue = (value: number) => {
-    switch (config.yAxis) {
-      case 'profit':
-        return formatCurrency(value)
+  const formatTooltipValue = (value: any) => {
+    // Handle null, undefined, or non-numeric values
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return 'N/A'
+    }
+    
+    const numValue = Number(value)
+    
+    switch (config.yAxis as any) {
+      case 'wins_count':
+        return `${numValue} win${numValue !== 1 ? 's' : ''}`
+      case 'losses_count':
+        return `${numValue} loss${numValue !== 1 ? 'es' : ''}`
       case 'win_rate':
       case 'roi':
-        return formatPercentage(value)
-      case 'stake':
-        return formatCurrency(value)
+      case 'longshot_hit_rate':
+      case 'chalk_hit_rate':
+        return formatPercentage(numValue)
+      case 'profit':
+      case 'total_staked':
+      case 'average_stake':
+      case 'max_win':
+      case 'max_loss':
+        return formatCurrency(numValue)
+      case 'average_odds':
+      case 'median_odds':
+        return numValue > 0 ? `+${numValue.toFixed(0)}` : numValue.toFixed(0)
+      case 'void_count':
+        return `${numValue} void${numValue !== 1 ? 's' : ''}`
+      case 'profit_variance':
+        return `$${numValue.toFixed(2)} volatility`
+      // Legacy support
       case 'count':
-        return `${value} bet${value !== 1 ? 's' : ''}`
+        return `${numValue} bet${numValue !== 1 ? 's' : ''}`
+      case 'stake':
+        return formatCurrency(numValue)
       default:
-        return value.toFixed(2)
+        return numValue.toFixed(2)
     }
   }
 
-  const formatYAxisTick = (value: number) => {
-    switch (config.yAxis) {
+  const formatYAxisTick = (value: any) => {
+    // Handle null, undefined, or non-numeric values
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return '0'
+    }
+    
+    const numValue = Number(value)
+    
+    switch (config.yAxis as any) {
       case 'profit':
-      case 'stake':
-        return `$${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + 'k' : value.toFixed(0)}`
+      case 'total_staked':
+      case 'average_stake':
+      case 'max_win':
+      case 'max_loss':
+      case 'profit_variance':
+        return `$${Math.abs(numValue) >= 1000 ? (numValue / 1000).toFixed(1) + 'k' : numValue.toFixed(0)}`
       case 'win_rate':
       case 'roi':
-        return `${value.toFixed(0)}%`
+      case 'longshot_hit_rate':
+      case 'chalk_hit_rate':
+        return `${numValue.toFixed(0)}%`
+      case 'wins_count':
+      case 'losses_count':
+      case 'void_count':
+        return numValue.toFixed(0)
+      case 'average_odds':
+      case 'median_odds':
+        return numValue > 0 ? `+${numValue.toFixed(0)}` : numValue.toFixed(0)
+      // Legacy support  
       case 'count':
-        return value.toFixed(0)
+        return numValue.toFixed(0)
+      case 'stake':
+        return `$${Math.abs(numValue) >= 1000 ? (numValue / 1000).toFixed(1) + 'k' : numValue.toFixed(0)}`
       default:
-        return value.toFixed(1)
+        return numValue.toFixed(1)
     }
   }
 
@@ -164,7 +218,7 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
       margin: { top: 20, right: 30, left: 20, bottom: 20 },
     }
 
-    switch (config.chartType) {
+    switch (config.chartType as any) {
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={280}>
@@ -282,6 +336,125 @@ export function CustomChartRenderer({ config, userId, onDelete, isPro = false }:
               />
               <Legend />
             </PieChart>
+          </ResponsiveContainer>
+        )
+
+      case 'stacked_bar':
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart {...chartProps}>
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="#e2e8f0"
+                horizontal={true}
+                vertical={false}
+              />
+              <XAxis
+                dataKey={config.xAxis}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatYAxisTick}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                  fontSize: '13px',
+                }}
+                formatter={formatTooltipValue}
+              />
+              <Bar dataKey={config.yAxis} stackId="a" fill={getChartColor()} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )
+
+      case 'histogram':
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart {...chartProps}>
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="#e2e8f0"
+                horizontal={true}
+                vertical={false}
+              />
+              <XAxis
+                dataKey={config.xAxis}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatYAxisTick}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                  fontSize: '13px',
+                }}
+                formatter={formatTooltipValue}
+              />
+              <Bar dataKey={config.yAxis} fill={getChartColor()} radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )
+
+      case 'scatter':
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <ScatterChart {...chartProps}>
+              <CartesianGrid
+                strokeDasharray="2 2"
+                stroke="#e2e8f0"
+                horizontal={true}
+                vertical={true}
+              />
+              <XAxis
+                dataKey={config.xAxis}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                type="category"
+              />
+              <YAxis
+                dataKey={config.yAxis}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatYAxisTick}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                  fontSize: '13px',
+                }}
+                formatter={formatTooltipValue}
+              />
+              <Scatter fill={getChartColor()} />
+            </ScatterChart>
           </ResponsiveContainer>
         )
 

@@ -14,9 +14,10 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { getSellerStrategiesWithOpenBets } from '@/lib/queries/open-bets'
 import { createClient } from '@/lib/supabase'
 import { useStripeSellerData } from '@/lib/hooks/use-stripe-data'
-import { Loader2, Plus, Target } from 'lucide-react'
+import { Loader2, Plus, Target, HelpCircle } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ProfessionalStrategyCard, type StrategyData } from './professional-strategy-card'
+import { StrategyInfoModal } from '@/components/strategy-info-modal'
 
 export function StrategiesTab() {
   const { user, loading: authLoading } = useAuth()
@@ -24,6 +25,7 @@ export function StrategiesTab() {
   const [strategies, setStrategies] = useState<StrategyData[]>([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   
   // Use Stripe seller data to enhance strategy information with subscriber counts
   const { data: stripeData, loading: stripeLoading } = useStripeSellerData()
@@ -297,11 +299,22 @@ export function StrategiesTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">Your Strategies</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your betting strategies and monetization settings
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Your Strategies</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Manage your betting strategies and monetization settings
+          </p>
+        </div>
+        <Button
+          onClick={() => setShowInfoModal(true)}
+          variant="outline"
+          size="sm"
+          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+        >
+          <HelpCircle className="mr-2 h-4 w-4" />
+          Strategy Guide
+        </Button>
       </div>
 
       {/* Strategy Cards */}
@@ -318,6 +331,12 @@ export function StrategiesTab() {
           />
         ))}
       </div>
+
+      {/* Strategy Info Modal */}
+      <StrategyInfoModal 
+        isOpen={showInfoModal} 
+        onOpenChange={setShowInfoModal} 
+      />
     </div>
   )
 }

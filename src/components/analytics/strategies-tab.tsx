@@ -33,6 +33,7 @@ import {
   TrendingUp,
   Users,
   Wand2,
+  HelpCircle,
 } from 'lucide-react'
 
 // TrueSharp Shield Component
@@ -62,6 +63,7 @@ const TrueSharpShield = ({ className = 'h-8 w-8' }) => (
 )
 import { useState } from 'react'
 import { FilterOptions } from './filter-system'
+import { StrategyInfoModal } from '@/components/strategy-info-modal'
 
 interface Strategy {
   id: string
@@ -152,6 +154,7 @@ export function StrategiesTab({
   console.log('StrategiesTab - isLoading:', isLoading)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
   const [createForm, setCreateForm] = useState<CreateStrategyForm>({
     name: '',
     description: '',
@@ -267,15 +270,26 @@ export function StrategiesTab({
             <p className="text-lg text-slate-600 mt-2">Create and manage your custom betting strategies</p>
           </div>
           
-          {/* Create Strategy Button - Moved higher and more prominent */}
-          <Button 
-            onClick={handleOpenCreateModal}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-6 py-3 text-lg font-medium"
-            size="lg"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Create Strategy
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowInfoModal(true)}
+              variant="outline"
+              size="lg"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50 px-6 py-3 text-lg font-medium"
+            >
+              <HelpCircle className="mr-2 h-5 w-5" />
+              Strategy Guide
+            </Button>
+            <Button 
+              onClick={handleOpenCreateModal}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg px-6 py-3 text-lg font-medium"
+              size="lg"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Create Strategy
+            </Button>
+          </div>
         </div>
 
         {/* Stats Summary */}
@@ -865,6 +879,12 @@ export function StrategiesTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Strategy Info Modal */}
+      <StrategyInfoModal 
+        isOpen={showInfoModal} 
+        onOpenChange={setShowInfoModal} 
+      />
     </div>
   )
 }

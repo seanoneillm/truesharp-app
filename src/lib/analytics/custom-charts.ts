@@ -84,25 +84,74 @@ function processChartData(rawData: any[], config: ChartConfig): CustomChartData[
     }
 
     // Calculate Y-axis value
-    switch (yAxis) {
-      case 'count':
-        result[yAxis] = bets.length
+    switch (yAxis as any) {
+      case 'wins_count':
+        result[yAxis] = bets.filter(bet => (bet.status || bet.result) === 'won').length
         break
 
-      case 'profit':
-        result[yAxis] = calculateTotalProfit(bets)
-        break
-
-      case 'stake':
-        result[yAxis] = calculateTotalStake(bets)
+      case 'losses_count':
+        result[yAxis] = bets.filter(bet => (bet.status || bet.result) === 'lost').length
         break
 
       case 'win_rate':
         result[yAxis] = calculateWinRate(bets)
         break
 
+      case 'profit':
+        result[yAxis] = calculateTotalProfit(bets)
+        break
+
       case 'roi':
         result[yAxis] = calculateROI(bets)
+        break
+
+      case 'total_staked':
+        result[yAxis] = calculateTotalStake(bets)
+        break
+
+      case 'average_stake':
+        result[yAxis] = calculateAverageStake(bets)
+        break
+
+      case 'average_odds':
+        result[yAxis] = calculateAverageOdds(bets)
+        break
+
+      case 'median_odds':
+        result[yAxis] = calculateMedianOdds(bets)
+        break
+
+      case 'void_count':
+        result[yAxis] = bets.filter(bet => ['void', 'cancelled'].includes(bet.status || bet.result)).length
+        break
+
+      case 'longshot_hit_rate':
+        result[yAxis] = calculateLongshotHitRate(bets)
+        break
+
+      case 'chalk_hit_rate':
+        result[yAxis] = calculateChalkHitRate(bets)
+        break
+
+      case 'max_win':
+        result[yAxis] = calculateMaxWin(bets)
+        break
+
+      case 'max_loss':
+        result[yAxis] = calculateMaxLoss(bets)
+        break
+
+      case 'profit_variance':
+        result[yAxis] = calculateProfitVariance(bets)
+        break
+
+      // Legacy support
+      case 'count':
+        result[yAxis] = bets.length
+        break
+
+      case 'stake':
+        result[yAxis] = calculateTotalStake(bets)
         break
 
       default:
@@ -125,23 +174,106 @@ function groupDataByXAxis(data: any[], xAxis: string): Record<string, any[]> {
       let key: string
 
       switch (xAxis) {
-        case 'placed_at':
-          // Group by date (YYYY-MM-DD)
-          key = bet.placed_at
-            ? (new Date(bet.placed_at).toISOString().split('T')[0] ?? 'Unknown')
-            : 'Unknown'
+        case 'sport':
+          key = bet.sport || 'Unknown'
           break
 
         case 'league':
-          key = bet.league ?? 'Unknown'
+          key = bet.league || 'Unknown'
+          break
+
+        case 'sportsbook':
+          key = bet.sportsbook || 'Unknown'
           break
 
         case 'bet_type':
           key = bet.bet_type || 'Unknown'
           break
 
-        case 'sportsbook':
-          key = bet.sportsbook || 'Unknown'
+        case 'side':
+          key = bet.side || 'Unknown'
+          break
+
+        case 'prop_type':
+          key = bet.prop_type || 'Unknown'
+          break
+
+        case 'player_name':
+          key = bet.player_name || 'Unknown'
+          break
+
+        case 'home_team':
+          key = bet.home_team || 'Unknown'
+          break
+
+        case 'away_team':
+          key = bet.away_team || 'Unknown'
+          break
+
+        case 'game_date':
+          // Group by game date (YYYY-MM-DD)
+          key = bet.game_date
+            ? (new Date(bet.game_date).toISOString().split('T')[0] ?? 'Unknown')
+            : 'Unknown'
+          break
+
+        case 'placed_at_day_of_week':
+          // Group by day of week (0=Sunday, 6=Saturday)
+          if (bet.placed_at) {
+            const dayOfWeek = new Date(bet.placed_at).getDay()
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            key = days[dayOfWeek] || 'Unknown'
+          } else {
+            key = 'Unknown'
+          }
+          break
+
+        case 'placed_at_time_of_day':
+          // Group by hour of day (0-23)
+          if (bet.placed_at) {
+            const hour = new Date(bet.placed_at).getHours()
+            if (hour >= 6 && hour < 12) key = 'Morning (6AM-12PM)'
+            else if (hour >= 12 && hour < 18) key = 'Afternoon (12PM-6PM)'
+            else if (hour >= 18 && hour < 22) key = 'Evening (6PM-10PM)'
+            else key = 'Late Night (10PM-6AM)'
+          } else {
+            key = 'Unknown'
+          }
+          break
+
+        case 'stake_size_bucket':
+          // Group by stake size buckets
+          const stake = bet.stake || 0
+          if (stake <= 25) key = 'Small (≤$25)'
+          else if (stake <= 100) key = 'Medium ($25-$100)'
+          else key = 'Large (>$100)'
+          break
+
+        case 'odds_range_bucket':
+          // Group by odds ranges
+          const odds = bet.odds || 0
+          if (odds <= -150) key = 'Chalk (≤-150)'
+          else if (odds >= -149 && odds <= 149) key = 'Even Money (-149 to +149)'
+          else if (odds >= 150) key = 'Longshots (≥+150)'
+          else key = 'Unknown'
+          break
+
+        case 'bet_source':
+          // Group by manual vs copy bet
+          key = bet.is_copy_bet || bet.bet_source === 'copy' ? 'Copy Bet' : 'Manual Bet'
+          break
+
+        case 'parlay_vs_straight':
+          // Group by parlay vs straight bet
+          key = bet.is_parlay || bet.bet_type === 'parlay' ? 'Parlay' : 'Straight'
+          break
+
+        // Legacy support
+        case 'placed_at':
+          // Group by date (YYYY-MM-DD)
+          key = bet.placed_at
+            ? (new Date(bet.placed_at).toISOString().split('T')[0] ?? 'Unknown')
+            : 'Unknown'
           break
 
         default:
@@ -315,6 +447,115 @@ export function formatPercentage(value: number): string {
     return '0.0%'
   }
   return `${value.toFixed(1)}%`
+}
+
+/**
+ * Calculate average stake from bets
+ */
+function calculateAverageStake(bets: any[]): number {
+  if (bets.length === 0) return 0
+  const totalStake = calculateTotalStake(bets)
+  return totalStake / bets.length
+}
+
+/**
+ * Calculate average odds from bets
+ */
+function calculateAverageOdds(bets: any[]): number {
+  if (bets.length === 0) return 0
+  const validOdds = bets.filter(bet => bet.odds != null).map(bet => bet.odds)
+  if (validOdds.length === 0) return 0
+  return validOdds.reduce((sum, odds) => sum + odds, 0) / validOdds.length
+}
+
+/**
+ * Calculate median odds from bets
+ */
+function calculateMedianOdds(bets: any[]): number {
+  const validOdds = bets.filter(bet => bet.odds != null).map(bet => bet.odds).sort((a, b) => a - b)
+  if (validOdds.length === 0) return 0
+  
+  const mid = Math.floor(validOdds.length / 2)
+  return validOdds.length % 2 === 0 
+    ? (validOdds[mid - 1] + validOdds[mid]) / 2 
+    : validOdds[mid]
+}
+
+/**
+ * Calculate longshot hit rate (odds >= +200)
+ */
+function calculateLongshotHitRate(bets: any[]): number {
+  const longshotBets = bets.filter(bet => bet.odds >= 200)
+  if (longshotBets.length === 0) return 0
+  
+  const settledLongshots = longshotBets.filter(bet => ['won', 'lost'].includes(bet.status || bet.result))
+  if (settledLongshots.length === 0) return 0
+  
+  const wonLongshots = settledLongshots.filter(bet => (bet.status || bet.result) === 'won').length
+  return (wonLongshots / settledLongshots.length) * 100
+}
+
+/**
+ * Calculate chalk hit rate (odds <= -150)
+ */
+function calculateChalkHitRate(bets: any[]): number {
+  const chalkBets = bets.filter(bet => bet.odds <= -150)
+  if (chalkBets.length === 0) return 0
+  
+  const settledChalk = chalkBets.filter(bet => ['won', 'lost'].includes(bet.status || bet.result))
+  if (settledChalk.length === 0) return 0
+  
+  const wonChalk = settledChalk.filter(bet => (bet.status || bet.result) === 'won').length
+  return (wonChalk / settledChalk.length) * 100
+}
+
+/**
+ * Calculate maximum single bet win
+ */
+function calculateMaxWin(bets: any[]): number {
+  const winningBets = bets.filter(bet => (bet.status || bet.result) === 'won')
+  if (winningBets.length === 0) return 0
+  
+  return Math.max(...winningBets.map(bet => {
+    if (bet.profit !== null && bet.profit !== undefined) return bet.profit
+    return bet.potential_payout - bet.stake
+  }))
+}
+
+/**
+ * Calculate maximum single bet loss
+ */
+function calculateMaxLoss(bets: any[]): number {
+  const losingBets = bets.filter(bet => (bet.status || bet.result) === 'lost')
+  if (losingBets.length === 0) return 0
+  
+  return Math.max(...losingBets.map(bet => bet.stake || 0))
+}
+
+/**
+ * Calculate profit variance (volatility measure)
+ */
+function calculateProfitVariance(bets: any[]): number {
+  if (bets.length === 0) return 0
+  
+  const profits = bets.map(bet => {
+    if (bet.profit !== null && bet.profit !== undefined) return bet.profit
+    
+    const status = bet.status || bet.result
+    switch (status) {
+      case 'won':
+        return bet.potential_payout - bet.stake
+      case 'lost':
+        return -bet.stake
+      default:
+        return 0
+    }
+  })
+  
+  const mean = profits.reduce((sum, profit) => sum + profit, 0) / profits.length
+  const variance = profits.reduce((sum, profit) => sum + Math.pow(profit - mean, 2), 0) / profits.length
+  
+  return Math.sqrt(variance) // Return standard deviation
 }
 
 /**
