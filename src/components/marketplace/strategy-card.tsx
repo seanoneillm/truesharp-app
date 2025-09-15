@@ -37,6 +37,7 @@ interface StrategyData {
   verification_status: string
   rank: number | null
   leaderboard_score?: number // Composite algorithm score
+  marketplace_rank_score?: number // New marketplace ranking score
   last_bet_date: string | null
   last_updated: string
   created_at: string
@@ -219,11 +220,6 @@ export function StrategyCard({
                   <Clock className="h-4 w-4" />
                   <span>{getDaysActive()} active</span>
                 </span>
-                {strategy.leaderboard_score && (
-                  <span className="text-slate-600" title="Composite Algorithm Score">
-                    Score: {strategy.leaderboard_score.toFixed(1)}
-                  </span>
-                )}
               </div>
             </div>
             
@@ -309,14 +305,6 @@ export function StrategyCard({
                   {rankStyle.icon}
                   <span>#{strategy.rank}</span>
                 </div>
-                {strategy.leaderboard_score && (
-                  <div
-                    className="text-xs font-medium text-slate-500"
-                    title="Composite Algorithm Score"
-                  >
-                    Score: {strategy.leaderboard_score.toFixed(1)}
-                  </div>
-                )}
               </div>
             )}
 

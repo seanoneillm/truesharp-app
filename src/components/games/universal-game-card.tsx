@@ -737,23 +737,20 @@ export default function UniversalGameCard({
           category = 'Player Props'
           console.log(`🏃 Player Prop detected: ${odd.oddid}`)
 
-          // Baseball specific
+          // Baseball specific - Enhanced mapping based on games-page.md
           if (league === 'MLB') {
-            if (oddid.includes('batting_')) {
+            if (oddid.includes('batting_') || oddid.includes('points-') && oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/) || oddid.includes('firsttoscore-') || oddid.includes('lasttoscore-') || oddid.includes('fantasyscore-')) {
               subcategory = 'Hitters'
               console.log(`⚾ MLB Hitter prop: ${odd.oddid}`)
             } else if (oddid.includes('pitching_')) {
               subcategory = 'Pitchers'
               console.log(`⚾ MLB Pitcher prop: ${odd.oddid}`)
-            } else if (oddid.includes('fantasyscore')) {
-              subcategory = 'Hitters' // Fantasy score typically goes under hitters
-              console.log(`⚾ MLB Fantasy score prop: ${odd.oddid}`)
             } else {
               subcategory = 'Hitters' // Default to hitters for most MLB props
               console.log(`⚾ MLB Generic player prop (defaulting to Hitters): ${odd.oddid}`)
             }
           }
-          // Football specific
+          // Football specific - Enhanced mapping based on games-page.md
           else if (league === 'NFL' || league === 'NCAAF') {
             if (
               oddid.includes('passing_') ||
@@ -766,21 +763,34 @@ export default function UniversalGameCard({
               subcategory = 'Running Back'
               console.log(`🏈 NFL RB prop: ${odd.oddid}`)
             } else if (oddid.includes('receiving_') || oddid.includes('reception')) {
-              subcategory = 'Wide Receiver'
-              console.log(`🏈 NFL WR prop: ${odd.oddid}`)
+              subcategory = 'Wide Receiver/Tight End'
+              console.log(`🏈 NFL WR/TE prop: ${odd.oddid}`)
             } else if (
               oddid.includes('kicking_') ||
               oddid.includes('fieldgoals_') ||
-              oddid.includes('defense_')
+              oddid.includes('extrapoints_') ||
+              oddid.includes('defense_') ||
+              oddid.includes('tackles-') ||
+              oddid.includes('sacks-')
             ) {
               subcategory = 'Kicker/Defense'
               console.log(`🏈 NFL K/DEF prop: ${odd.oddid}`)
+            } else if (
+              oddid.includes('fantasyscore-') ||
+              oddid.includes('turnovers-') ||
+              oddid.includes('firsttouchdown-') ||
+              oddid.includes('lasttouchdown-') ||
+              oddid.includes('firsttoscore-') ||
+              oddid.includes('touchdowns-')
+            ) {
+              subcategory = 'Any Player'
+              console.log(`🏈 NFL Any Player prop: ${odd.oddid}`)
             } else {
               subcategory = 'Any Player'
               console.log(`🏈 NFL Generic player prop: ${odd.oddid}`)
             }
           }
-          // Basketball specific
+          // Basketball specific - Enhanced mapping based on games-page.md
           else if (league === 'NBA' || league === 'NCAAB') {
             if (
               oddid.includes('points-') ||
@@ -804,22 +814,24 @@ export default function UniversalGameCard({
             } else if (
               oddid.includes('+') ||
               oddid.includes('double') ||
-              oddid.includes('combo') ||
-              oddid.includes('fantasy')
+              oddid.includes('fantasyscore-') ||
+              oddid.includes('firstbasket-') ||
+              oddid.includes('firsttoscore-')
             ) {
               subcategory = 'Combo Props'
               console.log(`🏀 NBA Combo prop: ${odd.oddid}`)
             } else {
-              subcategory = 'All Players'
+              subcategory = 'Scoring'
               console.log(`🏀 NBA Generic player prop: ${odd.oddid}`)
             }
           }
-          // Hockey specific
+          // Hockey specific - Enhanced mapping based on games-page.md
           else if (league === 'NHL') {
             if (
               oddid.includes('saves-') ||
-              oddid.includes('goalsagainst') ||
-              oddid.includes('shutout') ||
+              oddid.includes('goalsagainst-') ||
+              oddid.includes('savepercentage-') ||
+              oddid.includes('shutout-') ||
               oddid.includes('win-')
             ) {
               subcategory = 'Goalies'
@@ -829,35 +841,35 @@ export default function UniversalGameCard({
               console.log(`🏒 NHL Skater prop: ${odd.oddid}`)
             }
           }
-          // Soccer specific
+          // Soccer specific - Enhanced mapping based on games-page.md
           else if (league === 'Champions League' || league === 'MLS') {
-            if (oddid.includes('goals-') || oddid.includes('shots') || oddid.includes('score')) {
+            if (oddid.includes('goals-') || oddid.includes('shots_ontarget-') || oddid.includes('shots-') || oddid.includes('assists-') || oddid.includes('fouls-') || oddid.includes('cards-') || oddid.includes('firstgoal-')) {
               subcategory = 'Forwards'
               console.log(`⚽ Soccer Forward prop: ${odd.oddid}`)
             } else if (
-              oddid.includes('passes') ||
-              oddid.includes('assists-') ||
-              oddid.includes('mid')
+              oddid.includes('passescompleted-') ||
+              oddid.includes('passcompletionpercentage-') ||
+              oddid.includes('tackles-')
             ) {
               subcategory = 'Midfielders'
               console.log(`⚽ Soccer Midfielder prop: ${odd.oddid}`)
             } else if (
-              oddid.includes('tackles-') ||
-              oddid.includes('clearances') ||
+              oddid.includes('clearances-') ||
               oddid.includes('blocks-') ||
-              oddid.includes('interceptions')
+              oddid.includes('interceptions-')
             ) {
               subcategory = 'Defenders'
               console.log(`⚽ Soccer Defender prop: ${odd.oddid}`)
             } else if (
               oddid.includes('saves-') ||
-              oddid.includes('goalsconceded') ||
-              oddid.includes('cleansheet')
+              oddid.includes('goalsconceded-') ||
+              oddid.includes('cleansheet-') ||
+              oddid.includes('punchescatches-')
             ) {
               subcategory = 'Goalkeepers'
               console.log(`⚽ Soccer Goalkeeper prop: ${odd.oddid}`)
             } else {
-              subcategory = 'All Players'
+              subcategory = 'Forwards'
               console.log(`⚽ Soccer Generic player prop: ${odd.oddid}`)
             }
           } else {
@@ -866,66 +878,138 @@ export default function UniversalGameCard({
           }
         }
 
-        // ============ TEAM PROPS ============
-        // Team props based on games-page.md patterns
+        // ============ TEAM PROPS ============ 
+        // Team props based on games-page.md patterns - Enhanced mapping
         else if (
-          (oddid.includes('points-home-game-ou-') ||
+          (// Baseball team props
+            oddid.includes('points-home-game-ou-') ||
             oddid.includes('points-away-game-ou-') ||
+            oddid.includes('points-home-game-yn-') ||
+            oddid.includes('points-away-game-yn-') ||
             oddid.includes('batting_homeruns-home-game-') ||
             oddid.includes('batting_homeruns-away-game-') ||
+            oddid.includes('pitching_strikeouts-home-game-') ||
+            oddid.includes('pitching_strikeouts-away-game-') ||
+            oddid.includes('pitching_hits-home-game-') ||
+            oddid.includes('pitching_hits-away-game-') ||
+            // Football team props
             oddid.includes('touchdowns-home-game-') ||
             oddid.includes('touchdowns-away-game-') ||
-            oddid.includes('corners-home-game-') ||
-            oddid.includes('corners-away-game-') ||
-            oddid.includes('shots-home-game-') ||
-            oddid.includes('shots-away-game-') ||
+            oddid.includes('fieldgoals_made-home-game-') ||
+            oddid.includes('fieldgoals_made-away-game-') ||
             oddid.includes('firsttoscore-home-game-') ||
             oddid.includes('firsttoscore-away-game-') ||
             oddid.includes('lasttoscore-home-game-') ||
-            oddid.includes('lasttoscore-away-game-')) &&
-          !oddid.match(/\d{4,}/)
+            oddid.includes('lasttoscore-away-game-') ||
+            oddid.includes('turnovers-home-game-') ||
+            oddid.includes('turnovers-away-game-') ||
+            oddid.includes('defense_sacks-home-game-') ||
+            oddid.includes('defense_sacks-away-game-') ||
+            oddid.includes('defense_tackles-home-game-') ||
+            oddid.includes('defense_tackles-away-game-') ||
+            // Basketball team props
+            oddid.includes('rebounds-home-game-') ||
+            oddid.includes('rebounds-away-game-') ||
+            oddid.includes('assists-home-game-') ||
+            oddid.includes('assists-away-game-') ||
+            oddid.includes('threepointers_made-home-game-') ||
+            oddid.includes('threepointers_made-away-game-') ||
+            oddid.includes('highestscoringquarter-home-game-') ||
+            oddid.includes('highestscoringquarter-away-game-') ||
+            // Hockey team props
+            oddid.includes('shots_ongoal-home-game-') ||
+            oddid.includes('shots_ongoal-away-game-') ||
+            oddid.includes('hits-home-game-') ||
+            oddid.includes('hits-away-game-') ||
+            oddid.includes('penaltyminutes-home-game-') ||
+            oddid.includes('penaltyminutes-away-game-') ||
+            oddid.includes('firstgoal-home-game-') ||
+            oddid.includes('firstgoal-away-game-') ||
+            oddid.includes('lastgoal-home-game-') ||
+            oddid.includes('lastgoal-away-game-') ||
+            oddid.includes('powerplaygoals-home-game-') ||
+            oddid.includes('powerplaygoals-away-game-') ||
+            oddid.includes('shorthandedgoals-home-game-') ||
+            oddid.includes('shorthandedgoals-away-game-') ||
+            // Soccer team props
+            oddid.includes('shots-home-game-') ||
+            oddid.includes('shots-away-game-') ||
+            oddid.includes('shots_ontarget-home-game-') ||
+            oddid.includes('shots_ontarget-away-game-') ||
+            oddid.includes('corners-home-game-') ||
+            oddid.includes('corners-away-game-') ||
+            oddid.includes('cards-home-game-') ||
+            oddid.includes('cards-away-game-') ||
+            oddid.includes('cleansheet-home-game-') ||
+            oddid.includes('cleansheet-away-game-') ||
+            oddid.includes('fouls-home-game-') ||
+            oddid.includes('fouls-away-game-') ||
+            oddid.includes('offsides-home-game-') ||
+            oddid.includes('offsides-away-game-')) &&
+          !oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/)
         ) {
           category = 'Team Props'
           subcategory = 'All'
+          console.log(`🏆 Team Prop detected: ${odd.oddid}`)
         }
 
         // ============ GAME PROPS ============
-        // Game props based on games-page.md patterns
+        // Game props based on games-page.md patterns - Enhanced mapping
         else if (
-          (oddid.includes('batting_homeruns-all-game-') ||
+          (// Baseball game props
+            oddid.includes('batting_homeruns-all-game-') ||
+            oddid.includes('pitching_strikeouts-all-game-') ||
+            oddid.includes('pitching_hits-all-game-') ||
+            oddid.includes('points-all-game-eo-') ||
+            oddid.includes('points-all-game-yn-') ||
+            oddid.includes('points-all-1i-') ||
+            // Football game props
             oddid.includes('touchdowns-all-game-') ||
-            oddid.includes('corners-all-game-') ||
-            oddid.includes('shots-all-game-') ||
+            oddid.includes('fieldgoals_made-all-game-') ||
+            oddid.includes('turnovers-all-game-') ||
+            oddid.includes('defense_sacks-all-game-') ||
             oddid.includes('overtime-all-game-') ||
-            oddid.includes('extratime-all-game-') ||
-            oddid.includes('penaltyshootout-all-game-') ||
-            oddid.includes('bothteamstoscore-all-game-') ||
             oddid.includes('firstscore-all-game-') ||
             oddid.includes('lastscore-all-game-') ||
-            oddid.includes('points-all-game-eo-') ||
-            oddid.includes('firstgoaltime-all-game-') ||
             oddid.includes('longesttouchdown-all-game-') ||
-            oddid.includes('timestied-all-game-') ||
-            // Period/Inning specific props
             oddid.includes('points-all-1q-') ||
             oddid.includes('points-all-1h-') ||
             oddid.includes('points-all-2h-') ||
+            oddid.includes('timestied-all-game-') ||
+            // Basketball game props
+            oddid.includes('rebounds-all-game-') ||
+            oddid.includes('assists-all-game-') ||
+            oddid.includes('threepointers_made-all-game-') ||
+            oddid.includes('turnovers-all-game-') ||
+            oddid.includes('steals-all-game-') ||
+            oddid.includes('blocks-all-game-') ||
+            oddid.includes('highestscoringquarter-all-game-') ||
+            oddid.includes('lowestscoringquarter-all-game-') ||
+            // Hockey game props
+            oddid.includes('shots_ongoal-all-game-') ||
+            oddid.includes('hits-all-game-') ||
+            oddid.includes('penaltyminutes-all-game-') ||
+            oddid.includes('powerplays-all-game-') ||
+            oddid.includes('shootout-all-game-') ||
+            oddid.includes('firstgoaltime-all-game-') ||
             oddid.includes('points-all-1p-') ||
             oddid.includes('points-all-2p-') ||
             oddid.includes('points-all-3p-') ||
-            oddid.includes('points-all-1i-') ||
-            oddid.includes('points-all-1ix') ||
-            oddid.includes('points-away-1i-') ||
-            oddid.includes('points-home-1i-') ||
-            oddid.includes('points-away-1ix') ||
-            oddid.includes('points-home-1ix') ||
-            oddid.includes('points-away-1h-') ||
-            oddid.includes('points-home-1h-')) &&
+            // Soccer game props
+            oddid.includes('shots-all-game-') ||
+            oddid.includes('shots_ontarget-all-game-') ||
+            oddid.includes('corners-all-game-') ||
+            oddid.includes('cards-all-game-') ||
+            oddid.includes('fouls-all-game-') ||
+            oddid.includes('offsides-all-game-') ||
+            oddid.includes('extratime-all-game-') ||
+            oddid.includes('penaltyshootout-all-game-') ||
+            oddid.includes('bothteamstoscore-all-game-')) &&
           !oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/)
         ) {
           category = 'Game Props'
           subcategory = 'All'
-          console.log(`🎯 Game/Period Prop: ${odd.oddid}`)
+          console.log(`🎯 Game Prop detected: ${odd.oddid}`)
         }
 
         // ============ FALLBACK ============
@@ -1364,155 +1448,172 @@ export default function UniversalGameCard({
 
     return (
       <div className="space-y-4">
-        {/* Moneyline */}
-        {moneylineOdds.length > 0 && (
-          <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-            <h4 className="mb-2 flex items-center text-sm font-bold text-blue-800">💰 Moneyline</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {moneylineOdds.map(odd => {
-                const oddsValue =
-                  odd.fanduelodds ||
-                  odd.draftkingsodds ||
-                  odd.espnbetodds ||
-                  odd.ceasarsodds ||
-                  odd.mgmodds ||
-                  odd.fanaticsodds ||
-                  odd.bookodds ||
-                  0
-                const isSelected = selectedBets.some(
-                  bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
-                )
-
-                const team = odd.oddid?.includes('-home')
-                  ? game.home_team
-                  : odd.oddid?.includes('-away')
-                    ? game.away_team
-                    : 'Draw'
-
-                return (
-                  <button
-                    key={odd.id}
-                    onClick={() => handleBetClick(odd)}
-                    disabled={isGameStarted}
-                    className={`rounded-lg border border-slate-200 px-3 py-2 font-semibold shadow-sm transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
-                        : isGameStarted
-                          ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                          : 'to-purple-25 cursor-pointer bg-gradient-to-b from-white text-slate-800 hover:from-purple-100 hover:to-purple-200 hover:shadow-md'
-                    } `}
-                  >
-                    <div className="text-center">
-                      <div className="text-sm font-bold text-purple-700">{team}</div>
-                      <div className="font-mono text-lg font-bold">{formatOdds(oddsValue)}</div>
-                    </div>
-                  </button>
-                )
-              })}
+        {/* Horizontal Team Matchup */}
+        <div className="flex flex-col items-center justify-center space-y-3 border-b border-slate-100 pb-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+          <div className="flex items-center space-x-3 text-center sm:text-left">
+            <div className="font-semibold text-slate-900 text-lg">
+              {game.away_team}
+            </div>
+            <div className="text-slate-500 font-medium">@</div>
+            <div className="font-semibold text-slate-900 text-lg">
+              {game.home_team}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Spread */}
-        {spreadOdds.length > 0 && (
-          <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-            <h4 className="mb-2 flex items-center text-sm font-bold text-blue-800">
-              📊 {league === 'MLB' ? 'Run Line' : league === 'NHL' ? 'Puck Line' : 'Point Spread'}
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {spreadOdds.map(odd => {
-                const oddsValue =
-                  odd.fanduelodds ||
-                  odd.draftkingsodds ||
-                  odd.espnbetodds ||
-                  odd.ceasarsodds ||
-                  odd.mgmodds ||
-                  odd.fanaticsodds ||
-                  odd.bookodds ||
-                  0
-                const isSelected = selectedBets.some(
-                  bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
-                )
+        {/* Main Lines Grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          
+          {/* Moneyline */}
+          {moneylineOdds.length > 0 && (
+            <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+              <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                Moneyline
+              </div>
+              <div className="space-y-2">
+                {moneylineOdds.map(odd => {
+                  const oddsValue =
+                    odd.fanduelodds ||
+                    odd.draftkingsodds ||
+                    odd.espnbetodds ||
+                    odd.ceasarsodds ||
+                    odd.mgmodds ||
+                    odd.fanaticsodds ||
+                    odd.bookodds ||
+                    0
+                  const isSelected = selectedBets.some(
+                    bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
+                  )
 
-                const team = odd.oddid?.includes('-home') ? game.home_team : game.away_team
-                const line = odd.line ? parseFloat(odd.line) : 0
-                const displayLine = line > 0 ? `+${line}` : line.toString()
+                  const team = odd.oddid?.includes('-home')
+                    ? game.home_team
+                    : odd.oddid?.includes('-away')
+                      ? game.away_team
+                      : 'Draw'
 
-                return (
-                  <button
-                    key={odd.id}
-                    onClick={() => handleBetClick(odd)}
-                    disabled={isGameStarted}
-                    className={`rounded-lg border border-slate-200 px-3 py-2 font-semibold shadow-sm transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
-                        : isGameStarted
-                          ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                          : 'to-purple-25 cursor-pointer bg-gradient-to-b from-white text-slate-800 hover:from-purple-100 hover:to-purple-200 hover:shadow-md'
-                    } `}
-                  >
-                    <div className="text-center">
-                      <div className="text-sm font-bold text-purple-700">{team}</div>
-                      <div className="text-xs font-bold text-purple-600">{displayLine}</div>
-                      <div className="font-mono text-lg font-bold">{formatOdds(oddsValue)}</div>
+                  return (
+                    <div key={odd.id} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">{team}</span>
+                      <button
+                        onClick={() => handleBetClick(odd)}
+                        disabled={isGameStarted}
+                        className={`cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md ${
+                          isSelected
+                            ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
+                            : isGameStarted
+                              ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                              : ''
+                        }`}
+                      >
+                        {formatOdds(oddsValue)}
+                      </button>
                     </div>
-                  </button>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Total */}
-        {totalOdds.length > 0 && (
-          <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-            <h4 className="mb-2 flex items-center text-sm font-bold text-blue-800">
-              🎯 Total {league === 'MLB' ? 'Runs' : league === 'NHL' ? 'Goals' : 'Points'}
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {totalOdds.map(odd => {
-                const oddsValue =
-                  odd.fanduelodds ||
-                  odd.draftkingsodds ||
-                  odd.espnbetodds ||
-                  odd.ceasarsodds ||
-                  odd.mgmodds ||
-                  odd.fanaticsodds ||
-                  odd.bookodds ||
-                  0
-                const isSelected = selectedBets.some(
-                  bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
-                )
+          {/* Spread */}
+          {spreadOdds.length > 0 && (
+            <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+              <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                {league === 'MLB' ? 'Run Line' : league === 'NHL' ? 'Puck Line' : 'Spread'}
+              </div>
+              <div className="space-y-2">
+                {spreadOdds.map(odd => {
+                  const oddsValue =
+                    odd.fanduelodds ||
+                    odd.draftkingsodds ||
+                    odd.espnbetodds ||
+                    odd.ceasarsodds ||
+                    odd.mgmodds ||
+                    odd.fanaticsodds ||
+                    odd.bookodds ||
+                    0
+                  const isSelected = selectedBets.some(
+                    bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
+                  )
 
-                const isOver = odd.oddid?.includes('-ou-over')
-                const line = odd.line || ''
+                  const team = odd.oddid?.includes('-home') ? game.home_team : game.away_team
+                  const line = odd.line ? parseFloat(odd.line) : 0
+                  const displayLine = line > 0 ? `+${line}` : line.toString()
 
-                return (
-                  <button
-                    key={odd.id}
-                    onClick={() => handleBetClick(odd)}
-                    disabled={isGameStarted}
-                    className={`rounded-lg border border-slate-200 px-3 py-2 font-semibold shadow-sm transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
-                        : isGameStarted
-                          ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                          : 'to-purple-25 cursor-pointer bg-gradient-to-b from-white text-slate-800 hover:from-purple-100 hover:to-purple-200 hover:shadow-md'
-                    } `}
-                  >
-                    <div className="text-center">
-                      <div className="text-sm font-bold text-purple-700">
-                        {isOver ? 'Over' : 'Under'}
-                      </div>
-                      <div className="text-xs font-bold text-purple-600">{line}</div>
-                      <div className="font-mono text-lg font-bold">{formatOdds(oddsValue)}</div>
+                  return (
+                    <div key={odd.id} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        {team} {displayLine}
+                      </span>
+                      <button
+                        onClick={() => handleBetClick(odd)}
+                        disabled={isGameStarted}
+                        className={`cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md ${
+                          isSelected
+                            ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
+                            : isGameStarted
+                              ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                              : ''
+                        }`}
+                      >
+                        {formatOdds(oddsValue)}
+                      </button>
                     </div>
-                  </button>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Total */}
+          {totalOdds.length > 0 && (
+            <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+              <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                Total
+              </div>
+              <div className="space-y-2">
+                {totalOdds.map(odd => {
+                  const oddsValue =
+                    odd.fanduelodds ||
+                    odd.draftkingsodds ||
+                    odd.espnbetodds ||
+                    odd.ceasarsodds ||
+                    odd.mgmodds ||
+                    odd.fanaticsodds ||
+                    odd.bookodds ||
+                    0
+                  const isSelected = selectedBets.some(
+                    bet => bet.gameId === game.id && bet.sportsbook === odd.sportsbook
+                  )
+
+                  const isOver = odd.oddid?.includes('-ou-over')
+                  const line = odd.line || ''
+
+                  return (
+                    <div key={odd.id} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        {isOver ? 'Over' : 'Under'} {line}
+                      </span>
+                      <button
+                        onClick={() => handleBetClick(odd)}
+                        disabled={isGameStarted}
+                        className={`cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md ${
+                          isSelected
+                            ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
+                            : isGameStarted
+                              ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                              : ''
+                        }`}
+                      >
+                        {formatOdds(oddsValue)}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     )
   }
@@ -1803,7 +1904,7 @@ export default function UniversalGameCard({
     return 'Team'
   }
 
-  // Function to render props in grouped over/under format
+  // Function to render props in grouped over/under format with enhanced player grouping
   const renderPropsDisplay = () => {
     console.log(`🎨 Rendering props display with ${displayOdds.length} odds`)
 
@@ -1818,180 +1919,256 @@ export default function UniversalGameCard({
     const deduplicatedOdds = Array.from(uniqueOdds.values())
     console.log(`🎨 Deduplicated to ${deduplicatedOdds.length} unique odds`)
 
-    // Group props by their base identifier (removing over/under suffix only)
-    const groupedProps: {
-      [key: string]: { over?: DatabaseOdds; under?: DatabaseOdds; base: string; line?: string }
+    // Enhanced grouping: First group by player/team, then by prop type
+    const playerGroupedProps: {
+      [playerKey: string]: {
+        playerOrTeam: string
+        isPlayerProp: boolean
+        isTeamProp: boolean
+        props: {
+          [propType: string]: {
+            lines: {
+              [lineKey: string]: { 
+                over?: DatabaseOdds; 
+                under?: DatabaseOdds; 
+                base: string; 
+                line?: string;
+                propName: string;
+              }
+            }
+          }
+        }
+      }
     } = {}
 
     deduplicatedOdds.forEach((odd, index) => {
       if (!odd.oddid) return
 
-      // Extract base prop identifier (only handle over/under, not yes/no)
+      // Extract base prop identifier (removing over/under suffix)
       const baseId = odd.oddid.replace(/-ou-(over|under)$/, '')
 
-      // Only handle over/under props (yes/no props are filtered out earlier)
+      // Only handle over/under props
       const isOver = odd.oddid.includes('-ou-over')
       const isUnder = odd.oddid.includes('-ou-under')
 
-      if (index < 5) {
-        // Debug first few props
-        console.log(
-          `🎯 Processing prop ${index + 1}: ${odd.oddid} -> base: ${baseId}, isOver: ${isOver}, isUnder: ${isUnder}`
-        )
+      if (!isOver && !isUnder) {
+        console.log(`⚠️ Skipping non-over/under prop: ${odd.oddid}`)
+        return
       }
 
-      // Only process if it's an over/under prop
-      if (isOver || isUnder) {
-        if (!groupedProps[baseId]) {
-          groupedProps[baseId] = { base: baseId, line: odd.line || '' }
-        }
-        if (isOver) {
-          groupedProps[baseId]!.over = odd
-        } else if (isUnder) {
-          groupedProps[baseId]!.under = odd
-        }
+      const isPlayerProp = baseId.match(/-[A-Z_]+_1_[A-Z]+-game$/) || baseId.match(/\d{4,}/)
+      const isTeamProp = baseId.includes('-home-game') || baseId.includes('-away-game')
+
+      let playerOrTeam = ''
+      let propType = ''
+      let playerKey = ''
+
+      if (isPlayerProp) {
+        playerOrTeam = getPlayerName(baseId)
+        propType = getPropDisplayName(baseId)
+        playerKey = `player-${playerOrTeam}`
+      } else if (isTeamProp) {
+        playerOrTeam = getTeamFromOddid(baseId)
+        propType = getPropDisplayName(baseId)
+        playerKey = `team-${playerOrTeam}`
       } else {
-        console.log(`⚠️ Skipping non-over/under prop: ${odd.oddid}`)
+        propType = getPropDisplayName(baseId)
+        playerKey = `game-${propType}`
+        playerOrTeam = ''
+      }
+
+      // Initialize player group if needed
+      if (!playerGroupedProps[playerKey]) {
+        playerGroupedProps[playerKey] = {
+          playerOrTeam,
+          isPlayerProp: !!isPlayerProp,
+          isTeamProp: !!isTeamProp,
+          props: {}
+        }
+      }
+
+      // Initialize prop type if needed
+      if (!playerGroupedProps[playerKey].props[propType]) {
+        playerGroupedProps[playerKey].props[propType] = {
+          lines: {}
+        }
+      }
+
+      // Use line value to create unique line keys for multiple lines of same prop
+      const lineKey = odd.line || 'default'
+      
+      // Initialize line group if needed
+      if (!playerGroupedProps[playerKey].props[propType].lines[lineKey]) {
+        playerGroupedProps[playerKey].props[propType].lines[lineKey] = {
+          base: baseId,
+          line: odd.line || '',
+          propName: propType
+        }
+      }
+
+      // Add over/under to the appropriate line
+      if (isOver) {
+        playerGroupedProps[playerKey].props[propType].lines[lineKey].over = odd
+      } else if (isUnder) {
+        playerGroupedProps[playerKey].props[propType].lines[lineKey].under = odd
+      }
+
+      if (index < 5) {
+        console.log(`🎯 Grouped prop ${index + 1}: ${playerOrTeam} - ${propType} - Line: ${lineKey}`)
       }
     })
 
     const gameStartTime = new Date(game.commence_time)
     const now = new Date()
-
-    // Add 10-minute buffer after game starts before disabling bets
     const bufferTime = 10 * 60 * 1000 // 10 minutes in milliseconds
     const isGameStarted = now.getTime() >= gameStartTime.getTime() + bufferTime
 
-    // Convert to compact list format with scroll
+    // Count total props for display
+    const totalProps = Object.values(playerGroupedProps).reduce((total, playerGroup) => {
+      return total + Object.values(playerGroup.props).reduce((propTotal, prop) => {
+        return propTotal + Object.keys(prop.lines).length
+      }, 0)
+    }, 0)
+
     return (
       <div className="space-y-1">
-        {Object.entries(groupedProps).length === 0 ? (
+        {totalProps === 0 ? (
           <div className="py-4 text-center text-slate-500">
             <p>No over/under props available for this selection</p>
             <p className="mt-1 text-xs">Total display odds: {displayOdds.length}</p>
           </div>
         ) : (
-          <div className="max-h-96 space-y-1 overflow-y-auto pr-1">
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
             <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-              <span>{Object.keys(groupedProps).length} props available</span>
-              {Object.keys(groupedProps).length > 10 && <span>Scroll for more ↓</span>}
+              <span>{totalProps} props available</span>
+              {totalProps > 10 && <span>Scroll for more ↓</span>}
             </div>
 
-            {Object.entries(groupedProps).map(([key, group]) => {
-              const propName = getPropDisplayName(group.base)
-              const isPlayerProp =
-                group.base.match(/-[A-Z_]+_1_[A-Z]+-game$/) || group.base.match(/\d{4,}/)
-              const isTeamProp =
-                group.base.includes('-home-game') || group.base.includes('-away-game')
-
-              let displayName = propName
-              let playerOrTeam = ''
-
-              if (isPlayerProp) {
-                playerOrTeam = getPlayerName(group.base)
-                displayName = propName
-              } else if (isTeamProp) {
-                playerOrTeam = getTeamFromOddid(group.base)
-                displayName = propName
-              }
-
-              const overOdds = group.over
-                ? group.over.fanduelodds ||
-                  group.over.draftkingsodds ||
-                  group.over.espnbetodds ||
-                  group.over.ceasarsodds ||
-                  group.over.mgmodds ||
-                  group.over.fanaticsodds ||
-                  group.over.bookodds ||
-                  0
-                : null
-              const underOdds = group.under
-                ? group.under.fanduelodds ||
-                  group.under.draftkingsodds ||
-                  group.under.espnbetodds ||
-                  group.under.ceasarsodds ||
-                  group.under.mgmodds ||
-                  group.under.fanaticsodds ||
-                  group.under.bookodds ||
-                  0
-                : null
-
-              return (
-                <div
-                  key={key}
-                  className="to-slate-25 hover:to-indigo-25 flex items-center justify-between rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 px-3 py-2 transition-all hover:border-blue-300 hover:from-blue-50 hover:shadow-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-slate-900">
-                      {playerOrTeam ? (
-                        <span className="font-bold text-blue-700">{playerOrTeam}</span>
-                      ) : (
-                        <span className="font-semibold text-slate-700">{displayName}</span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center space-x-2 text-xs text-slate-500">
-                      {playerOrTeam && <span>{displayName}</span>}
-                      {group.line && (
-                        <>
-                          {playerOrTeam && <span>•</span>}
-                          <span>
-                            Line: <span className="font-mono">{group.line}</span>
-                          </span>
-                        </>
-                      )}
-                    </div>
+            {Object.entries(playerGroupedProps).map(([playerKey, playerGroup]) => (
+              <div key={playerKey} className="space-y-2">
+                {/* Player/Team Header - only show if there's a player/team name */}
+                {playerGroup.playerOrTeam && (
+                  <div className="border-b border-slate-200 pb-1">
+                    <h4 className="font-bold text-blue-700 text-sm">
+                      {playerGroup.playerOrTeam}
+                    </h4>
                   </div>
+                )}
 
-                  <div className="ml-4 flex items-center space-x-2">
-                    {/* Over Button */}
-                    {group.over && overOdds && (
-                      <button
-                        onClick={() => handleBetClick(group.over!)}
-                        disabled={isGameStarted}
-                        className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
-                          selectedBets.some(
-                            bet =>
-                              bet.gameId === game.id && bet.sportsbook === group.over!.sportsbook
-                          )
-                            ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
-                            : isGameStarted
-                              ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
-                              : 'cursor-pointer border-green-300 bg-gradient-to-b from-white to-green-50 text-slate-700 hover:border-green-400 hover:from-green-50 hover:to-green-100 hover:shadow-md'
-                        } `}
-                      >
-                        <div className="text-center">
-                          <div className="mb-0.5 text-xs font-medium text-green-600">O</div>
-                          <div className="font-mono text-xs font-bold">{formatOdds(overOdds)}</div>
+                {/* Props for this player/team */}
+                <div className="space-y-1">
+                  {Object.entries(playerGroup.props).map(([propType, propData]) => (
+                    <div key={`${playerKey}-${propType}`}>
+                      {/* If multiple lines for same prop type, show prop type header */}
+                      {Object.keys(propData.lines).length > 1 && (
+                        <div className="text-xs font-medium text-slate-600 mb-1 ml-1">
+                          {propType}
                         </div>
-                      </button>
-                    )}
+                      )}
+                      
+                      {/* Individual lines for this prop type */}
+                      <div className="space-y-1">
+                        {Object.entries(propData.lines).map(([lineKey, lineData]) => {
+                          const overOdds = lineData.over
+                            ? lineData.over.fanduelodds ||
+                              lineData.over.draftkingsodds ||
+                              lineData.over.espnbetodds ||
+                              lineData.over.ceasarsodds ||
+                              lineData.over.mgmodds ||
+                              lineData.over.fanaticsodds ||
+                              lineData.over.bookodds ||
+                              0
+                            : null
+                          const underOdds = lineData.under
+                            ? lineData.under.fanduelodds ||
+                              lineData.under.draftkingsodds ||
+                              lineData.under.espnbetodds ||
+                              lineData.under.ceasarsodds ||
+                              lineData.under.mgmodds ||
+                              lineData.under.fanaticsodds ||
+                              lineData.under.bookodds ||
+                              0
+                            : null
 
-                    {/* Under Button */}
-                    {group.under && underOdds && (
-                      <button
-                        onClick={() => handleBetClick(group.under!)}
-                        disabled={isGameStarted}
-                        className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
-                          selectedBets.some(
-                            bet =>
-                              bet.gameId === game.id && bet.sportsbook === group.under!.sportsbook
+                          return (
+                            <div
+                              key={`${playerKey}-${propType}-${lineKey}`}
+                              className="flex items-center justify-between rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-25 px-3 py-2 transition-all hover:border-blue-300 hover:from-blue-50 hover:to-indigo-25 hover:shadow-sm"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-semibold text-slate-900">
+                                  {/* Show prop name if no player header, or if multiple lines */}
+                                  {!playerGroup.playerOrTeam || Object.keys(propData.lines).length > 1 ? (
+                                    <span className="font-semibold text-slate-700">{lineData.propName}</span>
+                                  ) : (
+                                    <span className="font-semibold text-slate-700">{lineData.propName}</span>
+                                  )}
+                                </div>
+                                <div className="mt-0.5 flex items-center space-x-2 text-xs text-slate-500">
+                                  {lineData.line && (
+                                    <span>
+                                      Line: <span className="font-mono">{lineData.line}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="ml-4 flex items-center space-x-2">
+                                {/* Over Button */}
+                                {lineData.over && overOdds && (
+                                  <button
+                                    onClick={() => handleBetClick(lineData.over!)}
+                                    disabled={isGameStarted}
+                                    className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
+                                      selectedBets.some(
+                                        bet =>
+                                          bet.gameId === game.id && bet.sportsbook === lineData.over!.sportsbook
+                                      )
+                                        ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
+                                        : isGameStarted
+                                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                                          : 'cursor-pointer border-green-300 bg-gradient-to-b from-white to-green-50 text-slate-700 hover:border-green-400 hover:from-green-50 hover:to-green-100 hover:shadow-md'
+                                    }`}
+                                  >
+                                    <div className="text-center">
+                                      <div className="mb-0.5 text-xs font-medium text-green-600">O</div>
+                                      <div className="font-mono text-xs font-bold">{formatOdds(overOdds)}</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {/* Under Button */}
+                                {lineData.under && underOdds && (
+                                  <button
+                                    onClick={() => handleBetClick(lineData.under!)}
+                                    disabled={isGameStarted}
+                                    className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
+                                      selectedBets.some(
+                                        bet =>
+                                          bet.gameId === game.id && bet.sportsbook === lineData.under!.sportsbook
+                                      )
+                                        ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
+                                        : isGameStarted
+                                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                                          : 'cursor-pointer border-red-300 bg-gradient-to-b from-white to-red-50 text-slate-700 hover:border-red-400 hover:from-red-50 hover:to-red-100 hover:shadow-md'
+                                    }`}
+                                  >
+                                    <div className="text-center">
+                                      <div className="mb-0.5 text-xs font-medium text-red-600">U</div>
+                                      <div className="font-mono text-xs font-bold">{formatOdds(underOdds)}</div>
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           )
-                            ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
-                            : isGameStarted
-                              ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
-                              : 'cursor-pointer border-red-300 bg-gradient-to-b from-white to-red-50 text-slate-700 hover:border-red-400 hover:from-red-50 hover:to-red-100 hover:shadow-md'
-                        } `}
-                      >
-                        <div className="text-center">
-                          <div className="mb-0.5 text-xs font-medium text-red-600">U</div>
-                          <div className="font-mono text-xs font-bold">{formatOdds(underOdds)}</div>
-                        </div>
-                      </button>
-                    )}
-                  </div>
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -2004,10 +2181,6 @@ export default function UniversalGameCard({
       <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-semibold text-slate-800">
-              <span className="text-blue-700">{game.away_team}</span> @{' '}
-              <span className="text-indigo-700">{game.home_team}</span>
-            </span>
             <span className="rounded-full border border-blue-200 bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
               {league}
             </span>

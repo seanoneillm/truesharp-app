@@ -31,6 +31,7 @@ interface OpenBet {
   side?: string
   parlay_id?: string
   is_parlay?: boolean
+  bet_source?: string
 }
 
 interface EnhancedOpenBetsProps {

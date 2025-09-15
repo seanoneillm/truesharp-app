@@ -2,6 +2,7 @@
 
 import { useBetSlip } from '@/contexts/BetSlipContext'
 import { extractGameOdds } from '@/lib/odds/odds-api'
+import { getTeamLogo } from '@/utils/teamLogos'
 // import { enhancedOddsAPI } from '@/lib/odds/odds-api-client'
 
 // Temporary formatting functions to handle missing imports
@@ -257,118 +258,141 @@ export default function GameCard({ game, marketFilter = 'all' }: GameCardProps) 
         </div>
       </div>
 
-      {/* Teams and Odds Grid */}
+      {/* Teams and Main Lines */}
       <div className="p-6">
-        {/* Column Headers */}
-        <div className="mb-4 hidden grid-cols-4 gap-4 border-b border-slate-100 pb-2 sm:grid">
-          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Teams</div>
-          <div className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
-            Moneyline
-          </div>
-          <div className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
-            Spread
-          </div>
-          <div className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
-            Total
-          </div>
-        </div>
-
         {isLoadingOdds ? (
-          <div className="animate-pulse space-y-3">
-            <div className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-4">
-              <div className="h-12 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
+          <div className="animate-pulse space-y-4">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="h-8 w-24 rounded bg-slate-200"></div>
+              <div className="h-6 w-8 rounded bg-slate-200"></div>
+              <div className="h-8 w-24 rounded bg-slate-200"></div>
             </div>
-            <div className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-4">
-              <div className="h-12 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
-              <div className="h-8 rounded bg-slate-200"></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="h-20 rounded bg-slate-200"></div>
+              <div className="h-20 rounded bg-slate-200"></div>
+              <div className="h-20 rounded bg-slate-200"></div>
             </div>
           </div>
         ) : (
           <>
-            {/* Away Team Row */}
-            <div className="grid grid-cols-1 gap-4 rounded-xl py-3 transition-colors hover:bg-blue-50/30 sm:grid-cols-4">
-              <div className="flex items-center">
-                <div>
-                  <div className="font-semibold leading-tight text-slate-900">
-                    @ {game.away_team}
+            {/* Horizontal Team Matchup */}
+            <div className="flex flex-col items-center justify-center space-y-3 border-b border-slate-100 pb-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+              <div className="flex items-center space-x-3 text-center sm:text-left">
+                <div className="flex items-center space-x-2">
+                  {getTeamLogo(game.sport_key, game.away_team) && (
+                    <img 
+                      src={getTeamLogo(game.sport_key, game.away_team)!} 
+                      alt={`${game.away_team} logo`}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div className="font-semibold text-slate-900 text-lg">
+                    {game.away_team}
                   </div>
-                  <div className="mt-1 text-xs font-medium text-slate-500">Away</div>
+                </div>
+                <div className="text-slate-500 font-medium">@</div>
+                <div className="flex items-center space-x-2">
+                  <div className="font-semibold text-slate-900 text-lg">
+                    {game.home_team}
+                  </div>
+                  {getTeamLogo(game.sport_key, game.home_team) && (
+                    <img 
+                      src={getTeamLogo(game.sport_key, game.home_team)!} 
+                      alt={`${game.home_team} logo`}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Moneyline
-                </div>
-                {enhancedOdds?.bestMoneyline.away ? (
-                  <div className="relative">
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() =>
-                          handleBetClick({
-                            gameId: game.id,
-                            sport: game.sport_key,
-                            homeTeam: game.home_team,
-                            awayTeam: game.away_team,
-                            gameTime: game.commence_time,
-                            marketType: 'moneyline',
-                            selection: 'away',
-                            odds: enhancedOdds.bestMoneyline.away?.price || 0,
-                            sportsbook: enhancedOdds.bestMoneyline.away?.sportsbookShort || 'N/A',
-                            description: `${game.away_team} ML`,
-                          })
-                        }
-                        className={`cursor-pointer rounded-xl border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md`}
-                      >
-                        {formatOdds(enhancedOdds.bestMoneyline.away.price)}
-                      </button>
-                      {/* <ParlayButton
-                        gameId={game.id}
-                        homeTeam={game.home_team}
-                        awayTeam={game.away_team}
-                        gameTime={game.commence_time}
-                        sport={game.sport_key}
-                        marketType="moneyline"
-                        selection="away"
-                        odds={enhancedOdds.bestMoneyline.away.price}
-                        team={game.away_team}
-                        description={`${game.away_team} ML`}
-                        size="sm"
-                        sportsbook={enhancedOdds.bestMoneyline.away.sportsbookShort}
-                        onManualPickClick={handleBetClick}
-                        showBothButtons={false}
-                      /> */}
+            {/* Main Lines Odds Grid */}
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                
+                {/* Moneyline */}
+                <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+                  <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Moneyline
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">{game.away_team}</span>
+                      {enhancedOdds?.bestMoneyline.away ? (
+                        <button
+                          onClick={() =>
+                            handleBetClick({
+                              gameId: game.id,
+                              sport: game.sport_key,
+                              homeTeam: game.home_team,
+                              awayTeam: game.away_team,
+                              gameTime: game.commence_time,
+                              marketType: 'moneyline',
+                              selection: 'away',
+                              odds: enhancedOdds.bestMoneyline.away?.price || 0,
+                              sportsbook: enhancedOdds.bestMoneyline.away?.sportsbookShort || 'N/A',
+                              description: `${game.away_team} ML`,
+                            })
+                          }
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                        >
+                          {formatOdds(enhancedOdds.bestMoneyline.away.price)}
+                        </button>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-1 flex items-center justify-center">
-                      <Star className="mr-1 h-3 w-3 text-green-600" />
-                      <span className="text-xs font-medium text-green-600">
-                        {enhancedOdds.bestMoneyline.away.sportsbookShort}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">{game.home_team}</span>
+                      {enhancedOdds?.bestMoneyline.home ? (
+                        <button
+                          onClick={() =>
+                            enhancedOdds?.bestMoneyline.home &&
+                            handleBetClick({
+                              gameId: game.id,
+                              sport: game.sport_key,
+                              homeTeam: game.home_team,
+                              awayTeam: game.away_team,
+                              gameTime: game.commence_time,
+                              marketType: 'moneyline',
+                              selection: 'home',
+                              odds: enhancedOdds.bestMoneyline.home.price,
+                              sportsbook: enhancedOdds.bestMoneyline.home.sportsbookShort,
+                              description: `${game.home_team} ML`,
+                            })
+                          }
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                        >
+                          {formatOdds(enhancedOdds.bestMoneyline.home.price)}
+                        </button>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Spread */}
+                <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+                  <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Spread
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        {game.away_team} {enhancedOdds?.bestSpread.away ? formatSpread(enhancedOdds.bestSpread.away.point) : ''}
                       </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
-                    N/A
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Spread
-                </div>
-                {enhancedOdds?.bestSpread.away ? (
-                  <div className="space-y-1">
-                    <div className="font-semibold text-slate-900">
-                      {formatSpread(enhancedOdds.bestSpread.away.point)}
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-center space-x-1">
+                      {enhancedOdds?.bestSpread.away ? (
                         <button
                           onClick={() =>
                             handleBetClick({
@@ -385,176 +409,21 @@ export default function GameCard({ game, marketFilter = 'all' }: GameCardProps) 
                               description: `${game.away_team} ${formatSpread(enhancedOdds.bestSpread.away?.point || 0)}`,
                             })
                           }
-                          className="cursor-pointer rounded border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-1 text-xs font-medium text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
                         >
                           {formatOdds(enhancedOdds.bestSpread.away.price)}
                         </button>
-                        {/* <ParlayButton
-                          gameId={game.id}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          gameTime={game.commence_time}
-                          sport={game.sport_key}
-                          marketType="spread"
-                          selection="away"
-                          odds={enhancedOdds.bestSpread.away.price}
-                          team={game.away_team}
-                          line={enhancedOdds.bestSpread.away.point}
-                          description={`${game.away_team} ${formatSpread(enhancedOdds.bestSpread.away.point)}`}
-                          size="sm"
-                          sportsbook={enhancedOdds.bestSpread.away.sportsbookShort}
-                          onManualPickClick={handleBetClick}
-                          showBothButtons={false}
-                        /> */}
-                      </div>
-                      <div className="mt-0.5 text-xs text-green-600">
-                        {enhancedOdds.bestSpread.away.sportsbookShort}
-                      </div>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  <div className="font-medium text-slate-400">N/A</div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Total
-                </div>
-                {enhancedOdds?.bestTotal.over ? (
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-slate-600">
-                      O {enhancedOdds.bestTotal.over.point}
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-center space-x-1">
-                        <button
-                          onClick={() =>
-                            enhancedOdds?.bestTotal.over &&
-                            handleBetClick({
-                              gameId: game.id,
-                              sport: game.sport_key,
-                              homeTeam: game.home_team,
-                              awayTeam: game.away_team,
-                              gameTime: game.commence_time,
-                              marketType: 'total',
-                              selection: 'over',
-                              line: enhancedOdds.bestTotal.over.point,
-                              odds: enhancedOdds.bestTotal.over.price,
-                              sportsbook: enhancedOdds.bestTotal.over.sportsbookShort,
-                              description: `Over ${enhancedOdds.bestTotal.over.point}`,
-                            })
-                          }
-                          className="cursor-pointer rounded border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-1 text-xs font-medium text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
-                        >
-                          {formatOdds(enhancedOdds.bestTotal.over.price)}
-                        </button>
-                        {/* <ParlayButton
-                          gameId={game.id}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          gameTime={game.commence_time}
-                          sport={game.sport_key}
-                          marketType="total"
-                          selection="over"
-                          odds={enhancedOdds.bestTotal.over.price}
-                          line={enhancedOdds.bestTotal.over.point}
-                          description={`Over ${enhancedOdds.bestTotal.over.point}`}
-                          size="sm"
-                          sportsbook={enhancedOdds.bestTotal.over.sportsbookShort}
-                          onManualPickClick={handleBetClick}
-                          showBothButtons={false}
-                        /> */}
-                      </div>
-                      <div className="mt-0.5 text-xs text-green-600">
-                        {enhancedOdds.bestTotal.over.sportsbookShort}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="font-medium text-slate-400">N/A</div>
-                )}
-              </div>
-            </div>
-
-            {/* Home Team Row */}
-            <div className="grid grid-cols-1 gap-4 rounded-xl py-3 transition-colors hover:bg-blue-50/30 sm:grid-cols-4">
-              <div className="flex items-center">
-                <div>
-                  <div className="font-semibold leading-tight text-slate-900">{game.home_team}</div>
-                  <div className="mt-1 text-xs font-medium text-slate-500">Home</div>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Moneyline
-                </div>
-                {enhancedOdds?.bestMoneyline.home ? (
-                  <div className="relative">
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() =>
-                          enhancedOdds?.bestMoneyline.home &&
-                          handleBetClick({
-                            gameId: game.id,
-                            sport: game.sport_key,
-                            homeTeam: game.home_team,
-                            awayTeam: game.away_team,
-                            gameTime: game.commence_time,
-                            marketType: 'moneyline',
-                            selection: 'home',
-                            odds: enhancedOdds.bestMoneyline.home.price,
-                            sportsbook: enhancedOdds.bestMoneyline.home.sportsbookShort,
-                            description: `${game.home_team} ML`,
-                          })
-                        }
-                        className={`cursor-pointer rounded-xl border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md`}
-                      >
-                        {formatOdds(enhancedOdds.bestMoneyline.home.price)}
-                      </button>
-                      {/* <ParlayButton
-                        gameId={game.id}
-                        homeTeam={game.home_team}
-                        awayTeam={game.away_team}
-                        gameTime={game.commence_time}
-                        sport={game.sport_key}
-                        marketType="moneyline"
-                        selection="home"
-                        odds={enhancedOdds.bestMoneyline.home.price}
-                        team={game.home_team}
-                        description={`${game.home_team} ML`}
-                        size="sm"
-                        sportsbook={enhancedOdds.bestMoneyline.home.sportsbookShort}
-                        onManualPickClick={handleBetClick}
-                        showBothButtons={false}
-                      /> */}
-                    </div>
-                    <div className="mt-1 flex items-center justify-center">
-                      <Star className="mr-1 h-3 w-3 text-green-600" />
-                      <span className="text-xs font-medium text-green-600">
-                        {enhancedOdds.bestMoneyline.home.sportsbookShort}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        {game.home_team} {enhancedOdds?.bestSpread.home ? formatSpread(enhancedOdds.bestSpread.home.point) : ''}
                       </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
-                    N/A
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Spread
-                </div>
-                {enhancedOdds?.bestSpread.home ? (
-                  <div className="space-y-1">
-                    <div className="font-semibold text-slate-900">
-                      {formatSpread(enhancedOdds.bestSpread.home.point)}
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-center space-x-1">
+                      {enhancedOdds?.bestSpread.home ? (
                         <button
                           onClick={() =>
                             enhancedOdds?.bestSpread.home &&
@@ -572,49 +441,62 @@ export default function GameCard({ game, marketFilter = 'all' }: GameCardProps) 
                               description: `${game.home_team} ${formatSpread(enhancedOdds.bestSpread.home.point)}`,
                             })
                           }
-                          className="cursor-pointer rounded border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-1 text-xs font-medium text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
                         >
                           {formatOdds(enhancedOdds.bestSpread.home.price)}
                         </button>
-                        {/* <ParlayButton
-                          gameId={game.id}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          gameTime={game.commence_time}
-                          sport={game.sport_key}
-                          marketType="spread"
-                          selection="home"
-                          odds={enhancedOdds.bestSpread.home.price}
-                          team={game.home_team}
-                          line={enhancedOdds.bestSpread.home.point}
-                          description={`${game.home_team} ${formatSpread(enhancedOdds.bestSpread.home.point)}`}
-                          size="sm"
-                          sportsbook={enhancedOdds.bestSpread.home.sportsbookShort}
-                          onManualPickClick={handleBetClick}
-                          showBothButtons={false}
-                        /> */}
-                      </div>
-                      <div className="mt-0.5 text-xs text-green-600">
-                        {enhancedOdds.bestSpread.home.sportsbookShort}
-                      </div>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="font-medium text-slate-400">N/A</div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
-                  Total
                 </div>
-                {enhancedOdds?.bestTotal.under ? (
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-slate-600">
-                      U {enhancedOdds.bestTotal.under.point}
+
+                {/* Total */}
+                <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
+                  <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-600">
+                    Total
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        Over {enhancedOdds?.bestTotal.over ? enhancedOdds.bestTotal.over.point : 'N/A'}
+                      </span>
+                      {enhancedOdds?.bestTotal.over ? (
+                        <button
+                          onClick={() =>
+                            enhancedOdds?.bestTotal.over &&
+                            handleBetClick({
+                              gameId: game.id,
+                              sport: game.sport_key,
+                              homeTeam: game.home_team,
+                              awayTeam: game.away_team,
+                              gameTime: game.commence_time,
+                              marketType: 'total',
+                              selection: 'over',
+                              line: enhancedOdds.bestTotal.over.point,
+                              odds: enhancedOdds.bestTotal.over.price,
+                              sportsbook: enhancedOdds.bestTotal.over.sportsbookShort,
+                              description: `Over ${enhancedOdds.bestTotal.over.point}`,
+                            })
+                          }
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                        >
+                          {formatOdds(enhancedOdds.bestTotal.over.price)}
+                        </button>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
                     </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-center space-x-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">
+                        Under {enhancedOdds?.bestTotal.under ? enhancedOdds.bestTotal.under.point : 'N/A'}
+                      </span>
+                      {enhancedOdds?.bestTotal.under ? (
                         <button
                           onClick={() =>
                             enhancedOdds?.bestTotal.under &&
@@ -632,35 +514,19 @@ export default function GameCard({ game, marketFilter = 'all' }: GameCardProps) 
                               description: `Under ${enhancedOdds.bestTotal.under.point}`,
                             })
                           }
-                          className="cursor-pointer rounded border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-1 text-xs font-medium text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
+                          className="cursor-pointer rounded-lg border border-green-200/50 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 text-sm font-semibold text-green-700 transition-all duration-200 hover:from-green-100 hover:to-emerald-100 hover:shadow-md"
                         >
                           {formatOdds(enhancedOdds.bestTotal.under.price)}
                         </button>
-                        {/* <ParlayButton
-                          gameId={game.id}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          gameTime={game.commence_time}
-                          sport={game.sport_key}
-                          marketType="total"
-                          selection="under"
-                          odds={enhancedOdds.bestTotal.under.price}
-                          line={enhancedOdds.bestTotal.under.point}
-                          description={`Under ${enhancedOdds.bestTotal.under.point}`}
-                          size="sm"
-                          sportsbook={enhancedOdds.bestTotal.under.sportsbookShort}
-                          onManualPickClick={handleBetClick}
-                          showBothButtons={false}
-                        /> */}
-                      </div>
-                      <div className="mt-0.5 text-xs text-green-600">
-                        {enhancedOdds.bestTotal.under.sportsbookShort}
-                      </div>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500">
+                          N/A
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="font-medium text-slate-400">N/A</div>
-                )}
+                </div>
+
               </div>
             </div>
 

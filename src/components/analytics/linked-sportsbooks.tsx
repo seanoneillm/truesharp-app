@@ -13,6 +13,26 @@ interface LinkedSportsbook {
   book_abbr: string | null
 }
 
+// Helper function to convert sportsbook name to logo filename
+function getSportsbookId(bookName: string): string {
+  const mapping: { [key: string]: string } = {
+    'DraftKings': 'draftkings',
+    'FanDuel': 'fanduel',
+    'BetMGM': 'mgm',
+    'Caesars': 'caesars',
+    'PointsBet': 'pointsbet',
+    'BetRivers': 'betrivers',
+    'WynnBET': 'wynnbet',
+    'Barstool': 'barstool',
+    'Hard Rock': 'hardrock',
+    'FOX Bet': 'foxbet',
+    'Unibet': 'unibet',
+    'ESPN BET': 'espnbet'
+  };
+  
+  return mapping[bookName] || bookName.toLowerCase().replace(/\s+/g, '');
+}
+
 interface LinkedSportsbooksProps {
   className?: string
 }
@@ -216,24 +236,38 @@ export function LinkedSportsbooks({ className }: LinkedSportsbooksProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {sportsbooks.map((sportsbook, index) => (
-            <div
-              key={index}
-              className="flex items-center space-x-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          {sportsbooks.map((sportsbook, index) => {
+            const sportsbookId = getSportsbookId(sportsbook.book_name);
+            return (
+              <div
+                key={index}
+                className="flex items-center space-x-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center relative">
+                    <img 
+                      src={`/logos/sportsbooks/${sportsbookId}.png`} 
+                      alt={sportsbook.book_name}
+                      className="w-6 h-6 object-contain"
+                      onError={(e) => {
+                        // Fallback to status indicator if logo fails to load
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'block';
+                      }}
+                    />
+                    <div className="w-2 h-2 bg-green-500 rounded-full absolute" style={{ display: 'none' }}></div>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-gray-900">
+                    {sportsbook.book_name}
+                  </h4>
+                  <p className="text-xs text-gray-500">Connected & Active</p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-900">
-                  {sportsbook.book_name}
-                </h4>
-                <p className="text-xs text-gray-500">Connected & Active</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
         {/* How to Link Sportsbooks Button */}

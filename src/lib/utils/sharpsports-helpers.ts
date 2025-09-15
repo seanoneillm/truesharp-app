@@ -1,14 +1,54 @@
 // Helper functions for SharpSports data normalization
 
-export function normalizeSide(position: string | undefined | null): string | null {
+export function normalizeSide(position: string | undefined | null, betDescription?: string, homeTeam?: string, awayTeam?: string): string | null {
   if (!position) return null
 
   const lower = position.toLowerCase()
 
+  // Handle standard side values
   if (lower.includes('over')) return 'over'
   if (lower.includes('under')) return 'under'
   if (lower.includes('home')) return 'home'
   if (lower.includes('away')) return 'away'
+
+  // For SharpSports bets, the position might be a team name
+  // Try to determine if it's home or away based on team names
+  if (homeTeam && awayTeam && betDescription) {
+    const homeTeamLower = homeTeam.toLowerCase()
+    const awayTeamLower = awayTeam.toLowerCase()
+    
+    // Check if position matches one of the team names
+    if (lower.includes(homeTeamLower) || homeTeamLower.includes(lower)) {
+      return 'home'
+    }
+    if (lower.includes(awayTeamLower) || awayTeamLower.includes(lower)) {
+      return 'away'
+    }
+    
+    // Parse bet description for team abbreviations or partial matches
+    const descriptionLower = betDescription.toLowerCase()
+    
+    // Extract team abbreviations from description
+    // Format: "Cincinnati Bengals @ Cleveland Browns - Spread - Game Spread - CIN Bengals -2.5"
+    const parts = descriptionLower.split(' - ')
+    if (parts.length >= 4) {
+      const teamPart = parts[3] // Should contain team and line
+      
+      // Check if position appears in the team part of description
+      if (teamPart.includes(lower)) {
+        // Determine if it's home or away based on the @ symbol in the description
+        const matchupPart = parts[0] // "team1 @ team2"
+        const [away, home] = matchupPart.split(' @ ').map(t => t.trim())
+        
+        if (away && teamPart.includes(away.split(' ')[0].toLowerCase())) {
+          return 'away'
+        }
+        if (home && teamPart.includes(home.split(' ')[0].toLowerCase())) {
+          return 'home'
+        }
+      }
+    }
+  }
 
   // For team names or other positions, return null to avoid constraint violations
   // The side column should only contain 'over', 'under', 'home', 'away'
@@ -134,23 +174,34 @@ export function normalizeBetStatus(status: string | undefined | null, outcome: s
 }
 
 export function transformSharpSportsBet(bet: any, profileId: string): any {
+  const homeTeam = bet.event?.contestantHome?.fullName
+  const awayTeam = bet.event?.contestantAway?.fullName
+  const betDescription = bet.bookDescription
+  
+  // Calculate correct potential payout
+  // For SharpSports: toWin is the profit, atRisk is the stake
+  // potential_payout should be toWin + atRisk (total return if bet wins)
+  const stakeAmount = (bet.atRisk || 0) / 100 // Convert cents to dollars
+  const profitAmount = (bet.toWin || 0) / 100 // Convert cents to dollars
+  const potentialPayout = stakeAmount + profitAmount // Total return = stake + profit
+  
   return {
     profile_id: profileId,
     external_bet_id: bet.id, // Use the actual bet ID, not betSlip ID
     sport: bet.event?.sport,
     league: bet.event?.league || 'N/A', // Provide default for required field
     bet_type: normalizeBetType(bet.proposition),
-    bet_description: bet.bookDescription,
+    bet_description: betDescription,
     odds: bet.oddsAmerican || 0, // Provide default for required field
-    stake: (bet.atRisk || 0) / 100, // Convert cents to dollars
-    potential_payout: ((bet.toWin || 0) + (bet.atRisk || 0)) / 100, // Convert cents to dollars
+    stake: stakeAmount,
+    potential_payout: potentialPayout, // Total return if bet wins
     status: normalizeBetStatus(bet.status, bet.outcome), // Pass outcome to help determine win/loss
     placed_at: bet.timePlaced,
     settled_at: bet.dateClosed,
     game_date: bet.event?.startTime || new Date().toISOString(), // Provide default for required field
-    home_team: bet.event?.contestantHome?.fullName,
-    away_team: bet.event?.contestantAway?.fullName,
-    side: normalizeSide(bet.position),
+    home_team: homeTeam,
+    away_team: awayTeam,
+    side: normalizeSide(bet.position, betDescription, homeTeam, awayTeam),
     line_value: bet.line,
     sportsbook: bet.book?.name,
     bet_source: 'sharpsports',
