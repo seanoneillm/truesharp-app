@@ -1988,8 +1988,8 @@ export default function UniversalGameCard({
       }
 
       // Initialize prop type if needed
-      if (!playerGroupedProps[playerKey].props[propType]) {
-        playerGroupedProps[playerKey].props[propType] = {
+      if (!playerGroupedProps[playerKey]!.props[propType]) {
+        playerGroupedProps[playerKey]!.props[propType] = {
           lines: {}
         }
       }
@@ -1998,8 +1998,8 @@ export default function UniversalGameCard({
       const lineKey = odd.line || 'default'
       
       // Initialize line group if needed
-      if (!playerGroupedProps[playerKey].props[propType].lines[lineKey]) {
-        playerGroupedProps[playerKey].props[propType].lines[lineKey] = {
+      if (!playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey]) {
+        playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey] = {
           base: baseId,
           line: odd.line || '',
           propName: propType
@@ -2008,9 +2008,9 @@ export default function UniversalGameCard({
 
       // Add over/under to the appropriate line
       if (isOver) {
-        playerGroupedProps[playerKey].props[propType].lines[lineKey].over = odd
+        playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey]!.over = odd
       } else if (isUnder) {
-        playerGroupedProps[playerKey].props[propType].lines[lineKey].under = odd
+        playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey]!.under = odd
       }
 
       if (index < 5) {

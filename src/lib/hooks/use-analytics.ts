@@ -234,7 +234,7 @@ export function useAnalytics(user: SupportedUser | null = null) {
 
       // Debounce the fetch unless forced
       if (!forceFetch) {
-        fetchTimeoutRef.current = setTimeout(() => fetchAnalytics(true), 300)
+        fetchTimeoutRef.current = setTimeout(() => fetchAnalytics(true), 300) as unknown as NodeJS.Timeout
         return
       }
 

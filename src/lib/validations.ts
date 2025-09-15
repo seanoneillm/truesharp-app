@@ -542,6 +542,6 @@ export function createValidator<T>(
     timeout = setTimeout(() => {
       const result = validationFn(value)
       callback(result)
-    }, debounceMs)
+    }, debounceMs) as unknown as NodeJS.Timeout
   }
 }

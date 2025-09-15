@@ -35,16 +35,18 @@ export function normalizeSide(position: string | undefined | null, betDescriptio
       const teamPart = parts[3] // Should contain team and line
       
       // Check if position appears in the team part of description
-      if (teamPart.includes(lower)) {
+      if (teamPart && teamPart.includes(lower)) {
         // Determine if it's home or away based on the @ symbol in the description
         const matchupPart = parts[0] // "team1 @ team2"
-        const [away, home] = matchupPart.split(' @ ').map(t => t.trim())
-        
-        if (away && teamPart.includes(away.split(' ')[0].toLowerCase())) {
-          return 'away'
-        }
-        if (home && teamPart.includes(home.split(' ')[0].toLowerCase())) {
-          return 'home'
+        if (matchupPart) {
+          const [away = '', home = ''] = matchupPart.split(' @ ').map(t => t.trim())
+          
+          if (away && teamPart.includes(away.split(' ')[0]?.toLowerCase() || '')) {
+            return 'away'
+          }
+          if (home && teamPart.includes(home.split(' ')[0]?.toLowerCase() || '')) {
+            return 'home'
+          }
         }
       }
     }

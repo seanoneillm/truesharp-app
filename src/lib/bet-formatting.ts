@@ -225,7 +225,7 @@ function parseAndCorrectSharpSportsDescription(bet: BetData): string {
         return description
       }
       
-      const [awayTeam, homeTeam] = matchupSplit.map(t => t.trim())
+      const [awayTeam = '', homeTeam = ''] = matchupSplit.map(t => t.trim())
       
       // For spread and moneyline, the details part contains the selected team
       // Extract the team abbreviation or name from the details
@@ -234,15 +234,15 @@ function parseAndCorrectSharpSportsDescription(bet: BetData): string {
       if (bet.bet_type === 'spread') {
         // For spread: "CIN Bengals -2.5" - extract the team before the line
         const match = detailsPart.match(/^([A-Z]{2,4}|[^-+\d]+?)\s*[-+]?\d/)
-        if (match) {
+        if (match && match[1]) {
           selectedTeam = match[1].trim()
         }
       } else if (bet.bet_type === 'moneyline') {
         // For moneyline, the team should be in the details part
         // Look for team abbreviations or names
-        if (awayTeam && detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0])) {
+        if (awayTeam && detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')) {
           selectedTeam = awayTeam
-        } else if (homeTeam && detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0])) {
+        } else if (homeTeam && detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0] || '')) {
           selectedTeam = homeTeam
         }
       }
@@ -251,7 +251,7 @@ function parseAndCorrectSharpSportsDescription(bet: BetData): string {
       if (selectedTeam) {
         // Determine if it's home or away team
         const isAwayTeam = awayTeam && (
-          selectedTeam.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0]) ||
+          selectedTeam.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '') ||
           awayTeam.toLowerCase().includes(selectedTeam.toLowerCase())
         )
         
@@ -354,7 +354,7 @@ function extractSideFromSharpSportsDescription(bet: BetData): string {
       // For spreads/moneylines, determine home/away based on team in details
       const matchupSplit = matchupPart.split(' @ ')
       if (matchupSplit.length === 2) {
-        const [awayTeam, homeTeam] = matchupSplit.map(t => t.trim())
+        const [awayTeam = '', homeTeam = ''] = matchupSplit.map(t => t.trim())
         
         if (awayTeam && detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')) {
           return 'away'
