@@ -65,6 +65,7 @@
     "dist",
     "build",
     "coverage",
+    "ios-app",
     "**/*.spec.ts",
     "**/*.test.ts",
     "**/*.spec.tsx",
