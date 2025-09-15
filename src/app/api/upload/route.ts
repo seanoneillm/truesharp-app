@@ -14,8 +14,12 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
-    const type = (formData.get('type') as string) || 'general'
+    
+    // TypeScript workaround for FormData.get() in Node.js environment
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const file = ((formData as unknown) as any).get('file') as File
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const type = (((formData as unknown) as any).get('type') as string) || 'general'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    console.error('Upload error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -147,6 +152,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ message: 'File deleted successfully' })
   } catch (error) {
+    console.error('Delete error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

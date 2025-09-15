@@ -104,7 +104,7 @@ export function SignUpForm() {
       }
       usernameTimeoutRef.current = setTimeout(() => {
         checkUsernameAvailability(value)
-      }, 500)
+      }, 500) as unknown as NodeJS.Timeout
     }
 
     // Clear error when user starts typing

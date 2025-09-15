@@ -1,11 +1,11 @@
-import { createServerClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Upload image endpoint called')
 
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient(request)
 
     // Get the current user
     const {
@@ -20,8 +20,11 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
-    const type = formData.get('type') as string // 'profile' or 'banner'
+    // TypeScript workaround for FormData.get() in Node.js environment
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const file = ((formData as unknown) as any).get('file') as File
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const type = ((formData as unknown) as any).get('type') as string // 'profile' or 'banner'
 
     console.log('Form data received:', { fileName: file?.name, fileSize: file?.size, type })
 

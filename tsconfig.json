@@ -2,7 +2,7 @@
   "compilerOptions": {
     // Language and module settings
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "ES6", "ES2022"],
+    "lib": ["dom", "dom.iterable", "ES6", "ES2022", "webworker"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -55,7 +55,8 @@
     "app/**/*",
     "components/**/*",
     "lib/**/*",
-    "types/**/*"
+    "types/**/*",
+    "src/types/**/*"
   ],
   "exclude": [
     "node_modules",

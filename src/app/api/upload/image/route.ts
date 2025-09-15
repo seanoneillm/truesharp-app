@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const file = ((formData as unknown) as any).get('file') as File
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
+    console.error('Image upload error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
