@@ -68,7 +68,7 @@ function GamesPageContent() {
       console.log('🎯 Date object:', date)
 
       // Fetch games for all supported leagues
-      const allLeagues = ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB']
+      const allLeagues = ['MLB', 'NBA', 'WNBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB']
       const gamesPromises = allLeagues.map(async league => {
         try {
           console.log(`🔍 Fetching ${league} games for ${dateStr}`)
@@ -101,6 +101,7 @@ function GamesPageContent() {
       const allSportKeys = [
         'baseball_mlb',
         'basketball_nba',
+        'basketball_wnba',
         'americanfootball_nfl',
         'soccer_usa_mls',
         'icehockey_nhl',
@@ -130,6 +131,7 @@ function GamesPageContent() {
       const emptyGames: Record<string, Game[]> = {
         baseball_mlb: [],
         basketball_nba: [],
+        basketball_wnba: [],
         americanfootball_nfl: [],
         soccer_usa_mls: [],
         icehockey_nhl: [],
@@ -322,6 +324,7 @@ function GamesPageContent() {
     const sportKeyMap: Record<LeagueType, string> = {
       NFL: 'americanfootball_nfl',
       NBA: 'basketball_nba',
+      WNBA: 'basketball_wnba',
       MLB: 'baseball_mlb',
       NHL: 'icehockey_nhl',
       NCAAF: 'americanfootball_ncaaf',
@@ -361,6 +364,7 @@ function GamesPageContent() {
     'MLB',
     'NFL',
     'NBA',
+    'WNBA',
     'NHL',
     'NCAAF',
     'NCAAB',
@@ -429,6 +433,7 @@ function GamesPageContent() {
     const seasonMap: Record<LeagueType, number[]> = {
       MLB: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // February-November (spring training + playoffs)
       NBA: [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7], // September-July (preseason + playoffs)
+      WNBA: [5, 6, 7, 8, 9, 10, 11], // May-November (preseason + playoffs)
       NFL: [7, 8, 9, 10, 11, 12, 1, 2, 3], // July-March (preseason + playoffs)
       NHL: [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7], // September-July (preseason + playoffs)
       NCAAF: [7, 8, 9, 10, 11, 12, 1, 2], // July-February (preseason + bowl games/playoffs)
@@ -451,6 +456,7 @@ function GamesPageContent() {
     const seasonInfo: Record<LeagueType, string> = {
       NFL: 'NFL season runs July-March (preseason through playoffs)',
       NBA: 'NBA season runs September-July (preseason through playoffs)',
+      WNBA: 'WNBA season runs May-November (preseason through playoffs)',
       NHL: 'NHL season runs September-July (preseason through playoffs)',
       NCAAF: 'College Football season runs July-February (preseason through bowl games)',
       NCAAB: 'College Basketball season runs October-May (preseason through March Madness)',

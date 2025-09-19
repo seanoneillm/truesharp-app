@@ -1,6 +1,11 @@
 // Helper functions for SharpSports data normalization
 
-export function normalizeSide(position: string | undefined | null, betDescription?: string, homeTeam?: string, awayTeam?: string): string | null {
+export function normalizeSide(
+  position: string | undefined | null,
+  betDescription?: string,
+  homeTeam?: string,
+  awayTeam?: string
+): string | null {
   if (!position) return null
 
   const lower = position.toLowerCase()
@@ -16,7 +21,7 @@ export function normalizeSide(position: string | undefined | null, betDescriptio
   if (homeTeam && awayTeam && betDescription) {
     const homeTeamLower = homeTeam.toLowerCase()
     const awayTeamLower = awayTeam.toLowerCase()
-    
+
     // Check if position matches one of the team names
     if (lower.includes(homeTeamLower) || homeTeamLower.includes(lower)) {
       return 'home'
@@ -24,23 +29,23 @@ export function normalizeSide(position: string | undefined | null, betDescriptio
     if (lower.includes(awayTeamLower) || awayTeamLower.includes(lower)) {
       return 'away'
     }
-    
+
     // Parse bet description for team abbreviations or partial matches
     const descriptionLower = betDescription.toLowerCase()
-    
+
     // Extract team abbreviations from description
     // Format: "Cincinnati Bengals @ Cleveland Browns - Spread - Game Spread - CIN Bengals -2.5"
     const parts = descriptionLower.split(' - ')
     if (parts.length >= 4) {
       const teamPart = parts[3] // Should contain team and line
-      
+
       // Check if position appears in the team part of description
       if (teamPart && teamPart.includes(lower)) {
         // Determine if it's home or away based on the @ symbol in the description
         const matchupPart = parts[0] // "team1 @ team2"
         if (matchupPart) {
           const [away = '', home = ''] = matchupPart.split(' @ ').map(t => t.trim())
-          
+
           if (away && teamPart.includes(away.split(' ')[0]?.toLowerCase() || '')) {
             return 'away'
           }
@@ -120,7 +125,10 @@ export function normalizeBetType(proposition: string | undefined | null): string
   return 'player_prop'
 }
 
-export function normalizeBetStatus(status: string | undefined | null, outcome: string | undefined | null = null): string {
+export function normalizeBetStatus(
+  status: string | undefined | null,
+  outcome: string | undefined | null = null
+): string {
   if (!status) return 'pending'
 
   const lower = status.toLowerCase()
@@ -179,14 +187,14 @@ export function transformSharpSportsBet(bet: any, profileId: string): any {
   const homeTeam = bet.event?.contestantHome?.fullName
   const awayTeam = bet.event?.contestantAway?.fullName
   const betDescription = bet.bookDescription
-  
+
   // Calculate correct potential payout
   // For SharpSports: toWin is the profit, atRisk is the stake
   // potential_payout should be toWin + atRisk (total return if bet wins)
   const stakeAmount = (bet.atRisk || 0) / 100 // Convert cents to dollars
   const profitAmount = (bet.toWin || 0) / 100 // Convert cents to dollars
   const potentialPayout = stakeAmount + profitAmount // Total return = stake + profit
-  
+
   return {
     profile_id: profileId,
     external_bet_id: bet.id, // Use the actual bet ID, not betSlip ID

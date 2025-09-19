@@ -83,6 +83,7 @@ export default function AdminPage() {
   const [fetchResult, setFetchResult] = useState<string | null>(null)
   const [settleResult, setSettleResult] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedSport, setSelectedSport] = useState<string>('ALL')
 
   // Ref to track current fetch request
   const currentFetchRequest = useRef<AbortController | null>(null)
@@ -1220,7 +1221,7 @@ export default function AdminPage() {
 
     try {
       console.log(
-        `🔧 [${executionId}] Admin: Starting odds fetch for all sports on ${selectedDate.toISOString().split('T')[0]}`
+        `🔧 [${executionId}] Admin: Starting odds fetch for ${selectedSport} on ${selectedDate.toISOString().split('T')[0]}`
       )
 
       const response = await fetch('/api/fetch-odds', {
@@ -1229,7 +1230,7 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sport: 'ALL', // Fetch all sports
+          sport: selectedSport, // Fetch selected sport
           date: selectedDate.toISOString().split('T')[0],
         }),
         signal: currentFetchRequest.current.signal,
@@ -1240,7 +1241,7 @@ export default function AdminPage() {
       if (result.success) {
         console.log(`✅ [${executionId}] Admin: Odds fetch completed:`, result)
         setFetchResult(
-          `✅ Successfully fetched odds for all sports. Total games: ${result.totalGames || 0}. Completed at ${new Date().toLocaleTimeString()}`
+          `✅ Successfully fetched odds for ${selectedSport}. Total games: ${result.totalGames || 0}. Completed at ${new Date().toLocaleTimeString()}`
         )
         setLastUpdated(new Date())
       } else {
@@ -1263,7 +1264,7 @@ export default function AdminPage() {
       setIsFetching(false)
       currentFetchRequest.current = null
     }
-  }, [selectedDate, isFetching])
+  }, [selectedDate, selectedSport, isFetching])
 
   if (authLoading) {
     return (
@@ -1773,11 +1774,37 @@ export default function AdminPage() {
                     Fetch Odds
                   </h3>
                   <p className="mb-4 text-slate-600">
-                    Fetch current odds from the SportsGameOdds API for all supported sports.
+                    Fetch current odds from the SportsGameOdds API for selected sport.
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="sport-select" className="text-sm font-medium text-slate-700">
+                        Sport:
+                      </label>
+                      <Select value={selectedSport} onValueChange={setSelectedSport}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select sport" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">All Sports</SelectItem>
+                          <SelectItem value="MLB">MLB</SelectItem>
+                          <SelectItem value="NBA">NBA</SelectItem>
+                          <SelectItem value="WNBA">WNBA</SelectItem>
+                          <SelectItem value="NFL">NFL</SelectItem>
+                          <SelectItem value="NHL">NHL</SelectItem>
+                          <SelectItem value="NCAAF">NCAAF</SelectItem>
+                          <SelectItem value="NCAAB">NCAAB</SelectItem>
+                          <SelectItem value="MLS">MLS</SelectItem>
+                          <SelectItem value="UCL">UCL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
                   <Button
                     onClick={handleFetchCurrentOdds}
                     disabled={isFetching || !selectedDate}
@@ -1792,6 +1819,7 @@ export default function AdminPage() {
                       Target date: {selectedDate.toLocaleDateString()}
                     </div>
                   )}
+                </div>
                 </div>
 
                 {fetchResult && (

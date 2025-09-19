@@ -14,12 +14,12 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    
+
     // TypeScript workaround for FormData.get() in Node.js environment
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const file = ((formData as unknown) as any).get('file') as File
+    const file = (formData as unknown as any).get('file') as File
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const type = (((formData as unknown) as any).get('type') as string) || 'general'
+    const type = ((formData as unknown as any).get('type') as string) || 'general'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -45,12 +45,10 @@ export async function POST(request: NextRequest) {
     const fileName = `${user.id}/${type}/${Date.now()}.${fileExt}`
 
     // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from('uploads')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      })
+    const { error: uploadError } = await supabase.storage.from('uploads').upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false,
+    })
 
     if (uploadError) {
       return NextResponse.json({ error: uploadError.message }, { status: 400 })

@@ -166,9 +166,6 @@ export async function GET(request: NextRequest) {
       id: string
       description: string
       start_date?: string
-    }> = []
-    let subscriberCounts: Array<{
-      strategy_id: string
       subscriber_count: number
     }> = []
     let profilePictures: Array<{
@@ -177,34 +174,14 @@ export async function GET(request: NextRequest) {
     }> = []
 
     if (strategyIds.length > 0) {
-      // Get strategy details
+      // Get strategy details including subscriber_count (maintained by trigger)
       const { data: strategies, error: strategyError } = await supabase
         .from('strategies')
-        .select('id, description, start_date')
+        .select('id, description, start_date, subscriber_count')
         .in('id', strategyIds)
 
       if (!strategyError) {
         strategyDetails = strategies || []
-      }
-
-      // Get accurate subscriber counts from subscriptions table
-      const { data: subscriptions, error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .select('strategy_id')
-        .in('strategy_id', strategyIds)
-        .eq('status', 'active')
-
-      if (!subscriptionError) {
-        // Count subscribers per strategy
-        const counts = (subscriptions || []).reduce((acc, sub) => {
-          acc[sub.strategy_id] = (acc[sub.strategy_id] || 0) + 1
-          return acc
-        }, {} as Record<string, number>)
-
-        subscriberCounts = Object.entries(counts).map(([strategy_id, count]) => ({
-          strategy_id,
-          subscriber_count: count as number
-        }))
       }
 
       // Get profile pictures
@@ -221,7 +198,6 @@ export async function GET(request: NextRequest) {
     // Transform to StrategyData format and calculate leaderboard scores
     const strategiesWithStats = (leaderboardData || []).map((item): StrategyData => {
       const strategyDetail = strategyDetails.find(s => s.id === item.strategy_id)
-      const subscriberData = subscriberCounts.find(s => s.strategy_id === item.strategy_id)
       const profileData = profilePictures.find(p => p.id === item.user_id)
 
       // Calculate leaderboard score using our algorithm
@@ -274,7 +250,7 @@ export async function GET(request: NextRequest) {
         pricing_weekly: parseFloat(item.subscription_price_weekly?.toString() || '15'),
         pricing_monthly: parseFloat(item.subscription_price_monthly?.toString() || '50'),
         pricing_yearly: parseFloat(item.subscription_price_yearly?.toString() || '500'),
-        subscriber_count: subscriberData?.subscriber_count || 0,
+        subscriber_count: strategyDetail?.subscriber_count || 0,
         is_verified: item.is_verified_seller,
         verification_status: item.verification_status,
         rank: item.overall_rank,

@@ -1,9 +1,9 @@
 'use client'
 
+import { BetSlipBet, useBetSlip } from '@/contexts/BetSlipContext'
+import { useBetSlipToast } from '@/lib/hooks/use-bet-slip-toast'
 import { createClient } from '@/lib/supabase'
 import { useEffect, useMemo, useState } from 'react'
-import { useBetSlip, BetSlipBet } from '@/contexts/BetSlipContext'
-import { useBetSlipToast } from '@/lib/hooks/use-bet-slip-toast'
 
 // Utility function to format odds
 const formatOdds = (odds: number): string => {
@@ -240,6 +240,64 @@ const LEAGUE_TAB_STRUCTURE: Record<string, TabStructure> = {
     },
   },
   NBA: {
+    'Main Lines': ['Point Spread', 'Total Points', 'Moneyline'],
+    'Player Props': {
+      Scoring: [
+        'Points Over/Under',
+        'Field Goals Made Over/Under',
+        'Field Goal Attempts Over/Under',
+        'Three-Pointers Made Over/Under',
+        'Three-Point Attempts Over/Under',
+        'Free Throws Made Over/Under',
+        'Free Throw Attempts Over/Under',
+      ],
+      Rebounding: [
+        'Total Rebounds Over/Under',
+        'Offensive Rebounds Over/Under',
+        'Defensive Rebounds Over/Under',
+      ],
+      Playmaking: [
+        'Assists Over/Under',
+        'Turnovers Over/Under',
+        'Steals Over/Under',
+        'Blocks Over/Under',
+      ],
+      'Combo Props': [
+        'Points + Rebounds Over/Under',
+        'Points + Assists Over/Under',
+        'Rebounds + Assists Over/Under',
+        'Points + Rebounds + Assists Over/Under',
+        'Blocks + Steals Over/Under',
+      ],
+    },
+    'Team Props': {
+      All: [
+        'Team Total Points Over/Under',
+        'Team Total Rebounds Over/Under',
+        'Team Total Assists Over/Under',
+        'Team Total Three-Pointers Over/Under',
+        'Team Total Turnovers Over/Under',
+        'Team to Score First',
+        'Team Highest Scoring Quarter',
+      ],
+    },
+    'Game Props': {
+      All: [
+        'Total Rebounds Over/Under',
+        'Total Assists Over/Under',
+        'Total Three-Pointers Over/Under',
+        'Total Turnovers Over/Under',
+        'Total Steals Over/Under',
+        'Total Blocks Over/Under',
+        'Highest Scoring Quarter',
+        'Lowest Scoring Quarter',
+        'First Quarter Points Over/Under',
+        'First Half Points Over/Under',
+        'Second Half Points Over/Under',
+      ],
+    },
+  },
+  WNBA: {
     'Main Lines': ['Point Spread', 'Total Points', 'Moneyline'],
     'Player Props': {
       Scoring: [
@@ -739,7 +797,13 @@ export default function UniversalGameCard({
 
           // Baseball specific - Enhanced mapping based on games-page.md
           if (league === 'MLB') {
-            if (oddid.includes('batting_') || oddid.includes('points-') && oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/) || oddid.includes('firsttoscore-') || oddid.includes('lasttoscore-') || oddid.includes('fantasyscore-')) {
+            if (
+              oddid.includes('batting_') ||
+              (oddid.includes('points-') && oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/)) ||
+              oddid.includes('firsttoscore-') ||
+              oddid.includes('lasttoscore-') ||
+              oddid.includes('fantasyscore-')
+            ) {
               subcategory = 'Hitters'
               console.log(`⚾ MLB Hitter prop: ${odd.oddid}`)
             } else if (oddid.includes('pitching_')) {
@@ -791,7 +855,7 @@ export default function UniversalGameCard({
             }
           }
           // Basketball specific - Enhanced mapping based on games-page.md
-          else if (league === 'NBA' || league === 'NCAAB') {
+          else if (league === 'NBA' || league === 'WNBA' || league === 'NCAAB') {
             if (
               oddid.includes('points-') ||
               oddid.includes('fieldgoals_') ||
@@ -843,7 +907,15 @@ export default function UniversalGameCard({
           }
           // Soccer specific - Enhanced mapping based on games-page.md
           else if (league === 'Champions League' || league === 'MLS') {
-            if (oddid.includes('goals-') || oddid.includes('shots_ontarget-') || oddid.includes('shots-') || oddid.includes('assists-') || oddid.includes('fouls-') || oddid.includes('cards-') || oddid.includes('firstgoal-')) {
+            if (
+              oddid.includes('goals-') ||
+              oddid.includes('shots_ontarget-') ||
+              oddid.includes('shots-') ||
+              oddid.includes('assists-') ||
+              oddid.includes('fouls-') ||
+              oddid.includes('cards-') ||
+              oddid.includes('firstgoal-')
+            ) {
               subcategory = 'Forwards'
               console.log(`⚽ Soccer Forward prop: ${odd.oddid}`)
             } else if (
@@ -878,11 +950,11 @@ export default function UniversalGameCard({
           }
         }
 
-        // ============ TEAM PROPS ============ 
+        // ============ TEAM PROPS ============
         // Team props based on games-page.md patterns - Enhanced mapping
         else if (
-          (// Baseball team props
-            oddid.includes('points-home-game-ou-') ||
+          // Baseball team props
+          (oddid.includes('points-home-game-ou-') ||
             oddid.includes('points-away-game-ou-') ||
             oddid.includes('points-home-game-yn-') ||
             oddid.includes('points-away-game-yn-') ||
@@ -956,8 +1028,8 @@ export default function UniversalGameCard({
         // ============ GAME PROPS ============
         // Game props based on games-page.md patterns - Enhanced mapping
         else if (
-          (// Baseball game props
-            oddid.includes('batting_homeruns-all-game-') ||
+          // Baseball game props
+          (oddid.includes('batting_homeruns-all-game-') ||
             oddid.includes('pitching_strikeouts-all-game-') ||
             oddid.includes('pitching_hits-all-game-') ||
             oddid.includes('points-all-game-eo-') ||
@@ -1221,7 +1293,7 @@ export default function UniversalGameCard({
       }
 
       // ============ BASKETBALL SPECIFIC MATCHING ============
-      if (league === 'NBA' || league === 'NCAAB') {
+      if (league === 'NBA' || league === 'WNBA' || league === 'NCAAB') {
         // Scoring props - updated for new player name format
         if (
           lowerMarket.includes('points') &&
@@ -1451,19 +1523,14 @@ export default function UniversalGameCard({
         {/* Horizontal Team Matchup */}
         <div className="flex flex-col items-center justify-center space-y-3 border-b border-slate-100 pb-4 sm:flex-row sm:space-x-4 sm:space-y-0">
           <div className="flex items-center space-x-3 text-center sm:text-left">
-            <div className="font-semibold text-slate-900 text-lg">
-              {game.away_team}
-            </div>
-            <div className="text-slate-500 font-medium">@</div>
-            <div className="font-semibold text-slate-900 text-lg">
-              {game.home_team}
-            </div>
+            <div className="text-lg font-semibold text-slate-900">{game.away_team}</div>
+            <div className="font-medium text-slate-500">@</div>
+            <div className="text-lg font-semibold text-slate-900">{game.home_team}</div>
           </div>
         </div>
 
         {/* Main Lines Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          
           {/* Moneyline */}
           {moneylineOdds.length > 0 && (
             <div className="rounded-lg border border-slate-200/50 bg-slate-50/30 p-4">
@@ -1612,7 +1679,6 @@ export default function UniversalGameCard({
               </div>
             </div>
           )}
-
         </div>
       </div>
     )
@@ -1928,12 +1994,12 @@ export default function UniversalGameCard({
         props: {
           [propType: string]: {
             lines: {
-              [lineKey: string]: { 
-                over?: DatabaseOdds; 
-                under?: DatabaseOdds; 
-                base: string; 
-                line?: string;
-                propName: string;
+              [lineKey: string]: {
+                over?: DatabaseOdds
+                under?: DatabaseOdds
+                base: string
+                line?: string
+                propName: string
               }
             }
           }
@@ -1983,26 +2049,26 @@ export default function UniversalGameCard({
           playerOrTeam,
           isPlayerProp: !!isPlayerProp,
           isTeamProp: !!isTeamProp,
-          props: {}
+          props: {},
         }
       }
 
       // Initialize prop type if needed
       if (!playerGroupedProps[playerKey]!.props[propType]) {
         playerGroupedProps[playerKey]!.props[propType] = {
-          lines: {}
+          lines: {},
         }
       }
 
       // Use line value to create unique line keys for multiple lines of same prop
       const lineKey = odd.line || 'default'
-      
+
       // Initialize line group if needed
       if (!playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey]) {
         playerGroupedProps[playerKey]!.props[propType]!.lines[lineKey] = {
           base: baseId,
           line: odd.line || '',
-          propName: propType
+          propName: propType,
         }
       }
 
@@ -2014,7 +2080,9 @@ export default function UniversalGameCard({
       }
 
       if (index < 5) {
-        console.log(`🎯 Grouped prop ${index + 1}: ${playerOrTeam} - ${propType} - Line: ${lineKey}`)
+        console.log(
+          `🎯 Grouped prop ${index + 1}: ${playerOrTeam} - ${propType} - Line: ${lineKey}`
+        )
       }
     })
 
@@ -2025,9 +2093,12 @@ export default function UniversalGameCard({
 
     // Count total props for display
     const totalProps = Object.values(playerGroupedProps).reduce((total, playerGroup) => {
-      return total + Object.values(playerGroup.props).reduce((propTotal, prop) => {
-        return propTotal + Object.keys(prop.lines).length
-      }, 0)
+      return (
+        total +
+        Object.values(playerGroup.props).reduce((propTotal, prop) => {
+          return propTotal + Object.keys(prop.lines).length
+        }, 0)
+      )
     }, 0)
 
     return (
@@ -2049,9 +2120,7 @@ export default function UniversalGameCard({
                 {/* Player/Team Header - only show if there's a player/team name */}
                 {playerGroup.playerOrTeam && (
                   <div className="border-b border-slate-200 pb-1">
-                    <h4 className="font-bold text-blue-700 text-sm">
-                      {playerGroup.playerOrTeam}
-                    </h4>
+                    <h4 className="text-sm font-bold text-blue-700">{playerGroup.playerOrTeam}</h4>
                   </div>
                 )}
 
@@ -2061,11 +2130,11 @@ export default function UniversalGameCard({
                     <div key={`${playerKey}-${propType}`}>
                       {/* If multiple lines for same prop type, show prop type header */}
                       {Object.keys(propData.lines).length > 1 && (
-                        <div className="text-xs font-medium text-slate-600 mb-1 ml-1">
+                        <div className="mb-1 ml-1 text-xs font-medium text-slate-600">
                           {propType}
                         </div>
                       )}
-                      
+
                       {/* Individual lines for this prop type */}
                       <div className="space-y-1">
                         {Object.entries(propData.lines).map(([lineKey, lineData]) => {
@@ -2093,15 +2162,20 @@ export default function UniversalGameCard({
                           return (
                             <div
                               key={`${playerKey}-${propType}-${lineKey}`}
-                              className="flex items-center justify-between rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-25 px-3 py-2 transition-all hover:border-blue-300 hover:from-blue-50 hover:to-indigo-25 hover:shadow-sm"
+                              className="to-slate-25 hover:to-indigo-25 flex items-center justify-between rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 px-3 py-2 transition-all hover:border-blue-300 hover:from-blue-50 hover:shadow-sm"
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-semibold text-slate-900">
                                   {/* Show prop name if no player header, or if multiple lines */}
-                                  {!playerGroup.playerOrTeam || Object.keys(propData.lines).length > 1 ? (
-                                    <span className="font-semibold text-slate-700">{lineData.propName}</span>
+                                  {!playerGroup.playerOrTeam ||
+                                  Object.keys(propData.lines).length > 1 ? (
+                                    <span className="font-semibold text-slate-700">
+                                      {lineData.propName}
+                                    </span>
                                   ) : (
-                                    <span className="font-semibold text-slate-700">{lineData.propName}</span>
+                                    <span className="font-semibold text-slate-700">
+                                      {lineData.propName}
+                                    </span>
                                   )}
                                 </div>
                                 <div className="mt-0.5 flex items-center space-x-2 text-xs text-slate-500">
@@ -2122,7 +2196,8 @@ export default function UniversalGameCard({
                                     className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
                                       selectedBets.some(
                                         bet =>
-                                          bet.gameId === game.id && bet.sportsbook === lineData.over!.sportsbook
+                                          bet.gameId === game.id &&
+                                          bet.sportsbook === lineData.over!.sportsbook
                                       )
                                         ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
                                         : isGameStarted
@@ -2131,8 +2206,12 @@ export default function UniversalGameCard({
                                     }`}
                                   >
                                     <div className="text-center">
-                                      <div className="mb-0.5 text-xs font-medium text-green-600">O</div>
-                                      <div className="font-mono text-xs font-bold">{formatOdds(overOdds)}</div>
+                                      <div className="mb-0.5 text-xs font-medium text-green-600">
+                                        O
+                                      </div>
+                                      <div className="font-mono text-xs font-bold">
+                                        {formatOdds(overOdds)}
+                                      </div>
                                     </div>
                                   </button>
                                 )}
@@ -2145,7 +2224,8 @@ export default function UniversalGameCard({
                                     className={`min-w-[60px] rounded-md border px-2 py-1.5 text-xs font-bold transition-all ${
                                       selectedBets.some(
                                         bet =>
-                                          bet.gameId === game.id && bet.sportsbook === lineData.under!.sportsbook
+                                          bet.gameId === game.id &&
+                                          bet.sportsbook === lineData.under!.sportsbook
                                       )
                                         ? 'border-blue-600 bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-md'
                                         : isGameStarted
@@ -2154,8 +2234,12 @@ export default function UniversalGameCard({
                                     }`}
                                   >
                                     <div className="text-center">
-                                      <div className="mb-0.5 text-xs font-medium text-red-600">U</div>
-                                      <div className="font-mono text-xs font-bold">{formatOdds(underOdds)}</div>
+                                      <div className="mb-0.5 text-xs font-medium text-red-600">
+                                        U
+                                      </div>
+                                      <div className="font-mono text-xs font-bold">
+                                        {formatOdds(underOdds)}
+                                      </div>
                                     </div>
                                   </button>
                                 )}

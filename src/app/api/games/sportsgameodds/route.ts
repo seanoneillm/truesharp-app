@@ -10,6 +10,7 @@ const API_KEY = process.env.NEXT_PUBLIC_ODDS_API_KEY
 const SPORT_MAPPINGS = {
   NFL: { sportID: 'FOOTBALL', leagueID: 'NFL', sport_key: 'americanfootball_nfl' },
   NBA: { sportID: 'BASKETBALL', leagueID: 'NBA', sport_key: 'basketball_nba' },
+  WNBA: { sportID: 'BASKETBALL', leagueID: 'WNBA', sport_key: 'basketball_wnba' },
   MLB: { sportID: 'BASEBALL', leagueID: 'MLB', sport_key: 'baseball_mlb' },
   NHL: { sportID: 'HOCKEY', leagueID: 'NHL', sport_key: 'icehockey_nhl' },
   NCAAF: { sportID: 'FOOTBALL', leagueID: 'NCAAF', sport_key: 'americanfootball_ncaaf' },
@@ -92,7 +93,7 @@ function transformDatabaseOdds(odds: any[]) {
     }
 
     switch (odd.market_type) {
-      case 'moneyline':
+      case 'h2h':
         if (odd.home_odds) {
           markets.moneyline.push({
             ...market,
@@ -101,7 +102,7 @@ function transformDatabaseOdds(odds: any[]) {
           })
         }
         break
-      case 'spread':
+      case 'spreads':
         if (odd.home_point !== null) {
           markets.spread.push({
             ...market,
@@ -112,7 +113,7 @@ function transformDatabaseOdds(odds: any[]) {
           })
         }
         break
-      case 'total':
+      case 'totals':
         if (odd.total_point !== null) {
           markets.total.push({
             ...market,

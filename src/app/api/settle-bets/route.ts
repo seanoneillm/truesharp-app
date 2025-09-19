@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const promises = []
 
     // Define all sports to fetch (same exact list as fetch-odds)
-    const sportsToFetch = ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
+    const sportsToFetch = ['MLB', 'NBA', 'WNBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
 
     // Fetch historical results for yesterday and today (focus on completed games)
     for (let i = -1; i <= 0; i++) {

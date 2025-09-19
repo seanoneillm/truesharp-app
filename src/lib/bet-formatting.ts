@@ -190,16 +190,19 @@ function isSharpSportsBet(bet: BetData): boolean {
   if (bet.bet_source === 'sharpsports') {
     return true
   }
-  
+
   // Fallback: Check for characteristic SharpSports patterns in bet_description
   const description = bet.bet_description?.toLowerCase() || ''
-  
+
   // SharpSports descriptions typically follow the format:
   // "Team1 @ Team2 - BetType - SubType - Details"
-  return description.includes(' @ ') && description.includes(' - ') && 
-         (description.includes(' - spread - ') || 
-          description.includes(' - moneyline') || 
-          description.includes(' - total - '))
+  return (
+    description.includes(' @ ') &&
+    description.includes(' - ') &&
+    (description.includes(' - spread - ') ||
+      description.includes(' - moneyline') ||
+      description.includes(' - total - '))
+  )
 }
 
 /**
@@ -208,29 +211,29 @@ function isSharpSportsBet(bet: BetData): boolean {
  */
 function parseAndCorrectSharpSportsDescription(bet: BetData): string {
   const description = bet.bet_description || ''
-  
+
   // For moneyline and spread bets, we need to extract the correct team from the description
   if (bet.bet_type === 'moneyline' || bet.bet_type === 'spread') {
     const parts = description.split(' - ')
-    
+
     if (parts.length >= 4) {
       const matchupPart = parts[0] || '' // "Team1 @ Team2"
       const betTypePart = parts[1] || '' // "Spread" or "Moneyline"
       const subTypePart = parts[2] || '' // "Game Spread" or similar
       const detailsPart = parts[3] || '' // "CIN Bengals -2.5" or team selection
-      
+
       // Extract teams from matchup
       const matchupSplit = matchupPart.split(' @ ')
       if (matchupSplit.length !== 2) {
         return description
       }
-      
+
       const [awayTeam = '', homeTeam = ''] = matchupSplit.map(t => t.trim())
-      
+
       // For spread and moneyline, the details part contains the selected team
       // Extract the team abbreviation or name from the details
       let selectedTeam = ''
-      
+
       if (bet.bet_type === 'spread') {
         // For spread: "CIN Bengals -2.5" - extract the team before the line
         const match = detailsPart.match(/^([A-Z]{2,4}|[^-+\d]+?)\s*[-+]?\d/)
@@ -240,23 +243,29 @@ function parseAndCorrectSharpSportsDescription(bet: BetData): string {
       } else if (bet.bet_type === 'moneyline') {
         // For moneyline, the team should be in the details part
         // Look for team abbreviations or names
-        if (awayTeam && detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')) {
+        if (
+          awayTeam &&
+          detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')
+        ) {
           selectedTeam = awayTeam
-        } else if (homeTeam && detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0] || '')) {
+        } else if (
+          homeTeam &&
+          detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0] || '')
+        ) {
           selectedTeam = homeTeam
         }
       }
-      
+
       // If we found a team, use it; otherwise fall back to the original description
       if (selectedTeam) {
         // Determine if it's home or away team
-        const isAwayTeam = awayTeam && (
-          selectedTeam.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '') ||
-          awayTeam.toLowerCase().includes(selectedTeam.toLowerCase())
-        )
-        
+        const isAwayTeam =
+          awayTeam &&
+          (selectedTeam.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '') ||
+            awayTeam.toLowerCase().includes(selectedTeam.toLowerCase()))
+
         const displayTeam = isAwayTeam ? awayTeam : homeTeam
-        
+
         if (bet.bet_type === 'spread') {
           return `${matchupPart} - ${betTypePart} - ${subTypePart} - ${displayTeam} ${bet.line_value ? (bet.line_value > 0 ? '+' : '') + bet.line_value : ''}`
         } else {
@@ -265,7 +274,7 @@ function parseAndCorrectSharpSportsDescription(bet: BetData): string {
       }
     }
   }
-  
+
   // For other bet types or if parsing fails, return the original description
   return description
 }
@@ -341,11 +350,11 @@ export function getDisplaySide(bet: BetData): string {
 function extractSideFromSharpSportsDescription(bet: BetData): string {
   const description = bet.bet_description || ''
   const parts = description.split(' - ')
-  
+
   if (parts.length >= 4) {
     const matchupPart = parts[0] || '' // "Team1 @ Team2"
     const detailsPart = parts[3] || '' // Contains team selection or total direction
-    
+
     if (bet.bet_type === 'total') {
       // For totals, check for Over/Under in details
       if (detailsPart.toLowerCase().includes('over')) return 'over'
@@ -355,16 +364,22 @@ function extractSideFromSharpSportsDescription(bet: BetData): string {
       const matchupSplit = matchupPart.split(' @ ')
       if (matchupSplit.length === 2) {
         const [awayTeam = '', homeTeam = ''] = matchupSplit.map(t => t.trim())
-        
-        if (awayTeam && detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')) {
+
+        if (
+          awayTeam &&
+          detailsPart.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0] || '')
+        ) {
           return 'away'
         }
-        if (homeTeam && detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0] || '')) {
+        if (
+          homeTeam &&
+          detailsPart.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0] || '')
+        ) {
           return 'home'
         }
       }
     }
   }
-  
+
   return ''
 }

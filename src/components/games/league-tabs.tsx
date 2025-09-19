@@ -3,6 +3,7 @@
 export type LeagueType =
   | 'NFL'
   | 'NBA'
+  | 'WNBA'
   | 'MLB'
   | 'NHL'
   | 'NCAAF'
@@ -30,6 +31,12 @@ const LEAGUE_CONFIGS = {
     color: 'from-orange-500 to-red-600',
     icon: '🏀',
     sport_key: 'basketball_nba',
+  },
+  WNBA: {
+    name: 'WNBA',
+    color: 'from-pink-500 to-purple-600',
+    icon: '🏀',
+    sport_key: 'basketball_wnba',
   },
   MLB: {
     name: 'MLB',
@@ -77,6 +84,7 @@ export default function LeagueTabs({
   seasonStatus = {
     NFL: false,
     NBA: false,
+    WNBA: false,
     MLB: false,
     NHL: false,
     NCAAF: false,

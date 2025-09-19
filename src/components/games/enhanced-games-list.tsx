@@ -42,6 +42,8 @@ export default function EnhancedGamesList({
         return 'NFL'
       case 'basketball_nba':
         return 'NBA'
+      case 'basketball_wnba':
+        return 'WNBA'
       case 'baseball_mlb':
         return 'MLB'
       case 'icehockey_nhl':

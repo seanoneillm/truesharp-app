@@ -136,7 +136,76 @@ export async function POST(request: NextRequest) {
         break
     }
 
-    if (!priceId || price <= 0) {
+    // Handle free subscriptions (price = 0) separately - no Stripe needed
+    if (price === 0) {
+      console.log('🆓 Creating free subscription for strategy:', strategyId)
+      
+      // Calculate period dates for free subscription
+      const now = new Date()
+      const periodStart = now.toISOString()
+      let periodEnd: Date
+      let nextBilling: Date
+      
+      switch (frequency) {
+        case 'weekly':
+          periodEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+          nextBilling = new Date(periodEnd.getTime())
+          break
+        case 'monthly':
+          periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+          nextBilling = new Date(periodEnd.getTime())
+          break
+        case 'yearly':
+          periodEnd = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+          nextBilling = new Date(periodEnd.getTime())
+          break
+        default:
+          return NextResponse.json(
+            { error: 'Invalid frequency for free subscription' },
+            { status: 400 }
+          )
+      }
+
+      // Create free subscription directly in database
+      const { data: newSubscription, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert({
+          subscriber_id: user.id,
+          seller_id: sellerId,
+          strategy_id: strategyId,
+          status: 'active',
+          frequency: frequency,
+          price: 0,
+          currency: 'USD',
+          current_period_start: periodStart,
+          current_period_end: periodEnd.toISOString(),
+          next_billing_date: nextBilling.toISOString(),
+          stripe_subscription_id: null, // No Stripe for free subscriptions
+          stripe_connect_account_id: null,
+          stripe_customer_id: null,
+        })
+        .select()
+        .single()
+
+      if (subscriptionError) {
+        console.error('Error creating free subscription:', subscriptionError)
+        return NextResponse.json(
+          { error: 'Failed to create free subscription' },
+          { status: 500 }
+        )
+      }
+
+      console.log('✅ Free subscription created successfully:', newSubscription.id)
+      
+      return NextResponse.json({
+        success: true,
+        subscription: newSubscription,
+        message: 'Free subscription activated successfully!'
+      })
+    }
+
+    // For paid subscriptions, require Stripe price ID
+    if (!priceId) {
       return NextResponse.json(
         { error: `No pricing available for ${frequency} frequency` },
         { status: 400 }

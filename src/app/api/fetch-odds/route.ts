@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const sportsToFetch =
       sport && sport !== 'ALL'
         ? [sport]
-        : ['MLB', 'NBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
+        : ['MLB', 'NBA', 'WNBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UCL']
 
     // Process requests sequentially to avoid rate limiting
     const results = []

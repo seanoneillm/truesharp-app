@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const file = ((formData as unknown) as any).get('file') as File
+    const file = (formData as unknown as any).get('file') as File
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
