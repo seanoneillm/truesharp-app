@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
     const maxOdds = searchParams.get('max_odds')
     const minStake = searchParams.get('min_stake')
     const maxStake = searchParams.get('max_stake')
+    const sportsbook = searchParams.get('sportsbook')
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
     const pageType = searchParams.get('pageType') // 'initial' or 'pagination'
@@ -281,6 +282,14 @@ export async function GET(request: NextRequest) {
           return false
         })
       })
+    }
+
+    if (sportsbook) {
+      const sportsbooksList = sportsbook
+        .split(',')
+        .map(sb => sb.trim())
+        .filter(sb => sb)
+      bets = bets.filter(bet => bet.sportsbook && sportsbooksList.includes(bet.sportsbook))
     }
 
     console.log(`Found ${bets.length} bets for user ${finalUserId?.substring(0, 8)}...`)

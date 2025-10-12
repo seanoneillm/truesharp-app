@@ -107,6 +107,14 @@ export default function AdminPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState('overview')
 
+  // Debug states
+  const [isDebugging, setIsDebugging] = useState(false)
+  const [debugResult, setDebugResult] = useState<string | null>(null)
+  const [isRunningTest, setIsRunningTest] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const [isFixingTriggers, setIsFixingTriggers] = useState(false)
+  const [triggerFixResult, setTriggerFixResult] = useState<string | null>(null)
+
   // Strategy states
   const [strategyData, setStrategyData] = useState<any[]>([])
   const [isLoadingStrategies, setIsLoadingStrategies] = useState(false)
@@ -438,7 +446,10 @@ export default function AdminPage() {
         supabase = await createServiceRoleClient()
         console.log('✅ Using service role client for bets data')
       } catch (serviceRoleError) {
-        console.warn('⚠️ Service role client failed, falling back to regular client:', serviceRoleError)
+        console.warn(
+          '⚠️ Service role client failed, falling back to regular client:',
+          serviceRoleError
+        )
         supabase = createClient()
       }
 
@@ -465,11 +476,11 @@ export default function AdminPage() {
         .from('bets')
         .select('*')
         .order('placed_at', { ascending: true })
-      
-      console.log('📊 Bets query result:', { 
-        betsCount: allBets?.length || 0, 
+
+      console.log('📊 Bets query result:', {
+        betsCount: allBets?.length || 0,
         error: error?.message,
-        sampleBet: allBets?.[0] 
+        sampleBet: allBets?.[0],
       })
 
       // Also get filtered bets for charts only
@@ -1221,16 +1232,16 @@ export default function AdminPage() {
 
     try {
       console.log(
-        `🔧 [${executionId}] Admin: Starting odds fetch for ${selectedSport} on ${selectedDate.toISOString().split('T')[0]}`
+        `🔧 [${executionId}] Admin: Starting comprehensive odds fetch for ALL 9 LEAGUES (ignoring sport selection: ${selectedSport}) on ${selectedDate.toISOString().split('T')[0]}`
       )
 
-      const response = await fetch('/api/fetch-odds', {
+      const response = await fetch('/api/fetch-odds-dual-table', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sport: selectedSport, // Fetch selected sport
+          sport: selectedSport, // This will be ignored since we fetch all 9 leagues
           date: selectedDate.toISOString().split('T')[0],
         }),
         signal: currentFetchRequest.current.signal,
@@ -1241,7 +1252,7 @@ export default function AdminPage() {
       if (result.success) {
         console.log(`✅ [${executionId}] Admin: Odds fetch completed:`, result)
         setFetchResult(
-          `✅ Successfully fetched odds for ${selectedSport}. Total games: ${result.totalGames || 0}. Completed at ${new Date().toLocaleTimeString()}`
+          `✅ Successfully fetched odds for ALL 9 LEAGUES with comprehensive sportsbook mapping. Total games: ${result.totalGames || 0}. Successful leagues: ${result.successfulLeagues || 0}/9. Completed at ${new Date().toLocaleTimeString()}`
         )
         setLastUpdated(new Date())
       } else {
@@ -1265,6 +1276,120 @@ export default function AdminPage() {
       currentFetchRequest.current = null
     }
   }, [selectedDate, selectedSport, isFetching])
+
+  // Debug odds fetch system
+  const handleDebugOddsFetch = useCallback(async () => {
+    setIsDebugging(true)
+    setDebugResult(null)
+
+    try {
+      console.log('🔧 Admin: Running odds fetch debug')
+
+      const response = await fetch('/api/debug-odds-simple', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('✅ Admin: Debug completed:', result)
+        setDebugResult(
+          `✅ Debug completed - Current odds: ${result.currentOdds}, Open odds: ${result.currentOpenOdds}, API events: ${result.apiEventsReturned}, Sample event odds: ${result.sampleEventOdds}`
+        )
+      } else {
+        console.error('❌ Admin: Debug failed:', result)
+        setDebugResult(`❌ Debug failed: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('❌ Admin: Error during debug:', error)
+      setDebugResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDebugging(false)
+    }
+  }, [])
+
+  // Run 30-second controlled odds fetch test
+  const handleRunOddsTest = useCallback(async () => {
+    setIsRunningTest(true)
+    setTestResult(null)
+
+    try {
+      console.log('🔧 Admin: Running 30-second odds fetch test')
+
+      const response = await fetch('/api/test-odds-fetch-30s', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('✅ Admin: 30-second test completed:', result)
+        setTestResult(
+          `✅ Test completed in ${result.summary.duration} - API events: ${result.summary.apiEvents}, Insert efficiency: ${result.summary.insertEfficiency}, Problem: ${result.summary.problemAnalysis}`
+        )
+      } else {
+        console.error('❌ Admin: 30-second test failed:', result)
+        setTestResult(`❌ Test failed: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('❌ Admin: Error during 30-second test:', error)
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsRunningTest(false)
+    }
+  }, [])
+
+  // Fix database triggers
+  const handleFixTriggers = useCallback(async () => {
+    setIsFixingTriggers(true)
+    setTriggerFixResult(null)
+
+    try {
+      console.log('🔧 Admin: Getting trigger fix instructions')
+
+      const response = await fetch('/api/fix-triggers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const result = await response.json()
+
+      if (result.success === false && result.instructions) {
+        // This is expected - we need manual SQL execution
+        console.log('📋 Admin: Received manual instructions')
+        const instructionText = [
+          '📋 MANUAL FIX REQUIRED:',
+          '',
+          '🔍 PROBLEM: Database triggers use < instead of <= for timestamp comparison',
+          '💥 RESULT: 90%+ data loss during bulk API imports (equal timestamps rejected)',
+          '',
+          '🛠️ SOLUTION STEPS:',
+          '1️⃣ Open your Supabase Dashboard → SQL Editor',
+          '2️⃣ Copy the entire contents of COMPLETE-TRIGGER-FIX.sql file',
+          '3️⃣ Paste and execute in SQL Editor',
+          '4️⃣ Verify success message appears',
+          '',
+          '📈 EXPECTED IMPROVEMENT: From ~2,760 to 20,000+ odds per fetch',
+          '',
+          '⚡ After fix: Run a new odds fetch to see dramatic improvement!',
+        ].join('\n')
+
+        setTriggerFixResult(instructionText)
+      } else {
+        setTriggerFixResult(`❌ Unexpected response: ${JSON.stringify(result)}`)
+      }
+    } catch (error) {
+      console.error('❌ Admin: Error getting trigger instructions:', error)
+      setTriggerFixResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsFixingTriggers(false)
+    }
+  }, [])
 
   if (authLoading) {
     return (
@@ -1774,7 +1899,9 @@ export default function AdminPage() {
                     Fetch Odds
                   </h3>
                   <p className="mb-4 text-slate-600">
-                    Fetch current odds from the SportsGameOdds API for selected sport.
+                    Fetch current odds from SportsGameOdds API for ALL 9 LEAGUES (NFL, NBA, WNBA,
+                    MLB, NHL, NCAAF, NCAAB, MLS, UCL) with comprehensive sportsbook mapping and dual
+                    table strategy (odds + open_odds).
                   </p>
                 </div>
 
@@ -1802,24 +1929,27 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={handleFetchCurrentOdds}
-                    disabled={isFetching || !selectedDate}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-                    {isFetching ? 'Fetching Current Odds...' : 'Fetch Current Odds'}
-                  </Button>
-
-                  {selectedDate && (
-                    <div className="text-sm text-slate-600">
-                      Target date: {selectedDate.toLocaleDateString()}
+                    <div className="text-xs italic text-slate-500">
+                      Note: Sport selection is now ignored - all 9 leagues are fetched automatically
                     </div>
-                  )}
-                </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={handleFetchCurrentOdds}
+                      disabled={isFetching || !selectedDate}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                      {isFetching ? 'Fetching All 9 Leagues...' : 'Fetch All Leagues (Dual Table)'}
+                    </Button>
+
+                    {selectedDate && (
+                      <div className="text-sm text-slate-600">
+                        Target date: {selectedDate.toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {fetchResult && (
@@ -1831,6 +1961,100 @@ export default function AdminPage() {
                     }`}
                   >
                     <p className="font-mono text-sm">{fetchResult}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Odds System Debug */}
+            <Card className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold text-slate-900">
+                    <Settings className="h-5 w-5" />
+                    Debug Odds System
+                  </h3>
+                  <p className="mb-4 text-slate-600">
+                    Run comprehensive diagnostics on the odds fetch system to identify where odds
+                    are being lost between API and database.
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={handleDebugOddsFetch}
+                      disabled={isDebugging}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Settings className={`mr-2 h-4 w-4 ${isDebugging ? 'animate-spin' : ''}`} />
+                      {isDebugging ? 'Running Debug...' : 'Quick Debug'}
+                    </Button>
+
+                    <Button
+                      onClick={handleRunOddsTest}
+                      disabled={isRunningTest}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      <RefreshCw
+                        className={`mr-2 h-4 w-4 ${isRunningTest ? 'animate-spin' : ''}`}
+                      />
+                      {isRunningTest ? 'Running Test...' : '30s Controlled Test'}
+                    </Button>
+
+                    <Button
+                      onClick={handleFixTriggers}
+                      disabled={isFixingTriggers}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      <AlertTriangle
+                        className={`mr-2 h-4 w-4 ${isFixingTriggers ? 'animate-spin' : ''}`}
+                      />
+                      {isFixingTriggers ? 'Getting Fix...' : 'Get Trigger Fix'}
+                    </Button>
+
+                    <div className="text-sm text-slate-600">
+                      Quick debug checks system state, 30s test runs actual fetch with detailed
+                      logging. Fix DB Triggers repairs timestamp handling.
+                    </div>
+                  </div>
+                </div>
+
+                {debugResult && (
+                  <div
+                    className={`rounded-lg p-4 ${
+                      debugResult.startsWith('✅')
+                        ? 'border border-green-200 bg-green-50 text-green-800'
+                        : 'border border-red-200 bg-red-50 text-red-800'
+                    }`}
+                  >
+                    <p className="font-mono text-sm">{debugResult}</p>
+                  </div>
+                )}
+
+                {testResult && (
+                  <div
+                    className={`rounded-lg p-4 ${
+                      testResult.startsWith('✅')
+                        ? 'border border-blue-200 bg-blue-50 text-blue-800'
+                        : 'border border-orange-200 bg-orange-50 text-orange-800'
+                    }`}
+                  >
+                    <div className="mb-2 text-sm font-semibold">30-Second Test Results:</div>
+                    <p className="font-mono text-sm">{testResult}</p>
+                  </div>
+                )}
+
+                {triggerFixResult && (
+                  <div
+                    className={`rounded-lg p-4 ${
+                      triggerFixResult.startsWith('✅')
+                        ? 'border border-green-200 bg-green-50 text-green-800'
+                        : 'border border-red-200 bg-red-50 text-red-800'
+                    }`}
+                  >
+                    <div className="mb-2 text-sm font-semibold">Trigger Fix Results:</div>
+                    <p className="font-mono text-sm">{triggerFixResult}</p>
                   </div>
                 )}
               </div>
@@ -2785,7 +3009,7 @@ export default function AdminPage() {
                   </p>
                   <ul className="mb-6 space-y-1 text-left text-sm text-slate-500">
                     <li>• No strategies have been added yet</li>
-                    <li>• The leaderboard calculation hasn't run</li>
+                    <li>• The leaderboard calculation hasn&apos;t run</li>
                     <li>• There might be a database connection issue</li>
                   </ul>
                   <Button onClick={fetchStrategyData} variant="outline" className="mt-4">

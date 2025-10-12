@@ -104,8 +104,8 @@ Here's the detailed market hierarchy with the SportGameOdds API market identifie
       `passing_yards-ANY_PLAYER_ID-game-ou-under`)
     - Passing Touchdowns Over/Under (`passing_touchdowns-ANY_PLAYER_ID-game-ou-over`,
       `passing_touchdowns-ANY_PLAYER_ID-game-ou-under`)
-    - Interceptions Over/Under (`defense_interceptions-ANY_PLAYER_ID-game-ou-over`,
-      `defense_interceptions-ANY_PLAYER_ID-game-ou-under`)
+    - Interceptions Thrown Over/Under (`passing_interceptions-ANY_PLAYER_ID-game-ou-over`,
+      `passing_interceptions-ANY_PLAYER_ID-game-ou-under`)
     - Completions Over/Under (`passing_completions-ANY_PLAYER_ID-game-ou-over`,
       `passing_completions-ANY_PLAYER_ID-game-ou-under`)
     - Passing Attempts Over/Under (`passing_attempts-ANY_PLAYER_ID-game-ou-over`,
@@ -237,8 +237,8 @@ Here's the detailed market hierarchy with the SportGameOdds API market identifie
       `passing_yards-ANY_PLAYER_ID-game-ou-under`)
     - Passing Touchdowns Over/Under (`passing_touchdowns-ANY_PLAYER_ID-game-ou-over`,
       `passing_touchdowns-ANY_PLAYER_ID-game-ou-under`)
-    - Interceptions Over/Under (`defense_interceptions-ANY_PLAYER_ID-game-ou-over`,
-      `defense_interceptions-ANY_PLAYER_ID-game-ou-under`)
+    - Interceptions Thrown Over/Under (`passing_interceptions-ANY_PLAYER_ID-game-ou-over`,
+      `passing_interceptions-ANY_PLAYER_ID-game-ou-under`)
     - Completions Over/Under (`passing_completions-ANY_PLAYER_ID-game-ou-over`,
       `passing_completions-ANY_PLAYER_ID-game-ou-under`)
     - Rushing Yards Over/Under (`rushing_yards-ANY_PLAYER_ID-game-ou-over`,

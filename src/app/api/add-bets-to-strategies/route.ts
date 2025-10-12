@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 interface AddBetsRequest {
   betIds: string[]
   strategyIds: string[]
+  userId?: string
 }
 
 interface FilterConfig {
@@ -178,17 +179,26 @@ function getSportsbookVariations(sportsbooks: string[]): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    // Parse request body first to get clientUserId for fallback auth
+    const body: AddBetsRequest = await request.json()
+    const { betIds, strategyIds, userId: clientUserId } = body
+
     const supabase = await createServerSupabaseClient(request)
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
+    // Use clientUserId for fallback authentication (from iOS app)
+    let userId = user?.id
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      if (clientUserId) {
+        console.log('🔄 Using fallback authentication with clientUserId')
+        userId = clientUserId
+      } else {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
-
-    const { betIds, strategyIds }: AddBetsRequest = await request.json()
 
     if (!betIds || !strategyIds || betIds.length === 0 || strategyIds.length === 0) {
       return NextResponse.json({ error: 'Bet IDs and Strategy IDs are required' }, { status: 400 })
@@ -205,7 +215,7 @@ export async function POST(request: NextRequest) {
       .from('bets')
       .select('*, parlay_id')
       .in('id', betIds)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'pending')
       .gt('game_date', new Date().toISOString())
 
@@ -218,7 +228,7 @@ export async function POST(request: NextRequest) {
       .from('strategies')
       .select('*')
       .in('id', strategyIds)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (strategiesError || !strategies) {
       return NextResponse.json({ error: 'Failed to fetch strategies' }, { status: 500 })

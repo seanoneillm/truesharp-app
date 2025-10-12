@@ -79,6 +79,27 @@ const LEAGUES = [
   'IndyCar',
 ]
 
+const SPORTSBOOKS = [
+  'All',
+  'DraftKings',
+  'FanDuel',
+  'BetMGM',
+  'ESPN Bet',
+  'Caesars',
+  'PrizePicks',
+  'Fliff',
+  'Fanatics',
+  'Underdog',
+  'BetRivers',
+  'Sleeper',
+  'Betfred',
+  'Hard Rock',
+  'SugarHouse',
+  'Borgata',
+  'Sporttrade',
+  'TrueSharp',
+]
+
 
 
 
@@ -364,7 +385,7 @@ export function FilterSystem({
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {/* Markets (formerly Bet Types) */}
                 <div>
                   <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
@@ -398,7 +419,7 @@ export function FilterSystem({
                   />
                 </div>
 
-                {/* Start Date - Regular Feature */}
+                {/* Start Date - Single Date Picker */}
                 <div>
                   <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
                     <Calendar className="h-4 w-4 text-blue-600" />
@@ -409,6 +430,23 @@ export function FilterSystem({
                     value={localFilters.customStartDate || ''}
                     onChange={e => updateLocalFilters({ customStartDate: e.target.value })}
                     className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Select start date"
+                  />
+                </div>
+
+                {/* Sportsbooks */}
+                <div>
+                  <label className="mb-3 flex items-center space-x-2 text-sm font-semibold text-slate-700">
+                    <div className="h-4 w-4 rounded bg-purple-600"></div>
+                    <span>Sportsbooks</span>
+                  </label>
+                  <MultiSelectDropdown
+                    values={localFilters.sportsbooks || ['All']}
+                    options={SPORTSBOOKS.map(book => book === 'All' ? 'All Sportsbooks' : book)}
+                    onChange={values => updateLocalFilters({ 
+                      sportsbooks: values.map(v => v === 'All Sportsbooks' ? 'All' : v)
+                    })}
+                    placeholder="Select sportsbooks"
                   />
                 </div>
               </div>

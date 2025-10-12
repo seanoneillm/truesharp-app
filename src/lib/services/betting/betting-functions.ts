@@ -101,11 +101,24 @@ export async function insertParlayBet(
       // Only the first leg gets the full payout, others get 0
       const legPayout = index === 0 ? totalPotentialPayout : 0
 
-      return mapBetToDatabase(bet, userId, legStake, legPayout, parlayId, true)
+      const dbBet = mapBetToDatabase(bet, userId, legStake, legPayout, parlayId, true)
+      
+      // DEBUG: Log what we're about to insert
+      console.log(`🔍 Parlay leg ${index + 1} mapping:`, {
+        legStake,
+        legPayout,
+        profit: dbBet.profit,
+        stake: dbBet.stake,
+        potential_payout: dbBet.potential_payout,
+        is_parlay: dbBet.is_parlay,
+        parlay_id: parlayId.substring(0, 8) + '...'
+      })
+
+      return dbBet
     })
 
     // Insert all bets in a transaction
-    const { error } = await supabase.from('bets').insert(dbBets).select('id')
+    const { data: insertedBets, error } = await supabase.from('bets').insert(dbBets).select('id, profit, stake, potential_payout, is_parlay, parlay_id')
 
     if (error) {
       console.error('Error inserting parlay bet:', error)
@@ -114,6 +127,16 @@ export async function insertParlayBet(
         error: 'Failed to place parlay bet. Please try again.',
       }
     }
+
+    // DEBUG: Log what actually got inserted
+    console.log('📝 Inserted parlay legs:', insertedBets?.map((bet, index) => ({
+      leg: index + 1,
+      id: bet.id,
+      profit: bet.profit,
+      stake: bet.stake,
+      potential_payout: bet.potential_payout,
+      parlay_id: bet.parlay_id?.substring(0, 8) + '...'
+    })))
 
     return {
       success: true,

@@ -13,6 +13,41 @@ const formatOdds = (odds: number): string => {
   return odds.toString()
 }
 
+// Deduplicate odds for display - optimized for large datasets
+// Groups by (oddid, line) and keeps the most recent entry for each group
+const deduplicateOddsForDisplay = (odds: DatabaseOdds[]): DatabaseOdds[] => {
+  if (odds.length === 0) return odds
+  
+  const startTime = Date.now()
+  const oddsMap = new Map<string, DatabaseOdds>()
+  
+  // Since odds are already ordered by created_at DESC (newest first),
+  // we can take the first occurrence of each key as the most recent
+  for (const odd of odds) {
+    const key = `${odd.oddid || 'unknown'}|${odd.line || 'null'}`
+    
+    if (!oddsMap.has(key)) {
+      // First (newest) entry for this key due to DESC ordering
+      oddsMap.set(key, odd)
+    }
+    // Skip subsequent (older) entries for the same key
+  }
+  
+  const deduplicated = Array.from(oddsMap.values())
+  const processingTime = Date.now() - startTime
+  
+  console.log('🔧 Optimized deduplication summary:', {
+    originalCount: odds.length,
+    deduplicatedCount: deduplicated.length,
+    removedCount: odds.length - deduplicated.length,
+    processingTimeMs: processingTime,
+    uniqueKeys: oddsMap.size,
+    duplicatePercent: `${(((odds.length - deduplicated.length) / odds.length) * 100).toFixed(1)}%`
+  })
+  
+  return deduplicated
+}
+
 // Types
 interface Game {
   id: string
@@ -34,6 +69,8 @@ interface DatabaseOdds {
   mgmodds?: number
   fanaticsodds?: number
   bookodds?: number
+  created_at?: string
+  fetched_at?: string
 }
 
 interface BetSelection {
@@ -543,6 +580,7 @@ export default function UniversalGameCard({
   onOddsClick = () => {},
   selectedBets = [],
 }: UniversalGameCardProps) {
+
   const [odds, setOdds] = useState<DatabaseOdds[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -685,15 +723,49 @@ export default function UniversalGameCard({
 
         const supabase = createClient()
 
-        const { data, error: oddsError } = await supabase
-          .from('odds')
-          .select('*')
-          .eq('eventid', game.id)
-          .order('created_at', { ascending: false }) // Remove limit, order by newest first
-
-        if (oddsError) {
-          throw new Error(`Failed to fetch odds: ${oddsError.message}`)
+        // CHUNKED PAGINATION: Fetch all odds in chunks to bypass 1000 row server limits
+        // Using the same pattern as iOS OddsModal
+        console.log(`🔧 Starting chunked fetch for game ${game.id}`)
+        
+        const allOdds: DatabaseOdds[] = []
+        let hasMore = true
+        let offset = 0
+        const chunkSize = 1000 // Use the max that works reliably
+        
+        while (hasMore) {
+          console.log(`📦 Fetching chunk ${offset / chunkSize + 1} (offset: ${offset})`)
+          
+          const { data: chunk, error: chunkError } = await supabase
+            .from('odds')
+            .select('*')
+            .eq('eventid', game.id)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + chunkSize - 1) // Use range() for pagination
+          
+          if (chunkError) {
+            console.error(`❌ Error fetching chunk at offset ${offset}:`, chunkError)
+            throw new Error(`Failed to fetch odds chunk: ${chunkError.message}`)
+          }
+          
+          if (!chunk || chunk.length === 0) {
+            console.log(`✅ No more chunks available at offset ${offset}`)
+            hasMore = false
+          } else {
+            allOdds.push(...chunk)
+            console.log(`📊 Chunk ${offset / chunkSize + 1}: ${chunk.length} odds`)
+            
+            // If chunk is smaller than chunkSize, we've reached the end
+            if (chunk.length < chunkSize) {
+              console.log(`✅ Final chunk reached (${chunk.length} < ${chunkSize})`)
+              hasMore = false
+            } else {
+              offset += chunkSize
+            }
+          }
         }
+        
+        const data = allOdds
+        console.log(`🎉 TOTAL FETCHED: ${allOdds.length} odds for game ${game.id}`)
 
         console.log('🎯 Odds fetched:', {
           gameId: game.id,
@@ -709,7 +781,15 @@ export default function UniversalGameCard({
             })) || [],
         })
 
-        setOdds(data || [])
+        // Deduplicate odds for iOS display
+        const deduplicatedOdds = deduplicateOddsForDisplay(data || [])
+        console.log('🔧 After deduplication:', {
+          originalCount: data?.length || 0,
+          deduplicatedCount: deduplicatedOdds.length,
+          samplesRemoved: (data?.length || 0) - deduplicatedOdds.length
+        })
+
+        setOdds(deduplicatedOdds)
       } catch (err) {
         console.error('Error fetching odds:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -728,7 +808,7 @@ export default function UniversalGameCard({
     const categorized: { [category: string]: { [subcategory: string]: DatabaseOdds[] } } = {}
     const uncategorized: DatabaseOdds[] = []
 
-    console.log('🔥 Starting categorization for', odds.length, 'odds')
+    console.log('🔥 Starting categorization for', odds.length, 'odds', 'in league:', league)
 
     odds.forEach((odd, index) => {
       if (!odd.oddid) {
@@ -736,11 +816,8 @@ export default function UniversalGameCard({
         return
       }
 
-      // FILTER OUT YES/NO PROPS COMPLETELY
-      if (odd.oddid.includes('-yn-')) {
-        console.log(`⚠️ Filtering out yes/no prop: ${odd.oddid}`)
-        return
-      }
+      // Note: Allow Yes/No props to be categorized properly
+      // Removed the filter that was blocking all -yn- markets
 
       try {
         let category = 'Main Lines'
@@ -786,14 +863,23 @@ export default function UniversalGameCard({
         }
 
         // ============ PLAYER PROPS ============
-        // Player props have player names in format: batting_something-FIRSTNAME_LASTNAME_1_LEAGUE-game-
-        // Examples: batting_triples-MATT_MCLAIN_1_MLB-game-ou-under, fantasyScore-NOELVI_MARTE_1_MLB-game-ou-under
+        // Player props have player names in format: 
+        // MLB: batting_something-FIRSTNAME_LASTNAME_1_LEAGUE-game-
+        // NBA/WNBA: points-ANY_PLAYER_ID-game-ou-over/under
+        // Examples: batting_triples-MATT_MCLAIN_1_MLB-game-ou-under, points-PLAYER_ID-game-ou-over
         else if (
           oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/) ||
-          (oddid.includes('-') && oddid.includes('_1_') && oddid.includes('-game-'))
+          (oddid.includes('-') && oddid.includes('_1_') && oddid.includes('-game-')) ||
+          // Basketball pattern: stat-PLAYER_ID-game-ou-over/under (for NBA/WNBA/NCAAB)
+          // Based on actual WNBA data: points-PLAYER_1_WNBA-game-ou-over
+          ((league === 'NBA' || league === 'WNBA' || league === 'NCAAB') && 
+           oddid.match(/^(points|fieldGoals|threePointers|freeThrows|rebounds|assists|steals|blocks|turnovers|fantasyScore)-[^-]+-game-(ou|yn)-/)) ||
+          // Add combo props pattern for basketball (points+rebounds, etc.)
+          ((league === 'NBA' || league === 'WNBA' || league === 'NCAAB') && 
+           oddid.match(/^[a-zA-Z_+]+-[^-]+-game-(ou|yn)-/))
         ) {
           category = 'Player Props'
-          console.log(`🏃 Player Prop detected: ${odd.oddid}`)
+          console.log(`🏃 Player Prop detected for ${league}: ${odd.oddid}`)
 
           // Baseball specific - Enhanced mapping based on games-page.md
           if (league === 'MLB') {
@@ -819,11 +905,19 @@ export default function UniversalGameCard({
             if (
               oddid.includes('passing_') ||
               oddid.includes('quarterback') ||
-              oddid.includes('qb')
+              oddid.includes('qb') ||
+              // Fix: QB rushing yards should go to Quarterback category
+              (oddid.includes('rushing_') && (oddid.includes('passing') || 
+                oddid.match(/-[A-Z_]+_1_[A-Z]+-game-/) && 
+                (oddid.includes('passing+rushing') || oddid.includes('qb') || oddid.includes('quarterback')))) ||
+              // Fix: QB interceptions (thrown by QB) should be in QB category
+              (oddid.includes('passing_interceptions') || oddid.includes('interceptions_thrown'))
             ) {
               subcategory = 'Quarterback'
               console.log(`🏈 NFL QB prop: ${odd.oddid}`)
-            } else if (oddid.includes('rushing_') && !oddid.includes('passing')) {
+            } else if (oddid.includes('rushing_') && !oddid.includes('passing') && 
+                       !oddid.includes('qb') && !oddid.includes('quarterback') &&
+                       !oddid.includes('passing+rushing')) {
               subcategory = 'Running Back'
               console.log(`🏈 NFL RB prop: ${odd.oddid}`)
             } else if (oddid.includes('receiving_') || oddid.includes('reception')) {
@@ -835,7 +929,9 @@ export default function UniversalGameCard({
               oddid.includes('extrapoints_') ||
               oddid.includes('defense_') ||
               oddid.includes('tackles-') ||
-              oddid.includes('sacks-')
+              oddid.includes('sacks-') ||
+              // Fix: Defensive player interceptions (caught by defensive players)
+              (oddid.includes('defense_interceptions') && !oddid.includes('passing_interceptions'))
             ) {
               subcategory = 'Kicker/Defense'
               console.log(`🏈 NFL K/DEF prop: ${odd.oddid}`)
@@ -858,9 +954,9 @@ export default function UniversalGameCard({
           else if (league === 'NBA' || league === 'WNBA' || league === 'NCAAB') {
             if (
               oddid.includes('points-') ||
-              oddid.includes('fieldgoals_') ||
-              oddid.includes('threepointers_') ||
-              oddid.includes('freethrows_')
+              oddid.includes('fieldGoals') ||
+              oddid.includes('threePointers') ||
+              oddid.includes('freeThrows')
             ) {
               subcategory = 'Scoring'
               console.log(`🏀 NBA Scoring prop: ${odd.oddid}`)
@@ -878,9 +974,11 @@ export default function UniversalGameCard({
             } else if (
               oddid.includes('+') ||
               oddid.includes('double') ||
-              oddid.includes('fantasyscore-') ||
-              oddid.includes('firstbasket-') ||
-              oddid.includes('firsttoscore-')
+              oddid.includes('fantasyScore-') ||
+              oddid.includes('firstBasket-') ||
+              oddid.includes('firstToScore-') ||
+              oddid.includes('doubleDouble-') ||
+              oddid.includes('tripleDouble-')
             ) {
               subcategory = 'Combo Props'
               console.log(`🏀 NBA Combo prop: ${odd.oddid}`)
@@ -1102,6 +1200,7 @@ export default function UniversalGameCard({
         }
 
         categorized[category]![subcategory]!.push(odd)
+
       } catch (error) {
         console.warn('❌ Failed to categorize oddid:', odd.oddid, error)
         // Fallback to Main Lines
@@ -1112,8 +1211,8 @@ export default function UniversalGameCard({
       }
     })
 
-    // Log categorization summary
-    console.log('📊 Categorization Summary:', {
+    // Log categorization summary  
+    console.log(`📊 Categorization Summary for ${league}:`, {
       totalOdds: odds.length,
       categorized: Object.keys(categorized).reduce(
         (acc, cat) => {
@@ -1131,6 +1230,7 @@ export default function UniversalGameCard({
       uncategorizedCount: uncategorized.length,
       uncategorizedSamples: uncategorized.slice(0, 5).map(o => o.oddid),
     })
+
 
     return categorized
   }
@@ -1245,7 +1345,8 @@ export default function UniversalGameCard({
           return true
         if (lowerMarket.includes('passing touchdowns') && lowerOddid.includes('passing_touchdowns'))
           return true
-        if (lowerMarket.includes('interceptions') && lowerOddid.includes('passing_interceptions'))
+        if (lowerMarket.includes('interceptions') && 
+            (lowerOddid.includes('passing_interceptions') || lowerOddid.includes('defense_interceptions')))
           return true
         if (lowerMarket.includes('completions') && lowerOddid.includes('passing_completions'))
           return true
@@ -1850,8 +1951,17 @@ export default function UniversalGameCard({
 
     // ============ SPECIAL PROPS ============
     if (lowerOddid.includes('fantasyscore')) return 'Fantasy Score'
-    if (lowerOddid.includes('anytimetouchdown')) return 'Anytime TD'
-    if (lowerOddid.includes('anytimegoal')) return 'Anytime Goal'
+    if (lowerOddid.includes('anytimetouchdown') || lowerOddid.includes('touchdowns-') && lowerOddid.includes('-yn-')) return 'Anytime TD'
+    if (lowerOddid.includes('anytimegoal') || lowerOddid.includes('goals-') && lowerOddid.includes('-yn-')) return 'Anytime Goal'
+    
+    // ============ YES/NO PROPS ============
+    if (lowerOddid.includes('firsttouchdown') && lowerOddid.includes('-yn-')) return 'First TD'
+    if (lowerOddid.includes('lasttouchdown') && lowerOddid.includes('-yn-')) return 'Last TD'
+    if (lowerOddid.includes('firsttoscore') && lowerOddid.includes('-yn-')) return 'First to Score'
+    if (lowerOddid.includes('lasttoscore') && lowerOddid.includes('-yn-')) return 'Last to Score'
+    if (lowerOddid.includes('firstgoal') && lowerOddid.includes('-yn-')) return 'First Goal'
+    if (lowerOddid.includes('cleansheet') && lowerOddid.includes('-yn-')) return 'Clean Sheet'
+    if (lowerOddid.includes('shutout') && lowerOddid.includes('-yn-')) return 'Shutout'
 
     // ============ FALLBACK for team totals ============
     if (lowerOddid.includes('points-home-game-ou') || lowerOddid.includes('points-away-game-ou')) {
@@ -1860,6 +1970,7 @@ export default function UniversalGameCard({
 
     return 'Prop'
   }
+
 
   // Helper function to extract player name from oddid (improved parsing)
   const getPlayerName = (oddid: string): string => {
@@ -1977,7 +2088,7 @@ export default function UniversalGameCard({
     // Enhanced deduplication by oddid with multiple passes
     const uniqueOdds = new Map()
     displayOdds.forEach(odd => {
-      if (odd.oddid && !odd.oddid.includes('-yn-') && !uniqueOdds.has(odd.oddid)) {
+      if (odd.oddid && !uniqueOdds.has(odd.oddid)) {
         uniqueOdds.set(odd.oddid, odd)
       }
     })
