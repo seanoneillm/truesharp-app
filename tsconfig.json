@@ -66,6 +66,7 @@
     "build",
     "coverage",
     "ios-app",
+    "supabase",
     "**/*.spec.ts",
     "**/*.test.ts",
     "**/*.spec.tsx",

@@ -53,10 +53,10 @@ async function checkGameHasStarted(gameTime: string): Promise<boolean> {
 function findMainLineFromAlternates(odds: Record<string, unknown>[], oddId: string): Record<string, unknown> | null {
   const alternates = odds.filter(odd => (odd as any).oddID === oddId)
   if (alternates.length === 0) return null
-  if (alternates.length === 1) return alternates[0]
+  if (alternates.length === 1) return alternates[0] || null
   
   // Find the line with odds closest to even (100/-100)
-  let mainLine = alternates[0]
+  let mainLine = alternates[0] || null
   let bestDistance = Infinity
   
   for (const alternate of alternates) {
@@ -412,8 +412,8 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
       const params = new URLSearchParams()
       params.append('leagueID', sportMapping.leagueID)
       params.append('type', 'match')
-      params.append('startsAfter', startISO)
-      params.append('startsBefore', futureDateISO)
+      params.append('startsAfter', startISO || '')
+      params.append('startsBefore', futureDateISO || '')
       params.append('limit', '50')
       params.append('includeAltLines', 'true') // FIXED: Issue #4 - Include alternate lines
       if (nextCursor) {
@@ -471,7 +471,7 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
         const gameHasStarted = await checkGameHasStarted(transformedEvent.startTime as string)
         if (gameHasStarted) {
           skippedGames++
-          console.log(`⏭️ Skipping started game: ${transformedEvent.teams?.away?.name} @ ${transformedEvent.teams?.home?.name}`)
+          console.log(`⏭️ Skipping started game: ${(transformedEvent.teams as any)?.away?.name} @ ${(transformedEvent.teams as any)?.home?.name}`)
           continue
         }
         
@@ -500,7 +500,7 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🚀 Starting FIXED odds fetch for all 9 leagues...')
     console.log('🔧 Applied fixes:')

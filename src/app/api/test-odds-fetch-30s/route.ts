@@ -8,7 +8,7 @@ const API_KEY = process.env.NEXT_PUBLIC_ODDS_API_KEY
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   const startTime = Date.now()
   const logs: string[] = []
 
@@ -233,10 +233,6 @@ export async function POST(request: NextRequest) {
         const bookData = sportsbookData as any
 
         if (bookData.odds) {
-          const bookRecord = {
-            ...baseRecord,
-            [`${sportsbookName.toLowerCase()}odds`]: parseFloat(bookData.odds) || null,
-          }
 
           // Map sportsbook names to correct database columns
           let columnName = ''
@@ -269,13 +265,13 @@ export async function POST(request: NextRequest) {
       insertAttempts++
 
       // Insert into odds table
-      const { data: oddsInsert, error: oddsError } = await supabase
+      const { data: _oddsInsert, error: oddsError } = await supabase
         .from('odds')
         .insert(record)
         .select('id')
 
       // Insert into open_odds table
-      const { data: openOddsInsert, error: openOddsError } = await supabase
+      const { data: _openOddsInsert, error: openOddsError } = await supabase
         .from('open_odds')
         .insert(record)
         .select('id')

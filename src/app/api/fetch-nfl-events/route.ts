@@ -201,10 +201,10 @@ export async function POST() {
         hasOdds: Object.keys(event.odds || {}).length > 0,
       })),
       sampleEventWithOdds:
-        eventsWithOdds.length > 0 && eventsWithOdds[0].odds
+        eventsWithOdds.length > 0 && eventsWithOdds[0]?.odds
           ? {
               event: eventsWithOdds[0],
-              sampleOdds: Object.entries(eventsWithOdds[0].odds)
+              sampleOdds: Object.entries(eventsWithOdds[0]?.odds || {})
                 .slice(0, 5)
                 .map(([key, value]: [string, OddObject]) => ({
                   oddId: key,

@@ -140,9 +140,7 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Generated ${Object.keys(testOdds).length} test odds`)
     
     // Simulate old approach timing
-    const oldApproachStart = Date.now()
     const estimatedOldTime = Object.keys(testOdds).length * 15 // ~15ms per individual insert
-    const oldApproachTime = Date.now() - oldApproachStart
     
     // Test new bulk approach
     const newApproachStart = Date.now()

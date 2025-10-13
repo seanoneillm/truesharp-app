@@ -79,7 +79,7 @@ async function analyzeOddsSystem(supabase: any) {
     // Check for duplicates in sample game
     if (sampleOdds) {
       const duplicateMap = new Map<string, number>()
-      sampleOdds.forEach(odd => {
+      sampleOdds.forEach((odd: any) => {
         const key = `${odd.oddid}|${odd.line || 'null'}`
         duplicateMap.set(key, (duplicateMap.get(key) || 0) + 1)
       })
@@ -93,12 +93,12 @@ async function analyzeOddsSystem(supabase: any) {
     const { count: oddsCount } = await supabase
       .from('odds')
       .select('*', { count: 'exact', head: true })
-      .in('eventid', games.map(g => g.id))
+      .in('eventid', games.map((g: any) => g.id))
     
     const { count: openOddsCount } = await supabase
       .from('open_odds')
       .select('*', { count: 'exact', head: true })
-      .in('eventid', games.map(g => g.id))
+      .in('eventid', games.map((g: any) => g.id))
     
     analysis.totalOdds = oddsCount || 0
     analysis.totalOpenOdds = openOddsCount || 0
@@ -126,7 +126,7 @@ async function analyzeOddsSystem(supabase: any) {
   })
 }
 
-async function testOddsFetch(supabase: any) {
+async function testOddsFetch(_supabase: any) {
   console.log('🎯 Testing odds fetch process...')
   
   try {
@@ -155,7 +155,7 @@ async function testOddsFetch(supabase: any) {
   }
 }
 
-async function fixDuplicatesInPlace(supabase: any) {
+async function fixDuplicatesInPlace(_supabase: any) {
   console.log('🔧 Fixing duplicates in place...')
   
   // This would implement duplicate cleanup logic

@@ -38,28 +38,6 @@ const SPORT_MAPPINGS = {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Helper function to safely parse odds values
-const safeParseOdds = (value: string | number | undefined | null): number | null => {
-  if (!value) return null
-  const parsed = parseFloat(String(value))
-  if (isNaN(parsed)) return null
-
-  // Filter out clearly invalid odds (like -100000 from some sportsbooks)
-  if (Math.abs(parsed) > 50000) {
-    console.log(`⚠️ Filtering out extreme odds value: ${parsed}`)
-    return null
-  }
-
-  const limited = Math.min(Math.max(parsed, -9999), 9999)
-  return Math.round(limited) // Return integer values for database
-}
-
-// Helper function to truncate strings
-const truncateString = (value: string | undefined | null, maxLength: number): string | null => {
-  if (!value) return null
-  const str = String(value)
-  return str.length > maxLength ? str.substring(0, maxLength) : str
-}
 
 // Transform SportsGameOdds event to our format
 function transformSportsGameOddsEvent(event: Record<string, unknown>): Record<string, unknown> {
@@ -365,7 +343,7 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🚀 Starting odds fetch for all 9 leagues...')
 

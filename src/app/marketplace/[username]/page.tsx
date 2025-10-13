@@ -604,7 +604,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {sellerProfile.strategies.map((strategy, index) => {
+                  {sellerProfile.strategies.map((strategy, _index) => {
                     const isSubscribed = isSubscribedToStrategy(strategy.strategy_id)
                     const subscription = getSubscriptionToStrategy(strategy.strategy_id)
                     

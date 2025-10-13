@@ -8,15 +8,6 @@ const API_KEY = process.env.NEXT_PUBLIC_ODDS_API_KEY
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Type for API odd data
-interface OddData {
-  marketName?: string
-  betTypeID?: string
-  sideID?: string
-  bookOdds?: string
-  byBookmaker?: Record<string, any>
-  [key: string]: any
-}
 
 export async function POST(request: NextRequest) {
   const { testMode = true, detailedLogging = true } = await request.json()
@@ -151,8 +142,8 @@ export async function POST(request: NextRequest) {
 
       // Count different types
       if (
-        oddData.marketName?.toLowerCase().includes('player') ||
-        oddData.marketName?.toLowerCase().includes('prop')
+        oddData.marketName?.toString().toLowerCase().includes('player') ||
+        oddData.marketName?.toString().toLowerCase().includes('prop')
       ) {
         playerPropCount++
       } else {
@@ -160,7 +151,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check sportsbook data
-      const byBookmaker = oddData.byBookmaker || {}
+      const byBookmaker = (oddData.byBookmaker as Record<string, any>) || {}
       const bookmakerCount = Object.keys(byBookmaker).length
       sportsbookCount += bookmakerCount
 
@@ -213,7 +204,7 @@ export async function POST(request: NextRequest) {
       let eventRecords = 0
 
       // Simulate processing each odd
-      for (const [oddId, odd] of Object.entries(eventOdds)) {
+      for (const [, odd] of Object.entries(eventOdds)) {
         const oddData = odd as any
 
         // Main line record

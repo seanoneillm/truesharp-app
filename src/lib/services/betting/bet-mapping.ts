@@ -168,7 +168,7 @@ export function mapBetToDatabase(
     game_date: bet.gameTime,
     home_team: bet.homeTeam,
     away_team: bet.awayTeam,
-    profit: null, // Profit should ALWAYS be null for pending bets, especially parlays
+    profit: 0, // Profit should be 0 for pending bets, especially parlays
     sportsbook: bet.sportsbook,
     bet_source: 'manual',
     is_copy_bet: false,
