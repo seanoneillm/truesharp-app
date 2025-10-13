@@ -86,7 +86,6 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
 
   // Subscription modal state
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
@@ -202,24 +201,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
     }
   }
 
-  // Check authentication and redirect if needed
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!isAuthenticated) {
-        const resolvedParams = await params
-        const currentPath = `/marketplace/${resolvedParams.username}`
-        router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
-        return
-      }
-      setAuthChecked(true)
-    }
-
-    checkAuth()
-  }, [isAuthenticated, params, router])
-
-  useEffect(() => {
-    if (!authChecked || !isAuthenticated) return
-
     const fetchSellerProfile = async () => {
       try {
         setLoading(true)
@@ -252,7 +234,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
     }
 
     fetchSellerProfile()
-  }, [authChecked, isAuthenticated, params])
+  }, [params])
 
   // Load user's existing subscriptions
   useEffect(() => {
@@ -286,7 +268,7 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
     loadSubscriptions()
   }, [sellerProfile, isAuthenticated, user, checkSubscription])
 
-  if (!authChecked || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-100">
         <div className="container mx-auto px-4 py-4 sm:py-8 max-w-6xl">
