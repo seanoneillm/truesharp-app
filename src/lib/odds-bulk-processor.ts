@@ -19,6 +19,7 @@ interface ApiOdd {
   bookSpread?: string
   bookOverUnder?: string
   line?: string
+  score?: number | string // ADDED: Score from API for completed games
   byBookmaker: Record<
     string,
     {
@@ -47,6 +48,7 @@ interface ConsolidatedOddsRow {
   sideid: string
   line: string | null
   bookodds: number | null
+  score?: number | string | null // ADDED: Score field for completed games
   fetched_at: string
   created_at: string
   updated_at: string
@@ -232,6 +234,7 @@ export async function processBulkOdds(
         sideid: truncateString(apiOdd.sideID, 50) || 'unknown',
         line: lineValue,
         bookodds: safeParseOdds(apiOdd.bookOdds),
+        score: apiOdd.score !== undefined ? apiOdd.score : null, // ADDED: Extract score from API
         fetched_at: uniqueTimestamp,
         created_at: uniqueTimestamp,
         updated_at: uniqueTimestamp,
@@ -277,6 +280,7 @@ export async function processBulkOdds(
                 sideid: truncateString(apiOdd.sideID, 50) || 'unknown',
                 line: altLineValue,
                 bookodds: safeParseOdds(altLine.odds),
+                score: apiOdd.score !== undefined ? apiOdd.score : null, // ADDED: Extract score from API for alt lines
                 fetched_at: altUniqueTimestamp,
                 created_at: altUniqueTimestamp,
                 updated_at: altUniqueTimestamp,

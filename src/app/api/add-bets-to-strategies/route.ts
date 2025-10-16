@@ -126,9 +126,10 @@ function getSportVariations(sport: string): string[] {
   } else if (sport === 'NCAAF') {
     // NCAAF bets can be stored with sport='football' (synced bets) OR sport='NCAAF' (manual bets)
     variations.push('NCAAF', 'ncaaf', 'football', 'Football', 'College Football', 'college football', 'NCAA Football', 'ncaa football')
-  } else if (sport === 'NCAAB') {
-    // NCAAB bets can be stored with sport='basketball' (synced bets) OR sport='NCAAB' (manual bets)
-    variations.push('NCAAB', 'ncaab', 'basketball', 'Basketball', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball')
+  } else if (sport === 'NCAAB' || sport === 'NCAAM' || sport === 'NCAAMB') {
+    // NCAAB, NCAAM, and NCAAMB should all be treated as the same league
+    // Bets can be stored with sport='basketball' (synced bets) OR specific sport codes (manual bets)
+    variations.push('NCAAB', 'NCAAM', 'NCAAMB', 'ncaab', 'ncaam', 'ncaamb', 'basketball', 'Basketball', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball', 'NCAA Men\'s Basketball', 'ncaa men\'s basketball')
   } else if (sport === 'MLS') {
     variations.push('MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football')
   } else if (sport === 'UCL') {
@@ -356,7 +357,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Send notifications to subscribers (simplified version)
+      // Send push notifications to subscribers
       for (const [strategyId, betCount] of strategyUpdates) {
         try {
           // Get strategy details for notification
@@ -366,30 +367,42 @@ export async function POST(request: NextRequest) {
             .eq('id', strategyId)
             .single()
 
-          // Get subscribers for this strategy
-          const { data: subscribers } = await serviceSupabase
-            .from('subscriptions')
-            .select('user_id')
-            .eq('strategy_id', strategyId)
-            .eq('status', 'active')
+          // Get seller details
+          const { data: sellerData } = await serviceSupabase
+            .from('profiles')
+            .select('username')
+            .eq('id', strategyData?.user_id)
+            .single()
 
-          if (subscribers && subscribers.length > 0) {
-            // Create notifications for subscribers
-            const notifications = subscribers.map(sub => ({
-              user_id: sub.user_id,
-              type: 'new_strategy_bets',
-              title: 'New Bets Added',
-              message: `${betCount} new bet${betCount > 1 ? 's' : ''} added to strategy "${strategyData?.name}"`,
-              metadata: {
-                strategy_id: strategyId,
-                bet_count: betCount,
+          if (strategyData && sellerData) {
+            // Call push notification Edge Function
+            const pushNotificationUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-push-notifications`
+            
+            const pushResponse = await fetch(pushNotificationUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
               },
-            }))
+              body: JSON.stringify({
+                type: 'strategy_bets',
+                strategyId: strategyId,
+                sellerName: sellerData.username || 'Seller',
+                strategyName: strategyData.name,
+                betCount: betCount,
+              }),
+            })
 
-            await serviceSupabase.from('notifications').insert(notifications)
+            if (pushResponse.ok) {
+              const result = await pushResponse.json()
+              console.log(`✅ Push notifications sent for strategy ${strategyData.name}: ${result.subscribersNotified} recipients`)
+            } else {
+              const error = await pushResponse.text()
+              console.error(`❌ Failed to send push notifications for strategy ${strategyData.name}:`, error)
+            }
           }
         } catch (notificationError) {
-          console.error('Error sending notifications:', notificationError)
+          console.error('Error sending push notifications:', notificationError)
           // Don't fail the main operation if notifications fail
         }
       }

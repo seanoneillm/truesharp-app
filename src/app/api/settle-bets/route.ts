@@ -168,31 +168,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to check for API-provided scores in odds records
+// FIXED: Conservative approach - only update basic game-level odds, rely on API for player props
 async function updateGameOddsWithScores(supabase: any, game: any) {
   try {
     const gameId = game.id
-    console.log(`🔄 Checking for API-provided scores for game ${gameId}`)
+    console.log(`🔄 Checking for already-populated scores for completed game ${gameId}`)
+    console.log(`🏆 Game result: ${game.away_team_name} ${game.away_score} - ${game.home_score} ${game.home_team_name}`)
 
-    // The API already provides the correct score for each oddID!
-    // We just need to verify they exist in the database
-    let gameOdds = []
-    let fetchError = null
-
-    try {
-      // Get all odds for this game - check which ones already have API-provided scores
-      const { data, error } = await supabase
-        .from('odds')
-        .select('id, oddid, score, marketname, bettypeid')
-        .eq('eventid', gameId)
-
-      gameOdds = data || []
-      fetchError = error
-      console.log(`🔍 Found ${gameOdds.length} total odds for game ${gameId}`)
-    } catch (error) {
-      console.error('⚠️ Error querying odds:', error)
-      return { updated: 0 }
-    }
+    // Get all odds for this game
+    const { data: gameOdds, error: fetchError } = await supabase
+      .from('odds')
+      .select('id, oddid, marketname, sideid, line, score, hometeam_score, awayteam_score')
+      .eq('eventid', gameId)
 
     if (fetchError) {
       console.error('❌ Error fetching game odds:', fetchError)
@@ -204,32 +191,89 @@ async function updateGameOddsWithScores(supabase: any, game: any) {
       return { updated: 0 }
     }
 
-    // Separate odds with and without API-provided scores
-    const oddsWithScores = gameOdds.filter((odd: any) => odd.score !== null && odd.score !== undefined)
-    const oddsWithoutScores = gameOdds.filter((odd: any) => odd.score === null || odd.score === undefined)
+    console.log(`🔍 Found ${gameOdds.length} odds for game ${gameId}`)
 
-    console.log(`✅ Found ${oddsWithScores.length} odds with API-provided scores`)
-    console.log(`⚠️ Found ${oddsWithoutScores.length} odds missing scores`)
+    // Check how many already have scores (from API)
+    const oddsWithScores = gameOdds.filter((odd: any) => odd.score !== null)
+    const oddsWithoutScores = gameOdds.filter((odd: any) => odd.score === null)
 
-    // Log the API-provided scores we found
+    console.log(`✅ ${oddsWithScores.length} odds already have API-provided scores`)
+    console.log(`⚠️ ${oddsWithoutScores.length} odds missing scores`)
+
     if (oddsWithScores.length > 0) {
-      console.log(`📊 API-provided scores found:`)
-      oddsWithScores.forEach((odd: any, index: number) => {
-        console.log(`  ${index + 1}. oddid: ${odd.oddid}, score: ${odd.score}, market: ${odd.marketname}`)
+      console.log(`📊 Sample API-provided scores found:`)
+      oddsWithScores.slice(0, 5).forEach((odd: any, index: number) => {
+        console.log(`  ${index + 1}. ${odd.marketname}: oddid=${odd.oddid}, score=${odd.score}`)
       })
     }
 
-    // For odds missing scores, check if they need to be fetched
-    if (oddsWithoutScores.length > 0) {
-      console.log(`⚠️ Odds missing API scores (may need to re-fetch odds data):`)
-      oddsWithoutScores.slice(0, 5).forEach((odd: any, index: number) => {
-        console.log(`  ${index + 1}. oddid: ${odd.oddid}, market: ${odd.marketname}`)
-      })
+    // CONSERVATIVE APPROACH: Only update basic game-level bets if no scores exist
+    // Let the API provide player prop scores - don't calculate incorrectly
+    if (oddsWithScores.length === 0 && oddsWithoutScores.length > 0) {
+      console.log(`🔧 No API scores found, updating basic game-level bets only...`)
+      
+      let updatedCount = 0
+      const homeScore = game.home_score
+      const awayScore = game.away_score
+      const totalScore = homeScore + awayScore
+
+      // Only update clearly identifiable game-level bets
+      for (const odd of oddsWithoutScores) {
+        let score = null
+        let shouldUpdate = false
+        
+        const marketName = odd.marketname?.toLowerCase() || ''
+        const oddid = odd.oddid?.toLowerCase() || ''
+        
+        // ONLY update if it's clearly a basic game-level bet
+        if (
+          (marketName === 'over/under' && oddid.includes('points-all-game-ou-')) ||
+          (marketName === 'moneyline' && (oddid.includes('points-home-game-ml-') || oddid.includes('points-away-game-ml-'))) ||
+          (marketName === 'spread' && (oddid.includes('points-home-game-sp-') || oddid.includes('points-away-game-sp-')))
+        ) {
+          if (marketName === 'over/under') {
+            score = totalScore.toString()
+            shouldUpdate = true
+          } else if (marketName === 'moneyline') {
+            score = `${homeScore},${awayScore}`
+            shouldUpdate = true
+          } else if (marketName === 'spread') {
+            score = `${homeScore},${awayScore}`
+            shouldUpdate = true
+          }
+          
+          if (shouldUpdate && score) {
+            const { error: updateError } = await supabase
+              .from('odds')
+              .update({
+                score: score,
+                hometeam_score: homeScore,
+                awayteam_score: awayScore,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', odd.id)
+            
+            if (!updateError) {
+              updatedCount++
+              console.log(`✅ Updated basic game bet: ${odd.marketname} = ${score}`)
+            }
+          }
+        }
+      }
+      
+      if (updatedCount > 0) {
+        console.log(`✅ Updated ${updatedCount} basic game-level bets`)
+      } else {
+        console.log(`ℹ️ No basic game-level bets found to update`)
+      }
+      
+      return { updated: updatedCount }
     }
 
-    // The scores are already correct from the API - no updates needed!
-    // Just return the count of odds that have scores
+    // If we already have scores from API, just return the count
+    console.log(`🎯 Odds already have scores from API - no updates needed`)
     return { updated: oddsWithScores.length }
+    
   } catch (error) {
     console.error(`❌ Error in updateGameOddsWithScores:`, error)
     return { updated: 0 }
@@ -363,60 +407,121 @@ async function settleBetsForGame(serviceSupabase: any, oddsSupabase: any, gameId
         let odds = null
         let oddsError = null
 
-        // Try to find odds by oddid and line value if both exist (for alternate lines)
+        // IMPROVED: Enhanced odds matching logic to handle oddid format changes
         if (bet.oddid) {
-          // First try exact match with oddid AND line value for alternate lines
-          if (bet.line_value) {
-            const { data: exactOdds, error: exactError } = await oddsSupabase
+          console.log(`🔍 Looking for odds with oddid: ${bet.oddid}`)
+          
+          // Method 1: Exact oddid match
+          const { data: exactOdds, error: exactError } = await oddsSupabase
+            .from('odds')
+            .select('*')
+            .eq('eventid', gameId)
+            .eq('oddid', bet.oddid)
+            .maybeSingle()
+
+          if (!exactError && exactOdds) {
+            odds = exactOdds
+            console.log(`✅ Found exact oddid match for bet ${bet.id}`)
+          } else {
+            // Method 2: Pattern matching for oddid variations
+            console.log(`🔄 No exact oddid match, trying pattern matching...`)
+            
+            const { data: patternOdds, error: patternError } = await oddsSupabase
               .from('odds')
               .select('*')
               .eq('eventid', gameId)
-              .eq('oddid', bet.oddid)
-              .eq('line', bet.line_value)
-              .maybeSingle()
+              .ilike('oddid', `%${bet.oddid}%`)
+              .limit(5)
 
-            odds = exactOdds
-            oddsError = exactError
-            
-            if (odds) {
-              console.log(`✅ Found exact match (oddid + line) for bet ${bet.id}`)
+            if (!patternError && patternOdds && patternOdds.length > 0) {
+              // Prefer odds with scores first
+              const oddsWithScores = patternOdds.filter((o: any) => o.score !== null)
+              odds = oddsWithScores.length > 0 ? oddsWithScores[0] : patternOdds[0]
+              console.log(`⚠️ Found pattern match for bet ${bet.id}: ${odds.oddid}`)
             }
           }
           
-          // Fallback: match by oddid only if no line-specific match found
-          if (!odds) {
-            const { data: fallbackOdds, error: fallbackError } = await oddsSupabase
-              .from('odds')
-              .select('*')
-              .eq('eventid', gameId)
-              .eq('oddid', bet.oddid)
-              .maybeSingle()
-
-            odds = fallbackOdds
-            oddsError = fallbackError
+          // Method 3: Enhanced fallback by bet type and side
+          if (!odds && bet.bet_type) {
+            console.log(`🔍 Trying enhanced bet type matching: ${bet.bet_type} + ${bet.side}`)
             
-            if (odds) {
-              console.log(`⚠️ Found oddid-only match for bet ${bet.id} (line may not match exactly)`)
+            let marketFilters: string[] = []
+            
+            // Build market name filters based on bet type
+            if (bet.bet_type === 'moneyline') {
+              marketFilters = ['%moneyline%', '%ml%']
+            } else if (bet.bet_type === 'total') {
+              marketFilters = ['%total%', '%over%', '%under%', '%ou%']
+            } else if (bet.bet_type === 'spread') {
+              marketFilters = ['%spread%', '%line%', '%sp%']
+            } else if (bet.bet_type === 'player_prop') {
+              marketFilters = ['%prop%', '%player%']
+            }
+            
+            for (const filter of marketFilters) {
+              const { data: typeOdds, error: typeError } = await oddsSupabase
+                .from('odds')
+                .select('*')
+                .eq('eventid', gameId)
+                .ilike('marketname', filter)
+                .not('score', 'is', null) // Prefer odds with scores
+                .limit(3)
+
+              if (!typeError && typeOdds && typeOdds.length > 0) {
+                // Try to match by side if specified
+                if (bet.side) {
+                  const sideMatch = typeOdds.find((o: any) => 
+                    o.oddid?.toLowerCase().includes(bet.side.toLowerCase()) ||
+                    o.sideid?.toLowerCase() === bet.side.toLowerCase()
+                  )
+                  if (sideMatch) {
+                    odds = sideMatch
+                    console.log(`✅ Found bet type + side match for bet ${bet.id}: ${odds.marketname}`)
+                    break
+                  }
+                }
+                
+                // Fall back to first match
+                odds = typeOdds[0]
+                console.log(`⚠️ Found bet type match for bet ${bet.id}: ${odds.marketname}`)
+                break
+              }
             }
           }
         }
 
-        // Fallback: try to find odds by bet type if no oddid match
-        if (!odds && bet.bet_type) {
-          console.log(`🔍 No exact oddid match, trying bet type: ${bet.bet_type}`)
-
-          const { data: fallbackOdds, error: fallbackError } = await oddsSupabase
+        // Method 4: Last resort - any odds with scores for this game
+        if (!odds) {
+          console.log(`🔍 Last resort: looking for any odds with scores for game ${gameId}`)
+          
+          const { data: anyOdds, error: anyError } = await oddsSupabase
             .from('odds')
             .select('*')
             .eq('eventid', gameId)
-            .ilike('marketname', `%${bet.bet_type}%`)
-            .limit(1)
+            .not('score', 'is', null)
+            .limit(5)
 
-          if (!fallbackError && fallbackOdds && fallbackOdds.length > 0) {
-            odds = fallbackOdds[0]
-            console.log(`✅ Found fallback odds by bet type for bet ${bet.id}`)
-          } else {
-            console.log(`⚠️ No fallback odds found by bet type for bet ${bet.id}`)
+          if (!anyError && anyOdds && anyOdds.length > 0) {
+            // Try to find the most relevant odds based on bet description
+            let bestMatch = anyOdds[0]
+            
+            if (bet.bet_description) {
+              const desc = bet.bet_description.toLowerCase()
+              const relevantOdds = anyOdds.find((o: any) => {
+                const market = o.marketname?.toLowerCase() || ''
+                if (desc.includes('total') && market.includes('total')) return true
+                if (desc.includes('spread') && market.includes('spread')) return true
+                if (desc.includes('moneyline') && market.includes('moneyline')) return true
+                if (desc.includes('over') && market.includes('over')) return true
+                if (desc.includes('under') && market.includes('under')) return true
+                return false
+              })
+              
+              if (relevantOdds) bestMatch = relevantOdds
+            }
+            
+            odds = bestMatch
+            console.log(`⚠️ Using last resort odds for bet ${bet.id}: ${odds.marketname}`)
           }
         }
 
@@ -785,53 +890,121 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
 
         let odds = null
 
-        // Try primary matching: game_id + oddid + line (for alternate lines)
+        // IMPROVED: Use the same enhanced matching logic as settleBetsForGame
         if (bet.oddid) {
-          // First try exact match with oddid AND line value for alternate lines
-          if (bet.line_value) {
-            const { data: exactOdds, error: exactError } = await oddsSupabase
+          console.log(`🔍 Looking for odds with oddid: ${bet.oddid}`)
+          
+          // Method 1: Exact oddid match
+          const { data: exactOdds, error: exactError } = await oddsSupabase
+            .from('odds')
+            .select('*')
+            .eq('eventid', bet.game_id)
+            .eq('oddid', bet.oddid)
+            .maybeSingle()
+
+          if (!exactError && exactOdds) {
+            odds = exactOdds
+            console.log(`✅ Found exact oddid match for bet ${bet.id}`)
+          } else {
+            // Method 2: Pattern matching for oddid variations
+            console.log(`🔄 No exact oddid match, trying pattern matching...`)
+            
+            const { data: patternOdds, error: patternError } = await oddsSupabase
               .from('odds')
               .select('*')
               .eq('eventid', bet.game_id)
-              .eq('oddid', bet.oddid)
-              .eq('line', bet.line_value)
-              .maybeSingle()
+              .ilike('oddid', `%${bet.oddid}%`)
+              .limit(5)
 
-            if (!exactError && exactOdds) {
-              odds = exactOdds
-              console.log(`✅ Found exact match (oddid + line) for bet ${bet.id}`)
+            if (!patternError && patternOdds && patternOdds.length > 0) {
+              // Prefer odds with scores first
+              const oddsWithScores = patternOdds.filter((o: any) => o.score !== null)
+              odds = oddsWithScores.length > 0 ? oddsWithScores[0] : patternOdds[0]
+              console.log(`⚠️ Found pattern match for bet ${bet.id}: ${odds.oddid}`)
             }
           }
           
-          // Fallback: match by oddid only if no line-specific match found
-          if (!odds) {
-            const { data: fallbackOdds, error: fallbackError } = await oddsSupabase
-              .from('odds')
-              .select('*')
-              .eq('eventid', bet.game_id)
-              .eq('oddid', bet.oddid || '')
-              .maybeSingle()
+          // Method 3: Enhanced fallback by bet type and side
+          if (!odds && bet.bet_type) {
+            console.log(`🔍 Trying enhanced bet type matching: ${bet.bet_type} + ${bet.side}`)
+            
+            let marketFilters: string[] = []
+            
+            // Build market name filters based on bet type
+            if (bet.bet_type === 'moneyline') {
+              marketFilters = ['%moneyline%', '%ml%']
+            } else if (bet.bet_type === 'total') {
+              marketFilters = ['%total%', '%over%', '%under%', '%ou%']
+            } else if (bet.bet_type === 'spread') {
+              marketFilters = ['%spread%', '%line%', '%sp%']
+            } else if (bet.bet_type === 'player_prop') {
+              marketFilters = ['%prop%', '%player%']
+            }
+            
+            for (const filter of marketFilters) {
+              const { data: typeOdds, error: typeError } = await oddsSupabase
+                .from('odds')
+                .select('*')
+                .eq('eventid', bet.game_id)
+                .ilike('marketname', filter)
+                .not('score', 'is', null) // Prefer odds with scores
+                .limit(3)
 
-            if (!fallbackError && fallbackOdds) {
-              odds = fallbackOdds
-              console.log(`⚠️ Found oddid-only match for bet ${bet.id} (line may not match exactly)`)
+              if (!typeError && typeOdds && typeOdds.length > 0) {
+                // Try to match by side if specified
+                if (bet.side) {
+                  const sideMatch = typeOdds.find((o: any) => 
+                    o.oddid?.toLowerCase().includes(bet.side.toLowerCase()) ||
+                    o.sideid?.toLowerCase() === bet.side.toLowerCase()
+                  )
+                  if (sideMatch) {
+                    odds = sideMatch
+                    console.log(`✅ Found bet type + side match for bet ${bet.id}: ${odds.marketname}`)
+                    break
+                  }
+                }
+                
+                // Fall back to first match
+                odds = typeOdds[0]
+                console.log(`⚠️ Found bet type match for bet ${bet.id}: ${odds.marketname}`)
+                break
+              }
             }
           }
         }
 
-        // Fallback: try to match by game_id and market type for total bets
-        if (!odds && bet.bet_type === 'total') {
-          const { data: totalOdds, error: totalError } = await oddsSupabase
+        // Method 4: Last resort - any odds with scores for this game
+        if (!odds) {
+          console.log(`🔍 Last resort: looking for any odds with scores for game ${bet.game_id}`)
+          
+          const { data: anyOdds, error: anyError } = await oddsSupabase
             .from('odds')
             .select('*')
             .eq('eventid', bet.game_id)
-            .ilike('marketname', '%total%')
             .not('score', 'is', null)
+            .limit(5)
 
-          if (!totalError && totalOdds && totalOdds.length > 0) {
-            // Use the first total odds found
-            odds = totalOdds[0]
-            console.log(`⚙️ Found fallback total odds for bet ${bet.id}`)
+          if (!anyError && anyOdds && anyOdds.length > 0) {
+            // Try to find the most relevant odds based on bet description
+            let bestMatch = anyOdds[0]
+            
+            if (bet.bet_description) {
+              const desc = bet.bet_description.toLowerCase()
+              const relevantOdds = anyOdds.find((o: any) => {
+                const market = o.marketname?.toLowerCase() || ''
+                if (desc.includes('total') && market.includes('total')) return true
+                if (desc.includes('spread') && market.includes('spread')) return true
+                if (desc.includes('moneyline') && market.includes('moneyline')) return true
+                if (desc.includes('over') && market.includes('over')) return true
+                if (desc.includes('under') && market.includes('under')) return true
+                return false
+              })
+              
+              if (relevantOdds) bestMatch = relevantOdds
+            }
+            
+            odds = bestMatch
+            console.log(`⚠️ Using last resort odds for bet ${bet.id}: ${odds.marketname}`)
           }
         }
 
