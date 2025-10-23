@@ -1,0 +1,1 @@
+export { CleanBetsTab } from './CleanBetsTab'
