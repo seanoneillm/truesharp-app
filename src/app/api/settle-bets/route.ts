@@ -176,6 +176,8 @@ export async function POST(request: NextRequest) {
       console.log('⏭️ Skipping additional pending check (already processed many bets)')
     }
 
+    const totalTime = Date.now() - startTime
+    
     const summary = {
       success: true,
       totalGamesFetched,
@@ -186,11 +188,9 @@ export async function POST(request: NextRequest) {
       successfulRequests: fetchResults.filter(r => r.success).length,
       dateRange: `${yesterday.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
       message: `Fetched ${totalGamesFetched} games, found ${totalCompletedGames} completed games, updated ${totalOddsUpdated} odds records, settled ${totalBetsSettled} bets`,
+      processingTimeMs: totalTime,
+      processingTimeSeconds: Math.round(totalTime / 1000),
     }
-
-    const totalTime = Date.now() - startTime
-    summary.processingTimeMs = totalTime
-    summary.processingTimeSeconds = Math.round(totalTime / 1000)
 
     console.log('🏁 Bet settlement completed:', summary)
     console.log(`⏰ Total processing time: ${Math.round(totalTime / 1000)}s`)
@@ -1076,6 +1076,10 @@ async function settlePendingBetsWithScores(serviceSupabase: any, oddsSupabase: a
         }
 
         console.log(`🎯 Found settled odds for bet ${bet.id}`)
+
+        // Store previous status for re-settlement logging
+        const previousStatus = bet.status
+        const previousProfit = bet.profit
 
         // Determine if the bet won based on bet type, side, line, and scores
         const betResult = await determineBetResult(bet, odds, oddsSupabase)

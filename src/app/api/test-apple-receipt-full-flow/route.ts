@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // Hard-coded test user ID
 const TEST_USER_ID = '11713c12-b3cc-4841-b2a2-4f10dbf3b250';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🧪 Starting full Apple receipt flow test with hard-coded user');
     
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   try {
     console.log('🧹 Cleaning up test subscription for user:', TEST_USER_ID);
     
@@ -238,7 +238,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Check current status of test user
     const supabase = createClient(

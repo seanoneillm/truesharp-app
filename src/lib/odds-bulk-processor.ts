@@ -490,27 +490,28 @@ export async function processCompletedGameScores(
 
   // Update scores for all odds that match an oddid with a score
   let scoresUpdated = 0
-  const updatePromises: Promise<any>[] = []
+  const updatePromises: Promise<boolean>[] = []
 
   for (const odd of existingOdds) {
     const apiScore = oddidScores.get(odd.oddid)
     
     // Update if we have a score from API (regardless of whether odds already has one)
     if (apiScore !== undefined) {
-      const updatePromise = supabase
-        .from('odds')
-        .update({
-          score: apiScore,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', odd.id)
-        .then(({ error }: any) => {
-          if (error) {
-            console.error(`❌ Error updating score for odds ${odd.id}:`, error)
-            return false
-          }
-          return true
-        })
+      const updatePromise = Promise.resolve(
+        supabase
+          .from('odds')
+          .update({
+            score: apiScore,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', odd.id)
+      ).then(({ error }: any) => {
+        if (error) {
+          console.error(`❌ Error updating score for odds ${odd.id}:`, error)
+          return false
+        }
+        return true
+      })
 
       updatePromises.push(updatePromise)
     }

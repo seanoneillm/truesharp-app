@@ -19,7 +19,6 @@ import {
   Target, 
   DollarSign, 
   TrendingUp, 
-  Link,
   RefreshCw,
   AlertTriangle,
   CheckCircle,

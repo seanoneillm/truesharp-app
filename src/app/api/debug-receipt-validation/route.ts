@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 ENHANCED RECEIPT VALIDATION DEBUG');
     console.log('=====================================');
     
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies });
     
     // Enhanced authentication logging
     const { data: { user }, error: authError } = await supabase.auth.getUser();

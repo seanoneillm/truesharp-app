@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies });
     
     // Test 1: Environment Variables Check
     const envCheck = {
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Test 2: Database Connection & Structure
-    let dbStructureCheck = {};
+    let dbStructureCheck: any = {};
     try {
       const { data: tableInfo, error: tableError } = await supabase
         .from('information_schema.columns')
@@ -123,8 +122,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies });
     const body = await request.json();
     const { testType, testData } = body;
 
@@ -149,7 +147,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function testMockReceiptValidation(supabase: any, testData: any) {
+async function testMockReceiptValidation(_supabase: any, testData: any) {
   // Test the receipt validation flow with mock data
   const mockReceiptData = testData.receiptData || 'mock_receipt_data_for_testing';
   const mockProductId = testData.productId || 'pro_subscription_month';

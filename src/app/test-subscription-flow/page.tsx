@@ -20,7 +20,6 @@ export default function TestSubscriptionFlowPage() {
   const [testResults, setTestResults] = useState<TestResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTest, setSelectedTest] = useState<string>('basic')
 
   const runBasicTests = async () => {
     setLoading(true)
