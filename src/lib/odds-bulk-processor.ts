@@ -423,3 +423,113 @@ export async function processGameOdds(gameId: string, apiOdds: Record<string, Ap
     totalRows: consolidated.length,
   }
 }
+
+/**
+ * Score-only bulk processor for completed games
+ * Updates scores for all existing odds without game status restrictions
+ */
+export async function processCompletedGameScores(
+  gameId: string,
+  apiOdds: Record<string, ApiOdd>
+): Promise<{
+  scoresUpdated: number
+  totalApiOdds: number
+  processingTimeMs: number
+}> {
+  const startTime = Date.now()
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  console.log(`🏆 Processing scores for completed game ${gameId}`)
+  console.log(`📊 API provided ${Object.keys(apiOdds).length} odds with potential scores`)
+
+  // Extract all unique oddids and their scores from API
+  const oddidScores = new Map<string, string | number>()
+  
+  for (const [, apiOdd] of Object.entries(apiOdds)) {
+    if (apiOdd.score !== undefined && apiOdd.score !== null) {
+      oddidScores.set(apiOdd.oddID, apiOdd.score)
+    }
+  }
+
+  console.log(`🎯 Found scores for ${oddidScores.size} unique oddids`)
+
+  if (oddidScores.size === 0) {
+    console.log(`⚠️ No scores found in API response for game ${gameId}`)
+    return {
+      scoresUpdated: 0,
+      totalApiOdds: Object.keys(apiOdds).length,
+      processingTimeMs: Date.now() - startTime,
+    }
+  }
+
+  // Get all existing odds for this game that don't have scores
+  const { data: existingOdds, error: fetchError } = await supabase
+    .from('odds')
+    .select('id, oddid, score')
+    .eq('eventid', gameId)
+
+  if (fetchError) {
+    console.error('❌ Error fetching existing odds:', fetchError)
+    return {
+      scoresUpdated: 0,
+      totalApiOdds: Object.keys(apiOdds).length,
+      processingTimeMs: Date.now() - startTime,
+    }
+  }
+
+  console.log(`📋 Found ${existingOdds?.length || 0} existing odds records for game ${gameId}`)
+
+  if (!existingOdds || existingOdds.length === 0) {
+    console.log(`⚠️ No existing odds found for game ${gameId}`)
+    return {
+      scoresUpdated: 0,
+      totalApiOdds: Object.keys(apiOdds).length,
+      processingTimeMs: Date.now() - startTime,
+    }
+  }
+
+  // Update scores for all odds that match an oddid with a score
+  let scoresUpdated = 0
+  const updatePromises: Promise<any>[] = []
+
+  for (const odd of existingOdds) {
+    const apiScore = oddidScores.get(odd.oddid)
+    
+    // Update if we have a score from API (regardless of whether odds already has one)
+    if (apiScore !== undefined) {
+      const updatePromise = supabase
+        .from('odds')
+        .update({
+          score: apiScore,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', odd.id)
+        .then(({ error }: any) => {
+          if (error) {
+            console.error(`❌ Error updating score for odds ${odd.id}:`, error)
+            return false
+          }
+          return true
+        })
+
+      updatePromises.push(updatePromise)
+    }
+  }
+
+  // Execute all updates in parallel
+  const updateResults = await Promise.all(updatePromises)
+  scoresUpdated = updateResults.filter(Boolean).length
+
+  console.log(`✅ Updated scores for ${scoresUpdated} odds records in ${Date.now() - startTime}ms`)
+  console.log(`📊 Score update summary:`)
+  console.log(`  - API odds processed: ${Object.keys(apiOdds).length}`)
+  console.log(`  - Unique oddids with scores: ${oddidScores.size}`)
+  console.log(`  - Existing odds in DB: ${existingOdds.length}`)
+  console.log(`  - Scores updated: ${scoresUpdated}`)
+
+  return {
+    scoresUpdated,
+    totalApiOdds: Object.keys(apiOdds).length,
+    processingTimeMs: Date.now() - startTime,
+  }
+}

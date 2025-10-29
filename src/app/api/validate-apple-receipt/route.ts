@@ -23,7 +23,8 @@ interface AppleReceiptResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     
     // Verify user authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(appleRequestBody),
+        signal: AbortSignal.timeout(30000), // 30 second timeout for Apple sandbox delays
       });
 
       appleData = await appleResponse.json();
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(appleRequestBody),
+          signal: AbortSignal.timeout(30000), // 30 second timeout for Apple sandbox delays
         });
 
         appleData = await appleResponse.json();

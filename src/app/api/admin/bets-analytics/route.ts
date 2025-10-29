@@ -29,6 +29,19 @@ interface UnmatchedBetDescription {
   latest_occurrence: string
 }
 
+interface UnscoredOdds {
+  oddid: string
+  count: number
+  latest_fetch: string
+  sample_event: {
+    hometeam: string | null
+    awayteam: string | null
+    marketname: string
+    sportsbook: string
+    leagueid: string | null
+  }
+}
+
 interface BetsAnalytics {
   // Core metrics from bets table
   totalBets: number
@@ -93,6 +106,9 @@ interface BetsAnalytics {
     }>
     unmatchedDescriptions: UnmatchedBetDescription[]
   }
+  
+  // Settlement analysis - odds without scores from last 7 days
+  unscoredOdds: UnscoredOdds[]
   
   // Sport/League breakdown from bets table
   betsBySport: Array<{sport: string, count: number, mappedCount: number, mappingRate: number}>
@@ -305,9 +321,10 @@ export async function GET(request: NextRequest) {
       settlementRate: trueSharpBets.length > 0 ? (trueSharpSettled.length / trueSharpBets.length) * 100 : 0
     }
 
-    // Get unsettled bets with oddid
+    // Get unsettled bets with oddid (sorted by most recent first)
     const unsettledBetsWithOddid: UnsettledBet[] = bets
       .filter(b => b.status === 'pending' && b.oddid)
+      .sort((a, b) => new Date(b.placed_at || 0).getTime() - new Date(a.placed_at || 0).getTime())
       .map(b => ({
         id: b.id,
         bet_description: b.bet_description || '',
@@ -534,6 +551,114 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Fetch odds without scores from last 7 days (excluding today) for settlement analysis
+    console.log('📊 Fetching odds without scores for settlement analysis...')
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0) // Start of today
+    
+    const { data: oddsData, error: oddsError } = await supabase
+      .from('odds')
+      .select(`
+        oddid,
+        hometeam,
+        awayteam,
+        marketname,
+        sportsbook,
+        leagueid,
+        fetched_at,
+        score
+      `)
+      .is('score', null)
+      .gte('fetched_at', sevenDaysAgo.toISOString())
+      .lt('fetched_at', todayStart.toISOString())
+      .order('fetched_at', { ascending: false })
+
+    if (oddsError) {
+      console.error('❌ Error fetching odds data:', oddsError)
+    } else {
+      console.log(`📊 Query date range: ${sevenDaysAgo.toISOString()} to ${todayStart.toISOString()}`)
+      console.log(`📊 Found ${oddsData?.length || 0} raw odds records without scores`)
+    }
+
+    // Group and analyze odds without scores
+    const unscoredOddsMap = new Map<string, {
+      oddid: string
+      count: number
+      latest_fetch: string
+      sample_event: {
+        hometeam: string | null
+        awayteam: string | null
+        marketname: string
+        sportsbook: string
+        leagueid: string | null
+      }
+    }>()
+
+    if (oddsData) {
+      // Helper function to create a grouping key for similar events
+      const createGroupingKey = (oddid: string, hometeam: string | null, awayteam: string | null): string => {
+        // Remove common variations and normalize team names for grouping
+        const normalizeTeam = (team: string | null): string => {
+          if (!team) return ''
+          return team
+            .toLowerCase()
+            .replace(/\s+/g, '_')
+            .replace(/[^a-z0-9_]/g, '')
+            .replace(/_+/g, '_')
+            .trim()
+        }
+
+        const homeKey = normalizeTeam(hometeam)
+        const awayKey = normalizeTeam(awayteam)
+        
+        // Create a key that groups similar events together
+        // For player props, use the oddid as is since it should contain player info
+        // For team-based events, use normalized team names
+        if (homeKey && awayKey) {
+          return `${homeKey}_vs_${awayKey}_${oddid}`
+        } else {
+          return oddid || 'unknown'
+        }
+      }
+
+      oddsData.forEach(odds => {
+        // Use oddid or fallback to a combination of other fields if oddid is null
+        const effectiveOddid = odds.oddid || `${odds.sportsbook || 'unknown'}_${odds.marketname || 'unknown'}_${odds.hometeam || ''}_${odds.awayteam || ''}`
+        
+        const groupingKey = createGroupingKey(effectiveOddid, odds.hometeam, odds.awayteam)
+        
+        if (unscoredOddsMap.has(groupingKey)) {
+          const existing = unscoredOddsMap.get(groupingKey)!
+          existing.count += 1
+          // Keep the latest fetch time
+          if (odds.fetched_at && odds.fetched_at > existing.latest_fetch) {
+            existing.latest_fetch = odds.fetched_at
+          }
+        } else {
+          unscoredOddsMap.set(groupingKey, {
+            oddid: effectiveOddid,
+            count: 1,
+            latest_fetch: odds.fetched_at || '',
+            sample_event: {
+              hometeam: odds.hometeam,
+              awayteam: odds.awayteam,
+              marketname: odds.marketname || '',
+              sportsbook: odds.sportsbook || '',
+              leagueid: odds.leagueid
+            }
+          })
+        }
+      })
+    }
+
+    const unscoredOdds = Array.from(unscoredOddsMap.values())
+      .sort((a, b) => b.count - a.count) // Sort by count descending
+      .slice(0, 100) // Top 100 most common unscored odds
+
+    console.log(`📈 Found ${unscoredOdds.length} unique unscored odds groups from last 7 days`)
+
     const analytics: BetsAnalytics = {
       // Core metrics from bets table
       totalBets,
@@ -577,6 +702,9 @@ export async function GET(request: NextRequest) {
 
       // Sharpsports bet matches analytics
       sharpSportsMatching,
+
+      // Settlement analysis - odds without scores from last 7 days
+      unscoredOdds,
 
       // Breakdowns from bets table
       betsBySport,

@@ -1,9 +1,0 @@
-        openBets = targetStrategy.open_bets.map((bet: unknown) => {
-          const betData = bet as { id: string; [key: string]: unknown }
-          return {
-            id: `shared-${betData.id}`,
-            added_at: null,
-            bet_id: betData.id,
-            bets: betData,
-          }
-        })
