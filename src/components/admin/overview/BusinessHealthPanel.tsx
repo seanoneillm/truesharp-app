@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { 
-  Shield, 
+  // Shield, 
   CreditCard, 
   Star, 
   Target,
@@ -21,7 +21,6 @@ interface HealthIndicator {
 interface BusinessHealthPanelProps {
   metrics: {
     sellerConversionRate: number
-    verificationRate: number
     proConversionRate: number
     stripeIntegrationRate: number
   }
@@ -43,13 +42,6 @@ export function BusinessHealthPanel({ metrics }: BusinessHealthPanelProps) {
       target: 15,
       status: getHealthStatus(metrics.sellerConversionRate, [15, 10, 5]),
       description: 'Users becoming sellers'
-    },
-    {
-      name: 'Seller Verification',
-      value: metrics.verificationRate,
-      target: 80,
-      status: getHealthStatus(metrics.verificationRate, [80, 60, 40]),
-      description: 'Sellers getting verified'
     },
     {
       name: 'Pro Upgrade Rate',
@@ -87,7 +79,7 @@ export function BusinessHealthPanel({ metrics }: BusinessHealthPanelProps) {
 
 
   const getIndicatorIcon = (index: number) => {
-    const icons = [Target, Shield, Star, CreditCard]
+    const icons = [Target, Star, CreditCard]
     const Icon = icons[index]
     return Icon ? <Icon className="h-4 w-4" /> : null
   }

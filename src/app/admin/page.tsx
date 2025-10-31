@@ -2,6 +2,7 @@
 
 import { EnhancedAccountsTab } from '@/components/admin/accounts/EnhancedAccountsTab'
 import { CleanBetsTab } from '@/components/admin/bets/CleanBetsTab'
+import { BusinessTab } from '@/components/admin/business/BusinessTab'
 import { CleanControlsTab } from '@/components/admin/controls/CleanControlsTab'
 import { EnhancedOverviewTab } from '@/components/admin/overview/EnhancedOverviewTab'
 import { RevenueTab } from '@/components/admin/revenue/RevenueTab'
@@ -23,6 +24,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Building2,
   Clock,
   DollarSign,
   HelpCircle,
@@ -1235,7 +1237,7 @@ export default function AdminPage() {
         {/* Tabbed Content */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid h-14 w-full grid-cols-4 rounded-none border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 lg:grid-cols-7">
+            <TabsList className="grid h-14 w-full grid-cols-4 rounded-none border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 lg:grid-cols-8">
               <TabsTrigger
                 value="overview"
                 className="flex items-center gap-2 transition-all duration-200 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:bg-white data-[state=active]:shadow-sm"
@@ -1270,6 +1272,13 @@ export default function AdminPage() {
               >
                 <DollarSign className="h-4 w-4" />
                 <span className="hidden font-medium sm:inline">Revenue</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="business"
+                className="flex items-center gap-2 transition-all duration-200 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                <Building2 className="h-4 w-4" />
+                <span className="hidden font-medium sm:inline">Business</span>
               </TabsTrigger>
               <TabsTrigger
                 value="strategies"
@@ -1808,6 +1817,11 @@ export default function AdminPage() {
             {/* Revenue Tab */}
             <TabsContent value="revenue" className="space-y-4 p-6">
               <RevenueTab />
+            </TabsContent>
+
+            {/* Business Tab */}
+            <TabsContent value="business" className="space-y-4 p-6">
+              <BusinessTab />
             </TabsContent>
 
             {/* Enhanced Strategies Tab */}

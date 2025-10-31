@@ -17,14 +17,17 @@ import { BusinessHealthPanel } from './BusinessHealthPanel'
 import { 
   Users, 
   UserCheck, 
-  Shield, 
+  // Shield, 
   Star,
   CreditCard,
   Bell,
-  Globe,
+  // Globe,
   Zap,
   RefreshCw,
-  Activity
+  Activity,
+  UserPlus,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 
 interface BusinessMetrics {
@@ -52,16 +55,37 @@ interface BusinessMetrics {
   verificationGrowthData: Array<{date: string, count: number, cumulative: number}>
 }
 
+interface RecentSignup {
+  id: string
+  username: string | null
+  email: string | null
+  created_at: string | null
+  pro: string | null
+  stripe_customer_id: string | null
+  stripe_connect_account_id: string | null
+  sharpsports_bettor_id: string | null
+  is_seller: boolean | null
+  is_verified_seller: boolean | null
+  subscriptionStatus: string
+  hasStripeCustomer: boolean
+  hasStripeConnect: boolean
+  hasSharpSports: boolean
+  accountType: string
+}
+
 interface EnhancedOverviewTabProps {
   className?: string
 }
 
 export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
   const [metrics, setMetrics] = useState<BusinessMetrics | null>(null)
+  const [recentSignups, setRecentSignups] = useState<RecentSignup[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingSignups, setIsLoadingSignups] = useState(true)
   const [timeframe, setTimeframe] = useState('30d')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [signupsError, setSignupsError] = useState<string | null>(null)
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -90,15 +114,45 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
     }
   }, [timeframe])
 
+  const fetchRecentSignups = useCallback(async () => {
+    try {
+      setIsLoadingSignups(true)
+      setSignupsError(null)
+      
+      const response = await fetch('/api/admin/recent-signups?limit=50')
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recent signups: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setRecentSignups(result.data)
+      } else {
+        throw new Error(result.error || 'Failed to load recent signups')
+      }
+    } catch (err) {
+      console.error('Error fetching recent signups:', err)
+      setSignupsError(err instanceof Error ? err.message : 'Unknown error occurred')
+    } finally {
+      setIsLoadingSignups(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchMetrics()
-  }, [fetchMetrics])
+    fetchRecentSignups()
+  }, [fetchMetrics, fetchRecentSignups])
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
-    const interval = setInterval(fetchMetrics, 5 * 60 * 1000)
+    const interval = setInterval(() => {
+      fetchMetrics()
+      fetchRecentSignups()
+    }, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [fetchMetrics])
+  }, [fetchMetrics, fetchRecentSignups])
 
   const calculateGrowthTrend = (data: Array<{count: number}>, days: number = 7) => {
     if (data.length < days) return 0
@@ -156,12 +210,15 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
           </Select>
           
           <Button
-            onClick={fetchMetrics}
+            onClick={() => {
+              fetchMetrics()
+              fetchRecentSignups()
+            }}
             variant="outline"
             size="sm"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingSignups}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || isLoadingSignups ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -184,7 +241,7 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
       ) : metrics ? (
         <>
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MetricCard
               title="Total Users"
               value={metrics.totalUsers}
@@ -213,19 +270,6 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
               status={metrics.sellerConversionRate > 10 ? "success" : "warning"}
             />
 
-            <MetricCard
-              title="Verified Sellers"
-              value={metrics.verifiedSellers}
-              subtitle={`${metrics.verificationRate.toFixed(1)}% verification rate`}
-              trend={{
-                value: calculateGrowthTrend(metrics.verificationGrowthData),
-                label: "vs last period",
-                direction: calculateGrowthTrend(metrics.verificationGrowthData) > 0 ? 'up' : 'down'
-              }}
-              icon={Shield}
-              iconColor="text-purple-600"
-              status={metrics.verificationRate > 70 ? "success" : "warning"}
-            />
 
             <MetricCard
               title="Pro Users"
@@ -243,7 +287,7 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
           </div>
 
           {/* Secondary Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MetricCard
               title="Payment Setup"
               value={metrics.usersWithStripeAccounts}
@@ -260,13 +304,6 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
               iconColor="text-orange-600"
             />
 
-            <MetricCard
-              title="Public Profiles"
-              value={metrics.publicProfileUsers}
-              subtitle="Discoverable users"
-              icon={Globe}
-              iconColor="text-cyan-600"
-            />
 
             <MetricCard
               title="Sharp Sports Connected"
@@ -306,14 +343,6 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
               height={250}
             />
 
-            <GrowthChart
-              title="Verification Growth"
-              data={metrics.verificationGrowthData}
-              dataKey="cumulative"
-              color="#8b5cf6"
-              icon={Shield}
-              height={250}
-            />
           </div>
 
           {/* Business Health Panel */}
@@ -322,7 +351,6 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
               <BusinessHealthPanel 
                 metrics={{
                   sellerConversionRate: metrics.sellerConversionRate,
-                  verificationRate: metrics.verificationRate,
                   proConversionRate: metrics.proConversionRate,
                   stripeIntegrationRate: metrics.stripeIntegrationRate
                 }}
@@ -361,6 +389,152 @@ export function EnhancedOverviewTab({ className }: EnhancedOverviewTabProps) {
               </CardContent>
             </Card>
           </div>
+
+          {/* Recent Signups Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <UserPlus className="h-5 w-5 text-blue-600" />
+                    Recent Signups (Last 50)
+                  </CardTitle>
+                  <p className="text-xs text-gray-500 mt-1">
+                    SC = Stripe Customer, Conn = Stripe Connect, SS = SharpSports
+                  </p>
+                </div>
+                <Button
+                  onClick={fetchRecentSignups}
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoadingSignups}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingSignups ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {signupsError ? (
+                <div className="text-center py-6">
+                  <p className="text-red-600 font-medium">Error loading recent signups</p>
+                  <p className="text-red-500 text-sm mt-1">{signupsError}</p>
+                  <Button 
+                    onClick={fetchRecentSignups} 
+                    variant="outline" 
+                    className="mt-3"
+                    size="sm"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry
+                  </Button>
+                </div>
+              ) : isLoadingSignups && recentSignups.length === 0 ? (
+                <div className="text-center py-6">
+                  <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mx-auto" />
+                  <p className="text-gray-600 mt-2">Loading recent signups...</p>
+                </div>
+              ) : recentSignups.length === 0 ? (
+                <div className="text-center py-6">
+                  <UserPlus className="h-12 w-12 text-gray-300 mx-auto" />
+                  <p className="text-gray-500 mt-2">No recent signups found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">Username</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">Email</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">Signed Up</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">Type</th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">Sub</th>
+                        <th className="text-center py-2 px-2 font-medium text-gray-600">SC</th>
+                        <th className="text-center py-2 px-2 font-medium text-gray-600">Conn</th>
+                        <th className="text-center py-2 px-2 font-medium text-gray-600">SS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentSignups.map((signup) => (
+                        <tr key={signup.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-2 px-3">
+                            <div className="font-medium text-gray-900 truncate max-w-[100px]">
+                              {signup.username || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="py-2 px-3">
+                            <div className="text-gray-600 truncate max-w-[150px]">
+                              {signup.email || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="py-2 px-3">
+                            <div className="text-gray-600">
+                              {signup.created_at ? new Date(signup.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                              }) : 'N/A'}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {signup.created_at ? new Date(signup.created_at).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : ''}
+                            </div>
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge 
+                              variant="outline"
+                              className={`text-xs px-1.5 py-0.5 ${
+                                signup.accountType === 'Verified Seller' ? 'border-green-200 bg-green-50 text-green-700' :
+                                signup.accountType === 'Seller' ? 'border-blue-200 bg-blue-50 text-blue-700' :
+                                'border-gray-200 bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              {signup.accountType === 'Verified Seller' ? 'V-Seller' :
+                               signup.accountType === 'Seller' ? 'Seller' : 'User'}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge 
+                              variant="outline"
+                              className={`text-xs px-1.5 py-0.5 ${
+                                signup.subscriptionStatus === 'Subscribed' ? 
+                                'border-purple-200 bg-purple-50 text-purple-700' :
+                                'border-gray-200 bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              {signup.subscriptionStatus === 'Subscribed' ? 'Pro' : 'Free'}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {signup.hasStripeCustomer ? (
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-gray-400 mx-auto" />
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {signup.hasStripeConnect ? (
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-gray-400 mx-auto" />
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {signup.hasSharpSports ? (
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-gray-400 mx-auto" />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       ) : null}
     </div>
