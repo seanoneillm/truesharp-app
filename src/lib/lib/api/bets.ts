@@ -1,6 +1,29 @@
 import type { Bet, BetForm } from '@/lib/types'
 import { authenticatedRequest, paginatedRequest, supabaseDirect } from './client'
 
+// Database bet type for internal use - will be used later
+// interface DbBet {
+//   id: string
+//   user_id: string
+//   sport: string
+//   league: string
+//   bet_type: 'spread' | 'moneyline' | 'total' | 'prop'
+//   description: string
+//   odds: number
+//   stake: number
+//   potential_payout: number
+//   actual_payout: number | null
+//   status: 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
+//   placed_at: string
+//   settled_at: string | null
+//   game_date: string
+//   teams: { home: string; away: string }
+//   is_public: boolean
+//   external_bet_id: string
+//   sportsbook_id: string
+//   created_at: string
+// }
+
 // Helper function to wrap Supabase queries for paginatedRequest  
 async function wrapSupabaseQuery(query: any, params: any) {
   const { data, error, count } = await query.range(
@@ -127,15 +150,17 @@ export async function createManualBet(betData: BetForm) {
       user_id: userId,
       sport: betData.sport,
       league: betData.league,
-      bet_type: betData.betType,
+      bet_type: betData.betType as 'spread' | 'moneyline' | 'total' | 'prop',
       description: betData.description,
       odds: betData.odds,
       stake: betData.stake,
       potential_payout:
         betData.stake *
         (betData.odds > 0 ? betData.odds / 100 + 1 : 100 / Math.abs(betData.odds) + 1),
-      status: 'pending',
+      actual_payout: null,
+      status: 'pending' as const,
       placed_at: new Date().toISOString(),
+      settled_at: null,
       game_date: betData.gameDate.toISOString(),
       teams: betData.teams,
       is_public: betData.isPublic || false,

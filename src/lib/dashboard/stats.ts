@@ -43,29 +43,43 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
       return getEmptyStats()
     }
 
+    // Type assertion for bets array to ensure TypeScript knows the structure
+    const typedBets = bets as Array<{
+      id: string
+      user_id: string
+      sport: string
+      league: string
+      status: 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
+      stake: number
+      profit?: number
+      placed_at: string
+    }>
+
     // Calculate basic stats
-    const totalBets = bets.length
-    const settledBets = bets.filter(bet => bet.status === 'won' || bet.status === 'lost')
-    const wonBets = bets.filter(bet => bet.status === 'won')
-    const lostBets = bets.filter(bet => bet.status === 'lost')
+    const totalBets = typedBets.length
+    const settledBets = typedBets.filter(bet => bet.status === 'won' || bet.status === 'lost')
+    const wonBets = typedBets.filter(bet => bet.status === 'won')
+    const lostBets = typedBets.filter(bet => bet.status === 'lost')
 
     const totalWins = wonBets.length
     const totalLosses = lostBets.length
     const winRate = settledBets.length > 0 ? (totalWins / settledBets.length) * 100 : 0
 
     // Calculate profit/loss
-    let totalProfit = 0
-    let totalStaked = 0
+    const { totalProfit, totalStaked } = typedBets.reduce(
+      (acc, bet) => {
+        acc.totalStaked += bet.stake || 0
 
-    bets.forEach(bet => {
-      totalStaked += bet.stake
-
-      if (bet.status === 'won' && bet.profit) {
-        totalProfit += bet.profit
-      } else if (bet.status === 'lost') {
-        totalProfit -= bet.stake
-      }
-    })
+        if (bet.status === 'won' && bet.profit) {
+          acc.totalProfit += bet.profit
+        } else if (bet.status === 'lost') {
+          acc.totalProfit -= bet.stake || 0
+        }
+        
+        return acc
+      },
+      { totalProfit: 0, totalStaked: 0 }
+    )
 
     const roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0
     const avgBetSize = totalBets > 0 ? totalStaked / totalBets : 0
@@ -75,13 +89,13 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
-    const todaysBets = bets.filter(bet => {
+    const todaysBets = typedBets.filter(bet => {
       const betDate = new Date(bet.placed_at)
       return betDate >= startOfDay && betDate < endOfDay
     }).length
 
     // Count pending bets as active picks
-    const activePicks = bets.filter(bet => bet.status === 'pending').length
+    const activePicks = typedBets.filter(bet => bet.status === 'pending').length
 
     return {
       totalBets,
