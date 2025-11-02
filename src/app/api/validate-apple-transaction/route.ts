@@ -31,11 +31,21 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
+    // Get auth token from Authorization header (iOS app sends Bearer token)
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    if (!token) {
+      console.error('❌ Transaction validation: No authorization token provided')
+      return NextResponse.json({ valid: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Create Supabase client and verify the token
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
-    // Verify user authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    // Verify user authentication using the provided token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
       console.error('❌ Transaction validation: User not authenticated', authError)
