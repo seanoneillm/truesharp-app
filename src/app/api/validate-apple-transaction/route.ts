@@ -224,18 +224,36 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
 
   for (const env of environments) {
     try {
+      const apiCallStart = Date.now()
       console.log(`📡 Checking ${env.name} environment for subscription ${originalTransactionId}`)
       
-      // Use subscription endpoint for better subscription status information
-      const response = await fetch(`${env.baseUrl}/inApps/v1/subscriptions/${originalTransactionId}`, {
+      // Try transaction history endpoint first (more reliable for new transactions)
+      let response = await fetch(`${env.baseUrl}/inApps/v1/history/${originalTransactionId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiToken}`,
           'Accept': 'application/json',
           'User-Agent': 'TrueSharp/1.0'
         },
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       })
+
+      // If transaction history fails, try subscription endpoint
+      if (!response.ok && response.status === 404) {
+        console.log(`📡 Transaction history not found, trying subscription endpoint...`)
+        response = await fetch(`${env.baseUrl}/inApps/v1/subscriptions/${originalTransactionId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Accept': 'application/json',
+            'User-Agent': 'TrueSharp/1.0'
+          },
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        })
+      }
+
+      const apiCallDuration = Date.now() - apiCallStart
+      console.log(`⏱️ Apple API call took ${apiCallDuration}ms (status: ${response.status})`)
 
       if (response.ok) {
         const data = await response.json()
@@ -263,8 +281,15 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
     } catch (error) {
-      console.error(`❌ Error checking ${env.name} environment:`, error)
-      lastError = error instanceof Error ? error : new Error(String(error))
+      const apiCallDuration = Date.now() - apiCallStart
+      console.error(`❌ Error checking ${env.name} environment after ${apiCallDuration}ms:`, error)
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`⏰ API call timed out after 10 seconds`)
+        lastError = new Error(`Apple API timeout after 10 seconds`)
+      } else {
+        lastError = error instanceof Error ? error : new Error(String(error))
+      }
       
       // Continue to next environment
       continue
