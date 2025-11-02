@@ -1,3 +1,11 @@
+// Polyfills for React Native
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
+import { Buffer } from 'buffer';
+
+// Make Buffer available globally for SharpSports SDK
+global.Buffer = Buffer;
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';

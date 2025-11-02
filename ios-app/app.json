@@ -1,30 +1,67 @@
 {
   "expo": {
-    "name": "ios-app",
-    "slug": "ios-app",
-    "version": "1.0.0",
+    "name": "TrueSharp",
+    "slug": "truesharp-mobile",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+    "projectId": "f8b6a8f7-3b1e-4c6d-9e2a-5f7b8c9d0e1f",
+    "scheme": "truesharp",
+    "extra": {
+      "EXPO_PUBLIC_API_BASE_URL": "https://truesharp.io",
+      "EXPO_PUBLIC_SUPABASE_URL": "https://trsogafrxpptszxydycn.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyc29nYWZyeHBwdHN6eHlkeWNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MjQ0OTQsImV4cCI6MjA2NjMwMDQ5NH0.STgM-_-9tTwI-Tr-gajQnfsA9cEZplw7W5uPWmn-SwA",
+      "EXPO_PUBLIC_SHARP_SPORTS_UI_URL": "https://ui.sharpsports.io",
+      "EXPO_PUBLIC_GAMBLING_HELP_URL": "https://www.ncpgambling.org",
+      "eas": {
+        "projectId": "b7fcc6cf-493b-4dc7-b4f0-9fb352129b01"
+      }
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.truesharp.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TrueSharp needs access to your camera to take profile photos and share betting content.",
+        "NSPhotoLibraryUsageDescription": "TrueSharp needs access to your photo library to select profile photos and share betting content.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSHumanReadableCopyright": "© 2025 TrueSharp LLC. Privacy Policy: https://truesharp.io/privacy"
+      },
+      "entitlements": {
+        "com.apple.developer.associated-domains": ["applinks:truesharp.io"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.truesharp.mobile",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "./plugins/withCookies.js",
+      "expo-font"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "owner": "seanoneill715"
   }
 }

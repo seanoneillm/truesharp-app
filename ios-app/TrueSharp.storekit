@@ -1,0 +1,126 @@
+{
+  "identifier": "TRUESHARP_STOREKIT_TESTING",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayName": "TrueSharp Pro Monthly",
+      "familyShareable": false,
+      "id": "pro_subscription_month",
+      "locale": "en_US",
+      "price": "19.99",
+      "type": "RecurringSubscription"
+    },
+    {
+      "displayName": "TrueSharp Pro Yearly", 
+      "familyShareable": false,
+      "id": "pro_subscription_year",
+      "locale": "en_US", 
+      "price": "199.99",
+      "type": "RecurringSubscription"
+    }
+  ],
+  "settings": {
+    "askToBuyEnabled": false,
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": [
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Load Products"
+      },
+      {
+        "current": null, 
+        "enabled": false,
+        "name": "Purchase"
+      },
+      {
+        "current": null,
+        "enabled": false, 
+        "name": "Verification"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "App Store Sync"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Subscription Status"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "App Transaction"
+      },
+      {
+        "current": null,
+        "enabled": false,
+        "name": "Refund Request Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21537633",
+      "localizations": [
+        {
+          "description": "TrueSharp Pro subscription with advanced analytics and features",
+          "displayName": "TrueSharp Pro",
+          "locale": "en_US"
+        }
+      ],
+      "name": "TrueSharp Pro",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayName": "TrueSharp Pro Monthly",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "id": "pro_subscription_month",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Monthly subscription to TrueSharp Pro features",
+              "displayName": "TrueSharp Pro Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productId": "pro_subscription_month",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "TrueSharp Pro Monthly",
+          "subscriptionGroupId": "21537633",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayName": "TrueSharp Pro Yearly",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "id": "pro_subscription_year", 
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Yearly subscription to TrueSharp Pro features",
+              "displayName": "TrueSharp Pro Yearly", 
+              "locale": "en_US"
+            }
+          ],
+          "productId": "pro_subscription_year",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "TrueSharp Pro Yearly",
+          "subscriptionGroupId": "21537633",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

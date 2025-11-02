@@ -133,8 +133,28 @@ export async function POST(request: NextRequest) {
 function generateAppStoreAPIToken(): string {
   const keyId = process.env.APPLE_API_KEY_ID!
   const issuerId = process.env.APPLE_ISSUER_ID!
-  const privateKey = process.env.APPLE_PRIVATE_KEY!
+  let privateKey = process.env.APPLE_PRIVATE_KEY!
   const bundleId = process.env.APPLE_BUNDLE_ID!
+
+  // Process private key to ensure proper format
+  if (privateKey) {
+    // Remove quotes if present
+    privateKey = privateKey.replace(/^["']|["']$/g, '')
+    // Ensure proper newlines (replace \n with actual newlines)
+    privateKey = privateKey.replace(/\\n/g, '\n')
+    // Ensure it starts and ends with proper markers
+    if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+      // If it's all on one line, try to format it properly
+      privateKey = privateKey
+        .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
+        .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
+        // Add newlines every 64 characters in the middle
+        .replace(/^-----BEGIN PRIVATE KEY-----\n(.+)\n-----END PRIVATE KEY-----$/, (match, content) => {
+          const formattedContent = content.match(/.{1,64}/g)?.join('\n') || content
+          return `-----BEGIN PRIVATE KEY-----\n${formattedContent}\n-----END PRIVATE KEY-----`
+        })
+    }
+  }
 
   if (!keyId || !issuerId || !privateKey || !bundleId) {
     const debugInfo = {
@@ -161,6 +181,12 @@ function generateAppStoreAPIToken(): string {
   }
 
   try {
+    // Debug: Log key format details
+    console.log('🔍 JWT Debug - Key length:', privateKey.length)
+    console.log('🔍 JWT Debug - Key starts with:', privateKey.substring(0, 30))
+    console.log('🔍 JWT Debug - Key ends with:', privateKey.substring(privateKey.length - 30))
+    console.log('🔍 JWT Debug - Contains newlines:', privateKey.includes('\n'))
+    
     return jwt.sign(payload, privateKey, {
       algorithm: 'ES256',
       header: {
