@@ -171,7 +171,7 @@ function generateAppStoreAPIToken(): string {
     })
   } catch (error) {
     console.error('❌ JWT generation failed:', error)
-    throw new Error('Failed to generate App Store API token')
+    throw new Error(`Failed to generate App Store API token: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
