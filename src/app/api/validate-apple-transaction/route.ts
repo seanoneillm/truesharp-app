@@ -137,7 +137,17 @@ function generateAppStoreAPIToken(): string {
   const bundleId = process.env.APPLE_BUNDLE_ID!
 
   if (!keyId || !issuerId || !privateKey || !bundleId) {
-    throw new Error('Missing Apple API credentials. Check environment variables.')
+    const debugInfo = {
+      keyId: keyId ? 'SET' : 'MISSING',
+      issuerId: issuerId ? 'SET' : 'MISSING', 
+      privateKey: privateKey ? 'SET' : 'MISSING',
+      bundleId: bundleId ? 'SET' : 'MISSING',
+      keyIdLength: keyId?.length || 0,
+      issuerIdLength: issuerId?.length || 0,
+      privateKeyLength: privateKey?.length || 0,
+      bundleIdLength: bundleId?.length || 0
+    }
+    throw new Error(`Missing Apple API credentials. Debug: ${JSON.stringify(debugInfo)}`)
   }
 
   const now = Math.round(Date.now() / 1000)
