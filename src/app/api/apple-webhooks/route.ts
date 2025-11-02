@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
     
     // Get the raw body
     const body = await request.text()
+    console.log('📋 Raw body length:', body.length)
+    console.log('📋 Raw body preview:', body.substring(0, 200))
     
     if (!body) {
       console.error('❌ Empty notification body')
@@ -209,10 +211,20 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
       return 'no_expiration_date'
     }
     
+    // First find the user by transaction ID
+    const { data: userId } = await supabase.rpc('find_user_by_apple_transaction', {
+      p_original_transaction_id: transaction.originalTransactionId
+    })
+    
+    if (!userId) {
+      console.error('❌ No user found for transaction:', transaction.originalTransactionId)
+      return 'user_not_found'
+    }
+    
     const { error } = await supabase.rpc('complete_apple_subscription_validation', {
-      p_user_id: null, // Will need to find user by transaction
+      p_user_id: userId,
       p_transaction_id: transaction.transactionId,
-      p_apple_original_transaction_id: transaction.originalTransactionId,
+      p_original_transaction_id: transaction.originalTransactionId,
       p_product_id: transaction.productId,
       p_environment: transaction.environment,
       p_purchase_date: purchaseDate.toISOString(),
@@ -468,18 +480,30 @@ function decodeJWS(jws: string): any {
   try {
     const parts = jws.split('.')
     if (parts.length !== 3) {
-      throw new Error('Invalid JWS format')
+      throw new Error('Invalid JWS format - expected 3 parts, got ' + parts.length)
     }
 
     const payload = parts[1]
     if (!payload) {
-      throw new Error('Invalid JWS payload')
+      throw new Error('Invalid JWS payload - part 1 is empty')
     }
-    const decoded = Buffer.from(payload, 'base64url').toString('utf8')
+    
+    // Handle both base64url and base64 encoding
+    let decoded: string
+    try {
+      decoded = Buffer.from(payload, 'base64url').toString('utf8')
+    } catch (base64urlError) {
+      console.log('⚠️ base64url failed, trying base64:', base64urlError)
+      decoded = Buffer.from(payload, 'base64').toString('utf8')
+    }
+    
+    console.log('🔍 Decoded JWS payload length:', decoded.length)
     return JSON.parse(decoded)
   } catch (error) {
     console.error('❌ Failed to decode JWS:', error)
-    throw new Error('Invalid JWS signature from Apple')
+    console.error('❌ JWS string length:', jws.length)
+    console.error('❌ JWS first 100 chars:', jws.substring(0, 100))
+    throw new Error('Invalid JWS signature from Apple: ' + (error instanceof Error ? error.message : 'Unknown error'))
   }
 }
 

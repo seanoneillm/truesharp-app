@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
     // Verify user authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -278,7 +279,8 @@ async function processValidatedTransaction({
   transactionData: JWSTransaction
   environment: string
 }) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const cookieStore = await cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
   // Validate transaction data matches request
   if (transactionData.transactionId !== transactionId) {
