@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
     const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(fileName)
 
     // Save file record to database
-    const { data: fileRecord, error: dbError } = await supabase
-      .from('uploads')
+    const { data: fileRecord, error: dbError } = await (supabase
+      .from('uploads') as any)
       .insert({
         user_id: user.id,
         filename: file.name,
@@ -131,7 +131,7 @@ export async function DELETE(request: NextRequest) {
     // Delete from storage
     const { error: storageError } = await supabase.storage
       .from('uploads')
-      .remove([fileRecord.filepath])
+      .remove([(fileRecord as any).filepath])
 
     if (storageError) {
       return NextResponse.json({ error: storageError.message }, { status: 400 })

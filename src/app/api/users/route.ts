@@ -42,8 +42,8 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { username, display_name, bio, avatar_url, location, website } = body
 
-    const { data, error } = await supabase
-      .from('profiles')
+    const { data, error } = await (supabase
+      .from('profiles') as any)
       .update({
         username,
         display_name,

@@ -129,8 +129,9 @@ function getSportVariations(sport: string): string[] {
     variations.push('NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey')
   } else if (sport === 'NCAAF') {
     variations.push('NCAAF', 'ncaaf', 'football', 'Football', 'College Football', 'college football', 'NCAA Football', 'ncaa football')
-  } else if (sport === 'NCAAB') {
-    variations.push('NCAAB', 'ncaab', 'basketball', 'Basketball', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball')
+  } else if (sport === 'NCAAB' || sport === 'NCAAM' || sport === 'NCAAMB') {
+    // NCAAB, NCAAM, and NCAAMB should all be treated as the same sport
+    variations.push('NCAAB', 'NCAAM', 'NCAAMB', 'ncaab', 'ncaam', 'ncaamb', 'basketball', 'Basketball', 'College Basketball', 'college basketball', 'NCAA Basketball', 'ncaa basketball', "NCAA Men's Basketball", "ncaa men's basketball")
   } else if (sport === 'MLS') {
     variations.push('MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football')
   } else if (sport === 'UCL') {

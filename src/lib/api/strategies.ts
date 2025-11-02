@@ -124,7 +124,7 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
     }
 
     // Get subscriber counts from subscriptions table for each strategy
-    const strategyIds = data.map(strategy => strategy.strategy_id)
+    const strategyIds = (data as any[]).map(strategy => strategy.strategy_id)
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from('subscriptions')
       .select('strategy_id, frequency, status')
@@ -137,7 +137,7 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
 
     // Calculate subscriber counts by frequency for each strategy
     const subscriberCounts = subscriptions
-      ? subscriptions.reduce(
+      ? (subscriptions as any[]).reduce(
           (acc, sub) => {
             if (!acc[sub.strategy_id]) {
               acc[sub.strategy_id] = {
@@ -166,7 +166,7 @@ export async function fetchUserStrategies(userId: string): Promise<StrategyData[
       : {}
 
     // Map leaderboard data to StrategyData format and add subscriber counts
-    const strategiesWithSubscriberCounts = data.map(strategy => ({
+    const strategiesWithSubscriberCounts = (data as any[]).map(strategy => ({
       id: strategy.strategy_id,
       name: strategy.strategy_name,
       description: '', // Not available in leaderboard, could join with strategies table if needed
@@ -268,8 +268,8 @@ export async function createStrategy(
 ): Promise<StrategyData> {
   const supabase = createBrowserClient()
 
-  const { data, error } = await supabase
-    .from('strategies')
+  const { data, error } = await (supabase
+    .from('strategies') as any)
     .insert({
       user_id: userId,
       name: strategyData.name,

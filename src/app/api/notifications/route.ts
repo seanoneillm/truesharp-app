@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
     const { type, title, message, data: notificationData, target_user_id } = body
 
     // Create notification
-    const { data, error } = await supabase
-      .from('notifications')
+    const { data, error } = await (supabase
+      .from('notifications') as any)
       .insert({
         user_id: target_user_id || user.id,
         type,
@@ -117,8 +117,8 @@ export async function PUT(request: NextRequest) {
     const { notification_ids, action } = body
 
     if (action === 'mark_read') {
-      const { data, error } = await supabase
-        .from('notifications')
+      const { data, error } = await (supabase
+        .from('notifications') as any)
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .in('id', notification_ids)
@@ -132,8 +132,8 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === 'mark_all_read') {
-      const { data, error } = await supabase
-        .from('notifications')
+      const { data, error } = await (supabase
+        .from('notifications') as any)
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .eq('read', false)

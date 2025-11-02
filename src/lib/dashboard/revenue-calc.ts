@@ -54,7 +54,7 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
       return getEmptyRevenueData()
     }
 
-    const monetizedStrategies = strategies?.filter(s => s.monetized) || []
+    const monetizedStrategies = (strategies as any[])?.filter(s => s.monetized) || []
 
     // Fetch active subscriptions for this seller
     const { data: subscriptions, error: subscriptionsError } = await supabase
@@ -71,7 +71,7 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
     // Calculate revenue by strategy
     const revenueByStrategy: StrategyRevenue[] = monetizedStrategies.map(strategy => {
       const strategySubscriptions =
-        subscriptions?.filter(sub => sub.strategy_id === strategy.id) || []
+        (subscriptions as any[])?.filter(sub => sub.strategy_id === strategy.id) || []
 
       let monthlyRevenue = 0
       strategySubscriptions.forEach(sub => {
@@ -118,7 +118,7 @@ export async function calculateSellerRevenue(userId: string): Promise<RevenueDat
     let allTimeEarnings = 0
     if (!allSubsError && allSubscriptions) {
       // Rough estimate: assume average subscription duration and calculate
-      allSubscriptions.forEach(sub => {
+      (allSubscriptions as any[]).forEach(sub => {
         // Estimate earnings based on how long subscription has been active
         const createdDate = new Date(sub.created_at)
         const now = new Date()

@@ -24,15 +24,15 @@ import { authenticatedRequest, paginatedRequest, supabaseDirect } from './client
 //   created_at: string
 // }
 
-// Helper function to wrap Supabase queries for paginatedRequest  
+// Helper function to wrap Supabase queries for paginatedRequest
 async function wrapSupabaseQuery(query: any, params: any) {
   const { data, error, count } = await query.range(
     (params.page! - 1) * params.limit!,
     params.page! * params.limit! - 1
   )
-  
+
   if (error) throw error
-  
+
   return {
     data: data || [],
     pagination: {
@@ -121,7 +121,7 @@ export async function getUserBets(filters: BetFilters = {}, options = { page: 1,
       query = query.lte('odds', filters.odds.max)
     }
 
-    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
+    const paginated = await paginatedRequest(params => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }
@@ -383,7 +383,7 @@ export async function getPublicBets(filters: BetFilters = {}, options = { page: 
       query = query.in('status', filters.status)
     }
 
-    const paginated = await paginatedRequest((params) => wrapSupabaseQuery(query, params), options)
+    const paginated = await paginatedRequest(params => wrapSupabaseQuery(query, params), options)
     return { data: paginated.data ?? null, error: paginated.error ?? null }
   })
 }

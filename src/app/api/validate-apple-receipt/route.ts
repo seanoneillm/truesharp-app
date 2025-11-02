@@ -5,6 +5,14 @@ import { NextRequest, NextResponse } from 'next/server'
 const APPLE_SANDBOX_URL = 'https://sandbox.itunes.apple.com/verifyReceipt'
 const APPLE_PRODUCTION_URL = 'https://buy.itunes.apple.com/verifyReceipt'
 
+// Apple receipt validation configuration (currently unused)
+// const APPLE_VALIDATION_CONFIG = {
+//   maxRetries: 3,
+//   timeoutMs: 45000, // 45 seconds for sandbox delays
+//   productionFirstStrategy: true, // Always try production first, fallback to sandbox on 21007
+//   rateLimitDelay: 1000, // 1 second between requests to avoid rate limiting
+// }
+
 interface AppleReceiptValidationRequest {
   userId: string
   productId: string
@@ -21,7 +29,13 @@ interface AppleReceiptResponse {
   'is-retryable'?: boolean
 }
 
+/**
+ * Enhanced Apple Receipt Validation with Production-First Fallback Strategy
+ * Implements Apple's recommended approach: try production first, fallback to sandbox on 21007
+ */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+
   try {
     const supabase = createRouteHandlerClient({ cookies })
 
@@ -39,7 +53,7 @@ export async function POST(request: NextRequest) {
     const body: AppleReceiptValidationRequest = await request.json()
     const { userId, productId, receiptData, transactionId, environment } = body
 
-    // Verify the user ID matches the authenticated user
+    // Security: Verify the user ID matches the authenticated user
     if (userId !== user.id) {
       console.error('❌ Receipt validation: User ID mismatch', {
         authenticatedUserId: user.id,
@@ -56,18 +70,18 @@ export async function POST(request: NextRequest) {
       receiptLength: receiptData.length,
     })
 
-    // Validate input
+    // Validate required fields
     if (!receiptData || !productId || !transactionId) {
-      return NextResponse.json({ valid: false, error: 'Missing required fields' }, { status: 400 })
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Missing required fields: receiptData, productId, transactionId',
+        },
+        { status: 400 }
+      )
     }
 
-    // Prepare Apple verification request
-    const appleRequestBody = {
-      'receipt-data': receiptData,
-      password: process.env.APPLE_SHARED_SECRET, // App-specific shared secret
-      'exclude-old-transactions': true,
-    }
-
+    // Security: Check shared secret is configured
     if (!process.env.APPLE_SHARED_SECRET) {
       console.error('❌ APPLE_SHARED_SECRET not configured')
       return NextResponse.json(
@@ -76,94 +90,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine Apple endpoint based on environment
-    const appleEndpoint = environment === 'production' ? APPLE_PRODUCTION_URL : APPLE_SANDBOX_URL
+    // Log transaction attempt for audit
+    await supabase
+      .from('apple_transaction_attempts')
+      .insert({
+        user_id: userId,
+        product_id: productId,
+        transaction_id: transactionId,
+        validation_result: { step: 'started', environment },
+      })
+      .select()
+      .single()
 
-    console.log(`📡 Sending receipt to Apple ${environment} endpoint`)
-
-    // Send receipt to Apple for validation
-    let appleResponse: Response
-    let appleData: AppleReceiptResponse
-
+    // Apple validation with production-first strategy and robust error handling
+    let validationResult
     try {
-      appleResponse = await fetch(appleEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      validationResult = await validateReceiptWithApple(receiptData, true) // Production first
+    } catch (error) {
+      console.error('❌ Apple validation failed:', error)
+
+      // Log failure attempt
+      await supabase.from('apple_transaction_attempts').insert({
+        user_id: userId,
+        product_id: productId,
+        transaction_id: transactionId,
+        validation_result: {
+          step: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown',
         },
-        body: JSON.stringify(appleRequestBody),
-        signal: AbortSignal.timeout(30000), // 30 second timeout for Apple sandbox delays
+        error_message: error instanceof Error ? error.message : 'Unknown validation error',
       })
 
-      appleData = await appleResponse.json()
-    } catch (error) {
-      console.error('❌ Network error contacting Apple:', error)
       return NextResponse.json(
-        { valid: false, error: 'Failed to contact Apple verification service' },
+        { valid: false, error: 'Failed to validate receipt with Apple' },
         { status: 503 }
       )
     }
 
-    console.log('📋 Apple validation response:', {
-      status: appleData.status,
-      environment: appleData.environment,
-      hasReceipt: !!appleData.receipt,
-      hasLatestReceiptInfo: !!appleData.latest_receipt_info,
-    })
+    // Process the validated receipt
+    const { appleData, finalEnvironment } = validationResult
 
-    // Handle sandbox-to-production redirect (status 21007)
-    if (appleData.status === 21007 && environment === 'production') {
-      console.log('🔄 Redirecting to sandbox for validation')
-
-      try {
-        appleResponse = await fetch(APPLE_SANDBOX_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(appleRequestBody),
-          signal: AbortSignal.timeout(30000), // 30 second timeout for Apple sandbox delays
-        })
-
-        appleData = await appleResponse.json()
-        console.log('📋 Apple sandbox validation response:', {
-          status: appleData.status,
-          environment: appleData.environment,
-        })
-      } catch (error) {
-        console.error('❌ Network error contacting Apple sandbox:', error)
-        return NextResponse.json(
-          { valid: false, error: 'Failed to contact Apple sandbox service' },
-          { status: 503 }
-        )
-      }
-    }
-
-    // Check Apple's response status
-    if (appleData.status !== 0) {
-      const errorMessages: { [key: number]: string } = {
-        21000: 'The App Store could not read the JSON object you provided',
-        21002: 'The data in the receipt-data property was malformed or missing',
-        21003: 'The receipt could not be authenticated',
-        21004: 'The shared secret you provided does not match the shared secret on file',
-        21005: 'The receipt server is not currently available',
-        21006: 'This receipt is valid but the subscription has expired',
-        21007: 'This receipt is from the sandbox environment but was sent to production',
-        21008: 'This receipt is from the production environment but was sent to sandbox',
-        21009: 'Internal data access error',
-        21010: 'The user account cannot be found or has been deleted',
-      }
-
-      const errorMessage = errorMessages[appleData.status] || `Unknown error: ${appleData.status}`
-      console.error('❌ Apple receipt validation failed:', {
-        status: appleData.status,
-        error: errorMessage,
-      })
-
-      return NextResponse.json({ valid: false, error: errorMessage }, { status: 400 })
-    }
-
-    // Extract transaction info from receipt
+    // Extract and validate transaction info
     const receiptInfo = appleData.latest_receipt_info || appleData.receipt?.in_app || []
 
     if (!Array.isArray(receiptInfo) || receiptInfo.length === 0) {
@@ -174,7 +141,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the specific transaction
+    // Find the specific transaction (try both transaction_id and original_transaction_id)
     const matchingTransaction = receiptInfo.find(
       transaction =>
         transaction.transaction_id === transactionId ||
@@ -184,7 +151,10 @@ export async function POST(request: NextRequest) {
     if (!matchingTransaction) {
       console.error('❌ Transaction not found in receipt', {
         searchTransactionId: transactionId,
-        availableTransactions: receiptInfo.map(t => t.transaction_id),
+        availableTransactions: receiptInfo.map(t => ({
+          id: t.transaction_id,
+          originalId: t.original_transaction_id,
+        })),
       })
       return NextResponse.json(
         { valid: false, error: 'Transaction not found in receipt' },
@@ -198,108 +168,222 @@ export async function POST(request: NextRequest) {
         expected: productId,
         actual: matchingTransaction.product_id,
       })
-      return NextResponse.json({ valid: false, error: 'Product ID mismatch' }, { status: 400 })
+      return NextResponse.json(
+        {
+          valid: false,
+          error: `Product ID mismatch: expected ${productId}, got ${matchingTransaction.product_id}`,
+        },
+        { status: 400 }
+      )
     }
 
-    // Calculate subscription period dates
+    // Extract transaction details with proper date handling
     const purchaseDate = new Date(parseInt(matchingTransaction.purchase_date_ms))
     const expirationDate = new Date(parseInt(matchingTransaction.expires_date_ms))
-    const now = new Date()
+    const originalTransactionId = matchingTransaction.original_transaction_id || transactionId
 
-    // Check if subscription is still valid
-    const isActive = now <= expirationDate
+    // Validate dates
+    if (isNaN(purchaseDate.getTime()) || isNaN(expirationDate.getTime())) {
+      console.error('❌ Invalid date format in receipt', {
+        purchaseMs: matchingTransaction.purchase_date_ms,
+        expirationMs: matchingTransaction.expires_date_ms,
+      })
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Invalid date format in receipt',
+        },
+        { status: 400 }
+      )
+    }
+
+    const isActive = new Date() <= expirationDate
 
     console.log('📅 Subscription period validation', {
       purchaseDate: purchaseDate.toISOString(),
       expirationDate: expirationDate.toISOString(),
       isActive,
-      currentTime: now.toISOString(),
+      currentTime: new Date().toISOString(),
     })
 
-    // Determine plan type from product ID
-    const plan = productId.includes('year') ? 'yearly' : 'monthly'
-
     try {
-      // Check if subscription already exists to prevent duplicates
-      const { data: existingSubscription } = await supabase
-        .from('pro_subscriptions')
-        .select('id, apple_transaction_id')
-        .eq('user_id', userId)
-        .eq('apple_transaction_id', transactionId)
-        .single()
+      // Use the secure database function for atomic subscription creation
+      const { data: result, error: dbError } = await supabase.rpc(
+        'complete_apple_subscription_validation',
+        {
+          p_user_id: userId,
+          p_transaction_id: transactionId,
+          p_original_transaction_id: originalTransactionId,
+          p_product_id: productId,
+          p_receipt_data: receiptData,
+          p_environment: finalEnvironment,
+          p_purchase_date: purchaseDate.toISOString(),
+          p_expiration_date: expirationDate.toISOString(),
+        }
+      )
 
-      if (existingSubscription) {
-        console.log('✅ Subscription already exists in database', {
-          subscriptionId: existingSubscription.id,
-        })
-        return NextResponse.json({ valid: true })
-      }
-
-      // Create new subscription record
-      const subscriptionData = {
-        user_id: userId,
-        stripe_subscription_id: null, // Apple purchase - no Stripe
-        stripe_customer_id: null,
-        status: isActive ? 'active' : 'expired',
-        plan: plan,
-        current_period_start: purchaseDate.toISOString(),
-        current_period_end: expirationDate.toISOString(),
-        price_id: productId,
-        apple_transaction_id: transactionId,
-        apple_receipt_data: receiptData.substring(0, 500), // Store first 500 chars for audit
-      }
-
-      const { data: newSubscription, error: insertError } = await supabase
-        .from('pro_subscriptions')
-        .insert(subscriptionData)
-        .select()
-        .single()
-
-      if (insertError) {
-        console.error('❌ Failed to create subscription record:', insertError)
+      if (dbError) {
+        console.error('❌ Failed to complete subscription validation:', dbError)
         return NextResponse.json(
           { valid: false, error: 'Failed to create subscription record' },
           { status: 500 }
         )
       }
 
-      // Update user profile to pro status if subscription is active
-      if (isActive) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ pro: 'yes' })
-          .eq('id', userId)
-
-        if (profileError) {
-          console.error('❌ Failed to update profile pro status:', profileError)
-          // Don't fail the validation for this, subscription is still valid
-        } else {
-          console.log('✅ Profile updated to pro status')
-        }
-      }
+      // Log successful validation
+      await supabase.from('apple_transaction_attempts').insert({
+        user_id: userId,
+        product_id: productId,
+        transaction_id: transactionId,
+        validation_result: {
+          step: 'success',
+          subscriptionId: result.subscription_id,
+          isActive: result.is_active,
+          plan: result.plan,
+          validationTime: Date.now() - startTime,
+        },
+      })
 
       console.log('✅ Receipt validation successful', {
-        subscriptionId: newSubscription.id,
-        plan,
-        isActive,
+        subscriptionId: result.subscription_id,
+        plan: result.plan,
+        isActive: result.is_active,
         transactionId,
+        validationTime: `${Date.now() - startTime}ms`,
       })
 
       return NextResponse.json({
         valid: true,
         subscription: {
-          id: newSubscription.id,
-          plan,
-          isActive,
+          id: result.subscription_id,
+          plan: result.plan,
+          isActive: result.is_active,
           expirationDate: expirationDate.toISOString(),
+        },
+        meta: {
+          environment: finalEnvironment,
+          validationTime: Date.now() - startTime,
         },
       })
     } catch (dbError) {
       console.error('❌ Database error during receipt validation:', dbError)
-      return NextResponse.json({ valid: false, error: 'Database error occurred' }, { status: 500 })
+      return NextResponse.json(
+        {
+          valid: false,
+          error: 'Database error occurred',
+        },
+        { status: 500 }
+      )
     }
   } catch (error) {
     console.error('❌ Unexpected error during receipt validation:', error)
-    return NextResponse.json({ valid: false, error: 'Unexpected server error' }, { status: 500 })
+    return NextResponse.json(
+      {
+        valid: false,
+        error: 'Unexpected server error',
+        meta: { validationTime: Date.now() - startTime },
+      },
+      { status: 500 }
+    )
   }
+}
+
+/**
+ * Apple Receipt Validation with Production-First Strategy
+ * Implements proper fallback handling as recommended by Apple
+ */
+async function validateReceiptWithApple(receiptData: string, productionFirst = true) {
+  const appleRequestBody = {
+    'receipt-data': receiptData,
+    password: process.env.APPLE_SHARED_SECRET!,
+    'exclude-old-transactions': true,
+  }
+
+  let appleData: AppleReceiptResponse
+  let finalEnvironment: string
+
+  // Step 1: Try production endpoint first (Apple recommended approach)
+  if (productionFirst) {
+    try {
+      console.log('📡 Validating with Apple production endpoint')
+      const response = await fetch(APPLE_PRODUCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appleRequestBody),
+        signal: AbortSignal.timeout(45000), // 45 seconds for sandbox delays
+      })
+
+      appleData = await response.json()
+
+      // If status 21007, receipt is from sandbox - fallback to sandbox
+      if (appleData.status === 21007) {
+        console.log('🔄 Receipt is from sandbox environment, redirecting to sandbox endpoint')
+
+        const sandboxResponse = await fetch(APPLE_SANDBOX_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(appleRequestBody),
+          signal: AbortSignal.timeout(45000),
+        })
+
+        appleData = await sandboxResponse.json()
+        finalEnvironment = 'sandbox'
+      } else {
+        finalEnvironment = 'production'
+      }
+    } catch (error) {
+      console.error('❌ Production validation failed, trying sandbox:', error)
+
+      // Fallback to sandbox on network errors
+      const sandboxResponse = await fetch(APPLE_SANDBOX_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appleRequestBody),
+        signal: AbortSignal.timeout(45000),
+      })
+
+      appleData = await sandboxResponse.json()
+      finalEnvironment = 'sandbox'
+    }
+  } else {
+    // Direct sandbox validation (for testing)
+    console.log('📡 Validating with Apple sandbox endpoint')
+    const response = await fetch(APPLE_SANDBOX_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(appleRequestBody),
+      signal: AbortSignal.timeout(45000),
+    })
+
+    appleData = await response.json()
+    finalEnvironment = 'sandbox'
+  }
+
+  // Validate Apple's response
+  if (appleData.status !== 0) {
+    const errorMessages: { [key: number]: string } = {
+      21000: 'The App Store could not read the JSON object you provided',
+      21002: 'The data in the receipt-data property was malformed or missing',
+      21003: 'The receipt could not be authenticated',
+      21004: 'The shared secret you provided does not match the shared secret on file',
+      21005: 'The receipt server is not currently available (try again later)',
+      21006: 'This receipt is valid but the subscription has expired',
+      21007: 'This receipt is from the sandbox environment but was sent to production',
+      21008: 'This receipt is from the production environment but was sent to sandbox',
+      21009: 'Internal data access error (contact Apple)',
+      21010: 'The user account cannot be found or has been deleted',
+    }
+
+    const errorMessage =
+      errorMessages[appleData.status] || `Unknown Apple validation error: ${appleData.status}`
+    throw new Error(`Apple validation failed (${appleData.status}): ${errorMessage}`)
+  }
+
+  console.log('✅ Apple validation successful', {
+    environment: finalEnvironment,
+    status: appleData.status,
+    hasLatestReceiptInfo: !!appleData.latest_receipt_info?.length,
+  })
+
+  return { appleData, finalEnvironment }
 }

@@ -75,7 +75,7 @@ export async function calculateDashboardStats(userId: string): Promise<Dashboard
         } else if (bet.status === 'lost') {
           acc.totalProfit -= bet.stake || 0
         }
-        
+
         return acc
       },
       { totalProfit: 0, totalStaked: 0 }

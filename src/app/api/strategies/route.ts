@@ -332,6 +332,16 @@ export async function POST(request: NextRequest) {
     console.log('📊 Filters received:', JSON.stringify(filters, null, 2))
     console.log('📋 Strategy data to be saved:', JSON.stringify(strategyData, null, 2))
 
+    // Debug sport normalization specifically
+    console.log('🏀 SPORT NORMALIZATION DEBUG:')
+    console.log('  Original sport from extraction:', sport)
+    console.log('  hasAllLeagues:', hasAllLeagues)
+    console.log('  specificLeagues:', specificLeagues)
+    console.log('  Filter leagues:', filters.leagues)
+    console.log('  Filter sports:', filters.sports)
+    console.log('  Will search for sport variations of:', sport)
+    console.log('  Strategy is looking for sport:', sport, 'to match against database bets')
+
     // Insert strategy into database using service role
     const { data: strategy, error: insertError } = await serviceSupabase
       .from('strategies')
@@ -349,7 +359,7 @@ export async function POST(request: NextRequest) {
     // Find matching bets for this strategy using service role
     let betsQuery = serviceSupabase
       .from('bets')
-      .select('id, profit, stake, status, parlay_id')
+      .select('id, profit, stake, status, parlay_id, sport, league, bet_type, side, is_parlay, sportsbook, placed_at')
       .eq('user_id', finalUser.id)
 
     console.log('🔍 Building bets query with filters:', {
@@ -364,20 +374,28 @@ export async function POST(request: NextRequest) {
       customEndDate: filters.customEndDate,
     })
 
+    // Debug exactly what filters are being applied
+    console.log('🏀 DETAILED FILTER DEBUG:')
+    console.log('  Sport for filtering:', sport)
+    console.log('  Sport !== "All":', sport !== 'All')
+    console.log('  Will apply sport filter:', sport && sport !== 'All')
+
     // First, let's see what bets this user actually has
     const { data: allUserBets, error: allBetsError } = await serviceSupabase
       .from('bets')
       .select('id, sport, league, bet_type, status, side, is_parlay, sportsbook, created_at')
       .eq('user_id', finalUser.id)
-      .limit(20)
+      .limit(50)
 
     if (!allBetsError && allUserBets) {
-      console.log('🔍 User has', allUserBets.length, 'total bets:')
+      console.log('🔍 User has', allUserBets.length, 'total bets (showing max 50):')
       console.log('🔍 Sample bets:', allUserBets.slice(0, 5))
-      console.log('🔍 Unique sports:', [...new Set(allUserBets.map(b => b.sport).filter(Boolean))])
-      console.log('🔍 Unique leagues:', [
-        ...new Set(allUserBets.map(b => b.league).filter(Boolean)),
-      ])
+
+      const uniqueSports = [...new Set(allUserBets.map(b => b.sport).filter(Boolean))]
+      const uniqueLeagues = [...new Set(allUserBets.map(b => b.league).filter(Boolean))]
+
+      console.log('🔍 Unique sports:', uniqueSports)
+      console.log('🔍 Unique leagues:', uniqueLeagues)
       console.log('🔍 Unique bet_types:', [...new Set(allUserBets.map(b => b.bet_type))])
       console.log('🔍 Unique statuses:', [...new Set(allUserBets.map(b => b.status))])
       console.log('🔍 Unique sides:', [...new Set(allUserBets.map(b => b.side))])
@@ -386,6 +404,33 @@ export async function POST(request: NextRequest) {
         parlays: allUserBets.filter(b => b.is_parlay).length,
         straight: allUserBets.filter(b => !b.is_parlay).length,
       })
+
+      // Check for college basketball variations specifically
+      const collegeBasketballBets = allUserBets.filter(bet => {
+        const sport = bet.sport?.toLowerCase() || ''
+        const league = bet.league?.toLowerCase() || ''
+        return (
+          sport.includes('ncaa') ||
+          sport.includes('college') ||
+          sport.includes('ncaab') ||
+          sport.includes('ncaam') ||
+          sport.includes('ncaamb') ||
+          league.includes('ncaa') ||
+          league.includes('college') ||
+          league.includes('ncaab') ||
+          league.includes('ncaam') ||
+          league.includes('ncaamb')
+        )
+      })
+
+      if (collegeBasketballBets.length > 0) {
+        console.log('🏀 Found', collegeBasketballBets.length, 'college basketball bets:')
+        collegeBasketballBets.slice(0, 5).forEach(bet => {
+          console.log(`   Bet ${bet.id}: sport="${bet.sport}", league="${bet.league}"`)
+        })
+      } else {
+        console.log('🏀 No college basketball bets found in sample')
+      }
     }
 
     // Initialize variation arrays outside of conditionals for debugging
@@ -415,10 +460,18 @@ export async function POST(request: NextRequest) {
           'NCAA Football',
           'ncaa football',
         ]
-      } else if (sport === 'NCAAB') {
+      } else if (sport === 'NCAAB' || sport === 'NCAAM' || sport === 'NCAAMB') {
+        // NCAAB, NCAAM, and NCAAMB should all be treated as the same sport
+        // This must match exactly with iOS normalizeLeague function
         sportVariations = [
           'NCAAB',
+          'NCAAM',
+          'NCAAMB',
           'ncaab',
+          'ncaam',
+          'ncaamb',
+          "NCAA Men's Basketball",
+          "ncaa men's basketball",
           'College Basketball',
           'college basketball',
           'NCAA Basketball',
@@ -448,6 +501,57 @@ export async function POST(request: NextRequest) {
       const combinedConditions = `${sportConditions},${leagueConditions}`
 
       console.log('🔍 Applying OR filter to both sport and league columns:', combinedConditions)
+
+      // Test query after sport filter to see how many bets match
+      const testQuery = serviceSupabase
+        .from('bets')
+        .select('id, sport, league, bet_type, status, side, is_parlay, sportsbook')
+        .eq('user_id', finalUser.id)
+        .or(combinedConditions)
+        .limit(50)
+
+      const { data: afterSportFilter, error: testError } = await testQuery
+      if (!testError && afterSportFilter) {
+        console.log('🏀 Bets found after sport filter:', afterSportFilter.length)
+        if (afterSportFilter.length > 0) {
+          console.log('🏀 Sample matched bets after sport filter:')
+          afterSportFilter.slice(0, 10).forEach(bet => {
+            console.log(
+              `   Bet ${bet.id}: sport="${bet.sport}", league="${bet.league}", bet_type="${bet.bet_type}"`
+            )
+          })
+        } else {
+          console.log('🏀 ❌ No bets matched the sport filter!')
+          console.log('🏀 Strategy filter requested:', sport)
+          console.log('🏀 Sport variations searched for:', sportVariations)
+          console.log('🏀 Combined OR condition used:', combinedConditions)
+          console.log('🏀 Testing individual conditions...')
+
+          // Test each variation individually to see what matches
+          for (const variation of sportVariations.slice(0, 5)) {
+            const testIndividual = await serviceSupabase
+              .from('bets')
+              .select('id, sport, league')
+              .eq('user_id', finalUser.id)
+              .or(`sport.eq.${variation},league.eq.${variation}`)
+              .limit(3)
+
+            const { data: individualMatches } = testIndividual
+            if (individualMatches && individualMatches.length > 0) {
+              console.log(
+                `     "${variation}" matches ${individualMatches.length} bets:`,
+                individualMatches.map(b => `${b.sport}|${b.league}`)
+              )
+            } else {
+              console.log(`     "${variation}" matches 0 bets`)
+            }
+          }
+        }
+      } else if (testError) {
+        console.log('🏀 ❌ Error testing sport filter:', testError)
+      }
+
+      // Continue with the original query flow
       betsQuery = betsQuery.or(combinedConditions)
     } else {
       console.log('🔍 No sport filter applied (sport is All)')
@@ -753,14 +857,14 @@ export async function POST(request: NextRequest) {
         // Continue with strategy creation even if leaderboard fails
       } else {
         console.log('✅ Successfully inserted strategy_leaderboard entry')
-        
+
         // Force trigger calculation by updating the strategy_leaderboard entry
         // This will cause the parlay-aware triggers to calculate the correct metrics
         const { error: triggerError } = await serviceSupabase
           .from('strategy_leaderboard')
           .update({ last_calculated_at: new Date().toISOString() })
           .eq('strategy_id', strategy.id)
-        
+
         if (triggerError) {
           console.error('Error triggering leaderboard calculation:', triggerError)
         } else {
