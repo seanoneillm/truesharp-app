@@ -270,74 +270,78 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-100">
-        <div className="container mx-auto px-4 py-4 sm:py-8 max-w-6xl">
-          <div className="space-y-6 sm:space-y-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-4 sm:py-6 max-w-5xl">
+          <div className="space-y-4 sm:space-y-6">
             <div className="animate-pulse">
               {/* Back button and branding skeleton */}
-              <div className="flex items-center justify-between mb-6 sm:mb-8">
-                <div className="h-10 w-32 rounded-lg bg-white/60"></div>
-                <div className="h-10 w-24 rounded-full bg-white/60"></div>
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="h-10 w-32 rounded-lg bg-gray-200"></div>
+                <div className="h-8 w-24 rounded-full bg-gray-200"></div>
               </div>
               
-              {/* Enhanced header skeleton */}
-              <div className="rounded-2xl bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden mb-6 sm:mb-8 ring-1 ring-blue-100/50">
-                <div className="h-40 sm:h-56 bg-gradient-to-br from-blue-200 to-indigo-200"></div>
-                <div className="p-6">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6">
-                    <div className="h-4 w-3/4 rounded bg-blue-200 mb-2"></div>
-                    <div className="h-3 w-1/2 rounded bg-blue-200"></div>
-                  </div>
-                  <div className="flex justify-end">
-                    <div className="h-8 w-24 rounded-lg bg-slate-200"></div>
+              {/* Profile header skeleton */}
+              <div className="rounded-xl bg-white border border-gray-200 overflow-hidden mb-4 sm:mb-6">
+                <div className="h-24 sm:h-32 bg-gray-200"></div>
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl bg-gray-200"></div>
+                    <div className="flex-1">
+                      <div className="h-6 w-48 rounded bg-gray-200 mb-2"></div>
+                      <div className="flex space-x-2 mb-3">
+                        <div className="h-6 w-20 rounded-full bg-gray-200"></div>
+                        <div className="h-6 w-16 rounded-full bg-gray-200"></div>
+                      </div>
+                      <div className="h-16 rounded-lg bg-gray-100"></div>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              {/* Enhanced strategies section skeleton */}
-              <div className="rounded-2xl bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden ring-1 ring-blue-100/50">
-                <div className="bg-gradient-to-r from-slate-800 to-indigo-800 p-6 sm:p-8">
+              {/* Strategies section skeleton */}
+              <div className="rounded-xl bg-white border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 sm:p-6">
                   <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-xl bg-white/20"></div>
+                    <div className="h-9 w-9 rounded-lg bg-gray-200"></div>
                     <div>
-                      <div className="h-6 w-32 rounded bg-white/30 mb-2"></div>
-                      <div className="h-4 w-24 rounded bg-white/20"></div>
+                      <div className="h-5 w-32 rounded bg-gray-200 mb-1"></div>
+                      <div className="h-4 w-24 rounded bg-gray-200"></div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="p-6 sm:p-8 space-y-6">
+                <div className="p-4 sm:p-6 space-y-4">
                   {[...Array(2)].map((_, i) => (
-                    <div key={i} className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden border border-blue-200/40">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 sm:p-6 border-b border-blue-200/40">
-                        <div className="h-7 w-2/3 rounded bg-slate-200 mb-3"></div>
+                    <div key={i} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 border-b border-gray-200 p-4">
+                        <div className="h-6 w-2/3 rounded bg-gray-200 mb-2"></div>
                         <div className="flex space-x-2">
-                          <div className="h-6 w-20 rounded-full bg-slate-200"></div>
-                          <div className="h-6 w-16 rounded-full bg-slate-200"></div>
+                          <div className="h-5 w-16 rounded-full bg-gray-200"></div>
+                          <div className="h-5 w-12 rounded-full bg-gray-200"></div>
                         </div>
                       </div>
-                      <div className="p-4 sm:p-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                      <div className="p-4">
+                        <div className="grid grid-cols-3 gap-3 mb-4">
                           {[...Array(3)].map((_, j) => (
-                            <div key={j} className="bg-white rounded-xl p-4 border border-blue-200/40">
-                              <div className="h-6 w-12 rounded bg-blue-200 mb-2 mx-auto"></div>
-                              <div className="h-3 w-8 rounded bg-blue-200 mx-auto"></div>
+                            <div key={j} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <div className="h-5 w-12 rounded bg-gray-200 mb-1 mx-auto"></div>
+                              <div className="h-3 w-8 rounded bg-gray-200 mx-auto"></div>
                             </div>
                           ))}
                         </div>
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6">
-                          <div className="h-4 w-32 rounded bg-blue-200 mb-3"></div>
-                          <div className="flex gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-200">
+                          <div className="h-4 w-20 rounded bg-gray-200 mb-2"></div>
+                          <div className="flex gap-2">
                             {[...Array(3)].map((_, k) => (
-                              <div key={k} className="flex-1 bg-white rounded-lg p-3 border border-blue-200/40">
-                                <div className="h-5 w-16 rounded bg-blue-200 mb-1 mx-auto"></div>
-                                <div className="h-3 w-12 rounded bg-blue-200 mx-auto"></div>
+                              <div key={k} className="flex-1 bg-white rounded p-2 border border-gray-200">
+                                <div className="h-4 w-12 rounded bg-gray-200 mb-1 mx-auto"></div>
+                                <div className="h-3 w-8 rounded bg-gray-200 mx-auto"></div>
                               </div>
                             ))}
                           </div>
                         </div>
                         <div className="flex justify-center">
-                          <div className="h-12 w-40 rounded-xl bg-blue-200"></div>
+                          <div className="h-10 w-32 rounded-lg bg-gray-200"></div>
                         </div>
                       </div>
                     </div>
@@ -353,19 +357,19 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
 
   if (error || !sellerProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-100">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
           <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center bg-white/95 backdrop-blur-md rounded-2xl p-8 sm:p-12 shadow-2xl border border-blue-200/30 ring-1 ring-blue-100/50 max-w-md">
-              <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl p-6 mb-6">
-                <Store className="mx-auto mb-4 h-16 w-16 text-blue-400" />
+            <div className="text-center bg-white rounded-xl p-8 sm:p-12 shadow-lg border border-gray-200 max-w-md">
+              <div className="bg-gray-100 rounded-xl p-6 mb-6">
+                <Store className="mx-auto mb-4 h-16 w-16 text-gray-400" />
               </div>
-              <h1 className="mb-4 text-2xl sm:text-3xl font-bold text-slate-900">Seller not found</h1>
-              <p className="mb-6 text-slate-600 leading-relaxed">
+              <h1 className="mb-4 text-2xl sm:text-3xl font-bold text-gray-900">Seller not found</h1>
+              <p className="mb-6 text-gray-600 leading-relaxed">
                 {error || "The seller you're looking for doesn't exist or may have been removed."}
               </p>
               <Link href="/marketplace">
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Marketplace
                 </Button>
@@ -378,194 +382,170 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-100">
-      <div className="container mx-auto px-4 py-4 sm:py-8 max-w-6xl">
-        <div className="space-y-6 sm:space-y-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-5xl">
+        <div className="space-y-4 sm:space-y-6">
           {/* Back Button and Branding */}
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <Link href="/marketplace">
-              <Button variant="outline" className="bg-white/90 backdrop-blur-sm hover:bg-white shadow-lg border-blue-200/60 text-slate-700 hover:text-slate-900 transition-all hover:border-blue-300/80">
+              <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 hover:text-gray-900">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Back to Marketplace</span>
                 <span className="sm:hidden">Back</span>
               </Button>
             </Link>
-            <div className="flex items-center space-x-2 bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border border-blue-200/40">
-              <TrueSharpShield className="h-5 w-5" />
-              <span className="font-bold text-sm text-slate-700 hidden sm:inline tracking-tight">TrueSharp</span>
+            <div className="flex items-center space-x-2 bg-white rounded-full px-3 py-1.5 border border-gray-200">
+              <TrueSharpShield className="h-4 w-4" />
+              <span className="font-semibold text-sm text-gray-700 hidden sm:inline">TrueSharp</span>
             </div>
           </div>
 
           {/* Profile Header */}
-          <div className="overflow-hidden rounded-2xl border border-blue-200/30 bg-white/95 backdrop-blur-md shadow-2xl ring-1 ring-blue-100/50">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
             <div className="relative">
               {/* Banner */}
               <div
                 className={cn(
-                  'h-40 sm:h-56 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 relative overflow-hidden',
+                  'h-24 sm:h-32 bg-gradient-to-r from-blue-600 to-indigo-600 relative overflow-hidden',
                   sellerProfile.banner_img && 'bg-none'
                 )}
               >
-                {/* Decorative Pattern Overlay */}
-                <div className="absolute inset-0 opacity-20">
-                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12"></div>
-                  <div className="absolute top-4 right-4 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-                  <div className="absolute bottom-4 left-4 w-24 h-24 bg-white/5 rounded-full blur-lg"></div>
-                </div>
 
                 {sellerProfile.banner_img ? (
                   <>
                     <img
                       src={sellerProfile.banner_img}
                       alt="Profile banner"
-                      className="h-40 sm:h-56 w-full object-cover"
+                      className="h-24 sm:h-32 w-full object-cover"
                       onError={e => {
                         console.log('Banner image failed to load:', sellerProfile.banner_img)
                         e.currentTarget.style.display = 'none'
                       }}
                     />
-                    {/* Enhanced overlay for better text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                    <div className="absolute inset-0 bg-black/20" />
                   </>
                 ) : null}
                 
-                {/* Profile Content - Improved Mobile Layout */}
-                <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-end">
-                  <div className="flex flex-col space-y-4">
-                    {/* Profile Image and Basic Info */}
-                    <div className="flex items-end space-x-4">
-                      {/* Profile Image */}
-                      <div className="relative flex-shrink-0">
-                        {sellerProfile.profile_img || sellerProfile.profile_picture_url ? (
-                          <img
-                            src={sellerProfile.profile_img || sellerProfile.profile_picture_url || ''}
-                            alt={sellerProfile.username}
-                            className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-white object-cover shadow-2xl ring-4 ring-white/20"
-                            onError={e => {
-                              console.log(
-                                'Profile image failed to load:',
-                                sellerProfile.profile_img || sellerProfile.profile_picture_url
-                              )
-                              e.currentTarget.style.display = 'none'
-                              // Show fallback
-                              const fallback = document.createElement('div')
-                              fallback.className =
-                                'h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl sm:text-2xl border-4 border-white shadow-2xl ring-4 ring-white/20'
-                              fallback.textContent = sellerProfile.username.charAt(0).toUpperCase()
-                              e.currentTarget.parentNode?.appendChild(fallback)
-                            }}
-                          />
-                        ) : (
-                          <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-blue-500 to-purple-600 text-xl sm:text-2xl font-bold text-white shadow-2xl ring-4 ring-white/20">
-                            {sellerProfile.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        {sellerProfile.is_verified_seller && (
-                          <div className="absolute -bottom-2 -right-2">
-                            <div className="rounded-full bg-emerald-500 p-1.5 shadow-lg ring-2 ring-white">
-                              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                            </div>
-                          </div>
-                        )}
+              </div>
+
+              {/* Profile Content */}
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start space-x-4">
+                  {/* Profile Image */}
+                  <div className="relative flex-shrink-0">
+                    {sellerProfile.profile_img || sellerProfile.profile_picture_url ? (
+                      <img
+                        src={sellerProfile.profile_img || sellerProfile.profile_picture_url || ''}
+                        alt={sellerProfile.username}
+                        className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl border-2 border-white object-cover shadow-lg"
+                        onError={e => {
+                          console.log(
+                            'Profile image failed to load:',
+                            sellerProfile.profile_img || sellerProfile.profile_picture_url
+                          )
+                          e.currentTarget.style.display = 'none'
+                          const fallback = document.createElement('div')
+                          fallback.className =
+                            'h-16 w-16 sm:h-20 sm:w-20 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl border-2 border-white shadow-lg'
+                          fallback.textContent = sellerProfile.username.charAt(0).toUpperCase()
+                          e.currentTarget.parentNode?.appendChild(fallback)
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-xl border-2 border-white bg-gradient-to-br from-blue-500 to-indigo-600 text-lg sm:text-xl font-bold text-white shadow-lg">
+                        {sellerProfile.username.charAt(0).toUpperCase()}
                       </div>
-                      
-                      {/* Username and Stats - Improved spacing */}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="space-y-1">
-                          <h1 className="text-xl sm:text-2xl font-bold text-white truncate drop-shadow-lg">
-                            @{sellerProfile.username}
-                          </h1>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {sellerProfile.is_verified_seller && (
-                              <div className="flex items-center rounded-full bg-emerald-500/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white shadow-lg">
-                                <CheckCircle className="mr-1 h-3 w-3" />
-                                Verified Seller
-                              </div>
-                            )}
-                            <div className="flex items-center rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-xs text-white shadow-lg">
-                              <Store className="mr-1 h-3 w-3" />
-                              <span className="font-medium">{sellerProfile.strategies.length}</span>
-                              <span className="ml-1">strategies</span>
+                    )}
+                    {sellerProfile.is_verified_seller && (
+                      <div className="absolute -bottom-1 -right-1">
+                        <div className="rounded-full bg-emerald-500 p-1 shadow-sm">
+                          <CheckCircle className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Profile Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                      <div>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                          @{sellerProfile.username}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          {sellerProfile.is_verified_seller && (
+                            <div className="flex items-center rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                              <CheckCircle className="mr-1 h-3 w-3" />
+                              Verified
                             </div>
+                          )}
+                          <div className="flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                            <Store className="mr-1 h-3 w-3" />
+                            <span className="font-medium">{sellerProfile.strategies.length}</span>
+                            <span className="ml-1">strategies</span>
                           </div>
                         </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        onClick={copyProfileLink}
+                        size="sm"
+                        className={cn(
+                          "bg-white hover:bg-gray-50 border-gray-200 text-gray-700 hover:text-gray-900",
+                          copySuccess && 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        )}
+                      >
+                        {copySuccess ? (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Copied!</span>
+                            <span className="sm:hidden">✓</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="mr-2 h-4 w-4" />
+                            <span className="hidden sm:inline">Share</span>
+                            <span className="sm:hidden">Share</span>
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bio and Action Section - Enhanced */}
-              <div className="p-6">
-                {/* Bio with better typography */}
-                <div className="mb-6">
-                  {sellerProfile.bio && sellerProfile.bio.trim() ? (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200/40 shadow-sm">
-                      <p className="text-slate-700 text-sm leading-relaxed font-medium">
-                        {sellerProfile.bio}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4 border border-blue-200/40 shadow-sm">
-                      <p className="text-slate-400 italic text-sm text-center">
-                        No bio available
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Action Button - Enhanced */}
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={copyProfileLink}
-                    size="sm"
-                    className={cn(
-                      "bg-white/90 backdrop-blur-sm hover:bg-white shadow-lg border-blue-200/60 text-slate-700 hover:text-slate-900 transition-all hover:shadow-xl hover:border-blue-300/80",
-                      copySuccess && 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    )}
-                  >
-                    {copySuccess ? (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">Link Copied!</span>
-                        <span className="sm:hidden">✓ Copied</span>
-                      </>
+                    
+                    {/* Bio */}
+                    {sellerProfile.bio && sellerProfile.bio.trim() ? (
+                      <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                          {sellerProfile.bio}
+                        </p>
+                      </div>
                     ) : (
-                      <>
-                        <Copy className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">Copy Profile Link</span>
-                        <span className="sm:hidden">Share</span>
-                      </>
+                      <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <p className="text-gray-400 italic text-sm text-center">
+                          No bio available
+                        </p>
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Strategies Section */}
-          <div className="rounded-2xl border border-blue-200/30 bg-white/95 backdrop-blur-md shadow-2xl overflow-hidden ring-1 ring-blue-100/50">
-            {/* Section Header with Gradient */}
-            <div className="bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 p-6 sm:p-8">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+            {/* Section Header */}
+            <div className="bg-gray-50 border-b border-gray-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
-                    <TrueSharpShield className="h-6 w-6 text-white" variant="light" />
+                  <div className="bg-blue-100 rounded-lg p-2">
+                    <TrueSharpShield className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-white">
-                      Strategies
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                      Available Strategies
                     </h2>
-                    <p className="text-blue-100 text-sm">
-                      {sellerProfile.strategies.length} available strategies
-                    </p>
-                  </div>
-                </div>
-                <div className="hidden sm:block">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                    <p className="text-blue-100 text-sm">
-                      By @{sellerProfile.username}
+                    <p className="text-gray-600 text-sm">
+                      {sellerProfile.strategies.length} strategies by @{sellerProfile.username}
                     </p>
                   </div>
                 </div>
@@ -573,54 +553,49 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
             </div>
 
             {/* Strategies Content */}
-            <div className="p-6 sm:p-8">
+            <div className="p-4 sm:p-6">
               {sellerProfile.strategies.length === 0 ? (
-                <div className="py-16 sm:py-20 text-center">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 sm:p-12 border border-blue-200/40 shadow-sm">
-                    <Store className="mx-auto mb-6 h-16 w-16 sm:h-20 sm:w-20 text-blue-400" />
-                    <div className="mb-4 text-xl sm:text-2xl font-bold text-slate-700">No strategies available</div>
-                    <div className="text-slate-500 max-w-md mx-auto text-sm sm:text-base leading-relaxed">
-                      This seller hasn't created any public strategies yet. Check back later for exciting new betting strategies!
+                <div className="py-12 text-center">
+                  <div className="bg-gray-50 rounded-xl p-8 border border-gray-200">
+                    <Store className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+                    <div className="mb-2 text-lg font-semibold text-gray-700">No strategies available</div>
+                    <div className="text-gray-500 max-w-md mx-auto text-sm leading-relaxed">
+                      This seller hasn't created any public strategies yet. Check back later!
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {sellerProfile.strategies.map((strategy, _index) => {
                     const isSubscribed = isSubscribedToStrategy(strategy.strategy_id)
                     const subscription = getSubscriptionToStrategy(strategy.strategy_id)
                     
                     return (
-                      <div key={strategy.strategy_id} className="group bg-gradient-to-br from-white to-blue-50/30 border border-blue-200/40 rounded-2xl overflow-hidden hover:shadow-2xl hover:border-blue-300/60 transition-all duration-300 hover:-translate-y-1 hover:ring-2 hover:ring-blue-200/30">
+                      <div key={strategy.strategy_id} className="bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow duration-200">
                         {/* Strategy Card Header */}
-                        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 p-4 sm:p-6 border-b border-blue-200/40">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                        <div className="bg-gray-50 border-b border-gray-200 p-4">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-2 sm:space-y-0">
                             <div className="flex-1">
-                              <div className="flex flex-col space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-                                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 flex-shrink-0">
+                              <div className="space-y-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
+                                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">
                                     {strategy.strategy_name}
                                   </h3>
                                   <div className="flex items-center space-x-2 flex-wrap">
                                     {strategy.is_verified_seller && (
-                                      <div className="flex items-center rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm">
-                                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                                      <div className="flex items-center rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                                        <CheckCircle className="mr-1 h-3 w-3" />
                                         Verified
-                                      </div>
-                                    )}
-                                    {strategy.overall_rank && (
-                                      <div className="rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 px-3 py-1.5 text-xs font-semibold text-yellow-800 shadow-sm">
-                                        🏆 Rank #{strategy.overall_rank}
                                       </div>
                                     )}
                                   </div>
                                 </div>
                                 
-                                <div className="flex items-center space-x-4 text-sm">
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-medium capitalize">
+                                <div className="flex items-center space-x-2 text-sm">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium capitalize text-xs">
                                     {strategy.strategy_type}
                                   </span>
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-800 font-medium">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-800 font-medium text-xs">
                                     {strategy.primary_sport}
                                   </span>
                                 </div>
@@ -630,54 +605,56 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                         </div>
 
                         {/* Strategy Card Body */}
-                        <div className="p-4 sm:p-6">
-                          {/* Enhanced Stats Grid - 3 columns without Success % */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                            <div className="text-center bg-gradient-to-br from-white to-emerald-50 rounded-xl p-5 border border-emerald-200/40 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-emerald-300/60">
-                              <div className={`text-2xl sm:text-3xl font-bold mb-2 ${
+                        <div className="p-4">
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="text-center bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <div className={`text-xl font-bold mb-1 ${
                                 strategy.roi_percentage >= 0 ? 'text-emerald-600' : 'text-red-500'
                               }`}>
                                 {strategy.roi_percentage >= 0 ? '+' : ''}
                                 {strategy.roi_percentage.toFixed(1)}%
                               </div>
-                              <div className="text-xs sm:text-sm text-slate-600 font-semibold uppercase tracking-wider">ROI</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">ROI</div>
                             </div>
-                            <div className="text-center bg-gradient-to-br from-white to-blue-50 rounded-xl p-5 border border-blue-200/40 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-blue-300/60">
-                              <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">
+                            <div className="text-center bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <div className={`text-xl font-bold mb-1 ${
+                                strategy.roi_percentage >= 0 ? 'text-emerald-600' : 'text-red-500'
+                              }`}>
                                 {(strategy.win_rate * 100).toFixed(1)}%
                               </div>
-                              <div className="text-xs sm:text-sm text-slate-600 font-semibold uppercase tracking-wider">Win Rate</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">Win Rate</div>
                             </div>
-                            <div className="text-center bg-gradient-to-br from-white to-indigo-50 rounded-xl p-5 border border-indigo-200/40 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-indigo-300/60">
-                              <div className="text-2xl sm:text-3xl font-bold text-indigo-600 mb-2">
+                            <div className="text-center bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <div className="text-xl font-bold text-gray-900 mb-1">
                                 {strategy.total_bets}
                               </div>
-                              <div className="text-xs sm:text-sm text-slate-600 font-semibold uppercase tracking-wider">Total Bets</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">Bets</div>
                             </div>
                           </div>
                           
-                          {/* Enhanced Pricing Section */}
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200/40">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">Subscription Options</h4>
-                            <div className="flex flex-col sm:flex-row gap-3">
+                          {/* Pricing Section */}
+                          <div className="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Pricing</h4>
+                            <div className="flex flex-col sm:flex-row gap-2">
                               {strategy.subscription_price_weekly > 0 && (
-                                <div className="flex-1 bg-white rounded-lg p-3 border border-emerald-200/40 text-center hover:border-emerald-300/60 transition-colors">
-                                  <div className="text-lg font-bold text-emerald-600">${strategy.subscription_price_weekly}</div>
-                                  <div className="text-xs text-slate-500 font-medium">per week</div>
+                                <div className="flex-1 bg-white rounded p-2 border border-gray-200 text-center">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_weekly}</div>
+                                  <div className="text-xs text-gray-500">weekly</div>
                                 </div>
                               )}
                               {strategy.subscription_price_monthly > 0 && (
-                                <div className="flex-1 bg-white rounded-lg p-3 border border-blue-200/50 text-center ring-2 ring-blue-200/50">
-                                  <div className="text-lg font-bold text-blue-600">${strategy.subscription_price_monthly}</div>
-                                  <div className="text-xs text-slate-500 font-medium">per month</div>
-                                  <div className="text-xs text-blue-600 font-semibold mt-1">Popular</div>
+                                <div className="flex-1 bg-white rounded p-2 border-2 border-blue-200 text-center">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_monthly}</div>
+                                  <div className="text-xs text-gray-500">monthly</div>
+                                  <div className="text-xs text-blue-600 font-medium">Popular</div>
                                 </div>
                               )}
                               {strategy.subscription_price_yearly > 0 && (
-                                <div className="flex-1 bg-white rounded-lg p-3 border border-indigo-200/40 text-center hover:border-indigo-300/60 transition-colors">
-                                  <div className="text-lg font-bold text-indigo-600">${strategy.subscription_price_yearly}</div>
-                                  <div className="text-xs text-slate-500 font-medium">per year</div>
-                                  <div className="text-xs text-indigo-600 font-semibold mt-1">Best Value</div>
+                                <div className="flex-1 bg-white rounded p-2 border border-gray-200 text-center">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_yearly}</div>
+                                  <div className="text-xs text-gray-500">yearly</div>
+                                  <div className="text-xs text-blue-600 font-medium">Best Value</div>
                                 </div>
                               )}
                             </div>
@@ -686,10 +663,10 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                           {/* Subscribe Button */}
                           <div className="flex justify-center">
                             {isSubscribed && subscription ? (
-                              <div className="text-center bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl px-6 py-4 shadow-sm">
-                                <div className="flex items-center justify-center space-x-2 text-emerald-700 font-semibold mb-1">
-                                  <CheckCircle className="h-5 w-5" />
-                                  <span>Active Subscription</span>
+                              <div className="text-center bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 w-full sm:w-auto">
+                                <div className="flex items-center justify-center space-x-2 text-emerald-700 font-semibold text-sm">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Subscribed</span>
                                 </div>
                                 <div className="text-xs text-emerald-600 capitalize">
                                   {subscription.frequency} plan
@@ -699,19 +676,15 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                               <Button
                                 onClick={() => handleSubscribeClick(strategy.strategy_id)}
                                 disabled={subscriptionLoading}
-                                size="lg"
-                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto px-8 py-3 text-base font-semibold rounded-xl"
+                                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-2 text-sm font-semibold rounded-lg"
                               >
                                 {subscriptionLoading ? (
                                   <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Processing...
                                   </>
                                 ) : (
-                                  <>
-                                    Subscribe Now
-                                    <span className="ml-2">→</span>
-                                  </>
+                                  "Subscribe"
                                 )}
                               </Button>
                             )}
