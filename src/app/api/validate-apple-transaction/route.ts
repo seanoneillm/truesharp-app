@@ -223,8 +223,8 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
   let lastError: Error | null = null
 
   for (const env of environments) {
+    const apiCallStart = Date.now()
     try {
-      const apiCallStart = Date.now()
       console.log(`📡 Checking ${env.name} environment for subscription ${originalTransactionId}`)
       
       // Try transaction history endpoint first (more reliable for new transactions)
