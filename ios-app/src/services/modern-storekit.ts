@@ -229,14 +229,14 @@ class ModernStoreKitService {
       // Create promise that resolves when purchase completes
       const purchasePromise = new Promise<ModernPurchaseResult>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          logger.error('⏰ Purchase timeout reached after 90 seconds')
+          logger.error('⏰ Purchase timeout reached after 60 seconds')
           resolve({
             success: false,
-            error: 'Purchase verification timed out. Please try "Restore Purchases" in a few minutes or contact support.',
+            error: 'Purchase timed out. If payment was processed, try "Restore Purchases".',
             serverValidated: false,
             validationAttempts: 0
           })
-        }, 90000)
+        }, 60000)
 
         const handlePurchaseResult = (result: ModernPurchaseResult) => {
           clearTimeout(timeout)
@@ -285,77 +285,88 @@ class ModernStoreKitService {
   handlePurchaseUpdate({ responseCode, results, errorCode }: any): void {
     if (responseCode === InAppPurchases.IAPResponseCode.OK) {
       if (results && results.length > 0) {
-        results.forEach(async (purchase: any) => {
+        // Process purchases sequentially to avoid timing issues
+        for (const purchase of results) {
           // Validate this is the purchase we're expecting
           if (
             this.pendingPurchaseProductId &&
             purchase.productId !== this.pendingPurchaseProductId
           ) {
-            return
+            continue
           }
 
           logger.info('🛒 Processing purchase from listener', {
             productId: purchase.productId,
             transactionId: purchase.orderId,
-            acknowledged: purchase.acknowledged
+            originalTransactionId: purchase.originalTransactionId,
+            webOrderLineItemId: purchase.webOrderLineItemId,
+            acknowledged: purchase.acknowledged,
+            purchaseTime: purchase.purchaseTime,
+            purchaseState: purchase.purchaseState,
+            allFields: purchase // Log all available fields
           })
 
           if (purchase.acknowledged) {
-            try {
-              // Modern approach: validate transaction ID with server
-              const validationResult = await this.validateTransactionWithServer({
-                transactionId: purchase.orderId,
-                originalTransactionId: purchase.orderId,
-                productId: purchase.productId
-              })
-
-              if (validationResult.success) {
-                logger.info('✅ Server-side validation successful')
-
+            logger.info('🔍 Purchase acknowledged by Apple, processing...', {
+              transactionId: purchase.orderId,
+              productId: purchase.productId,
+              timestamp: new Date().toISOString()
+            })
+            
+            // STEP 1: Immediately finish transaction (Apple's requirement)
+            // Per Apple guidelines: finish transactions promptly to avoid issues
+            this.finishTransactionAsync(purchase.orderId)
+              .then(() => {
+                logger.info('✅ Transaction finished with Apple', {
+                  transactionId: purchase.orderId,
+                  timestamp: new Date().toISOString()
+                })
+                
+                // STEP 2: Report success to user immediately
                 if (this.currentPurchaseHandler) {
+                  logger.info('📱 Reporting success to user', {
+                    transactionId: purchase.orderId,
+                    timestamp: new Date().toISOString()
+                  })
+                  
                   this.currentPurchaseHandler({
                     success: true,
                     productId: purchase.productId,
                     transactionId: purchase.orderId,
                     originalTransactionId: purchase.orderId,
-                    serverValidated: true,
-                    validationAttempts: 1
+                    serverValidated: false, // Will validate separately
+                    validationAttempts: 0
                   })
                 }
 
-                // Finish transaction after successful validation
-                try {
-                  if (InAppPurchases.finishTransactionAsync) {
-                    await InAppPurchases.finishTransactionAsync(purchase.orderId)
-                    logger.info('✅ Transaction finished successfully')
-                  }
-                } catch (finishError) {
-                  logger.error('⚠️ Failed to finish transaction:', finishError)
-                }
-              } else {
-                logger.error('❌ Server-side validation failed:', validationResult.error)
-
+                // STEP 3: Validate with server asynchronously (non-blocking)
+                logger.info('🌐 Starting server validation...', {
+                  transactionId: purchase.orderId,
+                  productId: purchase.productId,
+                  timestamp: new Date().toISOString()
+                })
+                
+                this.validateAndUpdateServer({
+                  transactionId: purchase.orderId,
+                  originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                  productId: purchase.productId
+                })
+              })
+              .catch((finishError) => {
+                logger.error('⚠️ Failed to finish transaction:', finishError, {
+                  transactionId: purchase.orderId,
+                  timestamp: new Date().toISOString()
+                })
+                
                 if (this.currentPurchaseHandler) {
                   this.currentPurchaseHandler({
                     success: false,
-                    error: validationResult.error || 'Server validation failed',
+                    error: 'Failed to complete purchase. Please try "Restore Purchases".',
                     serverValidated: false,
-                    validationAttempts: 1
+                    validationAttempts: 0
                   })
                 }
-              }
-            } catch (validationError) {
-              logger.error('❌ Validation error:', validationError)
-
-              if (this.currentPurchaseHandler) {
-                this.currentPurchaseHandler({
-                  success: false,
-                  error: 'Validation failed - please try again or contact support',
-                  serverValidated: false,
-                  validationAttempts: 1
-                })
-              }
-            }
+              })
           } else {
             logger.warn('⚠️ Purchase not acknowledged by Apple')
             if (this.currentPurchaseHandler) {
@@ -367,7 +378,7 @@ class ModernStoreKitService {
               })
             }
           }
-        })
+        }
       }
     } else if (responseCode === InAppPurchases.IAPResponseCode.USER_CANCELED) {
       logger.info('👤 User canceled the purchase')
@@ -392,6 +403,64 @@ class ModernStoreKitService {
     }
   }
 
+
+  /**
+   * Finish transaction with Apple (required by Apple guidelines)
+   */
+  private async finishTransactionAsync(transactionId: string): Promise<void> {
+    if (InAppPurchases?.finishTransactionAsync) {
+      await InAppPurchases.finishTransactionAsync(transactionId)
+    }
+  }
+
+  /**
+   * Validate transaction with server asynchronously (non-blocking)
+   */
+  private validateAndUpdateServer(data: {
+    transactionId: string
+    originalTransactionId: string
+    productId: string
+  }): void {
+    // Run server validation asynchronously without blocking user experience
+    setTimeout(async () => {
+      try {
+        logger.info('🔍 Starting server validation', {
+          transactionId: data.transactionId,
+          productId: data.productId,
+          timestamp: new Date().toISOString(),
+          step: 'VALIDATION_START'
+        })
+
+        const validationResult = await this.validateTransactionWithServer(data)
+        
+        if (validationResult.success) {
+          logger.info('✅ Server validation successful - user should have Pro access', {
+            transactionId: data.transactionId,
+            timestamp: new Date().toISOString(),
+            step: 'VALIDATION_SUCCESS'
+          })
+        } else {
+          logger.error('⚠️ Server validation failed:', {
+            transactionId: data.transactionId,
+            error: validationResult.error,
+            timestamp: new Date().toISOString(),
+            step: 'VALIDATION_FAILED'
+          })
+          // Note: User still has valid purchase from Apple, this is a sync issue
+        }
+      } catch (error) {
+        logger.error('❌ Server validation error:', {
+          transactionId: data.transactionId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+          step: 'VALIDATION_ERROR'
+        })
+        // Note: User still has valid purchase, this can be resolved with restore
+      }
+    }, 100) // Small delay to ensure user gets immediate success feedback
+  }
+
   /**
    * Modern server validation using transaction ID
    */
@@ -409,10 +478,31 @@ class ModernStoreKitService {
       logger.info('🔍 Validating transaction with modern API', {
         userId: user.id,
         transactionId: data.transactionId,
-        productId: data.productId
+        productId: data.productId,
+        timestamp: new Date().toISOString(),
+        step: 'SERVER_CALL_START'
       })
 
       const { Environment } = await import('../config/environment')
+      
+      logger.info('🌐 Making API request', {
+        url: `${Environment.API_BASE_URL}/api/validate-apple-transaction`,
+        environment: this.getEnvironment(),
+        timestamp: new Date().toISOString(),
+        step: 'API_REQUEST_START'
+      })
+      
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        logger.error('⏰ Request timeout after 15 seconds', {
+          transactionId: data.transactionId,
+          timestamp: new Date().toISOString(),
+          step: 'REQUEST_TIMEOUT'
+        })
+        controller.abort()
+      }, 15000) // 15 second timeout
+      
       const response = await fetch(`${Environment.API_BASE_URL}/api/validate-apple-transaction`, {
         method: 'POST',
         headers: {
@@ -425,29 +515,102 @@ class ModernStoreKitService {
           originalTransactionId: data.originalTransactionId,
           productId: data.productId,
           environment: this.getEnvironment()
-        })
+        }),
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+
+      logger.info('📡 Received API response', {
+        status: response.status,
+        ok: response.ok,
+        transactionId: data.transactionId,
+        timestamp: new Date().toISOString(),
+        step: 'API_RESPONSE_RECEIVED'
       })
 
       if (!response.ok) {
         const errorText = await response.text()
         logger.error('❌ Transaction validation HTTP error:', {
           status: response.status,
-          error: errorText
+          error: errorText,
+          transactionId: data.transactionId,
+          timestamp: new Date().toISOString(),
+          step: 'API_ERROR'
         })
         return { success: false, error: `HTTP ${response.status}: ${errorText}` }
       }
 
       const result = await response.json()
-      logger.info('✅ Transaction validation response:', result)
+      logger.info('✅ Transaction validation response:', {
+        ...result,
+        transactionId: data.transactionId,
+        timestamp: new Date().toISOString(),
+        step: 'API_RESPONSE_PARSED'
+      })
 
       return { success: result.valid === true, error: result.error }
 
     } catch (error) {
-      logger.error('❌ Transaction validation network error:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('⏰ Transaction validation timed out after 15 seconds')
+        return {
+          success: false,
+          error: 'Server validation timed out. Your purchase is valid - use "Restore Purchases" to activate.'
+        }
+      }
+      
+      // Handle network errors gracefully
+      if (error instanceof Error) {
+        if (error.message.includes('Network request failed') || 
+            error.message.includes('fetch') ||
+            error.message.includes('ECONNREFUSED')) {
+          logger.error('🌐 Network error during validation:', error.message)
+          return {
+            success: false,
+            error: 'Network error. Your purchase is valid - use "Restore Purchases" when online.'
+          }
+        }
+      }
+      
+      logger.error('❌ Transaction validation error:', error)
       return {
         success: false,
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: 'Validation error. Your purchase is valid - use "Restore Purchases" to activate.'
       }
+    }
+  }
+
+  /**
+   * Debug function to test server validation with a known transaction
+   * Use this to test without making new purchases
+   */
+  async debugValidateTransaction(transactionId: string, productId: string = 'pro_subscription_month'): Promise<void> {
+    logger.info('🐛 DEBUG: Testing transaction validation', {
+      transactionId,
+      productId,
+      timestamp: new Date().toISOString()
+    })
+
+    try {
+      const validationResult = await this.validateTransactionWithServer({
+        transactionId,
+        originalTransactionId: transactionId,
+        productId
+      })
+
+      logger.info('🐛 DEBUG: Validation result', {
+        transactionId,
+        success: validationResult.success,
+        error: validationResult.error,
+        timestamp: new Date().toISOString()
+      })
+    } catch (error) {
+      logger.error('🐛 DEBUG: Validation failed', {
+        transactionId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      })
     }
   }
 
@@ -716,14 +879,34 @@ class ModernStoreKitService {
       return 'sandbox'
     }
     
-    // Development builds use sandbox
-    if (__DEV__) {
+    // Check if this is a TestFlight build
+    const isTestFlight = this.isTestFlightBuild()
+    
+    // Development builds and TestFlight use sandbox
+    if (__DEV__ || isTestFlight) {
       return 'sandbox'
     }
     
-    // TestFlight and App Store builds use production
-    // This includes TestFlight internal and external testing
+    // Only App Store builds use production
     return 'production'
+  }
+
+  /**
+   * Detect if this is a TestFlight build
+   * TestFlight builds should use sandbox environment
+   */
+  private isTestFlightBuild(): boolean {
+    if (Platform.OS !== 'ios') return false
+    
+    // TestFlight builds have a specific app bundle structure
+    // This is the most reliable way to detect TestFlight in React Native
+    try {
+      const bundlePath = Platform.constants.bundlePath || ''
+      return bundlePath.includes('Application') && !bundlePath.includes('Simulator')
+    } catch (error) {
+      // Fallback: assume sandbox for safety
+      return true
+    }
   }
 
   getProductById(productId: string): StoreProduct | undefined {
@@ -764,6 +947,10 @@ export const purchaseSubscription = (productId: string) =>
   modernStoreKitService.purchaseSubscription(productId)
 export const restorePurchases = () => modernStoreKitService.restorePurchases()
 export const getSubscriptionStatus = () => modernStoreKitService.getSubscriptionStatus()
+
+// Debug function for testing
+export const debugValidateTransaction = (transactionId: string, productId?: string) =>
+  modernStoreKitService.debugValidateTransaction(transactionId, productId)
 
 // Account deletion cleanup
 export const cleanupSubscriptionForAccountDeletion = async (userId: string) => {

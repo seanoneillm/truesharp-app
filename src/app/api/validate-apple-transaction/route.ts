@@ -76,16 +76,42 @@ export async function POST(request: NextRequest) {
       userId,
       transactionId,
       productId,
-      originalTransactionId
+      originalTransactionId,
+      clientEnvironment,
+      timestamp: new Date().toISOString()
     })
 
     // Step 1: Generate JWT for App Store Server API
+    console.log('🔐 Generating Apple API token...')
     const apiToken = generateAppStoreAPIToken()
+    console.log('✅ Apple API token generated successfully')
 
     // Step 2: Validate subscription with App Store Server API using original transaction ID
+    console.log('📡 Validating with Apple App Store Server API...', {
+      originalTransactionId: originalTransactionId || transactionId,
+      environment: clientEnvironment,
+      timestamp: new Date().toISOString()
+    })
+    
     const { transactionData, environment } = await validateTransactionWithAppStore(originalTransactionId || transactionId, apiToken, clientEnvironment)
+    
+    console.log('✅ Apple validation successful', {
+      environment,
+      transactionId: transactionData.transactionId,
+      originalTransactionId: transactionData.originalTransactionId,
+      expiresDate: transactionData.expiresDate,
+      timestamp: new Date().toISOString()
+    })
 
     // Step 3: Process the validated transaction
+    console.log('🗄️ Processing validated transaction - updating database...', {
+      userId,
+      originalTransactionId: originalTransactionId || transactionId,
+      productId,
+      environment,
+      timestamp: new Date().toISOString()
+    })
+    
     const result = await processValidatedTransaction({
       userId,
       transactionId,
@@ -95,12 +121,13 @@ export async function POST(request: NextRequest) {
       environment
     })
 
-    console.log('✅ Transaction validation successful', {
+    console.log('✅ Database update successful - subscription created/updated', {
       subscriptionId: result.subscription_id,
       plan: result.plan,
       isActive: result.is_active,
       environment,
-      validationTime: Date.now() - startTime
+      validationTime: Date.now() - startTime,
+      timestamp: new Date().toISOString()
     })
 
     return NextResponse.json({
