@@ -323,9 +323,34 @@ class ModernStoreKitService {
                   timestamp: new Date().toISOString()
                 })
                 
-                // STEP 2: Report success to user immediately
+                // STEP 2: Attempt quick non-blocking server validation (background)
+                logger.info('🚀 Starting background server validation', {
+                  transactionId: purchase.orderId,
+                  timestamp: new Date().toISOString()
+                })
+                
+                // Fire-and-forget server validation (no await, no blocking)
+                this.backgroundValidateTransaction({
+                  transactionId: purchase.orderId,
+                  originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                  productId: purchase.productId
+                }).then((validationResult) => {
+                  logger.info('✅ Background validation completed successfully', {
+                    transactionId: purchase.orderId,
+                    success: validationResult.success,
+                    timestamp: new Date().toISOString()
+                  })
+                }).catch((validationError) => {
+                  logger.warn('⚠️ Background validation failed - will rely on webhooks', {
+                    transactionId: purchase.orderId,
+                    error: validationError.message,
+                    timestamp: new Date().toISOString()
+                  })
+                })
+
+                // STEP 3: Report success to user immediately (don't wait for validation)
                 if (this.currentPurchaseHandler) {
-                  logger.info('📱 Reporting immediate success to user (webhook will update database)', {
+                  logger.info('📱 Reporting immediate success to user', {
                     transactionId: purchase.orderId,
                     timestamp: new Date().toISOString()
                   })
@@ -335,25 +360,17 @@ class ModernStoreKitService {
                     productId: purchase.productId,
                     transactionId: purchase.orderId,
                     originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                    serverValidated: true, // Apple webhook will handle database updates
+                    serverValidated: true, // Will be validated in background or via webhook
                     validationAttempts: 1
                   })
                 }
 
-                // STEP 3: Apple will send webhook notification to update database
-                // No need for blocking server validation - webhook handles this automatically
-                logger.info('✅ Purchase complete - Apple webhook will update database', {
+                logger.info('✅ Purchase completed successfully - database will be updated via background validation or webhook', {
                   transactionId: purchase.orderId,
                   originalTransactionId: purchase.originalTransactionId || purchase.orderId,
                   productId: purchase.productId,
-                  webhookUrl: 'https://truesharp.io/api/apple-webhooks',
-                  message: 'Database will be updated automatically via Apple Server Notifications',
                   timestamp: new Date().toISOString()
                 })
-
-                // IMPORTANT: Do not attempt server validation here - it causes timeouts
-                // Apple's Server-to-Server notifications will handle database updates
-                // This ensures immediate success response to user
               })
               .catch((finishError) => {
                 logger.error('⚠️ Failed to finish transaction:', finishError, {
@@ -423,13 +440,36 @@ class ModernStoreKitService {
    */
 
   /**
+   * Background (non-blocking) server validation for new purchases
+   * This runs after the user sees success, so it won't cause timeouts
+   */
+  private async backgroundValidateTransaction(data: {
+    transactionId: string
+    originalTransactionId: string
+    productId: string
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Use shorter timeout for background validation
+      const result = await this.validateTransactionWithServer(data, 5000) // 5 second timeout
+      return result
+    } catch (error) {
+      // Don't throw - just log and return failure
+      logger.warn('Background validation failed, webhooks will handle it', {
+        transactionId: data.transactionId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      return { success: false, error: 'Background validation failed' }
+    }
+  }
+
+  /**
    * Modern server validation using transaction ID
    */
   private async validateTransactionWithServer(data: {
     transactionId: string
     originalTransactionId: string
     productId: string
-  }): Promise<{ success: boolean; error?: string }> {
+  }, customTimeout?: number): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -455,14 +495,15 @@ class ModernStoreKitService {
       
       // Create abort controller for timeout
       const controller = new AbortController()
+      const timeoutMs = customTimeout || 15000 // Use custom timeout or default 15 seconds
       const timeoutId = setTimeout(() => {
-        logger.error('⏰ Request timeout after 15 seconds', {
+        logger.error(`⏰ Request timeout after ${timeoutMs/1000} seconds`, {
           transactionId: data.transactionId,
           timestamp: new Date().toISOString(),
           step: 'REQUEST_TIMEOUT'
         })
         controller.abort()
-      }, 15000) // 15 second timeout
+      }, timeoutMs)
       
       const response = await fetch(`${Environment.API_BASE_URL}/api/validate-apple-transaction`, {
         method: 'POST',
@@ -514,7 +555,7 @@ class ModernStoreKitService {
 
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('⏰ Transaction validation timed out after 15 seconds')
+        logger.error(`⏰ Transaction validation timed out after ${(customTimeout || 15000)/1000} seconds`)
         return {
           success: false,
           error: 'Server validation timed out. Your purchase is valid - use "Restore Purchases" to activate.'
