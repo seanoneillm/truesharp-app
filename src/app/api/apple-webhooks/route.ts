@@ -57,10 +57,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
     }
 
-    // Decode the signed payload
+    // Handle Apple webhook test ping (different format from actual notifications)
+    if (notification.data?.type === 'webhookPingCreated') {
+      console.log('🏓 Apple webhook test ping received', {
+        id: notification.data.id,
+        timestamp: notification.data.attributes?.timestamp,
+        version: notification.data.version
+      })
+      return NextResponse.json({ 
+        status: 'ok',
+        message: 'Webhook test ping received successfully',
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    // Handle actual App Store Server Notifications (V2 format)
     if (!notification.signedPayload) {
-      console.error('❌ No signedPayload in notification')
-      return NextResponse.json({ error: 'No signedPayload' }, { status: 400 })
+      console.error('❌ No signedPayload in notification - this should be a V2 App Store Server Notification')
+      console.log('📋 Notification structure:', JSON.stringify(notification, null, 2))
+      return NextResponse.json({ error: 'No signedPayload - expected App Store Server Notification V2 format' }, { status: 400 })
     }
 
     // Apple's security is built into the JWS signature itself
