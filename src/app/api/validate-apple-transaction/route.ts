@@ -287,16 +287,16 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
         console.log(`✅ Subscription found in ${env.name} environment`)
         console.log('🔍 Apple API response structure:', JSON.stringify(data, null, 2))
         
-        // Get the latest transaction from the subscription data
-        const lastTransactions = data.data
-        if (!lastTransactions || lastTransactions.length === 0) {
-          console.log('❌ No transaction data found. Response keys:', Object.keys(data))
+        // Get the latest transaction from the subscription data (Apple uses 'signedTransactions' not 'data')
+        const signedTransactions = data.signedTransactions
+        if (!signedTransactions || signedTransactions.length === 0) {
+          console.log('❌ No signed transactions found. Response keys:', Object.keys(data))
           throw new Error('No transaction data found in subscription response')
         }
         
-        // Get the most recent transaction
-        const latestTransaction = lastTransactions[0]
-        const transactionData = decodeJWSTransaction(latestTransaction.signedTransactionInfo)
+        // Get the most recent transaction (first in array is latest)
+        const latestSignedTransaction = signedTransactions[0]
+        const transactionData = decodeJWSTransaction(latestSignedTransaction)
         
         return {
           transactionData,
