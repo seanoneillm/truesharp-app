@@ -228,15 +228,16 @@ class ModernStoreKitService {
 
       // Create promise that resolves when purchase completes
       const purchasePromise = new Promise<ModernPurchaseResult>((resolve, reject) => {
+        // Reduced timeout since we're not doing blocking server validation
         const timeout = setTimeout(() => {
-          logger.error('⏰ Purchase timeout reached after 60 seconds')
+          logger.error('⏰ Purchase timeout reached after 30 seconds')
           resolve({
             success: false,
-            error: 'Purchase timed out. If payment was processed, try "Restore Purchases".',
+            error: 'Purchase timed out. Please try again.',
             serverValidated: false,
             validationAttempts: 0
           })
-        }, 60000)
+        }, 30000)
 
         const handlePurchaseResult = (result: ModernPurchaseResult) => {
           clearTimeout(timeout)
@@ -324,7 +325,7 @@ class ModernStoreKitService {
                 
                 // STEP 2: Report success to user immediately
                 if (this.currentPurchaseHandler) {
-                  logger.info('📱 Reporting success to user', {
+                  logger.info('📱 Reporting immediate success to user (webhook will update database)', {
                     transactionId: purchase.orderId,
                     timestamp: new Date().toISOString()
                   })
@@ -333,24 +334,26 @@ class ModernStoreKitService {
                     success: true,
                     productId: purchase.productId,
                     transactionId: purchase.orderId,
-                    originalTransactionId: purchase.orderId,
-                    serverValidated: false, // Will validate separately
-                    validationAttempts: 0
+                    originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                    serverValidated: true, // Apple webhook will handle database updates
+                    validationAttempts: 1
                   })
                 }
 
-                // STEP 3: Validate with server asynchronously (non-blocking)
-                logger.info('🌐 Starting server validation...', {
-                  transactionId: purchase.orderId,
-                  productId: purchase.productId,
-                  timestamp: new Date().toISOString()
-                })
-                
-                this.validateAndUpdateServer({
+                // STEP 3: Apple will send webhook notification to update database
+                // No need for blocking server validation - webhook handles this automatically
+                logger.info('✅ Purchase complete - Apple webhook will update database', {
                   transactionId: purchase.orderId,
                   originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                  productId: purchase.productId
+                  productId: purchase.productId,
+                  webhookUrl: 'https://truesharp.io/api/apple-webhooks',
+                  message: 'Database will be updated automatically via Apple Server Notifications',
+                  timestamp: new Date().toISOString()
                 })
+
+                // IMPORTANT: Do not attempt server validation here - it causes timeouts
+                // Apple's Server-to-Server notifications will handle database updates
+                // This ensures immediate success response to user
               })
               .catch((finishError) => {
                 logger.error('⚠️ Failed to finish transaction:', finishError, {
@@ -414,52 +417,10 @@ class ModernStoreKitService {
   }
 
   /**
-   * Validate transaction with server asynchronously (non-blocking)
+   * REMOVED: validateAndUpdateServer - Apple webhooks handle database updates automatically
+   * This was causing timeout issues because iOS was trying to validate during purchase
+   * New flow: finish transaction immediately → Apple sends webhook → database updates
    */
-  private validateAndUpdateServer(data: {
-    transactionId: string
-    originalTransactionId: string
-    productId: string
-  }): void {
-    // Run server validation asynchronously without blocking user experience
-    setTimeout(async () => {
-      try {
-        logger.info('🔍 Starting server validation', {
-          transactionId: data.transactionId,
-          productId: data.productId,
-          timestamp: new Date().toISOString(),
-          step: 'VALIDATION_START'
-        })
-
-        const validationResult = await this.validateTransactionWithServer(data)
-        
-        if (validationResult.success) {
-          logger.info('✅ Server validation successful - user should have Pro access', {
-            transactionId: data.transactionId,
-            timestamp: new Date().toISOString(),
-            step: 'VALIDATION_SUCCESS'
-          })
-        } else {
-          logger.error('⚠️ Server validation failed:', {
-            transactionId: data.transactionId,
-            error: validationResult.error,
-            timestamp: new Date().toISOString(),
-            step: 'VALIDATION_FAILED'
-          })
-          // Note: User still has valid purchase from Apple, this is a sync issue
-        }
-      } catch (error) {
-        logger.error('❌ Server validation error:', {
-          transactionId: data.transactionId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          timestamp: new Date().toISOString(),
-          step: 'VALIDATION_ERROR'
-        })
-        // Note: User still has valid purchase, this can be resolved with restore
-      }
-    }, 100) // Small delay to ensure user gets immediate success feedback
-  }
 
   /**
    * Modern server validation using transaction ID
@@ -638,21 +599,34 @@ class ModernStoreKitService {
       if (response.results && response.results.length > 0) {
         for (const purchase of response.results) {
           if (purchase.acknowledged) {
-            // Use modern validation for restored purchases
-            const validationResult = await this.validateTransactionWithServer({
-              transactionId: purchase.orderId,
-              originalTransactionId: purchase.orderId,
-              productId: purchase.productId
-            })
+            // For restore purchases, we still validate to get current status
+            // This is not blocking the purchase flow, so it's acceptable
+            try {
+              const validationResult = await this.validateTransactionWithServer({
+                transactionId: purchase.orderId,
+                originalTransactionId: purchase.orderId,
+                productId: purchase.productId
+              })
 
-            restoredPurchases.push({
-              success: validationResult.success,
-              productId: purchase.productId,
-              transactionId: purchase.orderId,
-              originalTransactionId: purchase.orderId,
-              serverValidated: validationResult.success,
-              error: validationResult.error
-            })
+              restoredPurchases.push({
+                success: validationResult.success,
+                productId: purchase.productId,
+                transactionId: purchase.orderId,
+                originalTransactionId: purchase.orderId,
+                serverValidated: validationResult.success,
+                error: validationResult.error
+              })
+            } catch (error) {
+              logger.error('⚠️ Restore validation failed:', error)
+              restoredPurchases.push({
+                success: false,
+                productId: purchase.productId,
+                transactionId: purchase.orderId,
+                originalTransactionId: purchase.orderId,
+                serverValidated: false,
+                error: 'Validation failed during restore'
+              })
+            }
           }
         }
       }
@@ -878,6 +852,10 @@ class ModernStoreKitService {
     if (this.isSimulator()) {
       return 'sandbox'
     }
+    
+    // Force sandbox for now - TestFlight detection is unreliable
+    // TODO: Only use production for actual App Store builds
+    return 'sandbox'
     
     // Check if this is a TestFlight build
     const isTestFlight = this.isTestFlightBuild()

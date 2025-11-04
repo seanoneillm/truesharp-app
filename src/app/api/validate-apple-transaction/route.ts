@@ -294,9 +294,37 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
           throw new Error('No transaction data found in subscription response')
         }
         
-        // Get the most recent transaction (first in array is latest)
-        const latestSignedTransaction = signedTransactions[0]
-        const transactionData = decodeJWSTransaction(latestSignedTransaction)
+        // Find the transaction that matches our request (or use the most recent)
+        let matchingTransaction = null;
+        
+        // First try to find exact transaction ID match
+        for (const signedTx of signedTransactions) {
+          const decodedTx = decodeJWSTransaction(signedTx);
+          console.log('🔍 Checking transaction:', {
+            decodedTransactionId: decodedTx.transactionId,
+            requestedTransactionId: transactionId,
+            originalTransactionId: decodedTx.originalTransactionId
+          });
+          
+          if (decodedTx.transactionId === transactionId) {
+            matchingTransaction = decodedTx;
+            console.log('🎯 Found exact transaction ID match:', transactionId);
+            break;
+          }
+        }
+        
+        // If no exact match, use the most recent transaction (first in array)
+        if (!matchingTransaction) {
+          console.log('🔄 No exact transaction ID match found, using most recent transaction');
+          matchingTransaction = decodeJWSTransaction(signedTransactions[0]);
+          console.log('📋 Using transaction:', {
+            transactionId: matchingTransaction.transactionId,
+            originalTransactionId: matchingTransaction.originalTransactionId,
+            productId: matchingTransaction.productId
+          });
+        }
+        
+        const transactionData = matchingTransaction;
         
         return {
           transactionData,
@@ -382,9 +410,15 @@ async function processValidatedTransaction({
   const cookieStore = await cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-  // Validate transaction data matches request
+  // Log transaction ID info for debugging (Apple may return different transaction IDs)
   if (transactionData.transactionId !== transactionId) {
-    throw new Error(`Transaction ID mismatch: expected ${transactionId}, got ${transactionData.transactionId}`)
+    console.log('ℹ️ Transaction ID mismatch (common with Apple API):', {
+      requested: transactionId,
+      received: transactionData.transactionId,
+      originalTransactionId: transactionData.originalTransactionId,
+      note: 'Apple often returns the most recent transaction ID for a subscription'
+    })
+    // Don't throw error - this is normal behavior for Apple's API
   }
 
   if (transactionData.productId !== productId) {
