@@ -285,10 +285,12 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Subscription found in ${env.name} environment`)
+        console.log('🔍 Apple API response structure:', JSON.stringify(data, null, 2))
         
         // Get the latest transaction from the subscription data
         const lastTransactions = data.data
         if (!lastTransactions || lastTransactions.length === 0) {
+          console.log('❌ No transaction data found. Response keys:', Object.keys(data))
           throw new Error('No transaction data found in subscription response')
         }
         
