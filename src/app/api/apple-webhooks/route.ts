@@ -254,8 +254,41 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
         originalTransactionId: transaction.originalTransactionId,
         currentTransactionId: transaction.transactionId
       })
-      console.log('💡 This might be a new subscription - background validation should handle it')
-      return 'user_not_found'
+      console.log('💡 This is a new subscription - webhook will create it when user validates')
+      
+      // For new subscriptions, create a temporary subscription record that can be claimed
+      // when user does "Restore Purchases". We'll use a special placeholder user ID.
+      console.log('🔄 Creating claimable subscription for transaction:', transaction.transactionId)
+      
+      try {
+        // Create subscription with special placeholder user that can be claimed later
+        const { data: result, error } = await supabase.rpc('complete_apple_subscription_validation', {
+          p_user_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID for unclaimed
+          p_transaction_id: transaction.transactionId,
+          p_original_transaction_id: transaction.originalTransactionId,
+          p_product_id: transaction.productId,
+          p_environment: transaction.environment.toLowerCase(),
+          p_purchase_date: purchaseDate.toISOString(),
+          p_expiration_date: expirationDate.toISOString()
+        })
+        
+        if (error) {
+          console.error('❌ Failed to create claimable subscription:', error)
+          return 'creation_failed'
+        }
+        
+        console.log('✅ Created claimable subscription:', {
+          transactionId: transaction.transactionId,
+          subscriptionId: result?.subscription_id,
+          note: 'Can be claimed when user restores purchases'
+        })
+        
+        return 'claimable_subscription_created'
+        
+      } catch (error) {
+        console.error('❌ Error creating claimable subscription:', error)
+        return 'error'
+      }
     }
     
     const { error } = await supabase.rpc('complete_apple_subscription_validation', {

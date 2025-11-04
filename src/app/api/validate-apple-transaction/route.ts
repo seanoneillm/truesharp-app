@@ -129,6 +129,21 @@ export async function POST(request: NextRequest) {
       validationTime: Date.now() - startTime,
       timestamp: new Date().toISOString()
     })
+    
+    // Also try to claim any placeholder subscriptions for this user's transactions
+    try {
+      const { data: claimResult } = await supabase.rpc('claim_placeholder_subscriptions', {
+        p_user_id: userId,
+        p_transaction_id: transactionId,
+        p_original_transaction_id: originalTransactionId
+      })
+      
+      if (claimResult) {
+        console.log('✅ Also claimed placeholder subscriptions:', claimResult)
+      }
+    } catch (claimError) {
+      console.log('ℹ️ No placeholder subscriptions to claim (this is normal)', claimError)
+    }
 
     return NextResponse.json({
       valid: true,
