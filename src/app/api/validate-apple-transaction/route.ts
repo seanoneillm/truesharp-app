@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
     
-    const { transactionData, environment } = await validateTransactionWithAppStore(originalTransactionId || transactionId, apiToken, clientEnvironment)
+    const { transactionData, environment } = await validateTransactionWithAppStore(originalTransactionId || transactionId, transactionId, apiToken, clientEnvironment)
     
     console.log('✅ Apple validation successful', {
       environment,
@@ -232,7 +232,7 @@ function generateAppStoreAPIToken(): string {
  * Validate subscription using App Store Server API
  * Uses the subscription endpoint for better subscription data
  */
-async function validateTransactionWithAppStore(originalTransactionId: string, apiToken: string, preferredEnvironment?: string): Promise<{
+async function validateTransactionWithAppStore(originalTransactionId: string, requestedTransactionId: string, apiToken: string, preferredEnvironment?: string): Promise<{
   transactionData: JWSTransaction
   environment: string
 }> {
@@ -302,13 +302,13 @@ async function validateTransactionWithAppStore(originalTransactionId: string, ap
           const decodedTx = decodeJWSTransaction(signedTx);
           console.log('🔍 Checking transaction:', {
             decodedTransactionId: decodedTx.transactionId,
-            requestedTransactionId: transactionId,
+            requestedTransactionId: requestedTransactionId,
             originalTransactionId: decodedTx.originalTransactionId
           });
           
-          if (decodedTx.transactionId === transactionId) {
+          if (decodedTx.transactionId === requestedTransactionId) {
             matchingTransaction = decodedTx;
-            console.log('🎯 Found exact transaction ID match:', transactionId);
+            console.log('🎯 Found exact transaction ID match:', requestedTransactionId);
             break;
           }
         }
