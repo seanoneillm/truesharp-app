@@ -226,13 +226,35 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
       return 'no_expiration_date'
     }
     
-    // First find the user by transaction ID
-    const { data: userId } = await supabase.rpc('find_user_by_apple_transaction', {
+    // First find the user by transaction ID - try both current and original transaction IDs
+    let userId = null
+    
+    // Try original transaction ID first
+    const { data: userByOriginalTx } = await supabase.rpc('find_user_by_apple_transaction', {
       p_original_transaction_id: transaction.originalTransactionId
     })
     
+    if (userByOriginalTx) {
+      userId = userByOriginalTx
+      console.log('✅ Found user by original transaction ID:', transaction.originalTransactionId)
+    } else {
+      // Try current transaction ID as fallback
+      const { data: userByCurrentTx } = await supabase.rpc('find_user_by_apple_transaction', {
+        p_original_transaction_id: transaction.transactionId
+      })
+      
+      if (userByCurrentTx) {
+        userId = userByCurrentTx
+        console.log('✅ Found user by current transaction ID:', transaction.transactionId)
+      }
+    }
+    
     if (!userId) {
-      console.error('❌ No user found for transaction:', transaction.originalTransactionId)
+      console.error('❌ No user found for transaction. Tried:', {
+        originalTransactionId: transaction.originalTransactionId,
+        currentTransactionId: transaction.transactionId
+      })
+      console.log('💡 This might be a new subscription - background validation should handle it')
       return 'user_not_found'
     }
     
