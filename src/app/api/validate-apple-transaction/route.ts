@@ -455,7 +455,7 @@ async function processValidatedTransaction({
   const { data: result, error } = await supabase.rpc('complete_apple_subscription_validation', {
     p_user_id: userId,
     p_transaction_id: transactionId,
-    p_apple_original_transaction_id: originalTransactionId,
+    p_original_transaction_id: originalTransactionId,
     p_product_id: productId,
     p_environment: environment,
     p_purchase_date: purchaseDate.toISOString(),
