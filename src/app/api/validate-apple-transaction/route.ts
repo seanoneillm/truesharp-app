@@ -453,24 +453,53 @@ async function processValidatedTransaction({
     isActive: new Date() <= expirationDate
   })
 
-  // Use atomic database function to create/update subscription
-  const { data: result, error } = await supabase.rpc('complete_apple_subscription_validation', {
-    p_user_id: userId,
-    p_transaction_id: transactionId,
-    p_original_transaction_id: originalTransactionId,
-    p_product_id: productId,
-    p_environment: environment,
-    p_purchase_date: purchaseDate.toISOString(),
-    p_expiration_date: expirationDate.toISOString()
-  })
-
-  if (error) {
-    console.error('❌ Database error during transaction processing:', error)
-    throw new Error(`Database error: ${error.message}`)
+  // First, check if there's a claimable subscription from webhook
+  console.log('🔍 Checking for claimable subscription:', originalTransactionId)
+  const { data: claimResult, error: claimError } = await supabase.rpc(
+    'claim_apple_subscription',
+    {
+      p_user_id: userId,
+      p_original_transaction_id: originalTransactionId
+    }
+  )
+  
+  let result
+  if (claimError) {
+    console.error('❌ Error checking for claimable subscription:', claimError)
+    // Continue with normal flow
+  } else if (claimResult && claimResult.success) {
+    console.log('✅ Successfully claimed webhook-created subscription:', {
+      subscriptionId: claimResult.subscription_id,
+      originalTransactionId,
+      claimed: true
+    })
+    result = claimResult
+  } else {
+    console.log('ℹ️ No claimable subscription found, creating new subscription')
   }
-
+  
+  // If no claimable subscription was found, create a new one
   if (!result) {
-    throw new Error('No result returned from database function')
+    const { data: validationResult, error } = await supabase.rpc('complete_apple_subscription_validation', {
+      p_user_id: userId,
+      p_transaction_id: transactionId,
+      p_original_transaction_id: originalTransactionId,
+      p_product_id: productId,
+      p_environment: environment,
+      p_purchase_date: purchaseDate.toISOString(),
+      p_expiration_date: expirationDate.toISOString()
+    })
+
+    if (error) {
+      console.error('❌ Database error during transaction processing:', error)
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    if (!validationResult) {
+      throw new Error('No result returned from database function')
+    }
+    
+    result = validationResult
   }
 
   return result

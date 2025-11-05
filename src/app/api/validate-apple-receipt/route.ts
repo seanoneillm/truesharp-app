@@ -218,27 +218,52 @@ export async function POST(request: NextRequest) {
     })
 
     try {
-      // Use the secure database function for atomic subscription creation
-      const { data: result, error: dbError } = await supabase.rpc(
-        'complete_apple_subscription_validation',
+      // First, check if there's a claimable subscription from webhook
+      console.log('🔍 Checking for claimable subscription:', originalTransactionId)
+      const { data: claimResult, error: claimError } = await supabase.rpc(
+        'claim_apple_subscription',
         {
           p_user_id: userId,
-          p_transaction_id: transactionId,
-          p_original_transaction_id: originalTransactionId,
-          p_product_id: productId,
-          p_receipt_data: receiptData,
-          p_environment: finalEnvironment,
-          p_purchase_date: purchaseDate.toISOString(),
-          p_expiration_date: expirationDate.toISOString(),
+          p_original_transaction_id: originalTransactionId
         }
       )
-
-      if (dbError) {
-        console.error('❌ Failed to complete subscription validation:', dbError)
-        return NextResponse.json(
-          { valid: false, error: 'Failed to create subscription record' },
-          { status: 500 }
+      
+      let result
+      if (claimError) {
+        console.error('❌ Error checking for claimable subscription:', claimError)
+        // Continue with normal flow
+      } else if (claimResult && claimResult.success) {
+        console.log('✅ Successfully claimed webhook-created subscription:', {
+          subscriptionId: claimResult.subscription_id,
+          originalTransactionId,
+          claimed: true
+        })
+        result = claimResult
+      } else {
+        console.log('ℹ️ No claimable subscription found, creating new subscription')
+      }
+      
+      // If no claimable subscription was found, create a new one
+      if (!result) {
+        const { data: validationResult, error: dbError } = await supabase.rpc(
+          'complete_apple_subscription_validation',
+          {
+            p_user_id: userId,
+            p_transaction_id: transactionId,
+            p_original_transaction_id: originalTransactionId,
+            p_product_id: productId,
+            p_receipt_data: receiptData,
+            p_environment: finalEnvironment,
+            p_purchase_date: purchaseDate.toISOString(),
+            p_expiration_date: expirationDate.toISOString(),
+          }
         )
+        
+        if (dbError) {
+          throw new Error(`Database validation error: ${dbError.message}`)
+        }
+        
+        result = validationResult
       }
 
       // Log successful validation

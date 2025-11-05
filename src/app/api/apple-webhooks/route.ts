@@ -254,30 +254,68 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
         originalTransactionId: transaction.originalTransactionId,
         currentTransactionId: transaction.transactionId
       })
-      console.log('💡 This is a new subscription - webhook will create it when user validates')
+      console.log('💡 This is a new subscription - creating claimable subscription record')
       
-      // For new subscriptions, create a temporary subscription record that can be claimed
-      // when user does "Restore Purchases". We'll use a special placeholder user ID.
+      // For new subscriptions, create a claimable subscription record that can be claimed
+      // when user validates their purchase through the app
       console.log('🔄 Creating claimable subscription for transaction:', transaction.transactionId)
       
       try {
-        // For now, just log the transaction details for restore purchases to find
-        console.log('✅ Webhook received for new subscription - will be activated on restore:', {
+        // Create claimable subscription using the new database function
+        const { data: claimableResult, error: claimableError } = await supabase.rpc('create_claimable_apple_subscription', {
+          p_transaction_id: transaction.transactionId,
+          p_original_transaction_id: transaction.originalTransactionId,
+          p_product_id: transaction.productId,
+          p_environment: transaction.environment,
+          p_purchase_date: purchaseDate.toISOString(),
+          p_expiration_date: expirationDate.toISOString()
+        })
+        
+        if (claimableError) {
+          console.error('❌ Failed to create claimable subscription:', claimableError)
+          
+          // Fallback: just log the transaction details for manual handling
+          console.log('⚠️ Fallback: Logging transaction for manual processing:', {
+            transactionId: transaction.transactionId,
+            originalTransactionId: transaction.originalTransactionId,
+            productId: transaction.productId,
+            environment: transaction.environment,
+            purchaseDate: purchaseDate.toISOString(),
+            expirationDate: expirationDate.toISOString(),
+            note: 'User should validate purchase through app'
+          })
+          
+          return 'logged_for_manual_processing'
+        }
+        
+        console.log('✅ Created claimable subscription - user can claim by validating purchase:', {
+          subscriptionId: claimableResult.subscription_id,
           transactionId: transaction.transactionId,
           originalTransactionId: transaction.originalTransactionId,
           productId: transaction.productId,
           environment: transaction.environment,
           purchaseDate: purchaseDate.toISOString(),
           expirationDate: expirationDate.toISOString(),
-          note: 'User should tap Restore Purchases to activate'
+          status: claimableResult.status
         })
         
-        // The restore purchases flow will handle this transaction via Apple API
-        return 'logged_for_restore'
+        return 'claimable_subscription_created'
         
       } catch (error) {
-        console.error('❌ Error processing webhook:', error)
-        return 'error'
+        console.error('❌ Error creating claimable subscription:', error)
+        
+        // Fallback: just log the transaction details
+        console.log('⚠️ Fallback: Logging transaction for manual processing:', {
+          transactionId: transaction.transactionId,
+          originalTransactionId: transaction.originalTransactionId,
+          productId: transaction.productId,
+          environment: transaction.environment,
+          purchaseDate: purchaseDate.toISOString(),
+          expirationDate: expirationDate.toISOString(),
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+        
+        return 'error_logged_for_manual'
       }
     }
     
