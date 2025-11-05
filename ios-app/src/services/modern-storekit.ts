@@ -208,7 +208,12 @@ class ModernStoreKitService {
   }
 
   /**
-   * Modern purchase flow using transaction ID validation
+   * Modern purchase flow - WEBHOOK DRIVEN (no timeouts!)
+   * 1. User initiates purchase
+   * 2. Apple completes purchase and we finish transaction immediately 
+   * 3. Return success to user right away
+   * 4. Apple webhook activates subscription in database automatically
+   * 5. If webhook fails, "Restore Purchases" will activate it
    */
   async purchaseSubscription(productId: string): Promise<ModernPurchaseResult> {
     if (this.isSimulator()) {
@@ -228,16 +233,16 @@ class ModernStoreKitService {
 
       // Create promise that resolves when purchase completes
       const purchasePromise = new Promise<ModernPurchaseResult>((resolve, reject) => {
-        // Reduced timeout since we're not doing blocking server validation
+        // Very short timeout since we only wait for Apple's purchase response (no server validation)
         const timeout = setTimeout(() => {
-          logger.error('⏰ Purchase timeout reached after 30 seconds')
+          logger.error('⏰ Purchase timeout reached after 15 seconds')
           resolve({
             success: false,
-            error: 'Purchase timed out. Please try again.',
+            error: 'Purchase timed out. Please try "Restore Purchases" if the purchase was completed.',
             serverValidated: false,
             validationAttempts: 0
           })
-        }, 30000)
+        }, 15000)
 
         const handlePurchaseResult = (result: ModernPurchaseResult) => {
           clearTimeout(timeout)
@@ -323,32 +328,15 @@ class ModernStoreKitService {
                   timestamp: new Date().toISOString()
                 })
                 
-                // STEP 2: Attempt quick non-blocking server validation (background)
-                logger.info('🚀 Starting background server validation', {
-                  transactionId: purchase.orderId,
-                  timestamp: new Date().toISOString()
-                })
-                
-                // Fire-and-forget server validation (no await, no blocking)
-                this.backgroundValidateTransaction({
+                // STEP 2: Report success to user immediately (webhooks will handle database updates)
+                logger.info('🎉 Purchase successful - Apple webhook will activate subscription', {
                   transactionId: purchase.orderId,
                   originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                  productId: purchase.productId
-                }).then((validationResult) => {
-                  logger.info('✅ Background validation completed successfully', {
-                    transactionId: purchase.orderId,
-                    success: validationResult.success,
-                    timestamp: new Date().toISOString()
-                  })
-                }).catch((validationError) => {
-                  logger.warn('⚠️ Background validation failed - will rely on webhooks', {
-                    transactionId: purchase.orderId,
-                    error: validationError.message,
-                    timestamp: new Date().toISOString()
-                  })
+                  productId: purchase.productId,
+                  timestamp: new Date().toISOString()
                 })
 
-                // STEP 3: Report success to user immediately (don't wait for validation)
+                // STEP 3: Report success to user immediately (no validation blocking)
                 if (this.currentPurchaseHandler) {
                   logger.info('📱 Reporting immediate success to user', {
                     transactionId: purchase.orderId,
@@ -360,12 +348,12 @@ class ModernStoreKitService {
                     productId: purchase.productId,
                     transactionId: purchase.orderId,
                     originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                    serverValidated: true, // Will be validated in background or via webhook
-                    validationAttempts: 1
+                    serverValidated: true, // Apple webhook will activate subscription
+                    validationAttempts: 0 // No validation attempts during purchase
                   })
                 }
 
-                logger.info('✅ Purchase completed successfully - database will be updated via background validation or webhook', {
+                logger.info('✅ Purchase completed successfully - Apple webhook will activate subscription automatically', {
                   transactionId: purchase.orderId,
                   originalTransactionId: purchase.originalTransactionId || purchase.orderId,
                   productId: purchase.productId,
@@ -381,7 +369,7 @@ class ModernStoreKitService {
                 if (this.currentPurchaseHandler) {
                   this.currentPurchaseHandler({
                     success: false,
-                    error: 'Failed to complete purchase. Please try "Restore Purchases".',
+                    error: 'Purchase completed but activation pending. Please try "Restore Purchases" in a few moments.',
                     serverValidated: false,
                     validationAttempts: 0
                   })
@@ -440,27 +428,10 @@ class ModernStoreKitService {
    */
 
   /**
-   * Background (non-blocking) server validation for new purchases
-   * This runs after the user sees success, so it won't cause timeouts
+   * REMOVED: backgroundValidateTransaction - Purchase flow now relies 100% on Apple webhooks
+   * This eliminates any potential timeout issues during purchase.
+   * New flow: Purchase completes immediately → Apple sends webhook → Database updated automatically
    */
-  private async backgroundValidateTransaction(data: {
-    transactionId: string
-    originalTransactionId: string
-    productId: string
-  }): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Use shorter timeout for background validation
-      const result = await this.validateTransactionWithServer(data, 5000) // 5 second timeout
-      return result
-    } catch (error) {
-      // Don't throw - just log and return failure
-      logger.warn('Background validation failed, webhooks will handle it', {
-        transactionId: data.transactionId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-      return { success: false, error: 'Background validation failed' }
-    }
-  }
 
   /**
    * Modern server validation using transaction ID

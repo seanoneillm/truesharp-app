@@ -360,7 +360,7 @@ export function ExpenseForm({ initialData, onSubmit, onCancel, isLoading }: Expe
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
+            <Button type="submit" disabled={isLoading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
               {isLoading ? 'Saving...' : (initialData?.id ? 'Update Expense' : 'Add Expense')}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>

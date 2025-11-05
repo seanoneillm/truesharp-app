@@ -59,24 +59,59 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServiceRoleClient();
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '30');
+    const yearParam = searchParams.get('year');
+    const monthParam = searchParams.get('month');
     
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    // Calculate date ranges based on year and month parameters
+    let startDate: Date;
+    let endDate: Date;
+    let prevStartDate: Date;
+    let prevEndDate: Date;
+    
+    if (yearParam && yearParam !== 'all-time') {
+      const year = parseInt(yearParam);
+      
+      if (monthParam && monthParam !== 'all') {
+        // Specific month and year
+        const month = parseInt(monthParam) - 1; // JavaScript months are 0-indexed
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 1, 0); // Last day of the month
+        
+        // Previous month for comparison
+        const prevMonth = month - 1;
+        const prevYear = prevMonth < 0 ? year - 1 : year;
+        const adjustedPrevMonth = prevMonth < 0 ? 11 : prevMonth;
+        prevStartDate = new Date(prevYear, adjustedPrevMonth, 1);
+        prevEndDate = new Date(prevYear, adjustedPrevMonth + 1, 0);
+      } else {
+        // Entire year
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(year, 11, 31);
+        
+        // Previous year for comparison
+        prevStartDate = new Date(year - 1, 0, 1);
+        prevEndDate = new Date(year - 1, 11, 31);
+      }
+    } else {
+      // All time - use a very early start date
+      startDate = new Date('2020-01-01');
+      endDate = new Date();
+      
+      // For all-time comparison, use the same period from last year
+      prevStartDate = new Date(startDate);
+      prevStartDate.setFullYear(prevStartDate.getFullYear() - 1);
+      prevEndDate = new Date(endDate);
+      prevEndDate.setFullYear(prevEndDate.getFullYear() - 1);
+    }
+    
     const startDateStr = startDate.toISOString().split('T')[0];
-    
-    const endDate = new Date();
     const endDateStr = endDate.toISOString().split('T')[0];
-
-    // Get previous period for growth calculations
-    const prevStartDate = new Date(startDate);
-    prevStartDate.setDate(prevStartDate.getDate() - days);
     const prevStartDateStr = prevStartDate.toISOString().split('T')[0];
+    const prevEndDateStr = prevEndDate.toISOString().split('T')[0];
 
     // First get expense data
     const [
       expensesResponse,
-      prevExpensesResponse,
       recurringExpensesResponse,
       upcomingExpensesResponse
     ] = await Promise.all([
@@ -88,13 +123,6 @@ export async function GET(request: NextRequest) {
         .gte('expense_date', startDateStr)
         .lte('expense_date', endDateStr),
       
-      // Previous period expenses for growth calculation
-      supabase
-        .from('business_expenses')
-        .select('*')
-        .eq('status', 'active')
-        .gte('expense_date', prevStartDateStr)
-        .lt('expense_date', startDateStr),
       
       // Recurring expenses
       supabase
@@ -103,14 +131,12 @@ export async function GET(request: NextRequest) {
         .eq('status', 'active')
         .eq('is_recurring', true),
       
-      // Upcoming expenses (next 30 days)
+      // Upcoming expenses (next 30 days) - more sophisticated calculation
       supabase
         .from('business_expenses')
-        .select('id, description, amount, next_due_date, category')
+        .select('id, description, amount, next_due_date, category, recurring_interval, expense_date')
         .eq('status', 'active')
         .eq('is_recurring', true)
-        .gte('next_due_date', new Date().toISOString().split('T')[0])
-        .lte('next_due_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
         .order('next_due_date', { ascending: true })
     ]);
 
@@ -123,13 +149,12 @@ export async function GET(request: NextRequest) {
         console.warn('STRIPE_SECRET_KEY not set, using default revenue values');
       } else {
         // Import Stripe here to get real data
-        const Stripe = require('stripe');
+        const { default: Stripe } = await import('stripe');
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
           apiVersion: '2025-05-28.basil',
         });
 
-        const dateForTimestamp = startDateStr ? new Date(startDateStr) : new Date();
-        dateForTimestamp.setDate(dateForTimestamp.getDate() - days);
+        const dateForTimestamp = new Date(startDateStr);
         const startTimestamp = Math.floor(dateForTimestamp.getTime() / 1000);
         
         // Get charges for revenue calculation
@@ -153,7 +178,7 @@ export async function GET(request: NextRequest) {
         let grossRevenue = 0;
         let netRevenue = 0;
 
-        charges.data.forEach((charge: any) => {
+        charges.data.forEach((charge) => {
           if (charge.status === 'succeeded') {
             grossRevenue += charge.amount / 100; // Convert from cents
             netRevenue += (charge.amount - (charge.application_fee_amount || 0)) / 100;
@@ -162,7 +187,7 @@ export async function GET(request: NextRequest) {
 
         // Calculate MRR
         let mrr = 0;
-        subscriptions.data.forEach((sub: any) => {
+        subscriptions.data.forEach((sub) => {
           if (sub.items && sub.items.data.length > 0) {
             const price = sub.items.data[0].price;
             if (price && price.unit_amount) {
@@ -193,66 +218,145 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
     }
 
-    const expenses = expensesResponse.data || [];
-    const prevExpenses = prevExpensesResponse.data || [];
+    // Note: expenses and prevExpenses variables removed as they're now part of allExpenses
     const recurringExpenses = recurringExpensesResponse.data || [];
-    const upcomingExpenses = upcomingExpensesResponse.data || [];
+    // Process upcoming expenses to calculate actual next due dates
+    const rawUpcomingExpenses = upcomingExpensesResponse.data || [];
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    
+    const upcomingExpenses = rawUpcomingExpenses
+      .map(expense => {
+        // Calculate the actual next due date based on the recurring interval
+        let nextDueDate = expense.next_due_date ? new Date(expense.next_due_date) : new Date(expense.expense_date);
+        
+        // If next_due_date is in the past, calculate the next actual due date
+        while (nextDueDate < now) {
+          if (expense.recurring_interval === 'monthly') {
+            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+          } else if (expense.recurring_interval === 'quarterly') {
+            nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+          } else if (expense.recurring_interval === 'yearly') {
+            nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+          }
+        }
+        
+        return {
+          ...expense,
+          next_due_date: nextDueDate.toISOString().split('T')[0]
+        };
+      })
+      .filter(expense => {
+        const dueDate = new Date(expense.next_due_date);
+        return dueDate >= now && dueDate <= thirtyDaysFromNow;
+      })
+      .sort((a, b) => new Date(a.next_due_date).getTime() - new Date(b.next_due_date).getTime());
 
-    // Helper function to calculate actual expense amount based on recurring frequency
-    const calculateActualExpenseAmount = (expense: any, periodStartDate: Date, periodEndDate: Date): number => {
+    // Helper function to calculate how many days between two dates
+    const daysBetween = (date1: Date, date2: Date): number => {
+      const timeDiff = Math.abs(date2.getTime() - date1.getTime());
+      return Math.ceil(timeDiff / (1000 * 3600 * 24));
+    };
+
+    // Helper function to check if a specific recurring payment occurs within a period
+    const doesRecurringPaymentOccurInPeriod = (expense: { expense_date: string; recurring_interval?: string; recurring_end_date?: string }, periodStart: Date, periodEnd: Date): boolean => {
+      const expenseStartDate = new Date(expense.expense_date);
+      const recurringEndDate = expense.recurring_end_date ? new Date(expense.recurring_end_date) : new Date('2099-12-31');
+      
+      // If expense hasn't started yet or ended before the period, no payment occurs
+      if (expenseStartDate > periodEnd || recurringEndDate < periodStart) {
+        return false;
+      }
+      
+      const startDay = expenseStartDate.getDate();
+      const startMonth = expenseStartDate.getMonth();
+      
+      if (expense.recurring_interval === 'monthly') {
+        // Start from the expense start date and check each month
+        let currentPaymentDate = new Date(expenseStartDate);
+        
+        while (currentPaymentDate <= recurringEndDate) {
+          // Check if this payment date falls within our period
+          if (currentPaymentDate >= periodStart && currentPaymentDate <= periodEnd) {
+            return true;
+          }
+          
+          // Move to next month, keeping the same day
+          const nextMonth = currentPaymentDate.getMonth() + 1;
+          const nextYear = nextMonth > 11 ? currentPaymentDate.getFullYear() + 1 : currentPaymentDate.getFullYear();
+          const adjustedMonth = nextMonth > 11 ? 0 : nextMonth;
+          
+          // Handle cases where the day doesn't exist in the next month (e.g., Jan 31 -> Feb 28)
+          const daysInNextMonth = new Date(nextYear, adjustedMonth + 1, 0).getDate();
+          const dayToUse = Math.min(currentPaymentDate.getDate(), daysInNextMonth);
+          
+          currentPaymentDate = new Date(nextYear, adjustedMonth, dayToUse);
+        }
+      } else if (expense.recurring_interval === 'quarterly') {
+        // Check if the quarterly payment falls within the period
+        let currentPaymentDate = new Date(expenseStartDate);
+        
+        while (currentPaymentDate <= recurringEndDate) {
+          if (currentPaymentDate >= periodStart && currentPaymentDate <= periodEnd) {
+            return true;
+          }
+          // Move to next quarter
+          currentPaymentDate.setMonth(currentPaymentDate.getMonth() + 3);
+        }
+      } else if (expense.recurring_interval === 'yearly') {
+        // Check if the yearly payment falls within the period
+        // Start from the expense start date and check each year
+        let currentPaymentDate = new Date(expenseStartDate);
+        
+        while (currentPaymentDate <= recurringEndDate) {
+          // Check if this payment date falls within our period
+          if (currentPaymentDate >= periodStart && currentPaymentDate <= periodEnd) {
+            return true;
+          }
+          
+          // Move to next year, keeping the same month and day
+          currentPaymentDate = new Date(currentPaymentDate.getFullYear() + 1, currentPaymentDate.getMonth(), currentPaymentDate.getDate());
+        }
+      }
+      
+      return false;
+    };
+
+    // Helper function to calculate expense amount for a specific period
+    const calculateExpenseForPeriod = (expense: { amount: string; is_recurring: boolean; expense_date: string; recurring_end_date?: string; recurring_interval?: string }, periodStart: Date, periodEnd: Date): number => {
       const baseAmount = parseFloat(expense.amount);
       
       if (!expense.is_recurring) {
-        // One-time expense - only count if within period
+        // One-time expense - only count if it occurred exactly in the period
         const expenseDate = new Date(expense.expense_date);
-        return (expenseDate >= periodStartDate && expenseDate <= periodEndDate) ? baseAmount : 0;
+        return (expenseDate >= periodStart && expenseDate <= periodEnd) ? baseAmount : 0;
       }
       
-      // Recurring expense - calculate how many payments occurred in the period
-      const expenseStartDate = new Date(expense.expense_date);
-      const recurringEndDate = expense.recurring_end_date ? new Date(expense.recurring_end_date) : periodEndDate;
-      
-      // Don't count if expense started after period end or ended before period start
-      if (expenseStartDate > periodEndDate || recurringEndDate < periodStartDate) {
-        return 0;
-      }
-      
-      const effectiveStartDate = new Date(Math.max(expenseStartDate.getTime(), periodStartDate.getTime()));
-      const effectiveEndDate = new Date(Math.min(recurringEndDate.getTime(), periodEndDate.getTime()));
-      
-      let paymentCount = 0;
-      
-      if (expense.recurring_interval === 'monthly') {
-        // Calculate months between dates
-        const months = (effectiveEndDate.getFullYear() - effectiveStartDate.getFullYear()) * 12 + 
-                      (effectiveEndDate.getMonth() - effectiveStartDate.getMonth()) + 1;
-        paymentCount = Math.max(0, months);
-      } else if (expense.recurring_interval === 'quarterly') {
-        // Calculate quarters between dates
-        const months = (effectiveEndDate.getFullYear() - effectiveStartDate.getFullYear()) * 12 + 
-                      (effectiveEndDate.getMonth() - effectiveStartDate.getMonth()) + 1;
-        paymentCount = Math.max(0, Math.ceil(months / 3));
-      } else if (expense.recurring_interval === 'yearly') {
-        // Calculate years between dates
-        const years = effectiveEndDate.getFullYear() - effectiveStartDate.getFullYear() + 1;
-        paymentCount = Math.max(0, years);
-      }
-      
-      return baseAmount * paymentCount;
+      // Recurring expense - check if a payment occurs in this period
+      return doesRecurringPaymentOccurInPeriod(expense, periodStart, periodEnd) ? baseAmount : 0;
     };
+
 
     // Calculate total expenses with proper recurring calculations  
     const currentPeriodStart = new Date(startDateStr!);
     const currentPeriodEnd = new Date(endDateStr!);
     const prevPeriodStart = new Date(prevStartDateStr!);
-    const prevPeriodEnd = new Date(startDateStr!);
+    const prevPeriodEnd = new Date(prevEndDateStr!);
     
-    const totalExpenses = expenses.reduce((sum, expense) => {
-      return sum + calculateActualExpenseAmount(expense, currentPeriodStart, currentPeriodEnd);
+    // For business analysis, calculate expenses that occurred in the selected period
+    const allActiveExpenses = await supabase
+      .from('business_expenses')
+      .select('*')
+      .eq('status', 'active');
+    
+    const allExpenses = allActiveExpenses.data || [];
+    
+    const totalExpenses = allExpenses.reduce((sum, expense) => {
+      return sum + calculateExpenseForPeriod(expense, currentPeriodStart, currentPeriodEnd);
     }, 0);
     
-    const prevTotalExpenses = prevExpenses.reduce((sum, expense) => {
-      return sum + calculateActualExpenseAmount(expense, prevPeriodStart, prevPeriodEnd);
+    const prevTotalExpenses = allExpenses.reduce((sum, expense) => {
+      return sum + calculateExpenseForPeriod(expense, prevStartDate, prevEndDate);
     }, 0);
 
     // Calculate expenses by category with proper recurring calculations
@@ -263,9 +367,9 @@ export async function GET(request: NextRequest) {
       general: 0,
     };
 
-    expenses.forEach(expense => {
+    allExpenses.forEach((expense) => {
       if (expense.category in expensesByCategory) {
-        const actualAmount = calculateActualExpenseAmount(expense, currentPeriodStart, currentPeriodEnd);
+        const actualAmount = calculateExpenseForPeriod(expense, currentPeriodStart, currentPeriodEnd);
         expensesByCategory[expense.category as keyof typeof expensesByCategory] += actualAmount;
       }
     });
@@ -274,7 +378,7 @@ export async function GET(request: NextRequest) {
     let monthlyRecurring = 0;
     let yearlyRecurring = 0;
     
-    recurringExpenses.forEach(expense => {
+    recurringExpenses.forEach((expense) => {
       const amount = parseFloat(expense.amount);
       if (expense.recurring_interval === 'monthly') {
         monthlyRecurring += amount;
@@ -287,11 +391,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate one-time vs recurring expenses for the period
-    const recurringExpensesTotal = expenses
+    const recurringExpensesTotal = allExpenses
       .filter(e => e.is_recurring)
-      .reduce((sum, expense) => sum + calculateActualExpenseAmount(expense, currentPeriodStart, currentPeriodEnd), 0);
+      .reduce((sum, expense) => sum + calculateExpenseForPeriod(expense, currentPeriodStart, currentPeriodEnd), 0);
     
-    const oneTimeExpenses = totalExpenses - recurringExpensesTotal;
+    const oneTimeExpenses = allExpenses
+      .filter(e => !e.is_recurring)
+      .reduce((sum, expense) => sum + calculateExpenseForPeriod(expense, currentPeriodStart, currentPeriodEnd), 0);
 
     // Financial calculations
     const totalRevenue = revenueData.totalRevenue || { gross: 0, net: 0 };
@@ -301,10 +407,13 @@ export async function GET(request: NextRequest) {
     // Debug logging
     console.log('Business Metrics Debug:', {
       totalExpenses,
+      recurringExpensesTotal,
+      oneTimeExpenses,
       totalRevenue,
       netProfit,
       revenueDataReceived: !!revenueData.totalRevenue,
-      expensesCount: expenses.length
+      allExpensesCount: allExpenses.length,
+      upcomingExpensesCount: upcomingExpenses.length
     });
 
     // Business ratios
@@ -321,7 +430,9 @@ export async function GET(request: NextRequest) {
     const estimatedLTV = avgRevenuePerCustomer * 12; // Assume 12 month retention
     const lifetimeValueToCAC = customerAcquisitionCost > 0 ? estimatedLTV / customerAcquisitionCost : 0;
     
-    const monthlyBurnRate = monthlyRecurring + (oneTimeExpenses / (days / 30));
+    // Calculate the number of days in the selected period for burn rate calculation
+    const periodDays = Math.ceil((currentPeriodEnd.getTime() - currentPeriodStart.getTime()) / (1000 * 60 * 60 * 24));
+    const monthlyBurnRate = monthlyRecurring + (oneTimeExpenses / (periodDays / 30));
     const runway = monthlyBurnRate > 0 ? netProfit / monthlyBurnRate : 0;
 
     // Growth calculations

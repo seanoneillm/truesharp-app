@@ -15,6 +15,7 @@ import {
   ArrowDownRight,
   Minus
 } from 'lucide-react';
+import { UpcomingPaymentsAlert } from './UpcomingPaymentsAlert';
 
 interface BusinessMetricsProps {
   data: {
@@ -322,52 +323,10 @@ export function BusinessMetrics({ data, isLoading }: BusinessMetricsProps) {
         </div>
       </div>
 
-      {/* Upcoming Expenses */}
+      {/* Upcoming Payments Alert */}
       {data.upcomingExpenses.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Upcoming Expenses (Next 30 Days)</h3>
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Due Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Category
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {data.upcomingExpenses.slice(0, 5).map((expense) => (
-                      <tr key={expense.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-sm text-slate-900">{expense.description}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                          {formatCurrency(expense.amount)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-500">
-                          {new Date(expense.next_due_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-slate-100 text-slate-800 rounded-full capitalize">
-                            {expense.category}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <UpcomingPaymentsAlert upcomingExpenses={data.upcomingExpenses} />
         </div>
       )}
     </div>

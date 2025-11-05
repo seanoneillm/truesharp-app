@@ -98,8 +98,9 @@ export function BusinessTab() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Filters and date range
-  const [dateRange, setDateRange] = useState('30');
+  // Date selection
+  const [selectedYear, setSelectedYear] = useState<string>('all-time');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [filters, setFilters] = useState<ExpenseFilters>({
     category: 'all',
     isRecurring: 'all',
@@ -114,7 +115,15 @@ export function BusinessTab() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/admin/business/metrics?days=${dateRange}`);
+      const params = new URLSearchParams();
+      if (selectedYear !== 'all-time') {
+        params.append('year', selectedYear);
+      }
+      if (selectedMonth !== 'all') {
+        params.append('month', selectedMonth);
+      }
+      
+      const response = await fetch(`/api/admin/business/metrics?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch business data');
       }
@@ -127,7 +136,7 @@ export function BusinessTab() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [selectedYear, selectedMonth]);
 
   // Fetch expenses
   const fetchExpenses = useCallback(async (page = 1) => {
@@ -252,10 +261,40 @@ export function BusinessTab() {
     setPagination(prev => ({ ...prev, page }));
   };
 
-  // Handle date range change
-  const handleDateRangeChange = (value: string) => {
-    setDateRange(value);
+  // Handle date selection change
+  const handleYearChange = (value: string) => {
+    setSelectedYear(value);
   };
+
+  const handleMonthChange = (value: string) => {
+    setSelectedMonth(value);
+  };
+
+  // Generate year options (current year back to 2020)
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= 2020; year--) {
+      years.push(year.toString());
+    }
+    return years;
+  };
+
+  const monthOptions = [
+    { value: 'all', label: 'All Months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
 
   // Load data on mount and when dependencies change
   useEffect(() => {
@@ -307,39 +346,59 @@ export function BusinessTab() {
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-3">
-          <Select value={dateRange} onValueChange={handleDateRangeChange}>
-            <SelectTrigger className="w-40">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-wrap gap-3">
+            <Select value={selectedYear} onValueChange={handleYearChange}>
+              <SelectTrigger className="w-36">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-time">All Time</SelectItem>
+                {getYearOptions().map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              fetchBusinessData();
-              fetchExpenses(pagination.page);
-            }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+            <Select value={selectedMonth} onValueChange={handleMonthChange}>
+              <SelectTrigger className="w-36">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Button 
-            onClick={() => setShowExpenseForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Expense
-          </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                fetchBusinessData();
+                fetchExpenses(pagination.page);
+              }}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+
+          <div className="sm:ml-auto">
+            <Button 
+              onClick={() => setShowExpenseForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
+          </div>
         </div>
       </div>
 
