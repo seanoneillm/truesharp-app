@@ -271,7 +271,7 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
             environment: transaction.environment.toLowerCase(),
             purchase_date: purchaseDate.toISOString(),
             expiration_date: expirationDate.toISOString(),
-            notification_type: payload.notificationType,
+            notification_type: 'SUBSCRIBED',
             processed: false,
             created_at: new Date().toISOString()
           })
