@@ -261,32 +261,38 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
       console.log('🔄 Creating claimable subscription for transaction:', transaction.transactionId)
       
       try {
-        // Create subscription with special placeholder user that can be claimed later
-        const { data: result, error } = await supabase.rpc('complete_apple_subscription_validation', {
-          p_user_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID for unclaimed
-          p_transaction_id: transaction.transactionId,
-          p_original_transaction_id: transaction.originalTransactionId,
-          p_product_id: transaction.productId,
-          p_environment: transaction.environment.toLowerCase(),
-          p_purchase_date: purchaseDate.toISOString(),
-          p_expiration_date: expirationDate.toISOString()
-        })
-        
+        // Store transaction data in a simple table for later claiming
+        const { data: result, error } = await supabase
+          .from('pending_apple_subscriptions')
+          .insert({
+            transaction_id: transaction.transactionId,
+            original_transaction_id: transaction.originalTransactionId,
+            product_id: transaction.productId,
+            environment: transaction.environment.toLowerCase(),
+            purchase_date: purchaseDate.toISOString(),
+            expiration_date: expirationDate.toISOString(),
+            notification_type: payload.notificationType,
+            processed: false,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          
         if (error) {
-          console.error('❌ Failed to create claimable subscription:', error)
-          return 'creation_failed'
+          console.error('❌ Failed to store pending subscription:', error)
+          return 'storage_failed'
         }
         
-        console.log('✅ Created claimable subscription:', {
+        console.log('✅ Stored pending subscription for claiming:', {
           transactionId: transaction.transactionId,
-          subscriptionId: result?.subscription_id,
-          note: 'Can be claimed when user restores purchases'
+          originalTransactionId: transaction.originalTransactionId,
+          productId: transaction.productId,
+          note: 'Will be activated when user restores purchases'
         })
         
-        return 'claimable_subscription_created'
+        return 'pending_subscription_stored'
         
       } catch (error) {
-        console.error('❌ Error creating claimable subscription:', error)
+        console.error('❌ Error storing pending subscription:', error)
         return 'error'
       }
     }

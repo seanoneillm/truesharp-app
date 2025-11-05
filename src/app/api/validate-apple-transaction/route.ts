@@ -130,19 +130,48 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
     
-    // Also try to claim any placeholder subscriptions for this user's transactions
+    // Also check for and activate any pending subscriptions from webhooks
     try {
-      const { data: claimResult } = await supabase.rpc('claim_placeholder_subscriptions', {
-        p_user_id: userId,
-        p_transaction_id: transactionId,
-        p_original_transaction_id: originalTransactionId
-      })
-      
-      if (claimResult) {
-        console.log('✅ Also claimed placeholder subscriptions:', claimResult)
+      // Look for pending subscriptions that match this transaction
+      const { data: pendingSubscriptions, error: pendingError } = await supabase
+        .from('pending_apple_subscriptions')
+        .select('*')
+        .in('original_transaction_id', [originalTransactionId, transactionId])
+        .eq('processed', false)
+        
+      if (pendingError) {
+        console.log('ℹ️ Error checking pending subscriptions:', pendingError)
+      } else if (pendingSubscriptions && pendingSubscriptions.length > 0) {
+        console.log('🎯 Found pending subscriptions to activate:', pendingSubscriptions.length)
+        
+        for (const pending of pendingSubscriptions) {
+          // Activate this pending subscription
+          const { data: activationResult, error: activationError } = await supabase.rpc('complete_apple_subscription_validation', {
+            p_user_id: userId,
+            p_transaction_id: pending.transaction_id,
+            p_original_transaction_id: pending.original_transaction_id,
+            p_product_id: pending.product_id,
+            p_environment: pending.environment,
+            p_purchase_date: pending.purchase_date,
+            p_expiration_date: pending.expiration_date
+          })
+          
+          if (!activationError) {
+            // Mark as processed
+            await supabase
+              .from('pending_apple_subscriptions')
+              .update({ processed: true, processed_at: new Date().toISOString() })
+              .eq('id', pending.id)
+              
+            console.log('✅ Activated pending subscription:', {
+              transactionId: pending.transaction_id,
+              subscriptionId: activationResult?.subscription_id
+            })
+          }
+        }
       }
-    } catch (claimError) {
-      console.log('ℹ️ No placeholder subscriptions to claim (this is normal)', claimError)
+    } catch (pendingError) {
+      console.log('ℹ️ No pending subscriptions to activate (this is normal)')
     }
 
     return NextResponse.json({
