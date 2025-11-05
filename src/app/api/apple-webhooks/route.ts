@@ -261,38 +261,22 @@ async function handleSubscriptionStart(transaction: DecodedTransaction, supabase
       console.log('🔄 Creating claimable subscription for transaction:', transaction.transactionId)
       
       try {
-        // Store transaction data in a simple table for later claiming
-        const { data: result, error } = await supabase
-          .from('pending_apple_subscriptions')
-          .insert({
-            transaction_id: transaction.transactionId,
-            original_transaction_id: transaction.originalTransactionId,
-            product_id: transaction.productId,
-            environment: transaction.environment.toLowerCase(),
-            purchase_date: purchaseDate.toISOString(),
-            expiration_date: expirationDate.toISOString(),
-            notification_type: 'SUBSCRIBED',
-            processed: false,
-            created_at: new Date().toISOString()
-          })
-          .select()
-          
-        if (error) {
-          console.error('❌ Failed to store pending subscription:', error)
-          return 'storage_failed'
-        }
-        
-        console.log('✅ Stored pending subscription for claiming:', {
+        // For now, just log the transaction details for restore purchases to find
+        console.log('✅ Webhook received for new subscription - will be activated on restore:', {
           transactionId: transaction.transactionId,
           originalTransactionId: transaction.originalTransactionId,
           productId: transaction.productId,
-          note: 'Will be activated when user restores purchases'
+          environment: transaction.environment,
+          purchaseDate: purchaseDate.toISOString(),
+          expirationDate: expirationDate.toISOString(),
+          note: 'User should tap Restore Purchases to activate'
         })
         
-        return 'pending_subscription_stored'
+        // The restore purchases flow will handle this transaction via Apple API
+        return 'logged_for_restore'
         
       } catch (error) {
-        console.error('❌ Error storing pending subscription:', error)
+        console.error('❌ Error processing webhook:', error)
         return 'error'
       }
     }
