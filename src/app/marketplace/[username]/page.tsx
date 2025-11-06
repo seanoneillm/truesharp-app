@@ -402,48 +402,41 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
           </div>
 
           {/* Profile Header */}
-          <div className="overflow-hidden rounded-2xl border border-blue-200/60 bg-white/95 backdrop-blur-sm shadow-xl">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
             <div className="relative">
               {/* Banner */}
               <div
                 className={cn(
-                  'h-28 sm:h-40 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 relative overflow-hidden',
+                  'h-20 sm:h-28 bg-gradient-to-r from-gray-100 to-gray-200 relative overflow-hidden',
                   sellerProfile.banner_img && 'bg-none'
                 )}
               >
-                {/* Animated background pattern */}
-                <div className="absolute inset-0 opacity-20">
-                  <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-white/30 to-transparent rotate-12 transform" />
-                  <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-white/20 to-transparent -rotate-12 transform" />
-                </div>
-
                 {sellerProfile.banner_img ? (
                   <>
                     <img
                       src={sellerProfile.banner_img}
                       alt="Profile banner"
-                      className="h-28 sm:h-40 w-full object-cover"
+                      className="h-20 sm:h-28 w-full object-cover"
                       onError={e => {
                         console.log('Banner image failed to load:', sellerProfile.banner_img)
                         e.currentTarget.style.display = 'none'
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
                   </>
                 ) : null}
-                
               </div>
 
               {/* Profile Content */}
-              <div className="p-3 sm:p-5">
-                <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4">
+              <div className="px-4 pb-3 -mt-10 sm:-mt-12">
+                <div className="flex flex-col sm:flex-row sm:items-end space-y-2 sm:space-y-0 sm:space-x-4">
                   {/* Profile Image */}
                   <div className="relative flex-shrink-0 mx-auto sm:mx-0">
                     {sellerProfile.profile_img || sellerProfile.profile_picture_url ? (
                       <img
                         src={sellerProfile.profile_img || sellerProfile.profile_picture_url || ''}
                         alt={sellerProfile.username}
-                        className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-white object-cover shadow-xl ring-4 ring-blue-100/50"
+                        className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl border-4 border-white object-cover shadow-lg"
                         onError={e => {
                           console.log(
                             'Profile image failed to load:',
@@ -452,20 +445,20 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                           e.currentTarget.style.display = 'none'
                           const fallback = document.createElement('div')
                           fallback.className =
-                            'h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl sm:text-2xl border-4 border-white shadow-xl ring-4 ring-blue-100/50'
+                            'h-16 w-16 sm:h-20 sm:w-20 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl border-4 border-white shadow-lg'
                           fallback.textContent = sellerProfile.username.charAt(0).toUpperCase()
                           e.currentTarget.parentNode?.appendChild(fallback)
                         }}
                       />
                     ) : (
-                      <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-600 text-xl sm:text-2xl font-bold text-white shadow-xl ring-4 ring-blue-100/50">
+                      <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-xl border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-600 text-lg sm:text-xl font-bold text-white shadow-lg">
                         {sellerProfile.username.charAt(0).toUpperCase()}
                       </div>
                     )}
                     {sellerProfile.is_verified_seller && (
                       <div className="absolute -bottom-1 -right-1">
-                        <div className="rounded-full bg-emerald-500 p-1.5 shadow-lg ring-2 ring-white">
-                          <CheckCircle className="h-4 w-4 text-white" />
+                        <div className="rounded-full bg-emerald-500 p-1 shadow-md ring-2 ring-white">
+                          <CheckCircle className="h-3 w-3 text-white" />
                         </div>
                       </div>
                     )}
@@ -473,61 +466,37 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                   
                   {/* Profile Info */}
                   <div className="flex-1 min-w-0 text-center sm:text-left">
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                        <div>
-                          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                            @{sellerProfile.username}
-                          </h1>
-                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                            {sellerProfile.is_verified_seller && (
-                              <div className="flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm">
-                                <CheckCircle className="mr-1.5 h-4 w-4" />
-                                Verified Seller
-                              </div>
-                            )}
-                            <div className="flex items-center rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-800 shadow-sm">
-                              <Store className="mr-1.5 h-4 w-4" />
-                              <span className="font-semibold">{sellerProfile.strategies.length}</span>
-                              <span className="ml-1">{sellerProfile.strategies.length === 1 ? 'strategy' : 'strategies'}</span>
-                            </div>
-                          </div>
+                    <div className="space-y-1">
+                      {/* Header with username */}
+                      <div>
+                        <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                          @{sellerProfile.username}
+                        </h1>
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-0.5">
+                          {sellerProfile.is_verified_seller && (
+                            <span className="text-xs font-medium text-emerald-700">
+                              <CheckCircle className="inline mr-1 h-3 w-3" />
+                              Verified
+                            </span>
+                          )}
+                          <span className="text-xs font-medium text-gray-700">
+                            <Store className="inline mr-1 h-3 w-3" />
+                            <span className="font-semibold">{sellerProfile.strategies.length}</span>
+                            <span className="ml-1">{sellerProfile.strategies.length === 1 ? 'strategy' : 'strategies'}</span>
+                          </span>
                         </div>
-                        <Button
-                          variant="outline"
-                          onClick={copyProfileLink}
-                          size="sm"
-                          className={cn(
-                            "bg-white/90 backdrop-blur-sm hover:bg-white border-blue-200 text-blue-700 hover:text-blue-900 shadow-sm transition-all duration-200",
-                            copySuccess && 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          )}
-                        >
-                          {copySuccess ? (
-                            <>
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              <span className="hidden sm:inline">Copied!</span>
-                              <span className="sm:hidden">Copied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="mr-2 h-4 w-4" />
-                              <span className="hidden sm:inline">Share Profile</span>
-                              <span className="sm:hidden">Share</span>
-                            </>
-                          )}
-                        </Button>
                       </div>
                       
                       {/* Bio */}
                       {sellerProfile.bio && sellerProfile.bio.trim() ? (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-xl p-3 border border-blue-200/50 shadow-sm">
+                        <div className="mt-1.5">
                           <p className="text-gray-700 text-sm leading-relaxed">
                             {sellerProfile.bio}
                           </p>
                         </div>
                       ) : (
-                        <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-200/50">
-                          <p className="text-blue-400 italic text-sm text-center">
+                        <div className="mt-1.5">
+                          <p className="text-gray-500 italic text-xs">
                             This seller hasn't added a bio yet.
                           </p>
                         </div>
@@ -581,123 +550,111 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                     const subscription = getSubscriptionToStrategy(strategy.strategy_id)
                     
                     return (
-                      <div key={strategy.strategy_id} className="group bg-white border border-blue-200/40 rounded-2xl hover:shadow-xl hover:border-blue-400/60 transition-all duration-300 overflow-hidden">
+                      <div key={strategy.strategy_id} className="group bg-white border-2 border-gray-200 rounded-xl hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden">
                         {/* Strategy Card Header */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border-b border-blue-200/50 p-4">
-                          <div className="flex flex-col lg:flex-row lg:items-center space-y-3 lg:space-y-0 lg:space-x-4">
+                        <div className="p-4">
+                          <div className="flex items-center space-x-3 mb-3">
                             {/* Profile Photo */}
-                            <div className="flex-shrink-0 mx-auto lg:mx-0">
+                            <div className="flex-shrink-0">
                               {sellerProfile.profile_img || sellerProfile.profile_picture_url ? (
                                 <img
                                   src={sellerProfile.profile_img || sellerProfile.profile_picture_url || ''}
                                   alt={sellerProfile.username}
-                                  className="h-12 w-12 rounded-xl border-2 border-blue-200 object-cover shadow-lg ring-2 ring-blue-100"
+                                  className="h-8 w-8 rounded-lg object-cover"
                                   onError={e => {
                                     e.currentTarget.style.display = 'none'
                                     const fallback = document.createElement('div')
-                                    fallback.className = 'h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base border-2 border-blue-200 shadow-lg ring-2 ring-blue-100'
+                                    fallback.className = 'h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs'
                                     fallback.textContent = sellerProfile.username.charAt(0).toUpperCase()
                                     e.currentTarget.parentNode?.appendChild(fallback)
                                   }}
                                 />
                               ) : (
-                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base border-2 border-blue-200 shadow-lg ring-2 ring-blue-100">
+                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
                                   {sellerProfile.username.charAt(0).toUpperCase()}
                                 </div>
                               )}
                             </div>
                             
-                            <div className="flex-1 text-center lg:text-left">
-                              <div className="space-y-2">
-                                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-1 lg:space-y-0">
-                                  <div>
-                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                                      {strategy.strategy_name}
-                                    </h3>
-                                    <div className="flex items-center justify-center lg:justify-start space-x-2 flex-wrap">
-                                      {strategy.is_verified_seller && (
-                                        <div className="flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
-                                          <CheckCircle className="mr-1 h-3 w-3" />
-                                          Verified
-                                        </div>
-                                      )}
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 border border-blue-200 text-blue-800 font-medium text-xs shadow-sm">
-                                        {strategy.strategy_type}
-                                      </span>
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-800 font-medium text-xs shadow-sm">
-                                        {strategy.primary_sport}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {/* Strategy Description */}
-                                {strategy.strategy_description && strategy.strategy_description.trim() ? (
-                                  <div className="bg-white/80 rounded-lg p-2.5 border border-blue-200/50">
-                                    <p className="text-gray-700 text-sm leading-relaxed">
-                                      {strategy.strategy_description}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="bg-blue-50/50 rounded-lg p-2.5 border border-blue-200/50">
-                                    <p className="text-blue-500 italic text-sm">
-                                      Professional betting strategy with proven performance metrics.
-                                    </p>
-                                  </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-bold text-gray-900">
+                                {strategy.strategy_name}
+                              </h3>
+                              <div className="flex items-center space-x-2 text-xs text-gray-600 mt-0.5">
+                                {strategy.is_verified_seller && (
+                                  <span className="text-emerald-700">
+                                    <CheckCircle className="inline mr-1 h-3 w-3" />
+                                    Verified
+                                  </span>
                                 )}
+                                <span>{strategy.strategy_type}</span>
+                                <span>•</span>
+                                <span>{strategy.primary_sport}</span>
                               </div>
                             </div>
                           </div>
-                        </div>
+                          
+                          {/* Strategy Description */}
+                          {strategy.strategy_description && strategy.strategy_description.trim() ? (
+                            <div className="mb-4">
+                              <p className="text-gray-700 text-sm leading-relaxed">
+                                {strategy.strategy_description}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="mb-4">
+                              <p className="text-gray-500 italic text-sm">
+                                Professional betting strategy with proven performance metrics.
+                              </p>
+                            </div>
+                          )}
 
-                        {/* Strategy Card Body */}
-                        <div className="p-4">
                           {/* Stats Grid */}
-                          <div className="grid grid-cols-3 gap-3 mb-4">
-                            <div className="text-center bg-gradient-to-br from-blue-50 to-white rounded-xl p-3 border border-blue-200/50 shadow-sm hover:shadow-md transition-shadow">
-                              <div className={`text-xl font-bold mb-1 ${
+                          <div className="grid grid-cols-3 gap-4 mb-4 py-3 border-t border-b border-gray-200">
+                            <div className="text-center">
+                              <div className={`text-xl font-bold ${
                                 strategy.roi_percentage >= 0 ? 'text-emerald-600' : 'text-red-500'
                               }`}>
                                 {strategy.roi_percentage >= 0 ? '+' : ''}
                                 {strategy.roi_percentage.toFixed(1)}%
                               </div>
-                              <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider">ROI</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wider">ROI</div>
                             </div>
-                            <div className="text-center bg-gradient-to-br from-blue-50 to-white rounded-xl p-3 border border-blue-200/50 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="text-xl font-bold text-blue-600 mb-1">
+                            <div className="text-center">
+                              <div className="text-xl font-bold text-gray-900">
                                 {(strategy.win_rate * 100).toFixed(1)}%
                               </div>
-                              <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider">Win Rate</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wider">Win Rate</div>
                             </div>
-                            <div className="text-center bg-gradient-to-br from-blue-50 to-white rounded-xl p-3 border border-blue-200/50 shadow-sm hover:shadow-md transition-shadow">
-                              <div className="text-xl font-bold text-indigo-600 mb-1">
+                            <div className="text-center">
+                              <div className="text-xl font-bold text-gray-900">
                                 {strategy.total_bets}
                               </div>
-                              <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider">Total Bets</div>
+                              <div className="text-xs text-gray-600 font-medium uppercase tracking-wider">Total Bets</div>
                             </div>
                           </div>
                           
                           {/* Pricing Section */}
-                          <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl p-3 mb-4 border border-blue-300/50 shadow-sm">
-                            <h4 className="text-sm font-bold text-blue-800 mb-2 text-center">Subscription Plans</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="mb-4">
+                            <h4 className="text-sm font-bold text-gray-800 mb-2">Subscription Plans</h4>
+                            <div className="grid grid-cols-3 gap-1">
                               {strategy.subscription_price_weekly > 0 && (
-                                <div className="bg-white rounded-lg p-2.5 border border-blue-200/50 text-center hover:shadow-md transition-shadow">
-                                  <div className="text-base font-bold text-gray-900">${strategy.subscription_price_weekly}</div>
-                                  <div className="text-xs text-blue-600 font-medium">per week</div>
+                                <div className="text-center py-1">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_weekly}</div>
+                                  <div className="text-xs text-gray-600">weekly</div>
                                 </div>
                               )}
                               {strategy.subscription_price_monthly > 0 && (
-                                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-2.5 border-2 border-gray-300 text-center shadow-lg transform hover:scale-105 transition-transform">
-                                  <div className="text-base font-bold text-gray-900">${strategy.subscription_price_monthly}</div>
-                                  <div className="text-xs font-medium text-gray-600">per month</div>
-                                  <div className="text-xs font-bold bg-blue-600 text-white rounded-full px-1.5 py-0.5 mt-0.5">Popular</div>
+                                <div className="text-center py-1 border-l border-r border-gray-200">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_monthly}</div>
+                                  <div className="text-xs text-gray-600">monthly</div>
+                                  <div className="text-xs font-bold text-blue-600">Popular</div>
                                 </div>
                               )}
                               {strategy.subscription_price_yearly > 0 && (
-                                <div className="bg-white rounded-lg p-2.5 border border-blue-200/50 text-center hover:shadow-md transition-shadow">
-                                  <div className="text-base font-bold text-gray-900">${strategy.subscription_price_yearly}</div>
-                                  <div className="text-xs text-blue-600 font-medium">per year</div>
+                                <div className="text-center py-1">
+                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_yearly}</div>
+                                  <div className="text-xs text-gray-600">yearly</div>
                                   <div className="text-xs text-emerald-600 font-bold">Best Value</div>
                                 </div>
                               )}
@@ -707,20 +664,20 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                           {/* Subscribe Button */}
                           <div className="flex justify-center">
                             {isSubscribed && subscription ? (
-                              <div className="text-center bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl px-4 py-3 w-full max-w-sm shadow-lg">
-                                <div className="flex items-center justify-center space-x-2 text-emerald-700 font-bold text-sm">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span>Active Subscription</span>
+                              <div className="text-center w-full">
+                                <div className="text-emerald-700 font-bold text-sm">
+                                  <CheckCircle className="inline mr-2 h-4 w-4" />
+                                  Active Subscription
                                 </div>
-                                <div className="text-xs text-emerald-600 font-medium capitalize mt-0.5">
-                                  {subscription.frequency} plan - Premium Access
+                                <div className="text-xs text-emerald-600 font-medium capitalize">
+                                  {subscription.frequency} plan
                                 </div>
                               </div>
                             ) : (
                               <Button
                                 onClick={() => handleSubscribeClick(strategy.strategy_id)}
                                 disabled={subscriptionLoading}
-                                className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700 text-white w-full max-w-sm px-6 py-3 text-sm font-bold rounded-xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200 border border-blue-400 ring-2 ring-blue-200/50 hover:ring-blue-300/70"
+                                className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700 text-white w-full px-6 py-3 text-sm font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                               >
                                 {subscriptionLoading ? (
                                   <>
