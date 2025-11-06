@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Seller not found' }, { status: 404 })
     }
 
-    // Get strategies for this seller
+    // Get strategies for this seller with descriptions from strategies table
     const { data: strategies, error: strategiesError } = await supabase
       .from('strategy_leaderboard')
       .select(
@@ -87,7 +87,8 @@ export async function GET(request: NextRequest) {
         subscription_price_monthly,
         subscription_price_yearly,
         created_at,
-        updated_at
+        updated_at,
+        strategies!inner(description)
       `
       )
       .eq('user_id', profile.id)
@@ -105,6 +106,13 @@ export async function GET(request: NextRequest) {
     const sellerProfileData = Array.isArray(profile.seller_profiles) 
       ? profile.seller_profiles[0] 
       : profile.seller_profiles
+    
+    // Process strategies to include description from joined table
+    const processedStrategies = (strategies || []).map(strategy => ({
+      ...strategy,
+      strategy_description: (strategy as any).strategies?.description || ''
+    }))
+    
     const sellerProfile = {
       ...profile,
       // Use seller_profiles bio if it exists, otherwise use profiles bio, otherwise empty string
@@ -113,7 +121,7 @@ export async function GET(request: NextRequest) {
       profile_img: sellerProfileData?.profile_img || profile.profile_picture_url || null,
       // Use seller_profiles banner_img (profiles table doesn't have this field)
       banner_img: sellerProfileData?.banner_img || null,
-      strategies: strategies || [],
+      strategies: processedStrategies,
     }
 
     console.log('Final seller profile data:', {
