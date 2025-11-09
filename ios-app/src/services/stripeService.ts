@@ -46,10 +46,25 @@ class StripeService {
     errors?: string[]
   }> {
     try {
+      // Get current session for auth token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.access_token) {
+        return {
+          hasStripeAccount: false,
+          accountReady: false,
+          errors: ['Authentication required'],
+        }
+      }
+
       const response = await fetch(`${API_URLS.stripeConnect}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          Cookie: `sb-trsogafrxpptszxydycn-auth-token=${JSON.stringify([session.access_token])}`,
         },
       })
 
@@ -138,7 +153,8 @@ class StripeService {
         return { error: 'Authentication required' }
       }
 
-      const response = await fetch(`${API_URLS.stripeConnect}`, {
+      // Use dedicated onboarding endpoint instead of main connect endpoint
+      const response = await fetch(`${API_URLS.stripeConnect}/onboarding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,6 +162,7 @@ class StripeService {
           // Add cookie that the server expects
           Cookie: `sb-trsogafrxpptszxydycn-auth-token=${JSON.stringify([session.access_token])}`,
         },
+        // Send the account_id to the onboarding endpoint to ensure it uses the correct account
         body: JSON.stringify({
           account_id: accountId,
           refresh_url: 'truesharp://onboarding/refresh',
@@ -160,7 +177,11 @@ class StripeService {
       }
 
       const data = await response.json()
-      return data
+      return {
+        success: data.success,
+        account_id: accountId, // Keep the account_id for consistency
+        onboarding_url: data.onboarding_url,
+      }
     } catch (error) {
       logger.error('Error creating onboarding link:', error)
       return { error: 'Network error creating onboarding link' }
@@ -552,7 +573,7 @@ class StripeService {
       }
 
       // Get account management URL from web app API - let the API handle account verification
-      const response = await fetch(`${API_ENDPOINTS.accountLink}`, {
+      const response = await fetch(`${API_ENDPOINTS.stripeConnectLogin}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -573,10 +594,24 @@ class StripeService {
           error: data.error,
           details: data.details,
           message: data.message,
+          userId: session.user.id,
+          endpoint: API_ENDPOINTS.stripeConnectLogin,
         })
+        
+        // Provide more specific error messages based on Stripe API responses
+        let userFriendlyError = data.error || `Failed to create account management link: HTTP ${response.status}`;
+        
+        if (response.status === 400 && data.error?.includes('setup must be completed')) {
+          userFriendlyError = 'Account setup is not complete. Please complete your Stripe onboarding first.';
+        } else if (response.status === 404) {
+          userFriendlyError = 'No Stripe Connect account found. Please set up your seller account first.';
+        } else if (response.status === 401) {
+          userFriendlyError = 'Authentication failed. Please try logging out and back in.';
+        }
+        
         return {
           success: false,
-          error: data.error || `Failed to create account management link: HTTP ${response.status}`,
+          error: userFriendlyError,
         }
       }
 
