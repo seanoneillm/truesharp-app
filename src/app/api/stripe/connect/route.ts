@@ -40,6 +40,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Parse request body to check if this is for an existing account
+    const body = await request.json().catch(() => ({}))
+    const existingAccountId = body.account_id
+    
+    console.log('Stripe Connect API request:', {
+      method: request.method,
+      hasAccountId: !!existingAccountId,
+      accountId: existingAccountId,
+      userId: user.id,
+      body: body,
+    })
+
     // Check if seller already has a Stripe Connect account
     const { data: existingAccount } = await supabase
       .from('profiles')
@@ -47,11 +59,47 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (existingAccount?.stripe_connect_account_id) {
-      return NextResponse.json(
-        { error: 'Stripe Connect account already exists for this user' },
-        { status: 409 }
-      )
+    // If an account_id was provided, create onboarding link for existing account
+    console.log('Checking existing account conditions:', {
+      existingAccountId,
+      existingAccountStripeId: existingAccount?.stripe_connect_account_id,
+      shouldUseExistingAccount: !!(existingAccountId || existingAccount?.stripe_connect_account_id),
+    })
+    
+    if (existingAccountId || existingAccount?.stripe_connect_account_id) {
+      const accountId = existingAccountId || existingAccount.stripe_connect_account_id
+      
+      console.log('Using existing account flow for account:', accountId)
+      
+      try {
+        // Verify account exists in Stripe
+        await stripe.accounts.retrieve(accountId)
+        
+        // Create account onboarding link for existing account
+        const accountLink = await stripe.accountLinks.create({
+          account: accountId,
+          refresh_url: body.refresh_url || `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=seller&refresh=true`,
+          return_url: body.return_url || `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=seller&success=true`,
+          type: 'account_onboarding',
+        })
+
+        return NextResponse.json({
+          success: true,
+          account_id: accountId,
+          onboarding_url: accountLink.url,
+        })
+      } catch (stripeError) {
+        console.error('Error with existing Stripe account:', stripeError)
+        // If account doesn't exist in Stripe, continue to create new one
+        if ((stripeError as any)?.code === 'resource_missing') {
+          console.log('Existing account not found in Stripe, creating new one')
+        } else {
+          return NextResponse.json(
+            { error: 'Failed to access existing Stripe account' },
+            { status: 500 }
+          )
+        }
+      }
     }
 
     // Create Stripe Connect Express account

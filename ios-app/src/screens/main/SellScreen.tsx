@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Modal, FlatList, TextInput, Dimensions, Share, Image, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+// import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler'; // Removed due to iOS pod conflicts
 import { captureRef } from 'react-native-view-shot';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -157,7 +157,8 @@ export default function SellScreen() {
   const handleSwipe = useCallback((event: any) => {
     const { translationX, state } = event.nativeEvent;
     
-    if (state === State.END) {
+    // Gesture handling removed due to conflicts
+    if (false) {
       const currentIndex = tabs.findIndex(tab => tab.key === activeTab);
       
       if (translationX > 50 && currentIndex > 0) {
@@ -1766,7 +1767,36 @@ export default function SellScreen() {
       );
     }
 
-    // If user is already set up as seller, show normal KPI cards
+    // If user is a seller but Stripe account is incomplete, show completion card
+    if (sellerStatus && sellerStatus.isSeller && !sellerStatus.canMonetizeStrategies) {
+      return (
+        <View style={styles.summaryCardsContainer}>
+          <View style={styles.becomeSellerCard}>
+            <View style={styles.becomeSellerHeader}>
+              <Ionicons name="card-outline" size={40} color={theme.colors.primary} />
+              <Text style={styles.becomeSellerTitle}>Complete Seller Onboarding</Text>
+            </View>
+            <Text style={styles.becomeSellerDescription}>
+              Your seller account needs to be completed with Stripe to start monetizing strategies and receiving payments.
+            </Text>
+            <TouchableOpacity 
+              style={styles.becomeSellerButton} 
+              onPress={handleBecomeASeller}
+            >
+              <LinearGradient
+                colors={[theme.colors.primary, '#0056b3']}
+                style={styles.becomeSellerButtonGradient}
+              >
+                <Text style={styles.becomeSellerButtonText}>Complete Seller Onboarding</Text>
+                <Ionicons name="arrow-forward" size={16} color="white" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    // If user is fully set up as seller, show normal KPI cards
     return (
       <View style={styles.summaryCardsContainer}>
         {renderSellerActionButtons()}
@@ -3915,7 +3945,7 @@ export default function SellScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={globalStyles.safeArea} edges={['left', 'right', 'bottom']}>
         <View style={styles.container}>
         {/* Banner */}
@@ -3960,11 +3990,9 @@ export default function SellScreen() {
 
         {/* Tab Content with Swipe Gesture */}
         <View style={styles.tabContent}>
-          <PanGestureHandler onHandlerStateChange={handleSwipe}>
-            <View style={{ flex: 1 }}>
-              {renderTabContent()}
-            </View>
-          </PanGestureHandler>
+          <View style={{ flex: 1 }}>
+            {renderTabContent()}
+          </View>
         </View>
         </View>
         
@@ -3999,7 +4027,7 @@ export default function SellScreen() {
           }}
         />
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

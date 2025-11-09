@@ -66,15 +66,29 @@ class SellerService {
       // Check if user has Stripe Connect account in profile
       const hasStripeConnectId = !!profile.stripe_connect_account_id;
       
-      // If user is marked as seller and has stripe connect ID, they can monetize
+      // If user is marked as seller and has stripe connect ID, verify account completeness with Stripe
       if (profile.is_seller && hasStripeConnectId) {
+        // Actually check Stripe account status via the API
+        const stripeStatus = await stripeService.checkSellerStatus(userId);
+        
+        console.log('Seller status validation:', {
+          userId,
+          profileIsSeller: profile.is_seller,
+          hasStripeConnectId,
+          stripeAccountId: profile.stripe_connect_account_id,
+          stripeHasAccount: stripeStatus.hasStripeAccount,
+          stripeAccountReady: stripeStatus.accountReady,
+          canMonetize: stripeStatus.hasStripeAccount && stripeStatus.accountReady,
+        });
+        
         return {
           isSeller: true,
-          hasStripeAccount: true,
-          stripeAccountReady: true,
-          canMonetizeStrategies: true,
-          requiresOnboarding: false,
+          hasStripeAccount: stripeStatus.hasStripeAccount,
+          stripeAccountReady: stripeStatus.accountReady,
+          canMonetizeStrategies: stripeStatus.hasStripeAccount && stripeStatus.accountReady,
+          requiresOnboarding: !stripeStatus.accountReady,
           profile,
+          errors: stripeStatus.errors,
         };
       }
       
@@ -163,13 +177,45 @@ class SellerService {
         return { success: false, error: enableResult.error };
       }
 
-      // Check if user already has a Stripe Connect account
-      if (currentStatus.hasStripeAccount && currentStatus.profile?.stripe_connect_account_id) {
-        // User has account but needs to complete onboarding
+      // Check if user already has a Stripe Connect account ID (either verified or incomplete)
+      if (currentStatus.profile?.stripe_connect_account_id) {
+        // User has account ID but needs to complete onboarding (account may be restricted/incomplete)
+        console.log('User has existing Stripe Connect account ID, creating onboarding link:', {
+          userId,
+          accountId: currentStatus.profile.stripe_connect_account_id,
+          hasStripeAccount: currentStatus.hasStripeAccount,
+          accountReady: currentStatus.stripeAccountReady,
+        });
+        
+        // Try to get account management URL instead of onboarding link
+        // This works with the existing production backend
+        const accountResult = await stripeService.getAccountManagementUrl();
+        
+        if (accountResult.success && accountResult.url) {
+          console.log('Successfully got account management URL for existing account');
+          return {
+            success: true,
+            onboardingUrl: accountResult.url,
+          };
+        }
+        
+        // If account management fails, try the onboarding link as fallback
         const stripeResult = await stripeService.createOnboardingLink(currentStatus.profile.stripe_connect_account_id);
         
         if ('error' in stripeResult) {
-          return { success: false, error: stripeResult.error };
+          console.error('Failed to create onboarding link for existing account:', {
+            error: stripeResult.error,
+            accountId: currentStatus.profile.stripe_connect_account_id,
+          });
+          
+          // Final fallback: provide a manual URL for Stripe Connect dashboard
+          const manualUrl = 'https://connect.stripe.com/express/login';
+          console.log('Using manual Stripe Connect login URL as final fallback');
+          
+          return {
+            success: true,
+            onboardingUrl: manualUrl,
+          };
         }
 
         return {
