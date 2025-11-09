@@ -169,14 +169,40 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get seller's Stripe account
-    const { data: sellerAccount, error } = await supabase
-      .from('profiles')
-      .select('stripe_connect_account_id')
-      .eq('id', user.id)
+    // Get seller's Stripe account - check both seller_stripe_accounts and profiles tables
+    let stripeAccountId = null
+
+    console.log('GET /api/stripe/connect - checking account for user:', user.id)
+
+    // First try seller_stripe_accounts table (new preferred location)
+    const { data: sellerAccount, error: sellerError } = await supabase
+      .from('seller_stripe_accounts')
+      .select('stripe_account_id')
+      .eq('user_id', user.id)
       .single()
 
-    if (error || !sellerAccount?.stripe_connect_account_id) {
+    console.log('seller_stripe_accounts result:', { sellerAccount, sellerError })
+
+    if (sellerAccount?.stripe_account_id) {
+      stripeAccountId = sellerAccount.stripe_account_id
+      console.log('Found account in seller_stripe_accounts:', stripeAccountId)
+    } else {
+      // Fallback to profiles table (legacy location)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('stripe_connect_account_id')
+        .eq('id', user.id)
+        .single()
+      
+      console.log('profiles result:', { profile, profileError })
+      
+      if (profile?.stripe_connect_account_id) {
+        stripeAccountId = profile.stripe_connect_account_id
+        console.log('Found account in profiles:', stripeAccountId)
+      }
+    }
+
+    if (!stripeAccountId) {
       return NextResponse.json(
         { error: 'No Stripe Connect account found' },
         { status: 404 }
@@ -184,17 +210,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Get fresh account data from Stripe
-    const account = await stripe.accounts.retrieve(sellerAccount.stripe_connect_account_id)
+    console.log('Retrieving Stripe account:', stripeAccountId)
+    const account = await stripe.accounts.retrieve(stripeAccountId)
 
+    const accountStatus = {
+      id: account.id,
+      details_submitted: account.details_submitted,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      requirements_due: account.requirements?.currently_due || [],
+    }
+
+    console.log('Stripe account status:', accountStatus)
 
     return NextResponse.json({
-      account: {
-        id: account.id,
-        details_submitted: account.details_submitted,
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled,
-        requirements_due: account.requirements?.currently_due || [],
-      }
+      account: accountStatus
     })
   } catch (error) {
     console.error('Error fetching Stripe account:', error)
