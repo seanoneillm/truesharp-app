@@ -9,11 +9,14 @@ import {
   Users,
   Activity,
   Gamepad2,
+  Smartphone,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { PrivacyPolicyDialog } from '@/components/legal/privacy-policy-dialog'
 import { TermsOfServiceDialog } from '@/components/legal/terms-of-service-dialog'
+import AppLaunchSection from '@/components/landing/app-launch-section'
+import SocialMediaSection from '@/components/landing/social-media-section'
 
 // Shield SVG Component based on your logo
 const TrueSharpShield = ({ className = 'h-8 w-8', variant = 'default' }) => (
@@ -53,7 +56,11 @@ export default function TrueSharpLandingPage() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="group flex items-center space-x-3">
-              <TrueSharpShield className="h-10 w-10 transition-transform duration-200 group-hover:scale-105" />
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg transition-transform duration-200 group-hover:scale-105" 
+              />
               <span className="text-2xl font-bold tracking-tight text-gray-900">TrueSharp</span>
             </Link>
           </div>
@@ -82,48 +89,83 @@ export default function TrueSharpLandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-50 to-indigo-100 py-24 sm:py-32">
+      <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-100 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
+            <div className="mb-6 flex justify-center">
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-16 w-16 rounded-xl shadow-lg" 
+              />
+            </div>
             <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
               The Complete Sports Betting Platform
             </h1>
-            <p className="mt-6 text-xl leading-8 text-gray-600">
-              Track your performance with advanced analytics, discover winning strategies from
-              verified bettors, and monetize your expertise. All with 100% verified, synced data
-              from your sportsbooks.
+            <p className="mt-4 text-xl leading-8 text-gray-600">
+              Sync, track, analyze, and sell verified sports picks from one place. 
+              All with 100% verified, synced data from your sportsbooks.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+              <a
+                href="https://apps.apple.com/us/app/truesharp-sports/id6753960332"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-3 rounded-2xl bg-black px-8 py-4 text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
+                  <Smartphone className="h-6 w-6" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-medium opacity-80">Download on the</div>
+                  <div className="text-lg font-semibold">App Store</div>
+                </div>
+              </a>
               <Link
                 href="/signup"
-                className="rounded-lg bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-500"
+                className="rounded-lg bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 hover:shadow-xl"
               >
                 Get Started Free
               </Link>
+            </div>
+            <div className="mt-4 text-center">
               <Link
                 href="/login"
-                className="rounded-lg border border-gray-300 px-8 py-4 text-lg font-semibold leading-6 text-gray-900 transition-colors hover:bg-gray-50"
+                className="text-base font-medium text-gray-600 transition-colors hover:text-gray-900"
               >
-                Log In
+                Already have an account? Log In
               </Link>
             </div>
           </div>
         </div>
       </section>
 
+      {/* App Launch Section */}
+      <AppLaunchSection />
+
+      {/* Social Media Section */}
+      <SocialMediaSection />
+
       {/* How It Works Section */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              How TrueSharp Works
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                How TrueSharp Works
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Everything you need to track, discover, and profit from sports betting
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-12 lg:max-w-none lg:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
             {[
               {
                 step: '1',
@@ -177,7 +219,7 @@ export default function TrueSharpLandingPage() {
             ))}
           </div>
 
-          <div className="mt-16 text-center">
+          <div className="mt-12 text-center">
             <h3 className="mb-4 text-lg font-semibold text-gray-900">Supported Sportsbooks</h3>
             <div className="flex items-center justify-center gap-8 opacity-60">
               <span className="text-sm font-medium text-gray-500">DraftKings</span>
@@ -191,18 +233,25 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="bg-gray-50 py-24 sm:py-32">
+      <section className="bg-gray-50 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Powerful Features for Every Bettor
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Powerful Features for Every Bettor
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Whether you're tracking performance, finding strategies, or building a business
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
             {[
               {
                 icon: BarChart3,
@@ -247,9 +296,9 @@ export default function TrueSharpLandingPage() {
                 category: 'Other',
               },
             ].map((feature, index) => (
-              <div key={index} className="rounded-2xl bg-white p-8 shadow-sm">
+              <div key={index} className="rounded-2xl bg-white p-8 shadow-lg border border-blue-100 hover:shadow-xl transition-all duration-200">
                 <div className="mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -262,20 +311,34 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Analytics Deep Dive Section */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Professional-Grade Analytics
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Professional-Grade Analytics
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Get the insights you need to improve your betting performance
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
-            <div className="rounded-2xl bg-blue-50 p-8">
-              <BarChart3 className="mb-6 h-12 w-12 text-blue-600" />
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
+            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 p-8 border border-blue-200 shadow-lg">
+              <div className="mb-6 flex items-center gap-3">
+                <BarChart3 className="h-12 w-12 text-blue-600" />
+                <img 
+                  src="/images/truesharp-logo.png" 
+                  alt="TrueSharp Logo" 
+                  className="h-6 w-6 rounded-lg shadow-sm" 
+                />
+              </div>
               <h3 className="mb-4 text-xl font-semibold text-gray-900">
                 Closing Line Value (CLV) Analysis
               </h3>
@@ -290,8 +353,8 @@ export default function TrueSharpLandingPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl bg-green-50 p-8">
-              <TrendingUp className="mb-6 h-12 w-12 text-green-600" />
+            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 border border-blue-200 shadow-lg">
+              <TrendingUp className="mb-6 h-12 w-12 text-blue-600" />
               <h3 className="mb-4 text-xl font-semibold text-gray-900">
                 Advanced Filtering & Trends
               </h3>
@@ -310,19 +373,26 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Marketplace Discovery Section */}
-      <section className="bg-gray-50 py-24 sm:py-32">
+      <section className="bg-gray-50 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Discover Winning Strategies
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Discover Winning Strategies
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Subscribe to verified bettors and learn from the best in each sport
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+            <div className="rounded-2xl bg-white p-8 shadow-lg border border-blue-100 hover:shadow-xl transition-all duration-200">
               <div className="mb-4 flex items-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500">
                   <span className="text-sm font-semibold text-white">TB</span>
@@ -360,7 +430,7 @@ export default function TrueSharpLandingPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white p-8 shadow-lg border border-blue-100 hover:shadow-xl transition-all duration-200">
               <div className="mb-4 flex items-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500">
                   <span className="text-sm font-semibold text-white">NE</span>
@@ -398,7 +468,7 @@ export default function TrueSharpLandingPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white p-8 shadow-lg border border-blue-100 hover:shadow-xl transition-all duration-200">
               <div className="mb-4 flex items-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500">
                   <span className="text-sm font-semibold text-white">BM</span>
@@ -440,20 +510,27 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Why TrueSharp Section */}
-      <section className="bg-gray-50 py-24 sm:py-32">
+      <section className="bg-gray-50 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Why Sellers Choose TrueSharp
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Why Sellers Choose TrueSharp
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Built on trust, transparency, and seller success
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
             <div className="text-center">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-blue-200 shadow-lg">
                 <CheckCircle className="h-8 w-8 text-blue-600" />
               </div>
               <h3 className="mb-4 text-xl font-semibold text-gray-900">
@@ -466,8 +543,8 @@ export default function TrueSharpLandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <DollarSign className="h-8 w-8 text-green-600" />
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-blue-200 shadow-lg">
+                <DollarSign className="h-8 w-8 text-blue-600" />
               </div>
               <h3 className="mb-4 text-xl font-semibold text-gray-900">
                 Competitive Revenue Share
@@ -479,8 +556,8 @@ export default function TrueSharpLandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
-                <Shield className="h-8 w-8 text-purple-600" />
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-200 shadow-lg">
+                <Shield className="h-8 w-8 text-blue-600" />
               </div>
               <h3 className="mb-4 text-xl font-semibold text-gray-900">Secure & Private</h3>
               <p className="text-gray-600">
@@ -501,19 +578,26 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Pricing Preview Section */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Get Started Today
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Get Started Today
+              </h2>
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-10 w-10 rounded-lg shadow-sm" 
+              />
+            </div>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Join TrueSharp free and access all the tools you need for smarter sports betting
             </p>
           </div>
 
-          <div className="mx-auto mt-16 max-w-lg">
-            <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mt-12 max-w-lg">
+            <div className="rounded-2xl bg-white p-8 text-center shadow-lg border border-blue-100">
               <h3 className="mb-4 text-2xl font-semibold text-gray-900">Free to Get Started</h3>
               <p className="mb-8 text-gray-600">
                 Start using TrueSharp immediately with no upfront costs. Access all core features
@@ -521,23 +605,23 @@ export default function TrueSharpLandingPage() {
               </p>
               <ul className="mb-8 space-y-3 text-left text-gray-600">
                 <li className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
                   Unlimited bet tracking and syncing
                 </li>
                 <li className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
                   Advanced analytics and filtering
                 </li>
                 <li className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
                   Browse verified marketplace strategies
                 </li>
                 <li className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
                   List your own strategies for sale
                 </li>
                 <li className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
                   Mock sportsbook for testing
                 </li>
               </ul>
@@ -547,31 +631,51 @@ export default function TrueSharpLandingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="bg-blue-600 py-24 sm:py-32">
+      <section className="bg-blue-600 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-8 flex justify-center">
-              <TrueSharpShield className="h-16 w-16" variant="light" />
+              <img 
+                src="/images/truesharp-logo.png" 
+                alt="TrueSharp Logo" 
+                className="h-16 w-16 rounded-xl shadow-lg" 
+              />
             </div>
             <h2 className="mb-6 text-4xl font-bold tracking-tight text-white sm:text-5xl">
               Ready to Elevate Your Betting?
             </h2>
-            <p className="mb-12 text-xl leading-8 text-blue-100">
+            <p className="mb-8 text-xl leading-8 text-blue-100">
               Whether you want to track performance, find winning strategies, or build a betting
               business - TrueSharp has you covered.
             </p>
             <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
+              <a
+                href="https://apps.apple.com/us/app/truesharp-sports/id6753960332"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-3 rounded-2xl bg-black px-8 py-4 text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
+                  <Smartphone className="h-6 w-6" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-medium opacity-80">Download on the</div>
+                  <div className="text-lg font-semibold">App Store</div>
+                </div>
+              </a>
               <Link
                 href="/signup"
-                className="rounded-lg bg-white px-8 py-4 text-lg font-semibold text-blue-600 shadow-lg transition-colors hover:bg-gray-50"
+                className="rounded-lg bg-white px-8 py-4 text-lg font-semibold text-blue-600 shadow-lg transition-all duration-200 hover:bg-gray-50 hover:shadow-xl"
               >
                 Get Started Free
               </Link>
+            </div>
+            <div className="mt-4 text-center">
               <Link
                 href="/login"
-                className="rounded-lg border border-white/20 px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-white/10"
+                className="text-base font-medium text-blue-100 transition-colors hover:text-white"
               >
-                Log In
+                Already have an account? Log In
               </Link>
             </div>
           </div>
@@ -585,7 +689,11 @@ export default function TrueSharpLandingPage() {
             {/* Brand Column */}
             <div className="col-span-1 lg:col-span-2">
               <div className="mb-6 flex items-center space-x-3">
-                <TrueSharpShield className="h-8 w-8" />
+                <img 
+                  src="/images/truesharp-logo.png" 
+                  alt="TrueSharp Logo" 
+                  className="h-10 w-10 rounded-lg" 
+                />
                 <span className="text-xl font-bold text-white">TrueSharp</span>
               </div>
               <p className="mb-6 max-w-md text-gray-400">
