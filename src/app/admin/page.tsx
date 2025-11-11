@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToastProvider } from '@/components/ui/toast'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClient, createServiceRoleClient } from '@/lib/supabase'
 import {
@@ -1184,8 +1185,9 @@ export default function AdminPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-4">
+    <ToastProvider>
+      <DashboardLayout>
+        <div className="space-y-4">
         {/* Header */}
         <div className="mb-4 rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-6">
           <div className="flex items-center space-x-4">
@@ -1911,7 +1913,8 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
-    </DashboardLayout>
+        </div>
+      </DashboardLayout>
+    </ToastProvider>
   )
 }

@@ -19,6 +19,7 @@ import {
   Database,
   Zap
 } from 'lucide-react'
+import { TrueSharpBetSettlement } from './TrueSharpBetSettlement'
 
 interface CleanControlsTabProps {
   className?: string
@@ -192,6 +193,9 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* TrueSharp Bet Settlement */}
+      <TrueSharpBetSettlement />
+
       {/* Odds Management */}
       <Card>
         <CardHeader>
