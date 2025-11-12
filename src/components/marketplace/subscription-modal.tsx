@@ -48,11 +48,6 @@ interface SubscriptionModalProps {
 type BillingFrequency = 'weekly' | 'monthly' | 'yearly'
 
 export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionModalProps) {
-  const [selectedFrequency, setSelectedFrequency] = useState<BillingFrequency>('monthly')
-  const [loading, setLoading] = useState(false)
-
-  if (!isOpen) return null
-
   const pricingOptions = [
     {
       frequency: 'weekly' as const,
@@ -82,7 +77,14 @@ export function SubscriptionModal({ isOpen, onClose, strategy }: SubscriptionMod
       ),
       popular: false,
     },
-  ]
+  ].filter(option => option.price > 0)
+
+  // Set default selected frequency to the first available option, preferring monthly if available
+  const defaultFrequency = pricingOptions.find(opt => opt.frequency === 'monthly')?.frequency || pricingOptions[0]?.frequency || 'monthly'
+  const [selectedFrequency, setSelectedFrequency] = useState<BillingFrequency>(defaultFrequency)
+  const [loading, setLoading] = useState(false)
+
+  if (!isOpen) return null
 
   const selectedOption = pricingOptions.find(option => option.frequency === selectedFrequency)
 

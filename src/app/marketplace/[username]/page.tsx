@@ -637,28 +637,56 @@ export default function SellerProfilePage({ params }: SellerProfilePageProps) {
                           {/* Pricing Section */}
                           <div className="mb-4">
                             <h4 className="text-sm font-bold text-gray-800 mb-2">Subscription Plans</h4>
-                            <div className="grid grid-cols-3 gap-1">
-                              {strategy.subscription_price_weekly > 0 && (
-                                <div className="text-center py-1">
-                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_weekly}</div>
-                                  <div className="text-xs text-gray-600">weekly</div>
+                            {(() => {
+                              const availablePlans = []
+                              if (strategy.subscription_price_weekly > 0) {
+                                availablePlans.push({
+                                  price: strategy.subscription_price_weekly,
+                                  label: 'weekly',
+                                  badge: null
+                                })
+                              }
+                              if (strategy.subscription_price_monthly > 0) {
+                                availablePlans.push({
+                                  price: strategy.subscription_price_monthly,
+                                  label: 'monthly',
+                                  badge: 'Popular'
+                                })
+                              }
+                              if (strategy.subscription_price_yearly > 0) {
+                                availablePlans.push({
+                                  price: strategy.subscription_price_yearly,
+                                  label: 'yearly',
+                                  badge: 'Best Value'
+                                })
+                              }
+                              
+                              const gridCols = availablePlans.length === 1 ? 'grid-cols-1' : 
+                                               availablePlans.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+                              
+                              return (
+                                <div className={`grid ${gridCols} gap-1`}>
+                                  {availablePlans.map((plan, index) => (
+                                    <div 
+                                      key={plan.label} 
+                                      className={`text-center py-1 ${
+                                        availablePlans.length === 3 && index === 1 ? 'border-l border-r border-gray-200' : ''
+                                      }`}
+                                    >
+                                      <div className="text-sm font-bold text-gray-900">${plan.price}</div>
+                                      <div className="text-xs text-gray-600">{plan.label}</div>
+                                      {plan.badge && (
+                                        <div className={`text-xs font-bold ${
+                                          plan.badge === 'Popular' ? 'text-blue-600' : 'text-emerald-600'
+                                        }`}>
+                                          {plan.badge}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              )}
-                              {strategy.subscription_price_monthly > 0 && (
-                                <div className="text-center py-1 border-l border-r border-gray-200">
-                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_monthly}</div>
-                                  <div className="text-xs text-gray-600">monthly</div>
-                                  <div className="text-xs font-bold text-blue-600">Popular</div>
-                                </div>
-                              )}
-                              {strategy.subscription_price_yearly > 0 && (
-                                <div className="text-center py-1">
-                                  <div className="text-sm font-bold text-gray-900">${strategy.subscription_price_yearly}</div>
-                                  <div className="text-xs text-gray-600">yearly</div>
-                                  <div className="text-xs text-emerald-600 font-bold">Best Value</div>
-                                </div>
-                              )}
-                            </div>
+                              )
+                            })()}
                           </div>
                           
                           {/* Subscribe Button */}

@@ -24,12 +24,6 @@ export function SubscriptionPricingModal({
   strategy,
   isLoading,
 }: SubscriptionPricingModalProps) {
-  const [selectedFrequency, setSelectedFrequency] = useState<'weekly' | 'monthly' | 'yearly'>(
-    'monthly'
-  )
-
-  if (!isOpen) return null
-
   const pricingOptions = [
     {
       frequency: 'weekly' as const,
@@ -57,7 +51,15 @@ export function SubscriptionPricingModal({
       ),
       popular: false,
     },
-  ]
+  ].filter(option => option.price > 0)
+
+  // Set default selected frequency to the first available option, preferring monthly if available
+  const defaultFrequency = pricingOptions.find(opt => opt.frequency === 'monthly')?.frequency || pricingOptions[0]?.frequency || 'monthly'
+  const [selectedFrequency, setSelectedFrequency] = useState<'weekly' | 'monthly' | 'yearly'>(
+    defaultFrequency
+  )
+
+  if (!isOpen) return null
 
   const handleSubscribe = () => {
     const selectedOption = pricingOptions.find(option => option.frequency === selectedFrequency)
