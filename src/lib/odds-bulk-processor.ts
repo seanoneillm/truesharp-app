@@ -462,24 +462,47 @@ export async function processCompletedGameScores(
     }
   }
 
-  // Get all existing odds for this game that don't have scores
-  const { data: existingOdds, error: fetchError } = await supabase
-    .from('odds')
-    .select('id, oddid, score')
-    .eq('eventid', gameId)
+  // Get ALL existing odds for this game (fetch in batches to avoid limits)
+  let allExistingOdds: any[] = []
+  let from = 0
+  const batchSize = 1000
 
-  if (fetchError) {
-    console.error('❌ Error fetching existing odds:', fetchError)
-    return {
-      scoresUpdated: 0,
-      totalApiOdds: Object.keys(apiOdds).length,
-      processingTimeMs: Date.now() - startTime,
+  console.log(`📋 Fetching all existing odds for game ${gameId}...`)
+
+  while (true) {
+    const { data: batchOdds, error: fetchError } = await supabase
+      .from('odds')
+      .select('id, oddid, score')
+      .eq('eventid', gameId)
+      .range(from, from + batchSize - 1)
+
+    if (fetchError) {
+      console.error('❌ Error fetching existing odds batch:', fetchError)
+      return {
+        scoresUpdated: 0,
+        totalApiOdds: Object.keys(apiOdds).length,
+        processingTimeMs: Date.now() - startTime,
+      }
+    }
+
+    if (!batchOdds || batchOdds.length === 0) {
+      break
+    }
+
+    allExistingOdds = allExistingOdds.concat(batchOdds)
+    from += batchSize
+
+    console.log(`📊 Fetched ${batchOdds.length} odds (total: ${allExistingOdds.length})`)
+
+    // If we got less than batchSize, we've reached the end
+    if (batchOdds.length < batchSize) {
+      break
     }
   }
 
-  console.log(`📋 Found ${existingOdds?.length || 0} existing odds records for game ${gameId}`)
+  console.log(`📋 Found ${allExistingOdds.length} total existing odds records for game ${gameId}`)
 
-  if (!existingOdds || existingOdds.length === 0) {
+  if (allExistingOdds.length === 0) {
     console.log(`⚠️ No existing odds found for game ${gameId}`)
     return {
       scoresUpdated: 0,
@@ -488,44 +511,66 @@ export async function processCompletedGameScores(
     }
   }
 
-  // Update scores for all odds that match an oddid with a score
-  let scoresUpdated = 0
-  const updatePromises: Promise<boolean>[] = []
+  // Prepare bulk updates - group by score value for efficiency
+  const bulkUpdates = new Map<string | number, string[]>()
+  let totalUpdatesToMake = 0
 
-  for (const odd of existingOdds) {
+  for (const odd of allExistingOdds) {
     const apiScore = oddidScores.get(odd.oddid)
     
-    // Update if we have a score from API (regardless of whether odds already has one)
+    // Update if we have a score from API
     if (apiScore !== undefined) {
-      const updatePromise = Promise.resolve(
-        supabase
-          .from('odds')
-          .update({
-            score: apiScore,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', odd.id)
-      ).then(({ error }: any) => {
-        if (error) {
-          console.error(`❌ Error updating score for odds ${odd.id}:`, error)
-          return false
-        }
-        return true
-      })
+      const scoreKey = String(apiScore)
+      if (!bulkUpdates.has(scoreKey)) {
+        bulkUpdates.set(scoreKey, [])
+      }
+      bulkUpdates.get(scoreKey)!.push(odd.id)
+      totalUpdatesToMake++
+    }
+  }
+
+  console.log(`🔄 Prepared ${bulkUpdates.size} bulk update operations for ${totalUpdatesToMake} odds records`)
+
+  // Execute bulk updates by score value
+  let scoresUpdated = 0
+  const updatePromises: Promise<number>[] = []
+
+  for (const [scoreValue, oddIds] of bulkUpdates.entries()) {
+    // Process in chunks of 100 to avoid query limits
+    const chunkSize = 100
+    
+    for (let i = 0; i < oddIds.length; i += chunkSize) {
+      const chunk = oddIds.slice(i, i + chunkSize)
+      
+      const updatePromise = supabase
+        .from('odds')
+        .update({
+          score: scoreValue,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', chunk)
+        .then(({ error, count }: any) => {
+          if (error) {
+            console.error(`❌ Error in bulk update:`, error)
+            return 0
+          }
+          return count || chunk.length
+        })
 
       updatePromises.push(updatePromise)
     }
   }
 
-  // Execute all updates in parallel
+  // Execute all bulk updates in parallel
+  console.log(`⚡ Executing ${updatePromises.length} bulk update chunks...`)
   const updateResults = await Promise.all(updatePromises)
-  scoresUpdated = updateResults.filter(Boolean).length
+  scoresUpdated = updateResults.reduce((sum, count) => sum + count, 0)
 
   console.log(`✅ Updated scores for ${scoresUpdated} odds records in ${Date.now() - startTime}ms`)
   console.log(`📊 Score update summary:`)
   console.log(`  - API odds processed: ${Object.keys(apiOdds).length}`)
   console.log(`  - Unique oddids with scores: ${oddidScores.size}`)
-  console.log(`  - Existing odds in DB: ${existingOdds.length}`)
+  console.log(`  - Existing odds in DB: ${allExistingOdds.length}`)
   console.log(`  - Scores updated: ${scoresUpdated}`)
 
   return {

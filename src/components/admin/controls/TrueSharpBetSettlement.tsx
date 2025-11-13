@@ -54,6 +54,7 @@ interface TrueSharpBet {
   line_value: number | null
   side: string | null
   profit: number | null
+  score?: string | number | null // Score from odds table
   game?: GameInfo
 }
 
@@ -262,7 +263,14 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
     }
   }
 
-  const pendingBets = bets.filter(bet => bet.status === 'pending')
+  const pendingBets = bets
+    .filter(bet => bet.status === 'pending')
+    .sort((a, b) => {
+      // Sort by game date chronologically (earliest first)
+      const dateA = a.game?.game_time ? new Date(a.game.game_time).getTime() : new Date(a.placed_at).getTime()
+      const dateB = b.game?.game_time ? new Date(b.game.game_time).getTime() : new Date(b.placed_at).getTime()
+      return dateA - dateB
+    })
 
   if (error && !bets.length) {
     return (
@@ -372,9 +380,9 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
                           )}
                           {bet.game && (
                             <div>
-                              <span className="text-slate-500">Game Time:</span>
+                              <span className="text-slate-500">Game Date:</span>
                               <span className="ml-1 font-medium">
-                                {new Date(bet.game.game_time).toLocaleDateString()} {new Date(bet.game.game_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(bet.game.game_time).toLocaleDateString()}
                               </span>
                             </div>
                           )}
@@ -413,14 +421,30 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
                         </div>
                       </div>
 
-                      {bet.oddid && (
+                      {/* Score and Odd ID section */}
+                      <div className="space-y-1">
+                        {/* Display Score */}
                         <div className="text-xs">
-                          <span className="text-slate-500">Odd ID:</span>
-                          <span className="ml-1 font-mono bg-blue-100 px-1 py-0.5 rounded text-blue-800">
-                            {bet.oddid}
+                          <span className="text-slate-500">Score:</span>
+                          <span className={`ml-1 font-mono px-1 py-0.5 rounded text-xs ${
+                            bet.score !== undefined && bet.score !== null
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {bet.score !== undefined && bet.score !== null ? bet.score : 'undefined'}
                           </span>
                         </div>
-                      )}
+
+                        {/* Display Odd ID */}
+                        {bet.oddid && (
+                          <div className="text-xs">
+                            <span className="text-slate-500">Odd ID:</span>
+                            <span className="ml-1 font-mono bg-blue-100 px-1 py-0.5 rounded text-blue-800 text-xs">
+                              {bet.oddid}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Settlement Actions */}

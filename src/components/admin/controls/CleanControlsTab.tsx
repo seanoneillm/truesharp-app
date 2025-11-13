@@ -31,9 +31,9 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
   const [fetchResult, setFetchResult] = useState<string | null>(null)
   const [selectedSport, setSelectedSport] = useState<string>('ALL')
 
-  // Bet Settlement State
-  const [isSettling, setIsSettling] = useState(false)
-  const [settleResult, setSettleResult] = useState<string | null>(null)
+  // Score Fetching State
+  const [isFetchingScores, setIsFetchingScores] = useState(false)
+  const [fetchScoresResult, setFetchScoresResult] = useState<string | null>(null)
 
   // SharpSports State
   const [isFetchingBettors, setIsFetchingBettors] = useState(false)
@@ -72,12 +72,12 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
     }
   }
 
-  const handleSettleBets = async () => {
-    setIsSettling(true)
-    setSettleResult(null)
+  const handleFetchScores = async () => {
+    setIsFetchingScores(true)
+    setFetchScoresResult(null)
     
     try {
-      console.log('🏆 Starting bet settlement...')
+      console.log('📊 Starting score fetching...')
       
       const response = await fetch('/api/settle-bets', {
         method: 'POST',
@@ -87,15 +87,15 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
       const data = await response.json()
       
       if (response.ok && data.success) {
-        setSettleResult(`✅ Bet settlement completed. ${data.message || ''}`)
+        setFetchScoresResult(`✅ Score fetching completed. ${data.message || ''}`)
       } else {
-        setSettleResult(`❌ Error: ${data.error || 'Failed to settle bets'}`)
+        setFetchScoresResult(`❌ Error: ${data.error || 'Failed to fetch scores'}`)
       }
     } catch (error) {
-      console.error('❌ Bet settlement error:', error)
-      setSettleResult(`❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('❌ Score fetching error:', error)
+      setFetchScoresResult(`❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
-      setIsSettling(false)
+      setIsFetchingScores(false)
     }
   }
 
@@ -245,29 +245,29 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
         </CardContent>
       </Card>
 
-      {/* Bet Settlement */}
+      {/* Score Fetching */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-green-600" />
-            Bet Settlement
+            Score Fetching
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Process completed games and settle pending bets.
+            Fetch completed game scores and update odds table. Bet settlement is handled manually.
           </p>
           
           <Button
-            onClick={handleSettleBets}
-            disabled={isSettling}
+            onClick={handleFetchScores}
+            disabled={isFetchingScores}
             className="bg-green-600 hover:bg-green-700"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isSettling ? 'animate-spin' : ''}`} />
-            {isSettling ? 'Settling Bets...' : 'Settle Bets'}
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetchingScores ? 'animate-spin' : ''}`} />
+            {isFetchingScores ? 'Fetching Scores...' : 'Fetch Scores'}
           </Button>
 
-          <ResultDisplay result={settleResult} />
+          <ResultDisplay result={fetchScoresResult} />
         </CardContent>
       </Card>
 

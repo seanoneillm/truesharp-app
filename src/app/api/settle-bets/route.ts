@@ -1,188 +1,106 @@
 import { createServiceRoleClient } from '@/lib/supabase'
-// import { createServerSupabaseClient } from '@/lib/auth/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 /*
- * SETTLE BETS API - COMPLETE REWRITE
+ * FETCH SCORES API
  * 
- * This function:
- * 1. Fetches completed games from last 1-2 days only
- * 2. Extracts scores and updates existing odds table rows (no new rows)
+ * This function mirrors the fetch-odds process but focuses only on score updates:
+ * 1. Fetches completed games from last 1-2 days using the same API endpoints
+ * 2. Extracts scores from the API response and updates existing odds table rows
  * 3. Updates games table with team scores
- * 4. Settles TrueSharp bets using precise oddid matching
- * 5. Uses games table scores for moneyline/spread settlement
+ * 
+ * Note: Bet settlement is handled manually via separate process
  */
+
+const SPORTSGAMEODDS_API_BASE = 'https://api.sportsgameodds.com/v2'
+const API_KEY = process.env.NEXT_PUBLIC_ODDS_API_KEY
+
+// Same sport mappings as fetch-odds
+const SPORT_MAPPINGS = {
+  NFL: { sportID: 'FOOTBALL', leagueID: 'NFL', sport_key: 'americanfootball_nfl' },
+  NBA: { sportID: 'BASKETBALL', leagueID: 'NBA', sport_key: 'basketball_nba' },
+  WNBA: { sportID: 'BASKETBALL', leagueID: 'WNBA', sport_key: 'basketball_wnba' },
+  MLB: { sportID: 'BASEBALL', leagueID: 'MLB', sport_key: 'baseball_mlb' },
+  NHL: { sportID: 'HOCKEY', leagueID: 'NHL', sport_key: 'icehockey_nhl' },
+  NCAAF: { sportID: 'FOOTBALL', leagueID: 'NCAAF', sport_key: 'americanfootball_ncaaf' },
+  NCAAB: { sportID: 'BASKETBALL', leagueID: 'NCAAB', sport_key: 'basketball_ncaab' },
+  MLS: { sportID: 'SOCCER', leagueID: 'MLS', sport_key: 'soccer_mls' },
+  UEFA_CHAMPIONS_LEAGUE: {
+    sportID: 'SOCCER',
+    leagueID: 'UEFA_CHAMPIONS_LEAGUE',
+    sport_key: 'soccer_uefa_champs_league',
+  },
+} as const
+
+const LEAGUES = Object.keys(SPORT_MAPPINGS) as (keyof typeof SPORT_MAPPINGS)[]
 
 export async function POST(request: NextRequest) {
   try {
     const startTime = Date.now()
-    // const supabase = await createServerSupabaseClient()
     const serviceSupabase = await createServiceRoleClient()
 
-    console.log('🏆 Starting bet settlement process (REWRITTEN)')
+    console.log('📊 Starting score fetching process')
     console.log(`⏰ Started at: ${new Date().toISOString()}`)
 
-    // FIXED: Get completed games from last 1-2 days only (not today)
-    const today = new Date()
-    const twoDaysAgo = new Date(today)
-    twoDaysAgo.setDate(today.getDate() - 2)
-    const oneDayAgo = new Date(today)
-    oneDayAgo.setDate(today.getDate() - 1)
-
-    console.log(`📅 Processing completed games from: ${twoDaysAgo.toISOString().split('T')[0]} to ${oneDayAgo.toISOString().split('T')[0]}`)
-
-    const promises = []
-    const sportsToFetch = ['MLB', 'NBA', 'WNBA', 'NFL', 'MLS', 'NHL', 'NCAAF', 'NCAAB', 'UEFA_CHAMPIONS_LEAGUE']
-
-    // Fetch completed games from last 1-2 days
-    for (let i = -2; i <= -1; i++) {
-      // -2 = 2 days ago, -1 = 1 day ago (no today)
-      const fetchDate = new Date()
-      fetchDate.setDate(fetchDate.getDate() + i)
-      const dateStr = fetchDate.toISOString().split('T')[0]
-
-      console.log(`📅 Processing date: ${dateStr} (${i === -2 ? '2 days ago' : '1 day ago'})`)
-
-      for (const sportKey of sportsToFetch) {
-        const apiUrl = new URL('/api/games/sportsgameodds', request.url)
-        apiUrl.searchParams.set('sport', sportKey)
-        if (dateStr) {
-          apiUrl.searchParams.set('date', dateStr)
-        }
-        apiUrl.searchParams.set('refresh', 'true')
-
-        promises.push(
-          fetch(apiUrl.toString())
-            .then(res => res.json())
-            .then(data => ({
-              date: dateStr,
-              sport: sportKey,
-              allGames: data.games || [],
-              gameCount: data.games?.length || 0,
-              success: !data.error,
-              error: data.error,
-            }))
-            .catch(error => ({
-              date: dateStr,
-              sport: sportKey,
-              allGames: [],
-              gameCount: 0,
-              success: false,
-              error: error.message,
-            }))
-        )
-      }
+    if (!API_KEY) {
+      return NextResponse.json({ error: 'SportsGameOdds API key not configured' }, { status: 500 })
     }
 
-    console.log(`🔄 Created ${promises.length} fetch promises for settlement`)
-
-    // Wait for all API calls to complete
-    const fetchResults = await Promise.all(promises)
-
+    // Process last 1-2 days for completed games
+    const results = []
     let totalGamesFetched = 0
     let totalCompletedGames = 0
     let totalScoresUpdated = 0
-    let totalBetsSettled = 0
-    
-    const processedGameIds = new Set()
 
-    for (const result of fetchResults) {
-      totalGamesFetched += result.gameCount
+    // Fetch completed games from each league
+    for (const league of LEAGUES) {
+      console.log(`🔄 Processing ${league} completed games...`)
 
-      if (!result.success || result.allGames.length === 0) {
-        console.log(`ℹ️ No games for ${result.sport} on ${result.date} - ${result.error || 'no error'}`)
-        continue
-      }
+      try {
+        const result = await fetchCompletedGamesForLeague(league, serviceSupabase)
+        results.push({
+          league,
+          ...result,
+        })
 
-      console.log(`📊 Processing ${result.gameCount} ${result.sport} games from ${result.date}`)
+        totalGamesFetched += result.gamesFetched || 0
+        totalCompletedGames += result.completedGames || 0
+        totalScoresUpdated += result.scoresUpdated || 0
 
-      // Filter for STRICTLY completed games with scores
-      const completedGames = result.allGames.filter((game: any) => {
-        const hasFinishedStatus = 
-          game.status === 'F' || 
-          game.status === 'final' ||
-          game.status === 'Final' ||
-          game.status === 'FT' ||
-          game.status === 'finished' ||
-          game.status === 'completed'
-          
-        const hasValidScores = 
-          game.home_score !== null && 
-          game.away_score !== null && 
-          game.home_score !== undefined && 
-          game.away_score !== undefined &&
-          !isNaN(parseFloat(game.home_score)) &&
-          !isNaN(parseFloat(game.away_score))
-          
-        // Ensure game is in the past (not future/live)
-        const isPastGame = !game.game_time || new Date(game.game_time) < new Date()
-        
-        const isCompleted = hasFinishedStatus && hasValidScores && isPastGame
-        
-        if (!isCompleted && (game.home_score !== null || game.away_score !== null)) {
-          console.log(`⚠️ Skipping incomplete game: ${game.away_team_name} @ ${game.home_team_name}`)
-          console.log(`   Status: ${game.status}, Scores: ${game.home_score}-${game.away_score}, Time: ${game.game_time}`)
-        }
-        
-        return isCompleted
-      })
-
-      console.log(`🏁 Found ${completedGames.length} completed games out of ${result.gameCount} ${result.sport} games`)
-
-      for (const game of completedGames) {
-        try {
-          // Skip if already processed
-          if (processedGameIds.has(game.id)) {
-            console.log(`⏭️ Skipping duplicate game ${game.id}`)
-            continue
-          }
-          
-          processedGameIds.add(game.id)
-          
-          console.log(`🎯 Processing: ${game.away_team_name} @ ${game.home_team_name} (${game.status})`)
-          console.log(`📋 Final Score: Away ${game.away_score} - ${game.home_score} Home`)
-
-          // 1. Update games table with team scores
-          await updateGameScores(serviceSupabase, game.id, parseInt(game.home_score), parseInt(game.away_score))
-
-          // 2. Update odds table with scores from API
-          const scoresResult = await updateOddsWithScores(serviceSupabase, game.id, result.allGames)
-          totalScoresUpdated += scoresResult.updated
-          totalCompletedGames++
-
-          // 3. Settle TrueSharp bets for this game
-          const betSettlement = await settleTrueSharpBetsForGame(serviceSupabase, game.id)
-          totalBetsSettled += betSettlement.settled
-          console.log(`🎰 Settled ${betSettlement.settled} TrueSharp bets for game ${game.id}`)
-          
-        } catch (error) {
-          console.error(`❌ Error processing game ${game.id}:`, error)
-        }
+        // Reduced delay for score updates (less intensive than full odds fetch)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      } catch (error) {
+        console.error(`❌ Error with ${league}:`, error)
+        results.push({
+          league,
+          success: false,
+          error: (error as Error).message,
+        })
       }
     }
 
     const totalTime = Date.now() - startTime
+    const successfulLeagues = results.filter(r => r.success).length
     
     const summary = {
       success: true,
       totalGamesFetched,
       totalCompletedGames,
       totalScoresUpdated,
-      totalBetsSettled,
-      fetchRequests: fetchResults.length,
-      successfulRequests: fetchResults.filter(r => r.success).length,
-      dateRange: `${twoDaysAgo.toISOString().split('T')[0]} to ${oneDayAgo.toISOString().split('T')[0]}`,
-      message: `Fetched ${totalGamesFetched} games, found ${totalCompletedGames} completed games, updated ${totalScoresUpdated} odds records, settled ${totalBetsSettled} TrueSharp bets`,
+      successfulLeagues,
+      totalLeagues: LEAGUES.length,
+      results,
+      message: `Fetched ${totalGamesFetched} games, processed ${totalCompletedGames} completed games, updated ${totalScoresUpdated} odds records with scores`,
       processingTimeMs: totalTime,
       processingTimeSeconds: Math.round(totalTime / 1000),
     }
 
-    console.log('🏁 Bet settlement completed:', summary)
+    console.log('🏁 Score fetching completed:', summary)
     console.log(`⏰ Total processing time: ${Math.round(totalTime / 1000)}s`)
 
     return NextResponse.json(summary)
   } catch (error) {
-    console.error('❌ Error in bet settlement:', error)
+    console.error('❌ Error in score fetching:', error)
     return NextResponse.json(
       {
         success: false,
@@ -193,7 +111,80 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Update games table with team scores
+// Transform SportsGameOdds event to our format (same as fetch-odds)
+function transformSportsGameOddsEvent(event: Record<string, unknown>): Record<string, unknown> {
+  const status = (event.status as Record<string, unknown>) || {}
+  const teams = (event.teams as Record<string, unknown>) || {}
+  const homeTeam = (teams.home as Record<string, unknown>) || {}
+  const awayTeam = (teams.away as Record<string, unknown>) || {}
+  const homeNames = (homeTeam.names as Record<string, unknown>) || {}
+  const awayNames = (awayTeam.names as Record<string, unknown>) || {}
+
+  return {
+    eventID: event.eventID,
+    sportID: event.sportID,
+    leagueID: event.leagueID,
+    status: status.displayShort || 'scheduled',
+    teams: {
+      home: {
+        teamID: homeTeam.teamID,
+        name: homeNames.long || homeTeam.name || 'Unknown Home Team',
+        shortName: homeNames.short || homeNames.medium,
+        score: homeTeam.score,
+      },
+      away: {
+        teamID: awayTeam.teamID,
+        name: awayNames.long || awayTeam.name || 'Unknown Away Team',
+        shortName: awayNames.short || awayNames.medium,
+        score: awayTeam.score,
+      },
+    },
+    startTime: status.startsAt || new Date().toISOString(),
+    odds: event.odds || {},
+  }
+}
+
+// Normalize team names (same as fetch-odds)
+function normalizeTeamName(teamName: string): string {
+  if (!teamName) return 'Unknown'
+
+  const teamMappings: Record<string, string> = {
+    'New York Yankees': 'NY Yankees',
+    'New York Mets': 'NY Mets',
+    'Los Angeles Dodgers': 'LA Dodgers',
+    'Los Angeles Angels': 'LA Angels',
+    'Chicago White Sox': 'Chi White Sox',
+    'Chicago Cubs': 'Chi Cubs',
+    'San Francisco Giants': 'SF Giants',
+    'St. Louis Cardinals': 'St Louis Cardinals',
+    'Tampa Bay Rays': 'Tampa Bay',
+    'Kansas City Royals': 'Kansas City',
+    'San Diego Padres': 'San Diego',
+    'Colorado Rockies': 'Colorado',
+    'Arizona Diamondbacks': 'Arizona',
+    'Washington Nationals': 'Washington',
+    'Minnesota Twins': 'Minnesota',
+    'Cleveland Guardians': 'Cleveland',
+    'Detroit Tigers': 'Detroit',
+    'Milwaukee Brewers': 'Milwaukee',
+    'Cincinnati Reds': 'Cincinnati',
+    'Pittsburgh Pirates': 'Pittsburgh',
+    'Miami Marlins': 'Miami',
+    'Atlanta Braves': 'Atlanta',
+    'Philadelphia Phillies': 'Philadelphia',
+    'Oakland Athletics': 'Oakland',
+    'Seattle Mariners': 'Seattle',
+    'Texas Rangers': 'Texas',
+    'Houston Astros': 'Houston',
+    'Boston Red Sox': 'Boston',
+    'Toronto Blue Jays': 'Toronto',
+    'Baltimore Orioles': 'Baltimore',
+  }
+
+  return teamMappings[teamName] || teamName.replace(/\\s+/g, ' ').trim()
+}
+
+// Update games table with team scores (same as fetch-odds)
 async function updateGameScores(supabase: any, gameId: string, homeScore: number, awayScore: number) {
   try {
     console.log(`🏟️ Updating game ${gameId} scores: Home ${homeScore} - ${awayScore} Away`)
@@ -218,335 +209,226 @@ async function updateGameScores(supabase: any, gameId: string, homeScore: number
   }
 }
 
-// Update odds table with scores from API (existing rows only)
-async function updateOddsWithScores(supabase: any, gameId: string, allGamesFromAPI: any[]) {
+// Save game data to database (adapted from fetch-odds)
+async function saveCompletedGameData(
+  event: Record<string, unknown>,
+  sportMapping: (typeof SPORT_MAPPINGS)[keyof typeof SPORT_MAPPINGS],
+  supabase: any
+) {
   try {
-    console.log(`🔄 Updating odds scores for game ${gameId}`)
+    const teams = event.teams as Record<string, unknown>
+    const homeTeam = teams?.home as Record<string, unknown>
+    const awayTeam = teams?.away as Record<string, unknown>
 
-    // Find this specific game in the API response
-    const apiGame = allGamesFromAPI.find((g: any) => g.id === gameId)
-    if (!apiGame || !apiGame.odds) {
-      console.log(`⚠️ Game ${gameId} not found in API data or has no odds`)
-      return { updated: 0 }
+    const gameData = {
+      id: event.eventID as string,
+      sport: sportMapping.leagueID,
+      league: sportMapping.leagueID,
+      home_team: normalizeTeamName(homeTeam?.name as string),
+      away_team: normalizeTeamName(awayTeam?.name as string),
+      home_team_name: (homeTeam?.name as string) || '',
+      away_team_name: (awayTeam?.name as string) || '',
+      game_time: event.startTime
+        ? new Date(event.startTime as string).toISOString()
+        : new Date().toISOString(),
+      status: 'final', // Force to final since we're only processing completed games
+      home_score: (homeTeam?.score as number) || null,
+      away_score: (awayTeam?.score as number) || null,
+      updated_at: new Date().toISOString(),
     }
 
-    // Extract scores by oddid from API
-    const oddidScores = new Map<string, any>()
-    
-    for (const [oddid, oddData] of Object.entries(apiGame.odds)) {
-      const odd = oddData as any
-      if (odd.score !== undefined && odd.score !== null) {
-        oddidScores.set(oddid, odd.score)
-      }
-    }
-
-    console.log(`🎯 Found scores for ${oddidScores.size} unique oddids`)
-
-    if (oddidScores.size === 0) {
-      console.log(`⚠️ No scores found in API response for game ${gameId}`)
-      return { updated: 0 }
-    }
-
-    // Get all existing odds for this game
-    const { data: existingOdds, error: fetchError } = await supabase
-      .from('odds')
-      .select('id, oddid, score')
-      .eq('eventid', gameId)
-
-    if (fetchError) {
-      console.error('❌ Error fetching existing odds:', fetchError)
-      return { updated: 0 }
-    }
-
-    console.log(`📋 Found ${existingOdds?.length || 0} existing odds records for game ${gameId}`)
-
-    if (!existingOdds || existingOdds.length === 0) {
-      console.log(`⚠️ No existing odds found for game ${gameId}`)
-      return { updated: 0 }
-    }
-
-    // Update scores for all existing odds that match an oddid with a score
-    let scoresUpdated = 0
-    const updatePromises: Promise<boolean>[] = []
-
-    for (const odd of existingOdds) {
-      const apiScore = oddidScores.get(odd.oddid)
-      
-      // Update if we have a score from API (overwrite existing scores)
-      if (apiScore !== undefined) {
-        const updatePromise = supabase
-          .from('odds')
-          .update({
-            score: apiScore.toString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', odd.id)
-          .then(({ error }: any) => {
-            if (error) {
-              console.error(`❌ Error updating score for odds ${odd.id}:`, error)
-              return false
-            }
-            return true
-          })
-
-        updatePromises.push(updatePromise)
-      }
-    }
-
-    // Execute all updates in parallel
-    const updateResults = await Promise.all(updatePromises)
-    scoresUpdated = updateResults.filter(Boolean).length
-
-    console.log(`✅ Updated scores for ${scoresUpdated} odds records`)
-
-    return { updated: scoresUpdated }
-
-  } catch (error) {
-    console.error(`❌ Error in updateOddsWithScores:`, error)
-    return { updated: 0 }
-  }
-}
-
-// Settle TrueSharp bets for a specific game
-async function settleTrueSharpBetsForGame(serviceSupabase: any, gameId: string) {
-  try {
-    console.log(`🎰 Starting TrueSharp bet settlement for game ${gameId}`)
-
-    // Get TrueSharp bets for this game
-    const { data: trueSharpBets, error: fetchError } = await serviceSupabase
-      .from('bets')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('sportsbook', 'TrueSharp')
-
-    if (fetchError) {
-      console.error('❌ Error fetching TrueSharp bets:', fetchError)
-      return { settled: 0 }
-    }
-
-    if (!trueSharpBets || trueSharpBets.length === 0) {
-      console.log(`ℹ️ No TrueSharp bets found for game ${gameId}`)
-      return { settled: 0 }
-    }
-
-    console.log(`📝 Found ${trueSharpBets.length} TrueSharp bets to settle for game ${gameId}`)
-
-    // Get game scores for moneyline/spread settlement
-    const { data: gameData, error: gameError } = await serviceSupabase
+    // Only update if game exists (don't create new games)
+    const { data: existingGame } = await supabase
       .from('games')
-      .select('home_score, away_score, home_team_name, away_team_name')
-      .eq('id', gameId)
+      .select('id')
+      .eq('id', gameData.id)
       .single()
 
-    if (gameError || !gameData) {
-      console.error('❌ Error fetching game data:', gameError)
-      return { settled: 0 }
+    if (!existingGame) {
+      console.log(`⚠️ Game ${gameData.id} not found in database, skipping`)
+      return null
     }
 
-    const { home_score, away_score } = gameData
-    console.log(`🏆 Game scores: Home ${home_score} - ${away_score} Away`)
+    const { data: savedGame, error: gameError } = await supabase
+      .from('games')
+      .update(gameData)
+      .eq('id', gameData.id)
+      .select()
+      .single()
 
-    const settlementPromises = trueSharpBets.map(async (bet: any) => {
-      try {
-        console.log(`🔍 Processing TrueSharp bet ${bet.id}: ${bet.bet_type} ${bet.side} ${bet.line_value || 'N/A'}`)
+    if (gameError) {
+      console.error('❌ Error updating completed game:', gameError)
+      return null
+    }
 
-        // Get odds data for this bet using exact oddid match
-        const { data: oddsData, error: oddsError } = await serviceSupabase
-          .from('odds')
-          .select('*')
-          .eq('eventid', gameId)
-          .eq('oddid', bet.oddid)
-          .single()
+    return savedGame
+  } catch (error) {
+    console.error('❌ Error in saveCompletedGameData:', error)
+    return null
+  }
+}
 
-        if (oddsError || !oddsData) {
-          console.log(`⚠️ No odds found for bet ${bet.id} with oddid ${bet.oddid}`)
-          return false
-        }
+// Fetch completed games for a specific league and update scores
+async function fetchCompletedGamesForLeague(leagueKey: keyof typeof SPORT_MAPPINGS, supabase: any) {
+  const sportMapping = SPORT_MAPPINGS[leagueKey]
+  if (!sportMapping) {
+    console.error(`❌ Unsupported league: ${leagueKey}`)
+    return { success: false, gamesFetched: 0, completedGames: 0, scoresUpdated: 0 }
+  }
 
-        // Determine bet result
-        const betResult = determineBetResult(bet, oddsData, home_score, away_score)
+  console.log(`🎯 Fetching completed games for ${leagueKey}...`)
 
-        if (betResult.status === 'pending') {
-          console.log(`⏳ Bet ${bet.id} still pending - insufficient data`)
-          return false
-        }
+  try {
+    // Calculate date range (last 3 days to catch completed games)
+    const now = new Date()
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+    const startISO = threeDaysAgo.toISOString().split('T')[0]
+    const endISO = now.toISOString().split('T')[0]
 
-        // Calculate profit
-        let profit = 0
-        if (betResult.status === 'won') {
-          // American odds to profit calculation
-          const americanOdds = bet.odds
-          if (americanOdds > 0) {
-            profit = bet.stake * (americanOdds / 100)
-          } else {
-            profit = bet.stake * (100 / Math.abs(americanOdds))
-          }
-        } else if (betResult.status === 'lost') {
-          profit = -bet.stake
-        } else if (betResult.status === 'void') {
-          profit = 0 // Push - return original stake
-        }
+    // Fetch events with pagination
+    let nextCursor: string | null = null
+    let allEvents: Record<string, unknown>[] = []
+    let pageCount = 0
+    const maxPages = 10
 
-        // Update the bet
-        const updateData = {
-          status: betResult.status,
-          profit: profit,
-          settled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
+    do {
+      pageCount++
 
-        const { error: updateError } = await serviceSupabase
-          .from('bets')
-          .update(updateData)
-          .eq('id', bet.id)
-
-        if (updateError) {
-          console.error(`❌ Error updating bet ${bet.id}:`, updateError)
-          return false
-        }
-
-        console.log(`✅ SETTLED bet ${bet.id.substring(0, 8)}: ${betResult.status} (profit: ${profit})`)
-        return true
-
-      } catch (error) {
-        console.error(`❌ Error processing bet ${bet.id}:`, error)
-        return false
+      if (pageCount > maxPages) {
+        console.log(`⚠️ Hit maximum page limit (${maxPages}) for ${leagueKey}`)
+        break
       }
+
+      const params = new URLSearchParams()
+      params.append('leagueID', sportMapping.leagueID)
+      params.append('type', 'match')
+      params.append('startsAfter', startISO)
+      params.append('startsBefore', endISO)
+      params.append('limit', '50')
+      params.append('includeAltLines', 'true')
+      if (nextCursor) {
+        params.append('cursor', nextCursor)
+      }
+
+      const apiUrl = `${SPORTSGAMEODDS_API_BASE}/events?${params.toString()}`
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'X-API-Key': API_KEY!,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.log(`⚠️ Rate limited for ${leagueKey}`)
+          break
+        }
+        throw new Error(
+          `SportsGameOdds API error for ${leagueKey}: ${response.status} ${response.statusText}`
+        )
+      }
+
+      const pageData = await response.json()
+
+      if (pageData?.success && pageData?.data) {
+        if (pageData.data.length === 0) {
+          break
+        }
+
+        allEvents = allEvents.concat(pageData.data)
+        nextCursor = pageData.nextCursor
+
+        if (!nextCursor) {
+          break
+        }
+      } else {
+        break
+      }
+
+      if (allEvents.length > 200) {
+        break
+      }
+    } while (nextCursor && pageCount <= maxPages)
+
+    // Filter for STRICTLY completed games only - more restrictive than fetch-odds
+    const completedEvents = allEvents.filter((event: any) => {
+      // Must have final status
+      const hasFinishedStatus = 
+        event.status?.displayShort === 'F' ||
+        event.status?.displayShort === 'Final' ||
+        event.status?.displayShort === 'FT' ||
+        event.status?.displayShort === 'finished' ||
+        event.status?.displayShort === 'completed'
+
+      // Must have scores in the API response (proves game actually finished)
+      const hasScoresInOdds = event.odds && 
+        Object.values(event.odds).some(
+          (odd: any) => odd.score !== undefined && odd.score !== null && !isNaN(parseFloat(odd.score))
+        )
+
+      // Must be in the past (not future/live games)
+      const gameTime = event.status?.startsAt || event.startsAt
+      const isPastGame = !gameTime || new Date(gameTime) < new Date()
+
+      const isStrictlyCompleted = hasFinishedStatus && hasScoresInOdds && isPastGame
+
+      if (!isStrictlyCompleted) {
+        console.log(`⏭️ Skipping non-completed game: Status=${event.status?.displayShort}, HasScores=${hasScoresInOdds}, InPast=${isPastGame}`)
+      }
+
+      return isStrictlyCompleted
     })
 
-    const settlementResults = await Promise.all(settlementPromises)
-    const settledCount = settlementResults.filter(Boolean).length
+    console.log(`🏁 Found ${completedEvents.length} completed games out of ${allEvents.length} ${leagueKey} games`)
 
-    console.log(`✅ Settled ${settledCount}/${trueSharpBets.length} TrueSharp bets for game ${gameId}`)
+    // Process each completed game
+    let completedGames = 0
+    let scoresUpdated = 0
 
-    return { settled: settledCount }
+    for (const event of completedEvents) {
+      try {
+        const transformedEvent = transformSportsGameOddsEvent(event)
+
+        // Update game data if it exists
+        const savedGame = await saveCompletedGameData(transformedEvent, sportMapping, supabase)
+
+        if (savedGame && transformedEvent.odds) {
+          // Use the bulk processor to update scores
+          const { processCompletedGameScores } = await import('../../../lib/odds-bulk-processor')
+          const result = await processCompletedGameScores(
+            savedGame.id as string,
+            transformedEvent.odds as Record<string, any>
+          )
+          
+          scoresUpdated += result.scoresUpdated
+          completedGames++
+          
+          console.log(`✅ Updated ${result.scoresUpdated} scores for completed game: ${(transformedEvent.teams as any)?.away?.name} @ ${(transformedEvent.teams as any)?.home?.name}`)
+        }
+      } catch (eventError) {
+        console.error(`❌ Error processing completed event in ${leagueKey}:`, eventError)
+        continue
+      }
+    }
+
+    console.log(`✅ ${leagueKey} completed: ${completedGames} games processed, ${scoresUpdated} scores updated`)
+    
+    return {
+      success: true,
+      gamesFetched: allEvents.length,
+      completedGames,
+      scoresUpdated,
+    }
   } catch (error) {
-    console.error(`❌ Error in settleTrueSharpBetsForGame:`, error)
-    return { settled: 0 }
+    console.error(`❌ Error fetching completed games for ${leagueKey}:`, error)
+    return { 
+      success: false, 
+      gamesFetched: 0, 
+      completedGames: 0, 
+      scoresUpdated: 0, 
+      error: (error as Error).message 
+    }
   }
 }
 
-// Determine bet result using game scores and bet details
-function determineBetResult(bet: any, odds: any, homeScore: number, awayScore: number) {
-  const betType = bet.bet_type?.toLowerCase()
-  const side = bet.side?.toLowerCase()
-  const line = parseFloat(bet.line_value || '0')
-  const apiScore = parseFloat(odds.score || '0')
-
-  console.log(`🎲 Evaluating bet: ${betType} ${side} ${line} - Scores: Home ${homeScore} Away ${awayScore} API: ${apiScore}`)
-
-  // Moneyline bets - use game table scores
-  if (betType === 'moneyline') {
-    if (homeScore === null || awayScore === null) {
-      console.log(`⚠️ No game scores for moneyline bet ${bet.id}`)
-      return { status: 'pending' }
-    }
-    
-    console.log(`🏆 Moneyline comparison: Home ${homeScore} vs Away ${awayScore}`)
-    
-    if (side === 'home') {
-      return { status: homeScore > awayScore ? 'won' : homeScore < awayScore ? 'lost' : 'void' }
-    } else if (side === 'away') {
-      return { status: awayScore > homeScore ? 'won' : awayScore < homeScore ? 'lost' : 'void' }
-    }
-  }
-
-  // Total (Over/Under) bets - use API score
-  if (betType === 'total') {
-    if (!apiScore && apiScore !== 0) {
-      console.log(`⚠️ No API score for total bet ${bet.id}`)
-      return { status: 'pending' }
-    }
-    
-    console.log(`🏀 Total bet evaluation: actual=${apiScore}, line=${line}, side=${side}`)
-    
-    if (side === 'over') {
-      if (apiScore > line) {
-        console.log(`✅ Over bet wins: ${apiScore} > ${line}`)
-        return { status: 'won' }
-      } else if (apiScore < line) {
-        console.log(`❌ Over bet loses: ${apiScore} < ${line}`)
-        return { status: 'lost' }
-      } else {
-        console.log(`🤝 Push: ${apiScore} = ${line}`)
-        return { status: 'void' }
-      }
-    } else if (side === 'under') {
-      if (apiScore < line) {
-        console.log(`✅ Under bet wins: ${apiScore} < ${line}`)
-        return { status: 'won' }
-      } else if (apiScore > line) {
-        console.log(`❌ Under bet loses: ${apiScore} > ${line}`)
-        return { status: 'lost' }
-      } else {
-        console.log(`🤝 Push: ${apiScore} = ${line}`)
-        return { status: 'void' }
-      }
-    }
-  }
-
-  // Spread bets - use game table scores and line
-  if (betType === 'spread') {
-    if (homeScore === null || awayScore === null) {
-      console.log(`⚠️ No game scores for spread bet ${bet.id}`)
-      return { status: 'pending' }
-    }
-    
-    // Calculate the actual spread (home - away)
-    const actualSpread = homeScore - awayScore
-    
-    console.log(`🏈 Spread bet evaluation: actualSpread=${actualSpread}, line=${line}, side=${side}`)
-    console.log(`   Team scores: Home ${homeScore} - ${awayScore} Away`)
-    
-    if (side === 'home') {
-      // Home team bet: they need to cover the spread
-      if (actualSpread > line) {
-        console.log(`✅ Home spread wins: ${actualSpread} > ${line}`)
-        return { status: 'won' }
-      } else if (actualSpread < line) {
-        console.log(`❌ Home spread loses: ${actualSpread} < ${line}`)
-        return { status: 'lost' }
-      } else {
-        console.log(`🤝 Push: ${actualSpread} = ${line}`)
-        return { status: 'void' }
-      }
-    } else if (side === 'away') {
-      // Away team bet: they need to cover the spread
-      if (actualSpread < line) {
-        console.log(`✅ Away spread wins: ${actualSpread} < ${line}`)
-        return { status: 'won' }
-      } else if (actualSpread > line) {
-        console.log(`❌ Away spread loses: ${actualSpread} > ${line}`)
-        return { status: 'lost' }
-      } else {
-        console.log(`🤝 Push: ${actualSpread} = ${line}`)
-        return { status: 'void' }
-      }
-    }
-  }
-
-  // Player props and other specific bets - use API score
-  if (apiScore !== null && apiScore !== undefined) {
-    if (side === 'over') {
-      if (apiScore > line) {
-        return { status: 'won' }
-      } else if (apiScore < line) {
-        return { status: 'lost' }
-      } else {
-        return { status: 'void' }
-      }
-    } else if (side === 'under') {
-      if (apiScore < line) {
-        return { status: 'won' }
-      } else if (apiScore > line) {
-        return { status: 'lost' }
-      } else {
-        return { status: 'void' }
-      }
-    }
-  }
-
-  // If we can't determine the result, keep it pending
-  console.log(`⚠️ Unable to determine result for bet type: ${betType}, side: ${side}`)
-  return { status: 'pending' }
-}
