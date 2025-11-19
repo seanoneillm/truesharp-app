@@ -17,11 +17,28 @@ import { Game } from '@/lib/types/games'
 import { filterGamesByConference } from '@/lib/utils/college-conference-filter'
 import { convertDatabaseGamesToGames } from '@/lib/utils/database-to-game-converter'
 import { deduplicateGames, isCollegeSport } from '@/lib/utils/game-deduplication'
+import { useAuth } from '@/lib/hooks/use-auth'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
 import { Calendar, Clock, HelpCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
+
 function GamesPageContent() {
   console.log('🚀 GAMES PAGE RENDERING!!!')
+  const { user } = useAuth()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
+  
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Games" />
+  }
 
   const [games, setGames] = useState<Record<string, Game[]>>({})
   const [activeLeague, setActiveLeague] = useState<LeagueType>('MLB')

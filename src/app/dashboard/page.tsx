@@ -11,7 +11,14 @@ import TodaysBets from '@/components/dashboard/todays-bets'
 import WelcomeSection from '@/components/dashboard/welcome-section'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
 import { useEffect, useState } from 'react'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 
 interface Profile {
   id: string
@@ -26,6 +33,9 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
 
   // Debug logging
   useEffect(() => {
@@ -93,6 +103,11 @@ export default function DashboardPage() {
         </DashboardLayout>
       </ProtectedRoute>
     )
+  }
+
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Dashboard" />
   }
 
   return (

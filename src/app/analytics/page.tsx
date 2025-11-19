@@ -16,6 +16,13 @@ import { useAnalytics, type Bet } from '@/lib/hooks/use-analytics'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { RefreshCw, Link, X, BarChart3 } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 
 
 function calculateTrends(monthlyData: { roi: number }[]): {
@@ -118,6 +125,9 @@ const defaultFilters: FilterOptions = {
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -955,6 +965,11 @@ export default function AnalyticsPage() {
       console.error('Error deleting strategy:', error)
       throw error
     }
+  }
+
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Analytics" />
   }
 
   // Show loading state - improved to handle user recognition better

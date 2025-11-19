@@ -22,9 +22,16 @@ import { StrategyCard } from '@/components/marketplace/strategy-card'
 import { SubscriptionPricingModal } from '@/components/marketplace/subscription-pricing-modal'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSubscribe } from '@/lib/hooks/use-subscribe'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
 import { Search, Store, X, TrendingUp, Target, Activity, Users as UsersIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 
 interface StrategyData {
   id: string
@@ -60,6 +67,17 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedLeague, setSelectedLeague] = useState('all')
   const [sortBy, setSortBy] = useState('leaderboard')
+  
+  // Authentication
+  const { user, isAuthenticated } = useAuth()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
+  
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Marketplace" />
+  }
   const [showAlgorithmModal, setShowAlgorithmModal] = useState(false)
 
   const [strategies, setStrategies] = useState<StrategyData[]>([])
@@ -70,8 +88,6 @@ export default function MarketplacePage() {
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyData | null>(null)
 
-  // Authentication
-  const { user, isAuthenticated } = useAuth()
   const router = useRouter()
 
   // Strategy subscription management

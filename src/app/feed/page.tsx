@@ -4,6 +4,14 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { usePosts } from '@/lib/hooks/use-posts'
+import { useAuth } from '@/lib/hooks/use-auth'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 import {
   Bookmark,
   Camera,
@@ -27,6 +35,15 @@ import { useState } from 'react'
 export default function FeedPage() {
   const [activeTab, setActiveTab] = useState<'public' | 'subscriptions'>('public')
   const [showCreatePost, setShowCreatePost] = useState(false)
+  const { user } = useAuth()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
+  
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Community Feed" />
+  }
 
   // Post creation state
   const [postContent, setPostContent] = useState('')

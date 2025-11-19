@@ -8,6 +8,13 @@ import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useProfile } from '@/lib/hooks/use-profile'
 import { SellerProfileEditor } from '@/components/seller/seller-profile-editor'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 import StrategiesTab from '@/components/seller/strategies-tab'
 import { SubscribersTab } from '@/components/seller/subscribers-tab'
 import { FinancialsTab } from '@/components/seller/financials-tab'
@@ -54,6 +61,14 @@ export default function SellPage() {
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const { profile, loading: profileLoading, refreshProfile } = useProfile()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
+  
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Sell" />
+  }
   const [becomingSellerLoading, setBecomingSellerLoading] = useState(false)
   const [becomingSellerError, setBecomingSellerError] = useState<string | null>(null)
 

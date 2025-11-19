@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import MaintenanceOverlay from '@/components/maintenance/MaintenanceOverlay'
+
+const ADMIN_USER_IDS = [
+  '28991397-dae7-42e8-a822-0dffc6ff49b7',
+  '0e16e4f5-f206-4e62-8282-4188ff8af48a',
+  'dfd44121-8e88-4c83-ad95-9fb8a4224908',
+]
 import {
   AlertTriangle,
   Camera,
@@ -75,6 +82,14 @@ export default function SettingsPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
   const { user } = useAuth()
+  
+  // Check if user is admin
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
+  
+  // Show maintenance overlay for non-admin users
+  if (user && !isAdmin) {
+    return <MaintenanceOverlay pageName="Settings" />
+  }
 
   // State for all settings sections
   const [profile, setProfile] = useState<UserProfile | null>(null)
