@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../types';
@@ -10,7 +10,7 @@ import { theme } from '../styles/theme';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 interface RootNavigatorProps {
   navigationRef?: React.RefObject<NavigationContainerRef<any> | null>;

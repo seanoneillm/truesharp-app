@@ -9,24 +9,113 @@ import ProfitOverTimeChart from './ProfitOverTimeChart';
 import ConnectedSportsbooks from './ConnectedSportsbooks';
 import { getTwoLineBetDescription, getStatusColor } from '../../lib/betFormatting';
 import UnifiedBetCard from './UnifiedBetCard';
+import AnalyticsSettingsRow from './AnalyticsSettingsRow';
+import AnalyticsSettingsModal, { AnalyticsSettings } from './AnalyticsSettingsModal';
+import { calculateBankroll, BettorAccount } from '../../lib/bankrollCalculation';
+import { fetchAnalyticsSettings, saveAnalyticsSettings, fetchBettorAccounts } from '../../services/analyticsSettingsService';
+import { UnitDisplayOptions, formatCurrencyOrUnits, formatProfitLoss } from '../../utils/unitCalculations';
 
 interface OverviewTabProps {
   analyticsData: AnalyticsData;
   loading: boolean;
   onRefresh: () => Promise<void>;
   filters: AnalyticsFilters;
+  onBetPress?: (betId: string, parlayGroup?: ParlayGroup) => void;
+  userId?: string;
+  showUnits: boolean;
+  onToggleUnits: () => void;
+  onAnalyticsSettingsUpdate?: (settings: AnalyticsSettings) => void;
 }
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function OverviewTab({ analyticsData, loading, onRefresh, filters }: OverviewTabProps) {
+export default function OverviewTab({ analyticsData, loading, onRefresh, filters, onBetPress, userId, showUnits, onToggleUnits, onAnalyticsSettingsUpdate }: OverviewTabProps) {
   const [refreshing, setRefreshing] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [analyticsSettings, setAnalyticsSettings] = useState<AnalyticsSettings | null>(null);
+  const [bettorAccounts, setBettorAccounts] = useState<BettorAccount[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [bankrollLoading, setBankrollLoading] = useState(true);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await onRefresh();
+    // Also refresh analytics settings and bettor accounts
+    if (userId) {
+      await Promise.all([
+        loadAnalyticsSettings(userId),
+        loadBettorAccounts(userId)
+      ]);
+    }
     setRefreshing(false);
   };
+
+  const loadAnalyticsSettings = async (userId: string) => {
+    try {
+      const settings = await fetchAnalyticsSettings(userId);
+      setAnalyticsSettings(settings);
+    } catch (error) {
+      console.error('Error loading analytics settings:', error);
+    }
+  };
+
+  const loadBettorAccounts = async (userId: string) => {
+    try {
+      setBankrollLoading(true);
+      const accounts = await fetchBettorAccounts(userId);
+      setBettorAccounts(accounts);
+    } catch (error) {
+      console.error('Error loading bettor accounts:', error);
+    } finally {
+      setBankrollLoading(false);
+    }
+  };
+
+  const handleSettingsPress = () => {
+    setShowSettingsModal(true);
+  };
+
+  const handleSettingsSave = async (settings: AnalyticsSettings) => {
+    setSettingsLoading(true);
+    try {
+      const savedSettings = await saveAnalyticsSettings({
+        ...settings,
+        user_id: userId || '',
+      });
+      setAnalyticsSettings(savedSettings);
+      setShowSettingsModal(false);
+      
+      // Notify parent component about the settings update
+      if (onAnalyticsSettingsUpdate) {
+        onAnalyticsSettingsUpdate(savedSettings);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      // TODO: Show error alert to user
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSettingsClose = () => {
+    setShowSettingsModal(false);
+  };
+
+  // Load initial data when userId is available
+  React.useEffect(() => {
+    if (userId) {
+      loadAnalyticsSettings(userId);
+      loadBettorAccounts(userId);
+    }
+  }, [userId]);
+
+  // Calculate bankroll from bettor accounts
+  const bankroll = useMemo(() => {
+    return calculateBankroll(bettorAccounts);
+  }, [bettorAccounts]);
+
+  // Note: TrueSharp filtering is now handled in the parent AnalyticsScreen
+  // analyticsData passed here is already filtered
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -88,6 +177,12 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
     const roi = safeNumber(metrics.roi);
     const totalProfit = safeNumber(metrics.totalProfit);
     
+    // Create unit display options
+    const unitOptions: UnitDisplayOptions = {
+      showUnits,
+      unitSize: analyticsSettings?.unit_size || 1000, // Default $10
+    };
+    
     const cards = [
       {
         title: 'Total Bets',
@@ -112,7 +207,7 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
       },
       {
         title: 'Total Profit',
-        value: formatCurrency(totalProfit),
+        value: formatProfitLoss(totalProfit * 100, unitOptions), // Convert dollars to cents
         icon: 'cash-outline',
         color: totalProfit >= 0 ? theme.colors.status.success : theme.colors.status.error,
         bgColor: totalProfit >= 0 ? `${theme.colors.status.success}15` : `${theme.colors.status.error}15`,
@@ -126,8 +221,12 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
             <View style={[styles.metricIcon, { backgroundColor: card.bgColor }]}>
               <Ionicons name={card.icon as any} size={16} color={card.color} />
             </View>
-            <Text style={styles.metricValue}>{card.value}</Text>
-            <Text style={styles.metricTitle}>{card.title}</Text>
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {card.value}
+            </Text>
+            <Text style={styles.metricTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {card.title}
+            </Text>
           </View>
         ))}
       </View>
@@ -135,11 +234,17 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
   };
 
   const renderProfitChart = () => {
+    const unitOptions: UnitDisplayOptions = {
+      showUnits,
+      unitSize: analyticsSettings?.unit_size || 1000, // Default $10
+    };
+
     return (
       <ProfitOverTimeChart
         chartData={analyticsData.dailyProfitData}
         filters={filters}
         loading={loading}
+        unitOptions={unitOptions}
       />
     );
   };
@@ -169,9 +274,20 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
         >
-          {groupedRecentBets.map((bet) => (
-            <UnifiedBetCard key={'legs' in bet ? bet.parlay_id : bet.id} bet={bet} />
-          ))}
+          {groupedRecentBets.map((bet) => {
+            const unitOptions: UnitDisplayOptions = {
+              showUnits,
+              unitSize: analyticsSettings?.unit_size || 1000, // Default $10
+            };
+            return (
+              <UnifiedBetCard 
+                key={'legs' in bet ? bet.parlay_id : bet.id} 
+                bet={bet} 
+                onPress={onBetPress} 
+                unitOptions={unitOptions}
+              />
+            );
+          })}
         </ScrollView>
       </View>
     );
@@ -184,16 +300,38 @@ export default function OverviewTab({ analyticsData, loading, onRefresh, filters
     />
   );
 
+  const renderAnalyticsSettingsRow = () => (
+    <AnalyticsSettingsRow
+      bankroll={bankroll}
+      settings={analyticsSettings}
+      onSettingsPress={handleSettingsPress}
+      loading={bankrollLoading}
+      showUnits={showUnits}
+      onToggleUnits={onToggleUnits}
+    />
+  );
+
   return (
     <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       showsVerticalScrollIndicator={false}
     >
+      {renderAnalyticsSettingsRow()}
       {renderMetricsCards()}
       {renderProfitChart()}
       {renderRecentBets()}
       {renderConnectedSportsbooks()}
+      
+      {/* Analytics Settings Modal */}
+      <AnalyticsSettingsModal
+        visible={showSettingsModal}
+        onClose={handleSettingsClose}
+        settings={analyticsSettings}
+        onSave={handleSettingsSave}
+        loading={settingsLoading}
+        bankroll={bankroll}
+      />
     </ScrollView>
   );
 }
@@ -219,7 +357,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     ...theme.shadows.sm,
     minHeight: 80,
-    justifyContent: 'center',
+    maxHeight: 90, // Add max height to prevent expansion
+    justifyContent: 'space-between', // Better spacing distribution
   },
   metricIcon: {
     width: 28,
@@ -235,12 +374,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     marginBottom: 2,
     textAlign: 'center',
+    flexShrink: 1, // Allow shrinking to fit
+    maxWidth: '100%', // Ensure it doesn't overflow
   },
   metricTitle: {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     fontWeight: theme.typography.fontWeight.medium,
+    flexShrink: 1, // Allow shrinking to fit
+    maxWidth: '100%', // Ensure it doesn't overflow
   },
   recentBetsContainer: {
     marginHorizontal: theme.spacing.md,

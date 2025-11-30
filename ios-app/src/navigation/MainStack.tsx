@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../types';
 
 import TabNavigator from './TabNavigator';
@@ -7,8 +7,9 @@ import TopHeader from '../components/common/TopHeader';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import HelpScreen from '../screens/main/HelpScreen';
 import FeedbackScreen from '../screens/main/FeedbackScreen';
+import AdminScreen from '../screens/main/AdminScreen';
 
-const Stack = createStackNavigator<MainStackParamList>();
+const Stack = createNativeStackNavigator<MainStackParamList>();
 
 export default function MainStack() {
   return (
@@ -22,6 +23,7 @@ export default function MainStack() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="Admin" component={AdminScreen} />
     </Stack.Navigator>
   );
 }

@@ -5,18 +5,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { ChartDataPoint, AnalyticsFilters } from '../../services/supabaseAnalytics';
 import TrueSharpShield from '../common/TrueSharpShield';
+import { UnitDisplayOptions, formatChartValue } from '../../utils/unitCalculations';
 
 interface ProfitOverTimeChartProps {
   chartData: ChartDataPoint[];
   filters: AnalyticsFilters;
   loading?: boolean;
+  unitOptions?: UnitDisplayOptions;
 }
 
 type DateRange = 'week' | 'month' | 'year';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function ProfitOverTimeChart({ chartData, filters, loading }: ProfitOverTimeChartProps) {
+export default function ProfitOverTimeChart({ chartData, filters, loading, unitOptions }: ProfitOverTimeChartProps) {
   const [selectedRange, setSelectedRange] = useState<DateRange>('month');
 
   // Process data based on selected date range - starting from 0 for each period

@@ -10,9 +10,25 @@ export interface EnvironmentConfig {
   isDevelopment: boolean
 }
 
-// Get environment variables from Expo config
+// Get environment variables from Expo config with proper error handling
 const getEnvironmentVariable = (key: string, defaultValue: string): string => {
-  return Constants.expoConfig?.extra?.[key] || process.env[key] || defaultValue
+  try {
+    // Try to get from Expo config first
+    if (Constants?.expoConfig?.extra?.[key]) {
+      return Constants.expoConfig.extra[key]
+    }
+
+    // Fallback to process.env
+    if (process?.env?.[key]) {
+      return process.env[key]
+    }
+
+    // Return default value
+    return defaultValue
+  } catch (error) {
+    console.warn(`Failed to get environment variable ${key}, using default:`, error)
+    return defaultValue
+  }
 }
 
 // SharpSports public key from environment
@@ -24,10 +40,7 @@ const SHARPSPORTS_PUBLIC_KEY = getEnvironmentVariable(
 // Environment configuration
 export const Environment: EnvironmentConfig = {
   // API Base URL - defaults to production, can be overridden in development
-  API_BASE_URL: getEnvironmentVariable(
-    'EXPO_PUBLIC_API_BASE_URL',
-    'https://truesharp.io'
-  ),
+  API_BASE_URL: getEnvironmentVariable('EXPO_PUBLIC_API_BASE_URL', 'https://truesharp.io'),
 
   // Supabase configuration
   SUPABASE_URL: getEnvironmentVariable(

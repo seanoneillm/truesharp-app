@@ -15,7 +15,7 @@ const SportsbookLinker: React.FC<SportsbookLinkerProps> = ({
   onLinkingComplete 
 }) => {
   const [mobileAuthToken, setMobileAuthToken] = useState<string | null>(null);
-  const [sharpsports, setSharpSports] = useState<SharpSports | null>(null);
+  const [sharpsports, setSharpSports] = useState<any | null>(null);
   const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
   const [cid, setCid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

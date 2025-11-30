@@ -2,13 +2,8 @@ import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { logger } from '../utils/logger'
 
-// Safely import expo-in-app-purchases with fallback
-let InAppPurchases: any = null
-try {
-  InAppPurchases = require('expo-in-app-purchases')
-} catch (error) {
-  logger.error('Failed to import expo-in-app-purchases', error)
-}
+// Safely import expo-in-app-purchases
+import * as InAppPurchases from 'expo-in-app-purchases'
 
 // Product IDs for Apple App Store subscriptions
 export const PRODUCT_IDS = {
@@ -90,10 +85,10 @@ class ModernStoreKitService {
     try {
       await InAppPurchases.connectAsync()
       this.isConnected = true
-      
+
       // Set up purchase listener immediately after connection
       this.setupPurchaseListener()
-      
+
       return true
     } catch (error) {
       if (
@@ -146,7 +141,7 @@ class ModernStoreKitService {
     try {
       const productIds = Object.values(PRODUCT_IDS)
       const response = await InAppPurchases.getProductsAsync(productIds)
-      
+
       if (response.responseCode !== InAppPurchases.IAPResponseCode.OK) {
         if (response.errorCode === 'NETWORK_ERROR' || response.errorCode?.includes('network')) {
           throw new Error('Network error: Please check your internet connection and try again')
@@ -171,7 +166,7 @@ class ModernStoreKitService {
         type: 'subscription' as const,
         subscriptionPeriod: product.subscriptionPeriod,
       }))
-      
+
       return this.products
     } catch (error) {
       logger.error('Error fetching products', error)
@@ -210,7 +205,7 @@ class ModernStoreKitService {
   /**
    * Modern purchase flow - WEBHOOK DRIVEN (no timeouts!)
    * 1. User initiates purchase
-   * 2. Apple completes purchase and we finish transaction immediately 
+   * 2. Apple completes purchase and we finish transaction immediately
    * 3. Return success to user right away
    * 4. Apple webhook activates subscription in database automatically
    * 5. If webhook fails, "Restore Purchases" will activate it
@@ -233,16 +228,17 @@ class ModernStoreKitService {
 
       // Create promise that resolves when purchase completes
       const purchasePromise = new Promise<ModernPurchaseResult>((resolve, reject) => {
-        // Very short timeout since we only wait for Apple's purchase response (no server validation)
+        // Increased timeout for Apple's purchase response - especially important for first-time subscribers
         const timeout = setTimeout(() => {
-          logger.error('⏰ Purchase timeout reached after 15 seconds')
+          logger.error('⏰ Purchase timeout reached after 45 seconds')
           resolve({
             success: false,
-            error: 'Purchase timed out. Please try "Restore Purchases" if the purchase was completed.',
+            error:
+              'Purchase is taking longer than expected. This is normal for first-time purchases. Please wait a moment and try "Restore Purchases" if needed.',
             serverValidated: false,
-            validationAttempts: 0
+            validationAttempts: 0,
           })
-        }, 15000)
+        }, 45000) // Increased from 15 to 45 seconds
 
         const handlePurchaseResult = (result: ModernPurchaseResult) => {
           clearTimeout(timeout)
@@ -264,11 +260,10 @@ class ModernStoreKitService {
         productId,
         transactionId: result.transactionId,
         serverValidated: result.serverValidated,
-        error: result.error
+        error: result.error,
       })
 
       return result
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown purchase error'
       logger.error('❌ Purchase failed:', errorMessage)
@@ -277,7 +272,7 @@ class ModernStoreKitService {
         success: false,
         error: errorMessage,
         serverValidated: false,
-        validationAttempts: 0
+        validationAttempts: 0,
       }
     } finally {
       this.currentPurchaseHandler = null
@@ -309,69 +304,111 @@ class ModernStoreKitService {
             acknowledged: purchase.acknowledged,
             purchaseTime: purchase.purchaseTime,
             purchaseState: purchase.purchaseState,
-            allFields: purchase // Log all available fields
+            allFields: purchase, // Log all available fields
           })
 
           if (purchase.acknowledged) {
             logger.info('🔍 Purchase acknowledged by Apple, processing...', {
               transactionId: purchase.orderId,
               productId: purchase.productId,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             })
-            
+
             // STEP 1: Immediately finish transaction (Apple's requirement)
             // Per Apple guidelines: finish transactions promptly to avoid issues
             this.finishTransactionAsync(purchase.orderId)
               .then(() => {
                 logger.info('✅ Transaction finished with Apple', {
                   transactionId: purchase.orderId,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 })
-                
+
                 // STEP 2: Report success to user immediately (webhooks will handle database updates)
                 logger.info('🎉 Purchase successful - Apple webhook will activate subscription', {
                   transactionId: purchase.orderId,
                   originalTransactionId: purchase.originalTransactionId || purchase.orderId,
                   productId: purchase.productId,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 })
 
-                // STEP 3: Report success to user immediately (no validation blocking)
-                if (this.currentPurchaseHandler) {
-                  logger.info('📱 Reporting immediate success to user', {
-                    transactionId: purchase.orderId,
-                    timestamp: new Date().toISOString()
-                  })
-                  
-                  this.currentPurchaseHandler({
-                    success: true,
-                    productId: purchase.productId,
+                // STEP 3: Validate with server using new optimistic approach
+                logger.info('🔄 Starting optimistic server validation...', {
+                  transactionId: purchase.orderId,
+                  timestamp: new Date().toISOString(),
+                })
+
+                this.validateTransactionWithServer(
+                  {
                     transactionId: purchase.orderId,
                     originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                    serverValidated: true, // Apple webhook will activate subscription
-                    validationAttempts: 0 // No validation attempts during purchase
-                  })
-                }
+                    productId: purchase.productId,
+                  },
+                  5000
+                ) // Quick 5-second timeout for optimistic validation
+                  .then(validationResult => {
+                    logger.info('✅ Server validation completed', {
+                      success: validationResult.success,
+                      transactionId: purchase.orderId,
+                      timestamp: new Date().toISOString(),
+                    })
 
-                logger.info('✅ Purchase completed successfully - Apple webhook will activate subscription automatically', {
-                  transactionId: purchase.orderId,
-                  originalTransactionId: purchase.originalTransactionId || purchase.orderId,
-                  productId: purchase.productId,
-                  timestamp: new Date().toISOString()
-                })
+                    if (this.currentPurchaseHandler) {
+                      this.currentPurchaseHandler({
+                        success: true,
+                        productId: purchase.productId,
+                        transactionId: purchase.orderId,
+                        originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                        serverValidated: validationResult.success,
+                        validationAttempts: 1,
+                      })
+                    }
+                  })
+                  .catch(validationError => {
+                    logger.warn('⚠️ Server validation failed, but purchase succeeded', {
+                      error: validationError.message,
+                      transactionId: purchase.orderId,
+                      timestamp: new Date().toISOString(),
+                    })
+
+                    // Still report success since Apple transaction completed
+                    if (this.currentPurchaseHandler) {
+                      this.currentPurchaseHandler({
+                        success: true,
+                        productId: purchase.productId,
+                        transactionId: purchase.orderId,
+                        originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                        serverValidated: false, // Server validation failed, but purchase succeeded
+                        validationAttempts: 1,
+                        error:
+                          'Purchase successful. Use "Restore Purchases" to activate subscription.',
+                      })
+                    }
+                  })
+
+                logger.info(
+                  '✅ Purchase completed successfully - Apple webhook will activate subscription automatically',
+                  {
+                    transactionId: purchase.orderId,
+                    originalTransactionId: purchase.originalTransactionId || purchase.orderId,
+                    productId: purchase.productId,
+                    timestamp: new Date().toISOString(),
+                  }
+                )
               })
-              .catch((finishError) => {
-                logger.error('⚠️ Failed to finish transaction:', finishError, {
+              .catch(finishError => {
+                logger.error('⚠️ Failed to finish transaction:', {
+                  error: finishError,
                   transactionId: purchase.orderId,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 })
-                
+
                 if (this.currentPurchaseHandler) {
                   this.currentPurchaseHandler({
                     success: false,
-                    error: 'Purchase completed but activation pending. Please try "Restore Purchases" in a few moments.',
+                    error:
+                      'Purchase completed but activation pending. Please try "Restore Purchases" in a few moments.',
                     serverValidated: false,
-                    validationAttempts: 0
+                    validationAttempts: 0,
                   })
                 }
               })
@@ -382,7 +419,7 @@ class ModernStoreKitService {
                 success: false,
                 error: 'Purchase not confirmed by Apple',
                 serverValidated: false,
-                validationAttempts: 0
+                validationAttempts: 0,
               })
             }
           }
@@ -395,7 +432,7 @@ class ModernStoreKitService {
           success: false,
           error: 'Purchase canceled',
           serverValidated: false,
-          validationAttempts: 0
+          validationAttempts: 0,
         })
       }
     } else {
@@ -405,12 +442,11 @@ class ModernStoreKitService {
           success: false,
           error: `Purchase failed: ${errorCode || 'Unknown error'}`,
           serverValidated: false,
-          validationAttempts: 0
+          validationAttempts: 0,
         })
       }
     }
   }
-
 
   /**
    * Finish transaction with Apple (required by Apple guidelines)
@@ -436,13 +472,18 @@ class ModernStoreKitService {
   /**
    * Modern server validation using transaction ID
    */
-  private async validateTransactionWithServer(data: {
-    transactionId: string
-    originalTransactionId: string
-    productId: string
-  }, customTimeout?: number): Promise<{ success: boolean; error?: string }> {
+  private async validateTransactionWithServer(
+    data: {
+      transactionId: string
+      originalTransactionId: string
+      productId: string
+    },
+    customTimeout?: number
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         return { success: false, error: 'User not authenticated' }
       }
@@ -452,30 +493,30 @@ class ModernStoreKitService {
         transactionId: data.transactionId,
         productId: data.productId,
         timestamp: new Date().toISOString(),
-        step: 'SERVER_CALL_START'
+        step: 'SERVER_CALL_START',
       })
 
       const { Environment } = await import('../config/environment')
-      
+
       logger.info('🌐 Making API request', {
         url: `${Environment.API_BASE_URL}/api/validate-apple-transaction`,
         environment: this.getEnvironment(),
         timestamp: new Date().toISOString(),
-        step: 'API_REQUEST_START'
+        step: 'API_REQUEST_START',
       })
-      
+
       // Create abort controller for timeout
       const controller = new AbortController()
-      const timeoutMs = customTimeout || 15000 // Use custom timeout or default 15 seconds
+      const timeoutMs = customTimeout || 30000 // Increased from 15 to 30 seconds for better reliability
       const timeoutId = setTimeout(() => {
-        logger.error(`⏰ Request timeout after ${timeoutMs/1000} seconds`, {
+        logger.error(`⏰ Request timeout after ${timeoutMs / 1000} seconds`, {
           transactionId: data.transactionId,
           timestamp: new Date().toISOString(),
-          step: 'REQUEST_TIMEOUT'
+          step: 'REQUEST_TIMEOUT',
         })
         controller.abort()
       }, timeoutMs)
-      
+
       const response = await fetch(`${Environment.API_BASE_URL}/api/validate-apple-transaction`, {
         method: 'POST',
         headers: {
@@ -487,11 +528,11 @@ class ModernStoreKitService {
           transactionId: data.transactionId,
           originalTransactionId: data.originalTransactionId,
           productId: data.productId,
-          environment: this.getEnvironment()
+          environment: this.getEnvironment(),
         }),
-        signal: controller.signal
+        signal: controller.signal,
       })
-      
+
       clearTimeout(timeoutId)
 
       logger.info('📡 Received API response', {
@@ -499,7 +540,7 @@ class ModernStoreKitService {
         ok: response.ok,
         transactionId: data.transactionId,
         timestamp: new Date().toISOString(),
-        step: 'API_RESPONSE_RECEIVED'
+        step: 'API_RESPONSE_RECEIVED',
       })
 
       if (!response.ok) {
@@ -509,7 +550,7 @@ class ModernStoreKitService {
           error: errorText,
           transactionId: data.transactionId,
           timestamp: new Date().toISOString(),
-          step: 'API_ERROR'
+          step: 'API_ERROR',
         })
         return { success: false, error: `HTTP ${response.status}: ${errorText}` }
       }
@@ -519,37 +560,41 @@ class ModernStoreKitService {
         ...result,
         transactionId: data.transactionId,
         timestamp: new Date().toISOString(),
-        step: 'API_RESPONSE_PARSED'
+        step: 'API_RESPONSE_PARSED',
       })
 
       return { success: result.valid === true, error: result.error }
-
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        logger.error(`⏰ Transaction validation timed out after ${(customTimeout || 15000)/1000} seconds`)
+        logger.error(
+          `⏰ Transaction validation timed out after ${(customTimeout || 30000) / 1000} seconds`
+        )
         return {
           success: false,
-          error: 'Server validation timed out. Your purchase is valid - use "Restore Purchases" to activate.'
+          error:
+            'Connection timeout. Your purchase was successful - use "Restore Purchases" to activate your subscription.',
         }
       }
-      
+
       // Handle network errors gracefully
       if (error instanceof Error) {
-        if (error.message.includes('Network request failed') || 
-            error.message.includes('fetch') ||
-            error.message.includes('ECONNREFUSED')) {
+        if (
+          error.message.includes('Network request failed') ||
+          error.message.includes('fetch') ||
+          error.message.includes('ECONNREFUSED')
+        ) {
           logger.error('🌐 Network error during validation:', error.message)
           return {
             success: false,
-            error: 'Network error. Your purchase is valid - use "Restore Purchases" when online.'
+            error: 'Network error. Your purchase is valid - use "Restore Purchases" when online.',
           }
         }
       }
-      
+
       logger.error('❌ Transaction validation error:', error)
       return {
         success: false,
-        error: 'Validation error. Your purchase is valid - use "Restore Purchases" to activate.'
+        error: 'Validation error. Your purchase is valid - use "Restore Purchases" to activate.',
       }
     }
   }
@@ -558,31 +603,34 @@ class ModernStoreKitService {
    * Debug function to test server validation with a known transaction
    * Use this to test without making new purchases
    */
-  async debugValidateTransaction(transactionId: string, productId: string = 'pro_subscription_month'): Promise<void> {
+  async debugValidateTransaction(
+    transactionId: string,
+    productId: string = 'pro_subscription_month'
+  ): Promise<void> {
     logger.info('🐛 DEBUG: Testing transaction validation', {
       transactionId,
       productId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
 
     try {
       const validationResult = await this.validateTransactionWithServer({
         transactionId,
         originalTransactionId: transactionId,
-        productId
+        productId,
       })
 
       logger.info('🐛 DEBUG: Validation result', {
         transactionId,
         success: validationResult.success,
         error: validationResult.error,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     } catch (error) {
       logger.error('🐛 DEBUG: Validation failed', {
         transactionId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     }
   }
@@ -617,7 +665,7 @@ class ModernStoreKitService {
               const validationResult = await this.validateTransactionWithServer({
                 transactionId: purchase.orderId,
                 originalTransactionId: purchase.orderId,
-                productId: purchase.productId
+                productId: purchase.productId,
               })
 
               restoredPurchases.push({
@@ -626,7 +674,7 @@ class ModernStoreKitService {
                 transactionId: purchase.orderId,
                 originalTransactionId: purchase.orderId,
                 serverValidated: validationResult.success,
-                error: validationResult.error
+                error: validationResult.error,
               })
             } catch (error) {
               logger.error('⚠️ Restore validation failed:', error)
@@ -636,7 +684,7 @@ class ModernStoreKitService {
                 transactionId: purchase.orderId,
                 originalTransactionId: purchase.orderId,
                 serverValidated: false,
-                error: 'Validation failed during restore'
+                error: 'Validation failed during restore',
               })
             }
           }
@@ -655,13 +703,15 @@ class ModernStoreKitService {
    */
   async getSubscriptionStatus(): Promise<SubscriptionStatus> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
       if (!user) {
         return { isActive: false }
       }
 
-      logger.info('🔍 Checking subscription status for user:', user.id);
+      logger.info('🔍 Checking subscription status for user:', user.id)
 
       // First check for active subscription in pro_subscriptions table
       const { data: subscription, error: subscriptionError } = await supabase
@@ -674,7 +724,7 @@ class ModernStoreKitService {
         .maybeSingle() // Use maybeSingle to avoid error if no results
 
       if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-        logger.error('❌ Error fetching subscription:', subscriptionError);
+        logger.error('❌ Error fetching subscription:', subscriptionError)
       }
 
       if (subscription) {
@@ -686,19 +736,59 @@ class ModernStoreKitService {
           id: subscription.id,
           status: subscription.status,
           expirationDate: expirationDate.toISOString(),
-          isActive
-        });
+          isActive,
+        })
 
-        // If subscription is expired, update profile status
+        // Check current profile status for manual pro upgrades
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('pro')
+          .eq('id', user.id)
+          .single()
+
+        // If subscription is expired, check if user has other active subscriptions before downgrading
         if (!isActive) {
-          logger.warn('⚠️ Subscription expired, updating profile status');
-          try {
-            await supabase
-              .from('profiles')
-              .update({ pro: 'no', updated_at: new Date().toISOString() })
-              .eq('id', user.id);
-          } catch (updateError) {
-            logger.error('❌ Failed to update expired subscription status:', updateError);
+          logger.warn('⚠️ Apple subscription expired, checking for other active subscriptions...')
+          
+          // Check for other active subscriptions (Stripe, promotional, etc.)
+          const { data: otherSubscriptions } = await supabase
+            .from('pro_subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .gt('current_period_end', new Date().toISOString())
+            .neq('id', subscription.id) // Exclude the current expired Apple subscription
+            .limit(1)
+          
+          // Only downgrade if no other active subscriptions exist AND user doesn't have manual pro status
+          if (!otherSubscriptions || otherSubscriptions.length === 0) {
+            if (currentProfile?.pro === 'yes') {
+              logger.info('✅ User has pro=yes in profile (likely manual/Stripe upgrade), preserving pro status despite expired Apple subscription')
+              // Don't downgrade - user may have been manually upgraded or have Stripe subscription
+            } else {
+              logger.warn('⚠️ No other active subscriptions found and profile not manually pro, updating profile status to no')
+              try {
+                await supabase
+                  .from('profiles')
+                  .update({ pro: 'no', updated_at: new Date().toISOString() })
+                  .eq('id', user.id)
+              } catch (updateError) {
+                logger.error('❌ Failed to update expired subscription status:', updateError)
+              }
+            }
+          } else {
+            logger.info('✅ User has other active subscriptions, keeping pro status')
+          }
+        }
+
+        // For expired Apple subscriptions, check if user has manual pro status
+        if (!isActive && currentProfile?.pro === 'yes') {
+          logger.info('✅ Apple subscription expired but profile has pro=yes, returning active status')
+          return {
+            isActive: true, // Override with manual pro status
+            productId: subscription.price_id,
+            expirationDate: expirationDate,
+            isTrialPeriod: false,
           }
         }
 
@@ -706,7 +796,7 @@ class ModernStoreKitService {
           isActive,
           productId: subscription.price_id,
           expirationDate: expirationDate,
-          isTrialPeriod: false
+          isTrialPeriod: false,
         }
       }
 
@@ -723,8 +813,8 @@ class ModernStoreKitService {
         logger.info('📋 Found inactive subscription:', {
           id: anySubscription.id,
           status: anySubscription.status,
-          expirationDate: anySubscription.current_period_end
-        });
+          expirationDate: anySubscription.current_period_end,
+        })
       }
 
       // Fallback to profile check
@@ -735,35 +825,38 @@ class ModernStoreKitService {
         .single()
 
       if (profileError) {
-        logger.error('❌ Error fetching profile:', profileError);
+        logger.error('❌ Error fetching profile:', profileError)
         return { isActive: false }
       }
 
-      const isProFromProfile = profile?.pro === 'yes';
-      
+      const isProFromProfile = profile?.pro === 'yes'
+
       logger.info('📋 Profile pro status:', {
         userId: user.id,
         proStatus: profile?.pro,
-        isActive: isProFromProfile
-      });
+        isActive: isProFromProfile,
+      })
 
-      // If profile says pro but no active subscription, this might be inconsistent
+      // If profile says pro but no active subscription, this might be a manual upgrade or Stripe subscription
       if (isProFromProfile && !subscription) {
-        logger.warn('⚠️ Profile shows pro=yes but no active subscription found. This may indicate a sync issue.');
-        
-        // Try to restore purchases to sync any missing subscriptions
+        logger.info(
+          '📋 Profile shows pro=yes but no Apple subscription found. This could be a manual upgrade, Stripe subscription, or promotional access.'
+        )
+
+        // Only try to restore Apple purchases if this could potentially be an Apple subscription issue
+        // Don't downgrade users who may have been manually upgraded or have Stripe subscriptions
         if (this.isStoreKitAvailable()) {
           try {
-            logger.info('🔄 Attempting to sync with Apple subscriptions...');
-            await this.syncWithAppleSubscriptions();
+            logger.info('🔄 Checking for any missing Apple subscriptions...')
+            await this.syncWithAppleSubscriptions()
           } catch (syncError) {
-            logger.warn('⚠️ Could not sync with Apple subscriptions:', syncError);
+            logger.warn('⚠️ Could not sync with Apple subscriptions (this is normal for non-Apple subscribers):', syncError)
           }
         }
       }
 
       return {
-        isActive: isProFromProfile
+        isActive: isProFromProfile,
       }
     } catch (error) {
       logger.error('❌ Error checking subscription status:', error)
@@ -777,26 +870,26 @@ class ModernStoreKitService {
    */
   private async syncWithAppleSubscriptions(): Promise<void> {
     if (!this.isStoreKitAvailable()) {
-      return;
+      return
     }
 
     try {
       // Initialize if needed
       if (!this.isConnected) {
-        await this.initialize();
+        await this.initialize()
       }
 
       // Try to restore purchases to get latest Apple subscription state
-      const restoredPurchases = await this.restorePurchases();
-      
+      const restoredPurchases = await this.restorePurchases()
+
       if (restoredPurchases.length > 0) {
-        logger.info('✅ Synced with Apple subscriptions:', restoredPurchases.length);
+        logger.info('✅ Synced with Apple subscriptions:', restoredPurchases.length)
       } else {
-        logger.info('📱 No Apple subscriptions found to sync');
+        logger.info('📱 No Apple subscriptions found to sync')
       }
     } catch (error) {
-      logger.error('❌ Failed to sync with Apple subscriptions:', error);
-      throw error;
+      logger.error('❌ Failed to sync with Apple subscriptions:', error)
+      throw error
     }
   }
 
@@ -810,12 +903,12 @@ class ModernStoreKitService {
 
     try {
       const mockTransactionId = `dev_txn_${Date.now()}`
-      
+
       // Simulate transaction validation
       const validationResult = await this.validateTransactionWithServer({
         transactionId: mockTransactionId,
         originalTransactionId: mockTransactionId,
-        productId
+        productId,
       })
 
       return {
@@ -825,7 +918,7 @@ class ModernStoreKitService {
         originalTransactionId: mockTransactionId,
         serverValidated: validationResult.success,
         validationAttempts: 1,
-        error: validationResult.error
+        error: validationResult.error,
       }
     } catch (error) {
       logger.error('❌ Mock purchase failed:', error)
@@ -833,7 +926,7 @@ class ModernStoreKitService {
         success: false,
         error: 'Mock purchase simulation failed',
         serverValidated: false,
-        validationAttempts: 0
+        validationAttempts: 0,
       }
     }
   }
@@ -847,11 +940,11 @@ class ModernStoreKitService {
 
   private isSimulator(): boolean {
     if (Platform.OS !== 'ios') return false
-    
+
     const isSimulator =
       Platform.constants.systemName === 'iOS' &&
       (Platform.constants as any).model?.includes('Simulator')
-    
+
     return isSimulator
   }
 
@@ -864,19 +957,19 @@ class ModernStoreKitService {
     if (this.isSimulator()) {
       return 'sandbox'
     }
-    
+
     // Force sandbox for now - TestFlight detection is unreliable
     // TODO: Only use production for actual App Store builds
     return 'sandbox'
-    
+
     // Check if this is a TestFlight build
     const isTestFlight = this.isTestFlightBuild()
-    
+
     // Development builds and TestFlight use sandbox
     if (__DEV__ || isTestFlight) {
       return 'sandbox'
     }
-    
+
     // Only App Store builds use production
     return 'production'
   }
@@ -887,11 +980,13 @@ class ModernStoreKitService {
    */
   private isTestFlightBuild(): boolean {
     if (Platform.OS !== 'ios') return false
-    
+
     // TestFlight builds have a specific app bundle structure
     // This is the most reliable way to detect TestFlight in React Native
     try {
-      const bundlePath = Platform.constants.bundlePath || ''
+      // Check if this is a TestFlight build using available constants
+      const constants = Platform.constants as any
+      const bundlePath = constants.bundlePath || ''
       return bundlePath.includes('Application') && !bundlePath.includes('Simulator')
     } catch (error) {
       // Fallback: assume sandbox for safety
@@ -948,7 +1043,6 @@ export const cleanupSubscriptionForAccountDeletion = async (userId: string) => {
     // Note: Apple handles subscription cancellation automatically when account is deleted
     // The backend delete-account API already removes pro_subscriptions records
     // This function serves as an audit log and future extension point
-    console.log(`🧹 iOS subscription cleanup for account deletion: ${userId}`)
     return Promise.resolve()
   } catch (error) {
     console.error('❌ Error during StoreKit subscription cleanup:', error)

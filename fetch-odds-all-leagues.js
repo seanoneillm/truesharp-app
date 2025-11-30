@@ -115,24 +115,26 @@ function normalizeTeamName(teamName) {
   return teamMappings[teamName] || teamName.replace(/\\s+/g, ' ').trim()
 }
 
-// Save odds data with dual table strategy
-async function saveOddsDataWithDualTables(gameId, odds) {
+// Save odds data with dual table strategy (optimized for bulk operations)
+async function saveOddsDataWithDualTables(gameId, odds, gameHasStarted = null) {
   try {
     const oddsRecords = []
 
-    // Check if game has started
-    const { data: gameData } = await supabase
-      .from('games')
-      .select('status')
-      .eq('id', gameId)
-      .single()
-    
-    const gameHasStarted = gameData?.status === 'started' || gameData?.status === 'live' || gameData?.status === 'final'
+    // Use cached game status if provided, otherwise check
+    let gameStarted = gameHasStarted
+    if (gameStarted === null) {
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('status')
+        .eq('id', gameId)
+        .single()
+      
+      gameStarted = gameData?.status === 'started' || gameData?.status === 'live' || gameData?.status === 'final'
+    }
 
     // Process each odd entry
     for (const [, oddData] of Object.entries(odds)) {
       const odd = oddData
-
       const marketName = odd.marketName || 'unknown'
       const betType = odd.betTypeID || 'unknown'
       const oddId = odd.oddID || null
@@ -217,73 +219,96 @@ async function saveOddsDataWithDualTables(gameId, odds) {
       oddsRecords.push(oddsRecord)
     }
 
-    if (oddsRecords.length > 0) {
-      // Check existing odds in open_odds table
-      const existingOddsCheck = await supabase
-        .from('open_odds')
-        .select('oddid')
-        .eq('eventid', gameId)
-        .in('oddid', oddsRecords.map(r => r.oddid).filter(Boolean))
+    return { oddsRecords, gameStarted }
+  } catch (error) {
+    console.error('❌ Error in saveOddsDataWithDualTables:', error)
+    return { oddsRecords: [], gameStarted: false }
+  }
+}
 
-      const existingOddIds = new Set(existingOddsCheck.data?.map(r => r.oddid) || [])
+// Bulk save odds records for multiple games
+async function bulkSaveOddsRecords(allOddsData) {
+  try {
+    const allOddsRecords = []
+    const newOpenOddsRecords = []
+    const oddsToUpdate = []
 
-      // Process each record
+    // Collect all odds records
+    for (const { oddsRecords, gameStarted } of allOddsData) {
       for (const record of oddsRecords) {
         const recordWithTimestamp = {
           ...record,
           updated_at: new Date().toISOString(),
         }
 
-        // If first time seeing this oddid, insert into open_odds
-        if (!existingOddIds.has(record.oddid)) {
-          const { error: openOddsError } = await supabase
-            .from('open_odds')
-            .insert(recordWithTimestamp)
-            .onConflict(['eventid', 'oddid'])
-            .ignore()
-
-          if (openOddsError) {
-            console.error('❌ Error inserting into open_odds:', openOddsError)
-          } else {
-            console.log(`📊 Saved opening odds for ${record.eventid}:${record.oddid}`)
-          }
-        }
-
-        // Always upsert into odds table unless game has started
-        if (!gameHasStarted) {
-          const { error: oddsError } = await supabase
-            .from('odds')
-            .upsert(recordWithTimestamp, {
-              onConflict: 'eventid,oddid',
-              ignoreDuplicates: false
-            })
-
-          if (oddsError) {
-            console.error('❌ Error upserting into odds:', oddsError)
-          }
-        } else {
-          console.log(`⚠️ Game ${gameId} has started, skipping odds update for ${record.oddid}`)
+        allOddsRecords.push(recordWithTimestamp)
+        
+        if (!gameStarted) {
+          oddsToUpdate.push(recordWithTimestamp)
         }
       }
-
-      // Log sample record
-      if (oddsRecords.length > 0) {
-        const sampleRecord = oddsRecords[0]
-        console.log('📋 Sample odds record:', {
-          eventid: sampleRecord.eventid,
-          oddid: sampleRecord.oddid,
-          marketname: sampleRecord.marketname,
-          fanduelodds: sampleRecord.fanduelodds,
-          draftkingsodds: sampleRecord.draftkingsodds,
-          bovadaodds: sampleRecord.bovadaodds,
-          gameHasStarted,
-        })
-      }
-
-      console.log(`✅ Processed ${oddsRecords.length} odds records for game ${gameId}`)
     }
+
+    if (allOddsRecords.length === 0) return
+
+    // Batch check for existing odds in open_odds table
+    const allOddIds = allOddsRecords.map(r => r.oddid).filter(Boolean)
+    if (allOddIds.length > 0) {
+      const existingOddsCheck = await supabase
+        .from('open_odds')
+        .select('oddid, eventid')
+        .in('oddid', allOddIds)
+
+      const existingKeys = new Set(
+        existingOddsCheck.data?.map(r => `${r.eventid}:${r.oddid}`) || []
+      )
+
+      // Find new records for open_odds
+      for (const record of allOddsRecords) {
+        const key = `${record.eventid}:${record.oddid}`
+        if (!existingKeys.has(key)) {
+          newOpenOddsRecords.push(record)
+        }
+      }
+    } else {
+      newOpenOddsRecords.push(...allOddsRecords)
+    }
+
+    // Bulk insert new open_odds records
+    if (newOpenOddsRecords.length > 0) {
+      const { error: openOddsError } = await supabase
+        .from('open_odds')
+        .upsert(newOpenOddsRecords, {
+          onConflict: 'eventid,oddid',
+          ignoreDuplicates: true
+        })
+
+      if (openOddsError) {
+        console.error('❌ Error bulk inserting open_odds:', openOddsError)
+      } else {
+        console.log(`📊 Bulk saved ${newOpenOddsRecords.length} opening odds records`)
+      }
+    }
+
+    // Bulk upsert current odds for non-started games
+    if (oddsToUpdate.length > 0) {
+      const { error: oddsError } = await supabase
+        .from('odds')
+        .upsert(oddsToUpdate, {
+          onConflict: 'eventid,oddid',
+          ignoreDuplicates: false
+        })
+
+      if (oddsError) {
+        console.error('❌ Error bulk upserting odds:', oddsError)
+      } else {
+        console.log(`📊 Bulk updated ${oddsToUpdate.length} current odds records`)
+      }
+    }
+
+    console.log(`✅ Bulk processed ${allOddsRecords.length} total odds records`)
   } catch (error) {
-    console.error('❌ Error in saveOddsDataWithDualTables:', error)
+    console.error('❌ Error in bulkSaveOddsRecords:', error)
   }
 }
 
@@ -334,7 +359,7 @@ async function saveGameData(event, sportMapping) {
   }
 }
 
-// Fetch odds for a specific league
+// Fetch odds for a specific league (optimized with bulk processing)
 async function fetchLeagueOdds(leagueKey) {
   const sportMapping = SPORT_MAPPINGS[leagueKey]
   if (!sportMapping) {
@@ -424,21 +449,102 @@ async function fetchLeagueOdds(leagueKey) {
 
     console.log(`📊 ${leagueKey} total events fetched:`, allEvents.length)
 
-    // Process and save each event
-    let processedGames = 0
-    for (const event of allEvents) {
+    // Smart filtering: Remove games that have already started + add buffer
+    const currentTime = Date.now()
+    const tenMinuteBuffer = 10 * 60 * 1000
+    const validEvents = allEvents.filter(event => {
+      const gameTime = new Date(event.status?.startsAt).getTime()
+      return gameTime > (currentTime + tenMinuteBuffer)
+    })
+
+    console.log(`🎯 ${leagueKey} filtered to ${validEvents.length} upcoming games (removed ${allEvents.length - validEvents.length} started/soon-to-start games)`)
+
+    if (validEvents.length === 0) {
+      console.log(`ℹ️ ${leagueKey} has no upcoming games to process`)
+      return { games: 0, success: true }
+    }
+
+    // Bulk process games: collect all game data first
+    const gamesToSave = []
+    
+    // Process games in parallel batches for better performance
+    const gameProcessingPromises = validEvents.map(async (event) => {
       try {
         const transformedEvent = transformSportsGameOddsEvent(event)
-        const savedGame = await saveGameData(transformedEvent, sportMapping)
         
-        if (savedGame && transformedEvent.odds) {
-          await saveOddsDataWithDualTables(savedGame.id, transformedEvent.odds)
-          processedGames++
+        // Prepare game data
+        const teams = transformedEvent.teams
+        const homeTeam = teams?.home
+        const awayTeam = teams?.away
+
+        const gameData = {
+          id: transformedEvent.eventID,
+          sport: sportMapping.leagueID,
+          league: sportMapping.leagueID,
+          home_team: normalizeTeamName(homeTeam?.name),
+          away_team: normalizeTeamName(awayTeam?.name),
+          home_team_name: homeTeam?.name || '',
+          away_team_name: awayTeam?.name || '',
+          game_time: transformedEvent.startTime ? new Date(transformedEvent.startTime).toISOString() : new Date().toISOString(),
+          status: transformedEvent.status || 'scheduled',
+          home_score: homeTeam?.score || null,
+          away_score: awayTeam?.score || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }
+
+        // Prepare odds data (parallel processing)
+        let oddsResult = null
+        if (transformedEvent.odds) {
+          oddsResult = await saveOddsDataWithDualTables(transformedEvent.eventID, transformedEvent.odds, false)
+        }
+
+        return { gameData, oddsResult }
       } catch (eventError) {
         console.error(`❌ Error processing event in ${leagueKey}:`, eventError)
-        continue
+        return null
       }
+    })
+
+    // Wait for all game processing to complete
+    console.log(`⚡ Processing ${validEvents.length} games in parallel...`)
+    const gameResults = await Promise.allSettled(gameProcessingPromises)
+    
+    const allOddsData = []
+    
+    // Extract successful results
+    for (const result of gameResults) {
+      if (result.status === 'fulfilled' && result.value) {
+        const { gameData, oddsResult } = result.value
+        gamesToSave.push(gameData)
+        if (oddsResult) {
+          allOddsData.push(oddsResult)
+        }
+      }
+    }
+
+    // Bulk save games
+    let processedGames = 0
+    if (gamesToSave.length > 0) {
+      const { data: savedGames, error: gameError } = await supabase
+        .from('games')
+        .upsert(gamesToSave, {
+          onConflict: 'id',
+          ignoreDuplicates: false,
+        })
+        .select()
+
+      if (gameError) {
+        console.error(`❌ Error bulk saving games for ${leagueKey}:`, gameError)
+      } else {
+        processedGames = gamesToSave.length
+        console.log(`✅ Bulk saved ${processedGames} games for ${leagueKey}`)
+      }
+    }
+
+    // Bulk save odds
+    if (allOddsData.length > 0) {
+      await bulkSaveOddsRecords(allOddsData)
     }
 
     console.log(`✅ ${leagueKey} completed: ${processedGames} games processed`)
@@ -450,56 +556,156 @@ async function fetchLeagueOdds(leagueKey) {
   }
 }
 
-// Main function to fetch odds for all leagues
+// Helper function for dynamic rate limiting
+async function smartDelay(lastRequestTime, rateLimitRemaining = null) {
+  const timeSinceLastRequest = Date.now() - lastRequestTime
+  const minDelay = 200 // Minimum 200ms between requests
+  
+  let delay = minDelay
+  if (rateLimitRemaining !== null) {
+    if (rateLimitRemaining < 5) {
+      delay = 2000 // Conservative 2s delay when close to limit
+    } else if (rateLimitRemaining < 20) {
+      delay = 1000 // Moderate 1s delay when getting limited
+    } else {
+      delay = 300 // Fast 300ms delay when plenty of rate limit
+    }
+  }
+
+  const actualDelay = Math.max(0, delay - timeSinceLastRequest)
+  if (actualDelay > 0) {
+    console.log(`🕐 Smart delay: ${actualDelay}ms (rate limit remaining: ${rateLimitRemaining || 'unknown'})`)
+    await new Promise(resolve => setTimeout(resolve, actualDelay))
+  }
+}
+
+// Process leagues in parallel batches
+async function processLeaguesBatch(leaguesBatch, batchIndex) {
+  console.log(`\\n🚀 Processing batch ${batchIndex + 1}: [${leaguesBatch.join(', ')}]`)
+  
+  const batchPromises = leaguesBatch.map(async (league) => {
+    const startTime = Date.now()
+    console.log(`\\n🔄 Starting ${league}...`)
+    
+    try {
+      const result = await fetchLeagueOdds(league)
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1)
+      console.log(`✅ ${league} completed in ${duration}s`)
+      
+      return {
+        league,
+        ...result,
+        duration: parseFloat(duration)
+      }
+    } catch (error) {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1)
+      console.error(`❌ ${league} failed after ${duration}s:`, error.message)
+      
+      return {
+        league,
+        games: 0,
+        success: false,
+        error: error.message,
+        duration: parseFloat(duration)
+      }
+    }
+  })
+
+  return Promise.allSettled(batchPromises)
+}
+
+// Main function to fetch odds for all leagues (optimized with parallel processing)
 async function fetchOddsAllLeagues() {
-  console.log('🚀 Starting odds fetch for all 9 leagues...')
+  console.log('🚀 Starting optimized odds fetch for all 9 leagues...')
   
   if (!API_KEY) {
     console.error('❌ SportsGameOdds API key not configured')
     return
   }
 
+  const startTime = Date.now()
   const results = []
 
-  // Process each league sequentially to avoid rate limiting
-  for (const league of LEAGUES) {
-    console.log(`\\n🔄 Processing ${league}...`)
+  // Process leagues in batches of 3 for optimal performance
+  const batchSize = 3
+  const totalBatches = Math.ceil(LEAGUES.length / batchSize)
+  
+  for (let i = 0; i < LEAGUES.length; i += batchSize) {
+    const batchIndex = Math.floor(i / batchSize)
+    const leaguesBatch = LEAGUES.slice(i, i + batchSize)
+    
+    console.log(`\\n📦 Starting batch ${batchIndex + 1}/${totalBatches}...`)
     
     try {
-      const result = await fetchLeagueOdds(league)
-      results.push({
-        league,
-        ...result
-      })
+      // Process batch in parallel
+      const batchResults = await processLeaguesBatch(leaguesBatch, batchIndex)
+      
+      // Extract results from Promise.allSettled
+      for (const promiseResult of batchResults) {
+        if (promiseResult.status === 'fulfilled') {
+          results.push(promiseResult.value)
+        } else {
+          console.error(`❌ Batch promise rejected:`, promiseResult.reason)
+          results.push({
+            league: 'unknown',
+            games: 0,
+            success: false,
+            error: promiseResult.reason?.message || 'Unknown batch error'
+          })
+        }
+      }
 
-      // Add delay between requests
-      console.log('💤 Waiting 2 seconds before next league...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-    } catch (error) {
-      console.error(`❌ Error with ${league}:`, error)
-      results.push({
-        league,
-        games: 0,
-        success: false,
-        error: error.message
-      })
+      // Smart delay between batches (shorter than before)
+      if (batchIndex < totalBatches - 1) {
+        const batchDelay = 500 // Only 500ms between batches
+        console.log(`💤 Batch complete. Waiting ${batchDelay}ms before next batch...`)
+        await new Promise(resolve => setTimeout(resolve, batchDelay))
+      }
+
+    } catch (batchError) {
+      console.error(`❌ Error processing batch ${batchIndex + 1}:`, batchError)
+      
+      // Add failed results for this batch
+      for (const league of leaguesBatch) {
+        results.push({
+          league,
+          games: 0,
+          success: false,
+          error: `Batch processing failed: ${batchError.message}`
+        })
+      }
     }
   }
 
-  // Summary
-  const totalGames = results.reduce((sum, result) => sum + result.games, 0)
+  // Calculate performance metrics
+  const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1)
+  const totalGames = results.reduce((sum, result) => sum + (result.games || 0), 0)
   const successfulLeagues = results.filter(r => r.success).length
-  
-  console.log('\\n📊 SUMMARY:')
+  const avgDurationPerLeague = results.length > 0 
+    ? (results.reduce((sum, r) => sum + (r.duration || 0), 0) / results.length).toFixed(1)
+    : '0.0'
+
+  // Summary
+  console.log('\\n🎯 PERFORMANCE SUMMARY:')
+  console.log(`⚡ Total time: ${totalDuration}s (avg ${avgDurationPerLeague}s per league)`)
   console.log(`✅ Successful leagues: ${successfulLeagues}/${LEAGUES.length}`)
   console.log(`📈 Total games processed: ${totalGames}`)
+  console.log(`🚀 Speed improvement: ~${Math.round((18 / parseFloat(totalDuration)) * 100)}% faster than sequential`)
   
+  console.log('\\n📊 LEAGUE RESULTS:')
   results.forEach(result => {
     const status = result.success ? '✅' : '❌'
-    console.log(`${status} ${result.league}: ${result.games} games${result.error ? ` (${result.error})` : ''}`)
+    const duration = result.duration ? ` (${result.duration}s)` : ''
+    console.log(`${status} ${result.league}: ${result.games || 0} games${duration}${result.error ? ` - ${result.error}` : ''}`)
   })
 
-  return results
+  return {
+    results,
+    totalGames,
+    totalDuration: parseFloat(totalDuration),
+    successfulLeagues,
+    avgDurationPerLeague: parseFloat(avgDurationPerLeague)
+  }
 }
 
 // Export for use

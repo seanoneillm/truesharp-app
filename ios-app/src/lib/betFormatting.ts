@@ -158,9 +158,32 @@ function createMainDescription(bet: BetData): string {
 function formatOdds(odds: string | number): string {
   const numOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
   
-  if (isNaN(numOdds)) return '+100';
+  if (isNaN(numOdds) || !isFinite(numOdds)) return '+100';
   
   return numOdds > 0 ? `+${numOdds}` : `${numOdds}`;
+}
+
+/**
+ * Format odds with fallback calculation when infinity is detected
+ */
+function formatOddsWithCalculation(odds: string | number, stake?: number, potentialPayout?: number): string {
+  const numOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
+  
+  // If odds are finite, format normally
+  if (typeof numOdds === 'number' && isFinite(numOdds)) {
+    return numOdds > 0 ? `+${numOdds}` : `${numOdds}`;
+  }
+  
+  // If odds are infinity but we have stake and payout, calculate the actual odds
+  if (stake && potentialPayout && stake > 0 && potentialPayout > 0) {
+    const decimalOdds = potentialPayout / stake;
+    const calculatedOdds = decimalOdds >= 2 
+      ? Math.round((decimalOdds - 1) * 100)
+      : Math.round(-100 / (decimalOdds - 1));
+    return calculatedOdds > 0 ? `+${calculatedOdds}` : `${calculatedOdds}`;
+  }
+  
+  return '+100'; // Fallback
 }
 
 /**
@@ -295,7 +318,18 @@ export function getTwoLineBetDescription(bet: BetData): { line1: string; line2: 
       // Parse prop type from oddid if prop_type is null or fallback to 'Points'
       let propType = 'Points';
       
-      if (bet.prop_type) {
+      // First, check oddid for multi-stat combinations (takes priority)
+      if ((bet as any).oddid) {
+        const oddid = (bet as any).oddid;
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+      
+      // If not a multi-stat combination, use prop_type from database
+      if (propType === 'Points' && bet.prop_type) {
         // Convert prop_type from database format to display format
         const propTypeStr = bet.prop_type.toString();
         if (propTypeStr === 'home_runs') propType = 'Home Runs';
@@ -315,36 +349,12 @@ export function getTwoLineBetDescription(bet: BetData): { line1: string; line2: 
           // For other prop types, replace underscores and capitalize
           propType = propTypeStr.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
-      } else if ((bet as any).oddid) {
-        // If prop_type is null, parse from oddid
+      } else if (propType === 'Points' && (bet as any).oddid) {
+        // Final fallback: parse single stats from oddid
         const oddid = (bet as any).oddid;
-        const parts = oddid.split('-');
-        if (parts.length > 0) {
-          const statPart = parts[0];
-          if (statPart === 'touchdowns') propType = 'Touchdowns';
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs';
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs';
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs';
-          else if (statPart === 'passing_yards') propType = 'Passing Yards';
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards';
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards';
-          else if (statPart === 'batting_hits') propType = 'Hits';
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs';
-          else if (statPart === 'batting_rbi') propType = 'RBIs';
-          else if (statPart === 'batting_runs') propType = 'Runs';
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases';
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases';
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts';
-          else if (statPart === 'rebounds') propType = 'Rebounds';
-          else if (statPart === 'assists') propType = 'Assists';
-          else if (statPart === 'steals') propType = 'Steals';
-          else if (statPart === 'blocks') propType = 'Blocks';
-          else if (statPart === 'goals') propType = 'Goals';
-          else if (statPart === 'saves') propType = 'Saves';
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        if (parsedFromOddid) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
         }
       }
       
@@ -376,6 +386,61 @@ function getTeamNameFromSide(bet: BetData): string | null {
   
   // For other sides (like Over/Under), return as-is
   return bet.side;
+}
+
+/**
+ * Parse multi-stat oddids to display combined stats properly
+ * e.g. "rushing+receiving_yards" -> "rushing + receiving yards"
+ * e.g. "points+rebounds+assists" -> "points + rebounds + assists"
+ */
+export function parseMultiStatOddid(oddid: string): string {
+  if (!oddid) return '';
+
+  // Split the oddid by dashes to get the stat part
+  const parts = oddid.split('-');
+  if (parts.length === 0) return '';
+  
+  const statPart = parts[0];
+  
+  // Check if it contains multiple stats separated by +
+  if (statPart.includes('+')) {
+    const stats = statPart.split('+');
+    return stats.map(stat => {
+      // Convert stat name to display format
+      if (stat === 'receiving_yards') return 'receiving yards';
+      if (stat === 'rushing_yards') return 'rushing yards';
+      if (stat === 'passing_yards') return 'passing yards';
+      if (stat === 'passing_touchdowns') return 'passing TDs';
+      if (stat === 'rushing_touchdowns') return 'rushing TDs';
+      if (stat === 'receiving_touchdowns') return 'receiving TDs';
+      if (stat === 'home_runs') return 'home runs';
+      if (stat === 'total_bases') return 'total bases';
+      if (stat === 'stolen_bases') return 'stolen bases';
+      if (stat === 'field_goals') return 'field goals';
+      if (stat === 'three_pointers') return '3-pointers';
+      if (stat === 'free_throws') return 'free throws';
+      
+      // For other stats, replace underscores with spaces
+      return stat.replace(/_/g, ' ');
+    }).join(' + ');
+  } else {
+    // Single stat - convert to display format
+    if (statPart === 'receiving_yards') return 'receiving yards';
+    if (statPart === 'rushing_yards') return 'rushing yards';
+    if (statPart === 'passing_yards') return 'passing yards';
+    if (statPart === 'passing_touchdowns') return 'passing TDs';
+    if (statPart === 'rushing_touchdowns') return 'rushing TDs';
+    if (statPart === 'receiving_touchdowns') return 'receiving TDs';
+    if (statPart === 'home_runs') return 'home runs';
+    if (statPart === 'total_bases') return 'total bases';
+    if (statPart === 'stolen_bases') return 'stolen bases';
+    if (statPart === 'field_goals') return 'field goals';
+    if (statPart === 'three_pointers') return '3-pointers';
+    if (statPart === 'free_throws') return 'free throws';
+    
+    // For other stats, replace underscores with spaces
+    return statPart.replace(/_/g, ' ');
+  }
 }
 
 /**

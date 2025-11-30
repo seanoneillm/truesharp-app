@@ -42,9 +42,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const session = await authService.getSession();
       if (session?.user) {
         setUser(session.user);
+      } else {
+        // Session may have expired, clear user state
+        setUser(null);
       }
     } catch (error) {
-      console.error('Error checking session:', error);
+      // On session error, clear user state to force re-login
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -93,7 +97,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authService.signOut();
       setUser(null);
     } catch (error) {
-      console.error('Error signing out:', error);
+      // Signing out failed, but continue
     } finally {
       setLoading(false);
     }
@@ -110,7 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         username: profile?.username,
       });
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      // Error refreshing profile, continue silently
     }
   };
 

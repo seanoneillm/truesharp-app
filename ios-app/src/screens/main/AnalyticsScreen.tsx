@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Animated, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler'
+// import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler' // Removed due to iOS pod conflicts
 import { SafeAreaView } from 'react-native-safe-area-context'
 import TrueSharpShield from '../../components/common/TrueSharpShield'
 import { Environment } from '../../config/environment'
@@ -13,6 +13,7 @@ import {
   AnalyticsFilters,
   fetchAnalyticsData,
 } from '../../services/supabaseAnalytics'
+import { ParlayGroup } from '../../services/parlayGrouping'
 import { globalStyles } from '../../styles/globalStyles'
 import { theme } from '../../styles/theme'
 
@@ -22,7 +23,13 @@ import BetsTab from '../../components/analytics/BetsTab'
 import OverviewTab from '../../components/analytics/OverviewTab'
 import SmartFilters, { SmartFiltersRef } from '../../components/analytics/SmartFilters'
 import StrategiesTab from '../../components/analytics/StrategiesTab'
+import BetDetailsModal from '../../components/analytics/BetDetailsModal'
 import { DEFAULT_FILTERS } from '../../config/filterConfig'
+import { UnitDisplayOptions } from '../../utils/unitCalculations'
+import { fetchAnalyticsSettings } from '../../services/analyticsSettingsService'
+import { AnalyticsSettings } from '../../components/analytics/AnalyticsSettingsModal'
+import { filterAnalyticsData } from '../../utils/betFiltering'
+import { useProAccess } from '../../contexts/SubscriptionContext'
 
 type AnalyticsTabType = 'overview' | 'bets' | 'analytics' | 'strategies'
 
@@ -30,6 +37,7 @@ const defaultFilters: AnalyticsFilters = DEFAULT_FILTERS
 
 export default function AnalyticsScreen({ route }: { route?: any }) {
   const { user } = useAuth()
+  const { isProUser, isLoading: proLoading } = useProAccess()
   const smartFiltersRef = useRef<SmartFiltersRef>(null)
   const [activeTab, setActiveTab] = useState<AnalyticsTabType>(
     route?.params?.initialTab || 'overview'
@@ -39,6 +47,8 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [showUnits, setShowUnits] = useState(false)
+  const [analyticsSettings, setAnalyticsSettings] = useState<AnalyticsSettings | null>(null)
 
   // SharpSports integration state
   const [showSharpSportsModal, setShowSharpSportsModal] = useState(false)
@@ -46,6 +56,11 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
 
   // New state variables for comprehensive refresh functionality
   const [isRefreshingBets, setIsRefreshingBets] = useState(false)
+
+  // Bet details modal state
+  const [selectedBetId, setSelectedBetId] = useState<string | null>(null)
+  const [selectedParlayGroup, setSelectedParlayGroup] = useState<ParlayGroup | null>(null)
+  const [showBetDetailsModal, setShowBetDetailsModal] = useState(false)
   
   // Animation for spinning refresh icon
   const spinValue = useRef(new Animated.Value(0)).current
@@ -83,10 +98,33 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
     }
   }, [user?.id, filters])
 
+  // Load analytics settings
+  const loadAnalyticsSettings = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const settings = await fetchAnalyticsSettings(user.id)
+      setAnalyticsSettings(settings)
+    } catch (error) {
+      console.error('Error loading analytics settings:', error)
+    }
+  }, [user?.id])
+
+  // Debug pro status
+  useEffect(() => {
+    console.log('🔍 Analytics Pro Status Debug:', {
+      isProUser,
+      proLoading,
+      userId: user?.id,
+      timestamp: new Date().toISOString()
+    });
+  }, [isProUser, proLoading, user?.id])
+
   // Initial load
   useEffect(() => {
     loadAnalyticsData()
-  }, [loadAnalyticsData])
+    loadAnalyticsSettings()
+  }, [loadAnalyticsData, loadAnalyticsSettings])
 
   // Handle refresh
   const onRefresh = async () => {
@@ -259,6 +297,30 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
     loadAnalyticsData()
   }
 
+  // Handle bet click
+  const handleBetPress = (betId: string, parlayGroup?: ParlayGroup) => {
+    setSelectedBetId(betId)
+    setSelectedParlayGroup(parlayGroup || null)
+    setShowBetDetailsModal(true)
+  }
+
+  // Handle units toggle
+  const handleToggleUnits = () => {
+    setShowUnits(!showUnits)
+  }
+
+  // Handle analytics settings update
+  const handleAnalyticsSettingsUpdate = (newSettings: AnalyticsSettings) => {
+    setAnalyticsSettings(newSettings)
+  }
+
+  // Handle bet details modal close
+  const handleBetDetailsClose = () => {
+    setShowBetDetailsModal(false)
+    setSelectedBetId(null)
+    setSelectedParlayGroup(null)
+  }
+
   const tabs = [
     { key: 'overview', label: 'Overview', icon: 'stats-chart' },
     { key: 'bets', label: 'Bets', icon: 'list' },
@@ -266,48 +328,46 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
     { key: 'strategies', label: 'Strategies', icon: 'bulb' },
   ] as const
 
-  // Handle swipe gestures between tabs
-  const handleSwipe = useCallback(
-    (event: any) => {
-      const { translationX, state } = event.nativeEvent
+  // Swipe gestures removed due to gesture handler conflicts
 
-      if (state === State.END) {
-        const currentIndex = tabs.findIndex(tab => tab.key === activeTab)
-
-        if (translationX > 50 && currentIndex > 0) {
-          // Swipe right - go to previous tab
-          setActiveTab(tabs[currentIndex - 1].key as AnalyticsTabType)
-        } else if (translationX < -50 && currentIndex < tabs.length - 1) {
-          // Swipe left - go to next tab
-          setActiveTab(tabs[currentIndex + 1].key as AnalyticsTabType)
-        }
-      }
-    },
-    [activeTab, tabs]
-  )
+  // Create unit display options using user's actual unit size from settings
+  const unitOptions: UnitDisplayOptions = {
+    showUnits,
+    unitSize: analyticsSettings?.unit_size || 1000, // Use user's unit size or default $10
+  }
 
   const renderTabContent = () => {
     if (!analyticsData) return null
+
+    // Apply TrueSharp filtering based on analytics settings
+    const filteredAnalyticsData = filterAnalyticsData(analyticsData, analyticsSettings)
 
     switch (activeTab) {
       case 'overview':
         return (
           <OverviewTab
-            analyticsData={analyticsData}
+            analyticsData={filteredAnalyticsData}
             loading={loading}
             onRefresh={onRefresh}
             filters={filters}
+            onBetPress={handleBetPress}
+            userId={user?.id}
+            showUnits={showUnits}
+            onToggleUnits={handleToggleUnits}
+            onAnalyticsSettingsUpdate={handleAnalyticsSettingsUpdate}
           />
         )
       case 'bets':
-        return <BetsTab bets={analyticsData.recentBets} loading={loading} onRefresh={onRefresh} />
+        return <BetsTab bets={filteredAnalyticsData.recentBets} loading={loading} onRefresh={onRefresh} onBetPress={handleBetPress} unitOptions={unitOptions} />
       case 'analytics':
         return (
           <AnalyticsTab
-            analyticsData={analyticsData}
+            analyticsData={filteredAnalyticsData}
             loading={loading}
             onRefresh={onRefresh}
             filters={filters}
+            unitOptions={unitOptions}
+            isProUser={isProUser}
           />
         )
       case 'strategies':
@@ -318,7 +378,7 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={globalStyles.safeArea} edges={['left', 'right']}>
         <View style={styles.container}>
           {/* Tab Navigation */}
@@ -409,21 +469,38 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
                 setFilters(clearedFilters)
                 handleFiltersChange(clearedFilters)
               }}
+              isProUser={isProUser}
             />
           )}
 
-          {/* Tab Content with Swipe Gesture */}
+          {/* Tab Content */}
           <View style={styles.tabContent}>
-            <PanGestureHandler onHandlerStateChange={handleSwipe}>
-              <View style={{ flex: 1 }}>{renderTabContent()}</View>
-            </PanGestureHandler>
+            <View style={{ flex: 1, paddingBottom: 80 }}>{renderTabContent()}</View>
           </View>
 
           {/* Floating Action Buttons */}
           <View style={styles.floatingButtons}>
+            <TouchableOpacity
+              style={[
+                styles.floatingButtonOval,
+                styles.manageSportsbooksButton,
+                !user?.id && styles.buttonNotReady,
+              ]}
+              onPress={handleManageSportsbooks}
+              disabled={sharpSportsLoading || !user?.id}
+            >
+              {sharpSportsLoading ? (
+                <Ionicons name="refresh-outline" size={20} color={theme.colors.text.inverse} />
+              ) : (
+                <View style={styles.manageSportsbooksContent}>
+                  <Ionicons name="link-outline" size={20} color={theme.colors.text.inverse} />
+                  <Text style={styles.manageSportsbooksText}>Link Sportsbooks</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.floatingButtonRound, { marginLeft: 0 }]}
+              style={[styles.floatingButtonRound]}
               onPress={handleRefreshBets}
               disabled={isRefreshingBets}
             >
@@ -444,24 +521,6 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
                 </Animated.View>
               ) : (
                 <Ionicons name="refresh-outline" size={20} color={theme.colors.text.inverse} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.floatingButtonRound,
-                styles.manageSportsbooksButton,
-                !user?.id && styles.buttonNotReady,
-              ]}
-              onPress={handleManageSportsbooks}
-              disabled={sharpSportsLoading || !user?.id}
-            >
-              {sharpSportsLoading ? (
-                <Ionicons name="refresh-outline" size={20} color={theme.colors.text.inverse} />
-              ) : user?.id ? (
-                <Ionicons name="link-outline" size={20} color={theme.colors.text.inverse} />
-              ) : (
-                <Ionicons name="settings-outline" size={20} color={theme.colors.text.secondary} />
               )}
             </TouchableOpacity>
           </View>
@@ -495,9 +554,17 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
               )}
             </SafeAreaView>
           </Modal>
+
+          {/* Bet Details Modal */}
+          <BetDetailsModal
+            visible={showBetDetailsModal}
+            onClose={handleBetDetailsClose}
+            betId={selectedBetId}
+            parlayGroup={selectedParlayGroup}
+          />
         </View>
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </View>
   )
 }
 
@@ -595,23 +662,45 @@ const styles = StyleSheet.create({
   floatingButtons: {
     position: 'absolute',
     bottom: 10,
+    left: theme.spacing.md,
     right: theme.spacing.md,
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
     zIndex: 10, // Lower than Smart Filters
   },
   floatingButtonRound: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: theme.spacing.sm,
+    ...theme.shadows.lg,
+    elevation: 8,
+  },
+  floatingButtonOval: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...theme.shadows.lg,
     elevation: 8,
   },
   manageSportsbooksButton: {
     backgroundColor: theme.colors.primaryDark, // Darker blue for manage sportsbooks
+  },
+  manageSportsbooksContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  manageSportsbooksText: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.inverse,
   },
   buttonNotReady: {
     backgroundColor: theme.colors.border, // Grayed out when SDK not ready

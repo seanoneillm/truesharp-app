@@ -52,6 +52,9 @@ interface UniversalGameCardProps {
 
 // Utility function to format odds
 const formatOdds = (odds: number): string => {
+  if (!isFinite(odds)) {
+    return '+100'; // Default fallback for infinity
+  }
   if (odds > 0) {
     return `+${odds}`;
   }

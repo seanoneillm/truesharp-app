@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { ParlayGroup, formatBetForDisplay } from '../../services/parlayGrouping';
 import { getTwoLineBetDescription, getStatusColor } from '../../lib/betFormatting';
+import { formatOddsWithFallback } from '../../utils/oddsCalculation';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -39,10 +40,9 @@ export default function ParlayCard({ parlay }: ParlayCardProps) {
     }).format(amount);
   };
 
-  const formatOdds = (odds: string | number) => {
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
-    if (isNaN(numericOdds)) return odds.toString();
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`;
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout);
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -104,7 +104,7 @@ export default function ParlayCard({ parlay }: ParlayCardProps) {
 
           <View style={styles.betDetails}>
             <Text style={styles.betOdds}>
-              {formatOdds(parlay.odds)}
+              {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
             </Text>
             <Text style={styles.betStake}>{formatCurrency(parlay.stake)}</Text>
           </View>
@@ -172,7 +172,7 @@ export default function ParlayCard({ parlay }: ParlayCardProps) {
 
               <View style={styles.legOdds}>
                 <Text style={styles.legOddsText}>
-                  {formatOdds(leg.odds)}
+                  {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
                 </Text>
               </View>
 
@@ -190,7 +190,7 @@ export default function ParlayCard({ parlay }: ParlayCardProps) {
         <View style={styles.parlayTotals}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Odds:</Text>
-            <Text style={styles.totalValue}>{formatOdds(parlay.odds)}</Text>
+            <Text style={styles.totalValue}>{formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Stake:</Text>

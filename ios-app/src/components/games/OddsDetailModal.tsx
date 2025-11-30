@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
   Dimensions,
+  Image,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LineChart } from 'react-native-chart-kit';
@@ -205,6 +206,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
     return selection;
   };
 
+
   // Check if game has started (with 10-minute buffer)
   const gameStartTime = new Date(gameTime);
   const now = new Date();
@@ -274,6 +276,8 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
       // Add line filter if line is provided (for alternate lines)  
       let lineVariations: string[] = [];
       if (line) {
+        // Debug logging
+        
         // Try exact line first, then variations
         lineVariations = [line];
         if (line.startsWith('+')) {
@@ -282,9 +286,19 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
         if (line.startsWith('-')) {
           lineVariations.push(line.substring(1)); // Remove - sign  
         }
-        // Try exact line first
-        openOddsQuery = openOddsQuery.eq('line', line);
-        currentOddsQuery = currentOddsQuery.eq('line', line);
+        
+        // Special handling for touchdown under odds which may have null line values
+        const isTouchdownUnder = oddId.includes('touchdown') && oddId.includes('-under');
+        if (isTouchdownUnder && line === '0.5') {
+          // For 0.5 line touchdown under odds, also search for null line values
+          // as they may be stored with null line but represent the 0.5 line (anytime touchdown)
+          openOddsQuery = openOddsQuery.or(`line.eq.${line},line.is.null,line.eq.`);
+          currentOddsQuery = currentOddsQuery.or(`line.eq.${line},line.is.null,line.eq.`);
+        } else {
+          // For all other cases, use exact line matching to prevent mixing different lines
+          openOddsQuery = openOddsQuery.eq('line', line);
+          currentOddsQuery = currentOddsQuery.eq('line', line);
+        }
       } else {
         // For main lines, filter for null or empty line values
         openOddsQuery = openOddsQuery.or('line.is.null,line.eq.');
@@ -311,8 +325,153 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           .order('updated_at', { ascending: false }) // Get most recent for this exact line
           .limit(1)
       ]);
+
+      // SPECIAL FIX: For 0.5 line touchdown odds, try to get correct sportsbook data from yes/no odds
+      let correctedOddsData = null;
+      if (line === '0.5' && oddId.includes('touchdown') && oddId.includes('-game-ou-')) {
+        const isOver = oddId.includes('-over');
+        const playerMatch = oddId.match(/touchdowns-([^-]+)-/);
+        
+        if (playerMatch) {
+          const playerName = playerMatch[1];
+          const ynSuffix = isOver ? '-game-yn-yes' : '-game-yn-no';
+          const ynOddId = `touchdowns-${playerName}${ynSuffix}`;
+          
+          
+          const { data: ynOdds } = await supabase
+            .from('odds')
+            .select(`
+              bookodds, fanduelodds, draftkingsodds, ceasarsodds, mgmodds,
+              espnbetodds, fanaticsodds, bovadaodds, unibetodds, pointsbetodds,
+              williamhillodds, ballybetodds, barstoolodds, betonlineodds, betparxodds,
+              betriversodds, betusodds, betfairexchangeodds, betfairsportsbookodds,
+              betfredodds, fliffodds, fourwindsodds, hardrockbetodds, lowvigodds,
+              marathonbetodds, primesportsodds, prophetexchangeodds, skybetodds,
+              sleeperodds, stakeodds, underdogodds, wynnbetodds, thescorebetodds,
+              bet365odds, circaodds, pinnacleodds, prizepicksodds
+            `)
+            .eq('eventid', eventId)
+            .eq('oddid', ynOddId)
+            .limit(1);
+            
+          if (ynOdds && ynOdds.length > 0 && currentOddsResult.data && currentOddsResult.data.length > 0) {
+            const ynData = ynOdds[0];
+            const originalData = currentOddsResult.data[0];
+            
+            // Use yes/no sportsbook data if it looks more reasonable than the 0.5 line data
+            const ynHasSportsbookData = ynData.fanduelodds || ynData.draftkingsodds;
+            const originalTsOdds = Math.abs(originalData.bookodds || 0);
+            const ynTsOdds = Math.abs(ynData.bookodds || 0);
+            const ynFdOdds = Math.abs(ynData.fanduelodds || 0);
+            
+            // If yes/no has sportsbook data, compare with original to see which is better
+            if (ynHasSportsbookData && ynFdOdds > 0 && originalTsOdds > 0) {
+              const originalFdOdds = Math.abs(originalData.fanduelodds || 0);
+              const originalDkOdds = Math.abs(originalData.draftkingsodds || 0);
+              const ynDkOdds = Math.abs(ynData.draftkingsodds || 0);
+              
+              // Calculate how far off each sportsbook is from TrueSharp odds
+              const originalFdDiff = originalFdOdds > 0 ? Math.abs(originalFdOdds - originalTsOdds) : Infinity;
+              const originalDkDiff = originalDkOdds > 0 ? Math.abs(originalDkOdds - originalTsOdds) : Infinity;
+              const ynFdDiff = ynFdOdds > 0 ? Math.abs(ynFdOdds - ynTsOdds) : Infinity;
+              const ynDkDiff = ynDkOdds > 0 ? Math.abs(ynDkOdds - ynTsOdds) : Infinity;
+              
+              // Use yes/no data if it's significantly closer to TrueSharp for either FanDuel or DraftKings
+              const fdImprovement = originalFdDiff > ynFdDiff * 2;  // Yes/no FD is 2x closer
+              const dkImprovement = originalDkDiff > ynDkDiff * 2;  // Yes/no DK is 2x closer
+              
+              
+              if (fdImprovement || dkImprovement) {
+                
+                // Count and log available sportsbooks in yes/no data
+                const availableSportsbooks = [];
+                const sportsbookFields = [
+                  'fanduelodds', 'draftkingsodds', 'ceasarsodds', 'mgmodds', 'espnbetodds',
+                  'fanaticsodds', 'bovadaodds', 'unibetodds', 'pointsbetodds', 'williamhillodds',
+                  'ballybetodds', 'barstoolodds', 'betonlineodds', 'betparxodds', 'betriversodds',
+                  'betusodds', 'betfairexchangeodds', 'betfairsportsbookodds', 'betfredodds',
+                  'fliffodds', 'fourwindsodds', 'hardrockbetodds', 'lowvigodds', 'marathonbetodds',
+                  'primesportsodds', 'prophetexchangeodds', 'skybetodds', 'sleeperodds',
+                  'stakeodds', 'underdogodds', 'wynnbetodds', 'thescorebetodds', 'bet365odds',
+                  'circaodds', 'pinnacleodds', 'prizepicksodds'
+                ];
+                
+                sportsbookFields.forEach(field => {
+                  if (ynData[field] && ynData[field] !== 0) {
+                    const sportsbookName = field.replace('odds', '').toUpperCase();
+                    availableSportsbooks.push(`${sportsbookName}:${ynData[field]}`);
+                  }
+                });
+                
+                
+                // Create corrected data using ALL available yes/no sportsbook data
+                correctedOddsData = {
+                  ...originalData,
+                  // Keep TrueSharp odds
+                  bookodds: originalData.bookodds,
+                  // Use ALL sportsbook data from yes/no odds (set to null if not available)
+                  fanduelodds: ynData.fanduelodds || null,
+                  draftkingsodds: ynData.draftkingsodds || null,
+                  ceasarsodds: ynData.ceasarsodds || null,
+                  mgmodds: ynData.mgmodds || null,
+                  espnbetodds: ynData.espnbetodds || null,
+                  fanaticsodds: ynData.fanaticsodds || null,
+                  bovadaodds: ynData.bovadaodds || null,
+                  unibetodds: ynData.unibetodds || null,
+                  pointsbetodds: ynData.pointsbetodds || null,
+                  williamhillodds: ynData.williamhillodds || null,
+                  ballybetodds: ynData.ballybetodds || null,
+                  barstoolodds: ynData.barstoolodds || null,
+                  betonlineodds: ynData.betonlineodds || null,
+                  betparxodds: ynData.betparxodds || null,
+                  betriversodds: ynData.betriversodds || null,
+                  betusodds: ynData.betusodds || null,
+                  betfairexchangeodds: ynData.betfairexchangeodds || null,
+                  betfairsportsbookodds: ynData.betfairsportsbookodds || null,
+                  betfredodds: ynData.betfredodds || null,
+                  fliffodds: ynData.fliffodds || null,
+                  fourwindsodds: ynData.fourwindsodds || null,
+                  hardrockbetodds: ynData.hardrockbetodds || null,
+                  lowvigodds: ynData.lowvigodds || null,
+                  marathonbetodds: ynData.marathonbetodds || null,
+                  primesportsodds: ynData.primesportsodds || null,
+                  prophetexchangeodds: ynData.prophetexchangeodds || null,
+                  skybetodds: ynData.skybetodds || null,
+                  sleeperodds: ynData.sleeperodds || null,
+                  stakeodds: ynData.stakeodds || null,
+                  underdogodds: ynData.underdogodds || null,
+                  wynnbetodds: ynData.wynnbetodds || null,
+                  thescorebetodds: ynData.thescorebetodds || null,
+                  bet365odds: ynData.bet365odds || null,
+                  circaodds: ynData.circaodds || null,
+                  pinnacleodds: ynData.pinnacleodds || null,
+                  prizepicksodds: ynData.prizepicksodds || null
+                };
+              } else {
+              }
+            }
+          }
+        }
+      }
       // DEBUG: Show what the exact query returned
+      const finalResult = correctedOddsData || (currentOddsResult.data && currentOddsResult.data[0]);
+      
       if (currentOddsResult.data && currentOddsResult.data.length > 0) {
+        const result = currentOddsResult.data[0];
+        
+        if (correctedOddsData) {
+        }
+        
+        // Check for suspicious sportsbook data mismatches
+        if (result.bookodds && result.fanduelodds && line === '0.5' && !correctedOddsData) {
+          const tsOdds = Math.abs(result.bookodds);
+          const fdOdds = Math.abs(result.fanduelodds);
+          // If FanDuel odds are 5x higher than TrueSharp, likely wrong line data
+          if (fdOdds > tsOdds * 5) {
+            console.warn(`⚠️  SUSPICIOUS: FanDuel odds (${fdOdds}) much higher than TrueSharp (${tsOdds}) - likely wrong line data in database`);
+          }
+        }
+      } else {
       }
 
       // Check if we got the right line
@@ -335,7 +494,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
       }
 
       if (currentOddsResult.data && currentOddsResult.data.length > 0) {
-        const currentData = currentOddsResult.data[0];
+        const currentData = correctedOddsData || currentOddsResult.data[0];
         history.push({
           openOdds: history[0]?.openOdds || currentData.bookodds || 0,
           currentOdds: currentData.bookodds || 0,
@@ -351,6 +510,10 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           odds: currentData.bookodds || 0,
           link: '', // No link for TrueSharp
         });
+
+        // Debug: Confirm corrected data is being used for display
+        if (correctedOddsData) {
+        }
 
         // Add other sportsbooks
         const sportsbookData = [
@@ -399,6 +562,10 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
               odds: sb.odds,
               link: sb.link || '',
             });
+            
+            // Debug: Show what's actually being added to the display
+            if (correctedOddsData && (sb.name === 'FanDuel' || sb.name === 'DraftKings')) {
+            }
           }
         });
 
@@ -423,7 +590,19 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           return 0;
         });
         
+        // Debug: Show what's being set in the final state
+        if (correctedOddsData) {
+          const fdInFinal = sortedSportsbooks.find(sb => sb.name === 'FanDuel');
+          const dkInFinal = sortedSportsbooks.find(sb => sb.name === 'DraftKings');
+        }
+        
         setSportsbookOdds(sortedSportsbooks);
+        
+        // Force a small delay to ensure state updates complete
+        if (correctedOddsData) {
+          setTimeout(() => {
+          }, 100);
+        }
       }
 
       setOddsHistory(history);
@@ -436,6 +615,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
 
   const formatOdds = (odds: number): string => {
     if (odds === 0) return '+100';
+    if (!isFinite(odds)) return '+100'; // Handle infinity values
     return odds > 0 ? `+${odds}` : odds.toString();
   };
 
@@ -449,14 +629,17 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
     
     // Add the line if present
     if (line) {
-      title += ` ${line}`;
+      // Special handling for anytime touchdown odds converted from yes/no
+      const isAnytimeTouchdown = marketName?.toLowerCase().includes('touchdown') || oddId.includes('touchdown');
+      const isOverSide = side?.toLowerCase() === 'over' || oddId.includes('-over');
       
-      // Add warning if we couldn't find this exact line in database
-      if (sportsbookOdds.length > 0 && 
-          sportsbookOdds[0].name === 'TrueSharp' && 
-          !oddsHistory.some(h => h.timestamp)) {
-        title += ' (Approximate)';
+      if (isAnytimeTouchdown && isOverSide && line === '0.5') {
+        // For anytime touchdowns, always show as "Over 0.5" regardless of source
+        title += ` 0.5`;
+      } else {
+        title += ` ${line}`;
       }
+      
     }
     
     // Add the side (Over/Under, Home/Away) if present
@@ -603,11 +786,18 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
     return (
       <View style={styles.chartContainer}>
         <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Odds Movement</Text>
-          <View style={[styles.movementIndicator, { backgroundColor: chartColor + '20' }]}>
+          <View style={styles.chartTitleContainer}>
+            <Image 
+              source={require('../../assets/truesharp-logo.png')}
+              style={styles.chartLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.chartTitle}>Odds Movement</Text>
+          </View>
+          <View style={[styles.movementIndicator, { backgroundColor: chartColor + '15' }]}>
             <Ionicons 
               name={iconName} 
-              size={14} 
+              size={12} 
               color={chartColor} 
             />
             <Text style={[styles.movementText, { color: chartColor }]}>
@@ -619,7 +809,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
         <LineChart
           data={data}
           width={screenWidth - 40}
-          height={120}
+          height={80}
           yAxisLabel=""
           yAxisSuffix=""
           chartConfig={{
@@ -628,25 +818,27 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
             backgroundGradientTo: theme.colors.card,
             decimalPlaces: 0,
             color: (opacity = 1) => `${chartColor}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`,
-            labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
+            labelColor: (opacity = 0.8) => `rgba(107, 114, 128, ${opacity})`,
             style: {
-              borderRadius: 12,
-              marginLeft: -20,
+              borderRadius: 8,
+              marginLeft: -15,
+              marginTop: -5,
+              marginBottom: -10,
             },
             propsForLabels: {
-              fontSize: 11,
-              fontWeight: '500',
+              fontSize: 10,
+              fontWeight: '600',
             },
             propsForDots: {
-              r: '4',
-              strokeWidth: '2',
+              r: '3',
+              strokeWidth: '1.5',
               stroke: chartColor,
               fill: theme.colors.card,
             },
             propsForBackgroundLines: {
-              strokeDasharray: '3,3',
-              stroke: theme.colors.border,
-              strokeWidth: 0.5,
+              strokeDasharray: '2,4',
+              stroke: theme.colors.border + '60',
+              strokeWidth: 0.8,
             },
           }}
           style={styles.chart}
@@ -655,8 +847,8 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           withInnerLines={true}
           withOuterLines={false}
           fromZero={false}
-          segments={3}
-          bezier={false}
+          segments={2}
+          bezier={true}
           renderDotContent={({ x, y, index }) => {
             // Only render dots at the first and last points
             if (index === 0 || index === 3) {
@@ -684,11 +876,22 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
         <View style={styles.chartLegend}>
           <View style={styles.legendItem}>
             <Text style={styles.legendLabel}>Opening</Text>
-            <Text style={styles.legendValue}>{formatOdds(openOdds)}</Text>
+            <Text style={[styles.legendValue, { color: openOdds === currentOdds ? theme.colors.text.secondary : theme.colors.text.primary }]}>
+              {formatOdds(openOdds)}
+            </Text>
+          </View>
+          <View style={styles.oddsMovementSeparator}>
+            <Ionicons 
+              name={iconName} 
+              size={16} 
+              color={chartColor} 
+            />
           </View>
           <View style={styles.legendItem}>
             <Text style={styles.legendLabel}>Current</Text>
-            <Text style={styles.legendValue}>{formatOdds(currentOdds)}</Text>
+            <Text style={[styles.legendValue, { color: chartColor, fontWeight: '700' }]}>
+              {formatOdds(currentOdds)}
+            </Text>
           </View>
         </View>
       </View>
@@ -699,6 +902,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         {/* Header */}
+        
         <LinearGradient
           colors={[theme.colors.primary, theme.colors.primary + 'E6']}
           style={styles.header}
@@ -723,8 +927,8 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           {/* Sportsbook Odds */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Sportsbook Odds</Text>
-              <Text style={styles.sectionSubtitle}>Ordered from best to worst odds</Text>
+              <Text style={styles.sectionTitle}>Sportsbook Comparison</Text>
+              <Text style={styles.sectionSubtitle}>Best odds highlighted • Tap to bet</Text>
             </View>
             {loading ? (
               <View style={styles.loadingContainer}>
@@ -858,49 +1062,68 @@ const styles = {
   content: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
   },
   section: {
-    marginVertical: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   sectionHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    letterSpacing: 0.3,
   },
   sectionSubtitle: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     fontWeight: theme.typography.fontWeight.medium,
+    letterSpacing: 0.2,
   },
   chartContainer: {
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: theme.colors.border + '40',
+    borderColor: theme.colors.border + '30',
   },
   chartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border + '20',
+  },
+  chartTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  chartLogo: {
+    width: 20,
+    height: 20,
   },
   chartTitle: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
+    letterSpacing: 0.5,
   },
   movementIndicator: {
     flexDirection: 'row',
@@ -908,37 +1131,51 @@ const styles = {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.full,
-    gap: theme.spacing.xs / 2,
+    gap: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   movementText: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   chart: {
-    borderRadius: theme.borderRadius.lg,
-    marginVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginVertical: theme.spacing.xs,
   },
   chartLegend: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: theme.spacing.sm,
     paddingTop: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: theme.colors.border + '40',
+    backgroundColor: theme.colors.surface + '80',
+    borderRadius: theme.borderRadius.lg,
+  },
+  oddsMovementSeparator: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.sm,
   },
   legendItem: {
     alignItems: 'center',
+    flex: 1,
   },
   legendLabel: {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.semibold,
     textTransform: 'uppercase',
     marginBottom: theme.spacing.xs / 2,
+    letterSpacing: 0.8,
   },
   legendValue: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
   },
@@ -972,30 +1209,34 @@ const styles = {
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: theme.colors.border + '20',
   },
   sportsbookRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md + 2,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border + '40',
-    minHeight: 60,
+    borderBottomColor: theme.colors.border + '30',
+    minHeight: 64,
   },
   trueSharpRow: {
-    backgroundColor: theme.colors.primary + '15',
+    backgroundColor: theme.colors.primary + '08',
     borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary + '30',
+    borderBottomColor: theme.colors.primary + '20',
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.primary,
   },
   bestOddsRow: {
-    backgroundColor: '#22c55e' + '08',
-    borderLeftWidth: 4,
+    backgroundColor: '#22c55e' + '05',
+    borderLeftWidth: 3,
     borderLeftColor: '#22c55e',
   },
   sportsbookRowDisabled: {

@@ -1,7 +1,6 @@
 'use client'
 
 import { EnhancedAccountsTab } from '@/components/admin/accounts/EnhancedAccountsTab'
-import { CleanBetsTab } from '@/components/admin/bets/CleanBetsTab'
 import { BusinessTab } from '@/components/admin/business/BusinessTab'
 import { CleanControlsTab } from '@/components/admin/controls/CleanControlsTab'
 import { EnhancedOverviewTab } from '@/components/admin/overview/EnhancedOverviewTab'
@@ -20,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToastProvider } from '@/components/ui/toast'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { createClient, createServiceRoleClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import {
   Activity,
   AlertTriangle,
@@ -165,84 +164,6 @@ export default function AdminPage() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false)
   const [timeframe, setTimeframe] = useState('30d')
 
-  // Bets analytics data states
-  const [betsAnalyticsData, setBetsAnalyticsData] = useState<{
-    totalBets: number
-    totalStakes: number
-    totalPotentialPayout: number
-    totalProfit: number
-    averageStakeSize: number
-    betsBySource: { manual: number; sharpsports: number }
-    betsByStatus: { pending: number; won: number; lost: number; void: number; cancelled: number }
-    betsByType: { [key: string]: number }
-    betsPerDayData: Array<{
-      date: string
-      dateLabel: string
-      manual: number
-      sharpsports: number
-      total: number
-    }>
-    handleOverTimeData: Array<{
-      date: string
-      dateLabel: string
-      cumulative: number
-      daily: number
-    }>
-    profitOverTimeData: Array<{
-      date: string
-      dateLabel: string
-      cumulative: number
-      daily: number
-    }>
-    statusBreakdownData: Array<{
-      date: string
-      dateLabel: string
-      pending: number
-      won: number
-      lost: number
-      void: number
-      cancelled: number
-    }>
-    sourceBreakdownData: Array<{
-      date: string
-      dateLabel: string
-      manual: number
-      sharpsports: number
-    }>
-    betTypeDistribution: Array<{ name: string; value: number; color: string }>
-    sportsbookDistribution: Array<{ name: string; value: number; color: string }>
-    avgSettlementTime: number
-    parlay: { percentage: number; avgLegs: number }
-    copyBets: { percentage: number; mostCopiedCount: number }
-    strategyBets: { total: number; winRate: number }
-    pendingBetsAging: number
-    settlementSuccessRate: number
-    largeStakeBets: number
-  }>({
-    totalBets: 0,
-    totalStakes: 0,
-    totalPotentialPayout: 0,
-    totalProfit: 0,
-    averageStakeSize: 0,
-    betsBySource: { manual: 0, sharpsports: 0 },
-    betsByStatus: { pending: 0, won: 0, lost: 0, void: 0, cancelled: 0 },
-    betsByType: {},
-    betsPerDayData: [],
-    handleOverTimeData: [],
-    profitOverTimeData: [],
-    statusBreakdownData: [],
-    sourceBreakdownData: [],
-    betTypeDistribution: [],
-    sportsbookDistribution: [],
-    avgSettlementTime: 0,
-    parlay: { percentage: 0, avgLegs: 0 },
-    copyBets: { percentage: 0, mostCopiedCount: 0 },
-    strategyBets: { total: 0, winRate: 0 },
-    pendingBetsAging: 0,
-    settlementSuccessRate: 0,
-    largeStakeBets: 0,
-  })
-  const [isLoadingBetsAnalytics, setIsLoadingBetsAnalytics] = useState(false)
 
   // Check if user is admin
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id)
@@ -402,535 +323,6 @@ export default function AdminPage() {
     }
   }, [isAdmin, timeframe])
 
-  // Bets analytics data fetching function
-  const fetchBetsAnalyticsData = useCallback(async () => {
-    if (!isAdmin) return
-
-    setIsLoadingBetsAnalytics(true)
-    try {
-      // Try service role client first, fallback to regular client
-      let supabase
-      try {
-        supabase = await createServiceRoleClient()
-        console.log('✅ Using service role client for bets data')
-      } catch (serviceRoleError) {
-        console.warn(
-          '⚠️ Service role client failed, falling back to regular client:',
-          serviceRoleError
-        )
-        supabase = createClient()
-      }
-
-      // Calculate date range based on timeframe
-      const now = new Date()
-      let startDate = new Date()
-      switch (timeframe) {
-        case '7d':
-          startDate.setDate(now.getDate() - 7)
-          break
-        case '30d':
-          startDate.setDate(now.getDate() - 30)
-          break
-        case 'ytd':
-          startDate = new Date(now.getFullYear(), 0, 1)
-          break
-        default:
-          startDate.setDate(now.getDate() - 30)
-      }
-
-      // Fetch ALL bets data (no date filtering for basic metrics)
-      console.log('🔍 Fetching bets data...')
-      const { data: allBets, error } = await supabase
-        .from('bets')
-        .select('*')
-        .order('placed_at', { ascending: true })
-
-      console.log('📊 Bets query result:', {
-        betsCount: allBets?.length || 0,
-        error: error?.message,
-        sampleBet: allBets?.[0],
-      })
-
-      // Also get filtered bets for charts only
-      const filteredBets =
-        allBets?.filter(bet => {
-          if (!bet.placed_at) return false
-          return new Date(bet.placed_at) >= startDate
-        }) || []
-
-      if (error) {
-        console.error('Error fetching bets data:', error)
-        return
-      }
-
-      if (!allBets) return
-
-      // Calculate basic metrics - properly count bets by grouping parlay legs (use ALL bets)
-      const uniqueBets = new Set()
-      const parlayGroups = new Map()
-
-      allBets.forEach(bet => {
-        if (bet.parlay_id) {
-          // For parlay bets, group by parlay_id
-          if (!parlayGroups.has(bet.parlay_id)) {
-            parlayGroups.set(bet.parlay_id, [])
-          }
-          parlayGroups.get(bet.parlay_id)!.push(bet)
-        } else {
-          // For single bets, each row is a unique bet
-          uniqueBets.add(bet.id)
-        }
-      })
-
-      // Total bets = single bets + number of unique parlays
-      const totalBets = uniqueBets.size + parlayGroups.size
-
-      // For stakes, potential payout, and profit - use the parlay totals for parlays, individual values for singles
-      let totalStakes = 0
-      let totalPotentialPayout = 0
-      let totalProfit = 0
-
-      // Add single bets
-      allBets
-        .filter(bet => !bet.parlay_id)
-        .forEach(bet => {
-          totalStakes += Number(bet.stake || 0)
-          totalPotentialPayout += Number(bet.potential_payout || 0)
-          totalProfit += Number(bet.profit || 0)
-        })
-
-      // Add parlay bets (take values from first leg since parlay totals should be on the first leg)
-      parlayGroups.forEach(parlayLegs => {
-        const firstLeg = parlayLegs[0]
-        if (firstLeg) {
-          totalStakes += Number(firstLeg.stake || 0)
-          totalPotentialPayout += Number(firstLeg.potential_payout || 0)
-          totalProfit += Number(firstLeg.profit || 0)
-        }
-      })
-
-      const averageStakeSize = totalBets > 0 ? totalStakes / totalBets : 0
-
-      // Bets by source - count properly grouped bets
-      const betsBySource = {
-        manual: 0,
-        sharpsports: 0,
-      }
-
-      // Count single bets by source
-      allBets
-        .filter(bet => !bet.parlay_id)
-        .forEach(bet => {
-          if (bet.bet_source === 'manual') betsBySource.manual++
-          else betsBySource.sharpsports++
-        })
-
-      // Count parlay bets by source (use first leg to determine source)
-      parlayGroups.forEach(parlayLegs => {
-        const firstLeg = parlayLegs[0]
-        if (firstLeg) {
-          if (firstLeg.bet_source === 'manual') betsBySource.manual++
-          else betsBySource.sharpsports++
-        }
-      })
-
-      // Bets by status - count properly grouped bets
-      const betsByStatus = {
-        pending: 0,
-        won: 0,
-        lost: 0,
-        void: 0,
-        cancelled: 0,
-      }
-
-      // Count single bets by status
-      allBets
-        .filter(bet => !bet.parlay_id)
-        .forEach(bet => {
-          const status = bet.status as keyof typeof betsByStatus
-          if (status && betsByStatus.hasOwnProperty(status)) {
-            betsByStatus[status]++
-          }
-        })
-
-      // Count parlay bets by status (use first leg to determine status)
-      parlayGroups.forEach(parlayLegs => {
-        const firstLeg = parlayLegs[0]
-        if (firstLeg) {
-          const status = firstLeg.status as keyof typeof betsByStatus
-          if (status && betsByStatus.hasOwnProperty(status)) {
-            betsByStatus[status]++
-          }
-        }
-      })
-
-      // Bets by type - count properly grouped bets
-      const betsByType: { [key: string]: number } = {}
-
-      // Count single bets by type
-      allBets
-        .filter(bet => !bet.parlay_id)
-        .forEach(bet => {
-          const type = bet.bet_type || 'unknown'
-          betsByType[type] = (betsByType[type] || 0) + 1
-        })
-
-      // Count parlay bets as 'parlay' type
-      if (parlayGroups.size > 0) {
-        betsByType['parlay'] = (betsByType['parlay'] || 0) + parlayGroups.size
-      }
-
-      // Generate time series data - properly count grouped bets (use filtered data for charts)
-      const generateDailyBetsData = () => {
-        const dataMap = new Map<string, { manual: number; sharpsports: number }>()
-
-        // Initialize all dates in range with 0
-        for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-          const dateKey = d.toISOString().split('T')[0]!
-          dataMap.set(dateKey, { manual: 0, sharpsports: 0 })
-        }
-
-        // Create filtered parlay groups for charts
-        const filteredParlayGroups = new Map()
-        filteredBets.forEach(bet => {
-          if (bet.parlay_id) {
-            if (!filteredParlayGroups.has(bet.parlay_id)) {
-              filteredParlayGroups.set(bet.parlay_id, [])
-            }
-            filteredParlayGroups.get(bet.parlay_id)!.push(bet)
-          }
-        })
-
-        // Count single bets by date and source (use filtered bets for charts)
-        filteredBets
-          .filter(bet => !bet.parlay_id)
-          .forEach(bet => {
-            if (bet.placed_at) {
-              const betDate = new Date(bet.placed_at)
-              const dateKey = betDate.toISOString().split('T')[0]!
-              const existing = dataMap.get(dateKey) || { manual: 0, sharpsports: 0 }
-              if (bet.bet_source === 'manual') {
-                existing.manual += 1
-              } else {
-                existing.sharpsports += 1
-              }
-              dataMap.set(dateKey, existing)
-            }
-          })
-
-        // Count parlay bets by date and source (use first leg for date/source)
-        filteredParlayGroups.forEach(parlayLegs => {
-          const firstLeg = parlayLegs[0]
-          if (firstLeg && firstLeg.placed_at) {
-            const betDate = new Date(firstLeg.placed_at)
-            const dateKey = betDate.toISOString().split('T')[0]!
-            const existing = dataMap.get(dateKey) || { manual: 0, sharpsports: 0 }
-            if (firstLeg.bet_source === 'manual') {
-              existing.manual += 1
-            } else {
-              existing.sharpsports += 1
-            }
-            dataMap.set(dateKey, existing)
-          }
-        })
-
-        return Array.from(dataMap.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([date, counts]) => ({
-            date,
-            dateLabel: new Date(date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            }),
-            manual: counts.manual,
-            sharpsports: counts.sharpsports,
-            total: counts.manual + counts.sharpsports,
-          }))
-      }
-
-      // Generate cumulative handle data - properly account for parlay grouping
-      const generateHandleOverTimeData = () => {
-        const dailyStakes = new Map<string, number>()
-
-        // Initialize all dates
-        for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-          const dateKey = d.toISOString().split('T')[0]!
-          dailyStakes.set(dateKey, 0)
-        }
-
-        // Create filtered parlay groups for charts
-        const filteredParlayGroups = new Map()
-        filteredBets.forEach(bet => {
-          if (bet.parlay_id) {
-            if (!filteredParlayGroups.has(bet.parlay_id)) {
-              filteredParlayGroups.set(bet.parlay_id, [])
-            }
-            filteredParlayGroups.get(bet.parlay_id)!.push(bet)
-          }
-        })
-
-        // Sum stakes for single bets by date (use filtered bets)
-        filteredBets
-          .filter(bet => !bet.parlay_id)
-          .forEach(bet => {
-            if (bet.placed_at) {
-              const betDate = new Date(bet.placed_at)
-              const dateKey = betDate.toISOString().split('T')[0]!
-              const existing = dailyStakes.get(dateKey) || 0
-              dailyStakes.set(dateKey, existing + Number(bet.stake || 0))
-            }
-          })
-
-        // Sum stakes for parlay bets by date (use first leg stake since it contains the total)
-        filteredParlayGroups.forEach(parlayLegs => {
-          const firstLeg = parlayLegs[0]
-          if (firstLeg && firstLeg.placed_at) {
-            const betDate = new Date(firstLeg.placed_at)
-            const dateKey = betDate.toISOString().split('T')[0]!
-            const existing = dailyStakes.get(dateKey) || 0
-            dailyStakes.set(dateKey, existing + Number(firstLeg.stake || 0))
-          }
-        })
-
-        let cumulative = 0
-        return Array.from(dailyStakes.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([date, daily]) => {
-            cumulative += daily
-            return {
-              date,
-              dateLabel: new Date(date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              }),
-              cumulative,
-              daily,
-            }
-          })
-      }
-
-      // Generate cumulative profit data
-      const generateProfitOverTimeData = () => {
-        const dailyProfit = new Map<string, number>()
-
-        // Initialize all dates
-        for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-          const dateKey = d.toISOString().split('T')[0]!
-          dailyProfit.set(dateKey, 0)
-        }
-
-        // Group bets properly (same logic as basic metrics)
-        const processedBets = new Map() // To track which parlays we've processed
-
-        filteredBets.forEach(bet => {
-          const dateToUse = bet.settled_at || bet.placed_at
-          if (!dateToUse) return
-
-          const betDate = new Date(dateToUse)
-          const dateKey = betDate.toISOString().split('T')[0]!
-          const existing = dailyProfit.get(dateKey) || 0
-
-          if (bet.parlay_id) {
-            // For parlay bets, only count profit once per parlay_id
-            const parlayKey = `${dateKey}-${bet.parlay_id}`
-            if (!processedBets.has(parlayKey) && bet.profit !== null) {
-              processedBets.set(parlayKey, true)
-              dailyProfit.set(dateKey, existing + Number(bet.profit || 0))
-            }
-          } else {
-            // For single bets, count normally
-            if (bet.profit !== null) {
-              dailyProfit.set(dateKey, existing + Number(bet.profit || 0))
-            }
-          }
-        })
-
-        let cumulative = 0
-        return Array.from(dailyProfit.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([date, daily]) => {
-            cumulative += daily
-            return {
-              date,
-              dateLabel: new Date(date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              }),
-              cumulative,
-              daily,
-            }
-          })
-      }
-
-      // Generate status breakdown over time
-      const generateStatusBreakdownData = () => {
-        const dailyStatus = new Map<
-          string,
-          { pending: number; won: number; lost: number; void: number; cancelled: number }
-        >()
-
-        // Initialize all dates
-        for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-          const dateKey = d.toISOString().split('T')[0]!
-          dailyStatus.set(dateKey, { pending: 0, won: 0, lost: 0, void: 0, cancelled: 0 })
-        }
-
-        // Group bets properly (same logic as basic metrics)
-        const processedBets = new Map() // To track which parlays we've processed
-
-        filteredBets.forEach(bet => {
-          if (bet.placed_at) {
-            const betDate = new Date(bet.placed_at)
-            const dateKey = betDate.toISOString().split('T')[0]!
-            const existing = dailyStatus.get(dateKey) || {
-              pending: 0,
-              won: 0,
-              lost: 0,
-              void: 0,
-              cancelled: 0,
-            }
-            const status = bet.status as 'pending' | 'won' | 'lost' | 'void' | 'cancelled'
-
-            if (status && existing.hasOwnProperty(status)) {
-              if (bet.parlay_id) {
-                // For parlay bets, only count once per parlay_id
-                const parlayKey = `${dateKey}-${bet.parlay_id}`
-                if (!processedBets.has(parlayKey)) {
-                  processedBets.set(parlayKey, true)
-                  existing[status] += 1
-                }
-              } else {
-                // For single bets, count normally
-                existing[status] += 1
-              }
-            }
-            dailyStatus.set(dateKey, existing)
-          }
-        })
-
-        return Array.from(dailyStatus.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([date, counts]) => ({
-            date,
-            dateLabel: new Date(date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            }),
-            ...counts,
-          }))
-      }
-
-      // Bet type distribution
-      const colors = [
-        '#3b82f6',
-        '#ef4444',
-        '#10b981',
-        '#f59e0b',
-        '#8b5cf6',
-        '#06b6d4',
-        '#84cc16',
-        '#f97316',
-      ]
-      const betTypeDistribution = Object.entries(betsByType).map(([name, value], index) => ({
-        name,
-        value,
-        color: colors[index % colors.length] || '#6b7280',
-      }))
-
-      // Sportsbook distribution (use all bets for overall stats)
-      const sportsbookCounts: { [key: string]: number } = {}
-      allBets.forEach(bet => {
-        if (bet.sportsbook) {
-          sportsbookCounts[bet.sportsbook] = (sportsbookCounts[bet.sportsbook] || 0) + 1
-        }
-      })
-      const sportsbookDistribution = Object.entries(sportsbookCounts).map(
-        ([name, value], index) => ({
-          name,
-          value,
-          color: colors[index % colors.length] || '#6b7280',
-        })
-      )
-
-      // Advanced analytics
-      const settledBets = allBets.filter(bet => bet.settled_at && bet.placed_at)
-      const avgSettlementTime =
-        settledBets.length > 0
-          ? settledBets.reduce((sum, bet) => {
-              const settlementTime =
-                new Date(bet.settled_at!).getTime() - new Date(bet.placed_at).getTime()
-              return sum + settlementTime
-            }, 0) /
-            settledBets.length /
-            (1000 * 60 * 60) // Convert to hours
-          : 0
-
-      // Parlay stats
-      const parlayBets = allBets.filter(bet => bet.is_parlay === true)
-      const parlayPercentage = totalBets > 0 ? (parlayBets.length / totalBets) * 100 : 0
-
-      // Calculate average legs per parlay (simplified - would need parlay_legs table for accurate count)
-      const avgLegs = 2.5 // Placeholder - would need to query parlay_legs or similar
-
-      // Copy bet stats
-      const copyBets = allBets.filter(bet => bet.is_copy_bet === true)
-      const copyBetsPercentage = totalBets > 0 ? (copyBets.length / totalBets) * 100 : 0
-
-      // Most copied count (simplified)
-      const mostCopiedCount = 0 // Would need to group by copied_from_bet_id
-
-      // Strategy bets
-      const strategyBets = allBets.filter(bet => bet.strategy_id !== null)
-      const strategyBetsWon = strategyBets.filter(bet => bet.status === 'won').length
-      const strategyWinRate =
-        strategyBets.length > 0 ? (strategyBetsWon / strategyBets.length) * 100 : 0
-
-      // System health metrics
-      const now24hAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-      const pendingBetsAging = allBets.filter(
-        bet => bet.status === 'pending' && new Date(bet.placed_at) < now24hAgo
-      ).length
-
-      const settlementSuccessRate =
-        allBets.length > 0 ? ((allBets.length - betsByStatus.pending) / allBets.length) * 100 : 0
-
-      const largeStakeBets = allBets.filter(bet => Number(bet.stake || 0) > 1000).length
-
-      setBetsAnalyticsData({
-        totalBets,
-        totalStakes,
-        totalPotentialPayout,
-        totalProfit,
-        averageStakeSize,
-        betsBySource,
-        betsByStatus,
-        betsByType,
-        betsPerDayData: generateDailyBetsData(),
-        handleOverTimeData: generateHandleOverTimeData(),
-        profitOverTimeData: generateProfitOverTimeData(),
-        statusBreakdownData: generateStatusBreakdownData(),
-        sourceBreakdownData: generateDailyBetsData().map(item => ({
-          date: item.date,
-          dateLabel: item.dateLabel,
-          manual: item.manual,
-          sharpsports: item.sharpsports,
-        })),
-        betTypeDistribution,
-        sportsbookDistribution,
-        avgSettlementTime,
-        parlay: { percentage: parlayPercentage, avgLegs },
-        copyBets: { percentage: copyBetsPercentage, mostCopiedCount },
-        strategyBets: { total: strategyBets.length, winRate: strategyWinRate },
-        pendingBetsAging,
-        settlementSuccessRate,
-        largeStakeBets,
-      })
-    } catch (error) {
-      console.error('Error fetching bets analytics data:', error)
-    } finally {
-      setIsLoadingBetsAnalytics(false)
-    }
-  }, [isAdmin, timeframe])
 
   // Initialize date safely after hydration
 
@@ -1135,10 +527,9 @@ export default function AdminPage() {
     if (isAdmin) {
       fetchFeedback()
       fetchAnalyticsData()
-      fetchBetsAnalyticsData()
       fetchStrategyData()
     }
-  }, [isAdmin, fetchFeedback, fetchAnalyticsData, fetchBetsAnalyticsData, fetchStrategyData])
+  }, [isAdmin, fetchFeedback, fetchAnalyticsData, fetchStrategyData])
 
   if (authLoading) {
     return (
@@ -1221,14 +612,13 @@ export default function AdminPage() {
               <Button
                 onClick={() => {
                   fetchAnalyticsData()
-                  fetchBetsAnalyticsData()
                 }}
-                disabled={isLoadingAnalytics || isLoadingBetsAnalytics}
+                disabled={isLoadingAnalytics}
                 variant="outline"
                 size="sm"
               >
                 <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isLoadingAnalytics || isLoadingBetsAnalytics ? 'animate-spin' : ''}`}
+                  className={`mr-2 h-4 w-4 ${isLoadingAnalytics ? 'animate-spin' : ''}`}
                 />
                 Refresh
               </Button>
@@ -1239,7 +629,7 @@ export default function AdminPage() {
         {/* Tabbed Content */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid h-14 w-full grid-cols-4 rounded-none border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 lg:grid-cols-8">
+            <TabsList className="grid h-14 w-full grid-cols-4 rounded-none border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 lg:grid-cols-7">
               <TabsTrigger
                 value="overview"
                 className="flex items-center gap-2 transition-all duration-200 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:bg-white data-[state=active]:shadow-sm"
@@ -1253,13 +643,6 @@ export default function AdminPage() {
               >
                 <Settings className="h-4 w-4" />
                 <span className="hidden font-medium sm:inline">Controls</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="bets"
-                className="flex items-center gap-2 transition-all duration-200 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-              >
-                <Target className="h-4 w-4" />
-                <span className="hidden font-medium sm:inline">Bets</span>
               </TabsTrigger>
               <TabsTrigger
                 value="accounts"
@@ -1308,10 +691,6 @@ export default function AdminPage() {
               <CleanControlsTab />
             </TabsContent>
 
-            {/* Clean Bets Tab */}
-            <TabsContent value="bets" className="space-y-4 p-6">
-              <CleanBetsTab />
-            </TabsContent>
 
             {/* Replaced old bets content - keeping for reference but commented out */}
             {false && (

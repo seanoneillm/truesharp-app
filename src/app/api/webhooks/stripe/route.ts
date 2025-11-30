@@ -316,16 +316,14 @@ async function handleProCheckoutCompleted(session: Stripe.Checkout.Session) {
     console.log('📋 Stripe subscription ID:', newProSubscription.stripe_subscription_id)
   }
 
-  // Update profile pro status
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({ pro: 'yes' })
-    .eq('id', user_id)
+  // Use centralized function to sync pro status
+  const { data: syncResult, error: syncError } = await supabase
+    .rpc('sync_user_pro_status', { p_user_id: user_id })
 
-  if (profileError) {
-    console.error('❌ Error updating profile pro status:', profileError)
+  if (syncError) {
+    console.error('❌ Error syncing pro status:', syncError)
   } else {
-    console.log('✅ Profile updated to Pro status')
+    console.log('✅ Pro status synced:', syncResult)
   }
 
   console.log('🎉 Successfully processed Pro checkout session:', session.id)
@@ -398,16 +396,14 @@ async function handleProSubscriptionCreated(subscription: any, metadata: any) {
 
   console.log('✅ Pro subscription created successfully')
 
-  // Update profile pro status
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({ pro: 'yes' })
-    .eq('id', metadata.user_id)
+  // Use centralized function to sync pro status
+  const { data: syncResult, error: syncError } = await supabase
+    .rpc('sync_user_pro_status', { p_user_id: metadata.user_id })
 
-  if (profileError) {
-    console.error('❌ Error updating profile pro status:', profileError)
+  if (syncError) {
+    console.error('❌ Error syncing pro status:', syncError)
   } else {
-    console.log('✅ Profile updated to Pro status')
+    console.log('✅ Pro status synced:', syncResult)
   }
 }
 
@@ -605,19 +601,15 @@ async function handleProSubscriptionUpdated(subscription: any, metadata: any) {
 
   console.log('✅ Pro subscription updated successfully')
 
-  // Update profile pro status based on subscription status
-  const proStatus = subscription.status === 'active' ? 'yes' : 'no'
-
+  // Use centralized function to sync pro status (checks ALL subscription types)
   if (metadata.user_id) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ pro: proStatus })
-      .eq('id', metadata.user_id)
+    const { data: syncResult, error: syncError } = await supabase
+      .rpc('sync_user_pro_status', { p_user_id: metadata.user_id })
 
-    if (profileError) {
-      console.error('❌ Error updating profile pro status:', profileError)
+    if (syncError) {
+      console.error('❌ Error syncing pro status:', syncError)
     } else {
-      console.log(`✅ Profile updated to Pro status: ${proStatus}`)
+      console.log('✅ Pro status synced:', syncResult)
     }
   }
 }
@@ -707,17 +699,15 @@ async function handleProSubscriptionDeleted(subscription: any, metadata: any) {
 
   console.log('✅ Pro subscription cancelled successfully')
 
-  // Update profile pro status to 'no'
+  // Use centralized function to sync pro status (checks ALL subscription types)
   if (metadata.user_id) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ pro: 'no' })
-      .eq('id', metadata.user_id)
+    const { data: syncResult, error: syncError } = await supabase
+      .rpc('sync_user_pro_status', { p_user_id: metadata.user_id })
 
-    if (profileError) {
-      console.error('❌ Error updating profile pro status to no:', profileError)
+    if (syncError) {
+      console.error('❌ Error syncing pro status:', syncError)
     } else {
-      console.log('✅ Profile updated to remove Pro status')
+      console.log('✅ Pro status synced:', syncResult)
     }
   }
 }

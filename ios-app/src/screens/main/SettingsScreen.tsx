@@ -20,6 +20,8 @@ import {
 import LegalModals from '../../components/auth/LegalModals'
 import InputField from '../../components/common/InputField'
 import LoadingButton from '../../components/common/LoadingButton'
+import ConnectWithUsModal from '../../components/settings/ConnectWithUsModal'
+import GuidesModal from '../../components/guides/GuidesModal'
 import UpgradeToProModal from '../../components/upgrade/UpgradeToProModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { authService } from '../../lib/auth'
@@ -60,7 +62,7 @@ interface UserSettings {
   }
 }
 
-type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing'
+type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing' | 'connect' | 'guides'
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth()
@@ -568,6 +570,18 @@ export default function SettingsScreen() {
       icon: 'card-outline',
       description: 'Manage your billing and subscriptions',
     },
+    {
+      id: 'connect' as SettingsSection,
+      title: 'Connect with Us',
+      icon: 'people-outline',
+      description: 'Follow us on social media and join our community',
+    },
+    {
+      id: 'guides' as SettingsSection,
+      title: 'Guides & Help',
+      icon: 'help-circle-outline',
+      description: 'Learn how to use TrueSharp features and best practices',
+    },
   ]
 
   const renderModalContent = () => {
@@ -884,6 +898,12 @@ export default function SettingsScreen() {
           </ScrollView>
         )
 
+      case 'connect':
+        return <ConnectWithUsModal onClose={closeModal} />
+
+      case 'guides':
+        return <GuidesModal onClose={closeModal} />
+
       default:
         return null
     }
@@ -899,12 +919,14 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Back Arrow - Only show when no modal is visible */}
+      {/* Header Banner - Only show when no modal is visible */}
       {!modalVisible && (
-        <View style={styles.backArrowContainer}>
+        <View style={styles.headerBanner}>
           <TouchableOpacity style={styles.backArrow} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color={theme.colors.text.secondary} />
+            <Ionicons name="arrow-back" size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <View style={styles.headerSpacer} />
         </View>
       )}
 
@@ -915,21 +937,24 @@ export default function SettingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.settingsList}>
-            {sections.map(section => (
+            {sections.map((section, index) => (
               <TouchableOpacity
                 key={section.id}
-                style={styles.settingsListItem}
+                style={[
+                  styles.settingsListItem,
+                  index === sections.length - 1 && styles.lastSettingsItem
+                ]}
                 onPress={() => openModal(section.id)}
               >
                 <View style={styles.settingsItemContent}>
                   <View style={styles.settingsItemIcon}>
-                    <Ionicons name={section.icon as any} size={24} color="#0057ff" />
+                    <Ionicons name={section.icon as any} size={20} color="#0057ff" />
                   </View>
                   <View style={styles.settingsItemText}>
                     <Text style={styles.settingsItemTitle}>{section.title}</Text>
                     <Text style={styles.settingsItemDescription}>{section.description}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={theme.colors.text.light} />
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.text.light} />
                 </View>
               </TouchableOpacity>
             ))}
@@ -938,7 +963,7 @@ export default function SettingsScreen() {
             <TouchableOpacity style={styles.logoutListItem} onPress={handleSignOut}>
               <View style={styles.settingsItemContent}>
                 <View style={styles.settingsItemIcon}>
-                  <Ionicons name="log-out-outline" size={24} color={theme.colors.status.error} />
+                  <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
                 </View>
                 <View style={styles.settingsItemText}>
                   <Text style={[styles.settingsItemTitle, styles.logoutText]}>Sign Out</Text>
@@ -987,17 +1012,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  backArrowContainer: {
-    position: 'absolute',
-    top: theme.spacing.md,
-    left: theme.spacing.md,
-    zIndex: 10,
+  headerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
   },
   backArrow: {
     padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.card,
-    ...theme.shadows.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+  },
+  headerSpacer: {
+    width: 40, // Same width as back arrow for centering
   },
   loadingContainer: {
     flex: 1,
@@ -1013,8 +1047,9 @@ const styles = StyleSheet.create({
   },
   settingsList: {
     backgroundColor: theme.colors.card,
-    margin: theme.spacing.md,
-    borderRadius: 16,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    borderRadius: 12,
     overflow: 'hidden',
     ...theme.shadows.sm,
   },
@@ -1022,35 +1057,40 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
   },
+  lastSettingsItem: {
+    borderBottomWidth: 0,
+  },
   logoutListItem: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
   },
   settingsItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   settingsItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: theme.spacing.sm,
   },
   settingsItemText: {
     flex: 1,
   },
   settingsItemTitle: {
-    ...globalStyles.h4,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   settingsItemDescription: {
-    ...globalStyles.caption,
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
+    lineHeight: 16,
   },
   logoutText: {
     color: theme.colors.status.error,
@@ -1082,16 +1122,16 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   modalTitle: {
     ...globalStyles.h3,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   profilePictureSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   profilePictureContainer: {
     position: 'relative',

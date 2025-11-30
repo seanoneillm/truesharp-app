@@ -26,6 +26,8 @@ interface SmartFiltersProps {
   filters: AnalyticsFilters;
   onFiltersChange: (filters: AnalyticsFilters) => void;
   onClose?: () => void;
+  onClearAll?: () => void;
+  isProUser?: boolean;
 }
 
 export interface SmartFiltersRef {
@@ -38,7 +40,7 @@ interface UserProfile {
   isPro?: boolean;
 }
 
-const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, onFiltersChange, onClose }, ref) => {
+const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, onFiltersChange, onClose, onClearAll, isProUser = false }, ref) => {
   const { user } = useAuth();
   const [localFilters, setLocalFilters] = useState(filters);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -71,15 +73,21 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
     return new Date();
   });
 
-  // Determine if user is Pro (same logic as Dashboard)
-  const isPro = user?.profile?.pro === 'yes';
+  // Use the passed pro status from SubscriptionContext
+  const isPro = isProUser;
   
   // Debug Pro status
   useEffect(() => {
+    console.log('🔍 SmartFilters Pro Status Debug:', {
+      isProUser,
+      isPro,
+      userId: user?.id,
+      timestamp: new Date().toISOString()
+    });
     setLocalFilters(filters);
     // Clear display texts when filters change externally
     setDisplayTexts({});
-  }, [filters]);
+  }, [filters, isProUser, isPro, user?.id]);
 
   const handleFilterUpdate = (key: keyof AnalyticsFilters, value: any) => {
     const newFilters = { ...localFilters, [key]: value };

@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface AppleNotificationPayload {
@@ -138,7 +137,11 @@ export async function POST(request: NextRequest) {
  * Process different types of App Store notifications
  */
 async function processNotification(payload: AppleNotificationPayload): Promise<string> {
-  const supabase = createRouteHandlerClient({ cookies })
+  // Use service role key for webhook processing - webhooks need elevated permissions
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   // Extract transaction info if present
   const signedTransactionInfo = payload.data?.signedTransactionInfo
@@ -416,13 +419,14 @@ async function handleSubscriptionExpiration(transaction: DecodedTransaction, sup
       .single()
     
     if (subscription?.user_id) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ pro: 'no' })
-        .eq('id', subscription.user_id)
+      // Use centralized function to sync pro status (checks ALL subscription types)
+      const { data: syncResult, error: syncError } = await supabase
+        .rpc('sync_user_pro_status', { p_user_id: subscription.user_id })
       
-      if (profileError) {
-        console.error('❌ Failed to update profile pro status:', profileError)
+      if (syncError) {
+        console.error('❌ Failed to sync pro status:', syncError)
+      } else {
+        console.log('✅ Pro status synced:', syncResult)
       }
     }
     

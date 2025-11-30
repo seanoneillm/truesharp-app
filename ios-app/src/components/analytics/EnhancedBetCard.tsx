@@ -1,25 +1,37 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../../styles/theme';
 import { BetData } from '../../services/supabaseAnalytics';
-import { getStatusColor, formatTeamsDisplayPublic } from '../../lib/betFormatting';
+import { getStatusColor, formatTeamsDisplayPublic, parseMultiStatOddid } from '../../lib/betFormatting';
+import { formatOddsWithFallback } from '../../utils/oddsCalculation';
+import { UnitDisplayOptions, formatCurrencyOrUnits, formatStakeAmount, formatProfitLoss } from '../../utils/unitCalculations';
 
 interface EnhancedBetCardProps {
   bet: BetData;
+  onPress?: (betId: string) => void;
+  unitOptions?: UnitDisplayOptions;
 }
 
-export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+export default function EnhancedBetCard({ bet, onPress, unitOptions }: EnhancedBetCardProps) {
+  // Format currency based on unit options  
+  const formatAmount = (amount: number, isProfit = false) => {
+    if (!unitOptions) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    }
+    
+    // Convert dollars to cents for unit calculations
+    const amountInCents = Math.round(amount * 100);
+    return isProfit ? formatProfitLoss(amountInCents, unitOptions) : formatStakeAmount(amountInCents, unitOptions);
   };
 
-  const formatOdds = (odds: string | number) => {
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
-    if (isNaN(numericOdds)) return odds.toString();
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`;
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout);
   };
 
   // Parse SharpSports bet_description to extract bet details
@@ -130,36 +142,16 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
         }
       }
       
-      // If prop_type was null or empty, try parsing from oddid
-      if (!propType && (bet as any).oddid) {
+      // Always check oddid for multi-stat combinations (takes priority over prop_type)
+      if ((bet as any).oddid) {
         const oddid = (bet as any).oddid;
-        const parts = oddid.split('-');
-        if (parts.length > 0) {
-          const statPart = parts[0];
-          if (statPart === 'touchdowns') propType = 'Touchdowns';
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs';
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs';
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs';
-          else if (statPart === 'passing_yards') propType = 'Passing Yards';
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards';
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards';
-          else if (statPart === 'batting_hits') propType = 'Hits';
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs';
-          else if (statPart === 'batting_rbi') propType = 'RBIs';
-          else if (statPart === 'batting_runs') propType = 'Runs';
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases';
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases';
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts';
-          else if (statPart === 'rebounds') propType = 'Rebounds';
-          else if (statPart === 'assists') propType = 'Assists';
-          else if (statPart === 'steals') propType = 'Steals';
-          else if (statPart === 'blocks') propType = 'Blocks';
-          else if (statPart === 'goals') propType = 'Goals';
-          else if (statPart === 'saves') propType = 'Saves';
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
+        } else if (!propType) {
+          // Fallback to oddid parsing for single stats only if prop_type is empty
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
         }
       }
       
@@ -352,7 +344,11 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
   };
 
   return (
-    <View style={[styles.betCard, getBorderStyle()]}>
+    <TouchableOpacity 
+      style={[styles.betCard, getBorderStyle()]}
+      onPress={() => onPress?.(bet.id)}
+      disabled={!onPress}
+    >
       <View style={styles.cardContent}>
         {/* Left Side - 3 Lines of Text */}
         <View style={styles.leftContent}>
@@ -380,7 +376,7 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
               <View style={styles.rightRow}>
                 {/* Odds */}
                 <Text style={styles.odds}>
-                  {formatOdds(bet.odds)}
+                  {formatOdds(bet.odds, bet.stake, bet.potential_payout)}
                 </Text>
                 
                 {/* Status Badge for pending only */}
@@ -394,10 +390,10 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
               {/* Pending bet info */}
               <View style={styles.pendingBetInfo}>
                 <Text style={styles.wager}>
-                  Stake: {formatCurrency(bet.stake || 0)}
+                  Stake: {formatAmount(bet.stake || 0)}
                 </Text>
                 <Text style={[styles.payout, { color: statusColor }]}>
-                  To Win: {formatCurrency(displayAmount)}
+                  To Win: {formatAmount(displayAmount, true)}
                 </Text>
               </View>
             </>
@@ -406,7 +402,7 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
             <>
               <View style={styles.settledRightRow}>
                 <Text style={styles.odds}>
-                  {formatOdds(bet.odds)}
+                  {formatOdds(bet.odds, bet.stake, bet.potential_payout)}
                 </Text>
               </View>
               
@@ -416,14 +412,14 @@ export default function EnhancedBetCard({ bet }: EnhancedBetCardProps) {
                          bet.status === 'lost' ? theme.colors.status.error : 
                          theme.colors.text.secondary 
                 }]}>
-                  {formatCurrency(displayAmount)}
+                  {formatAmount(displayAmount, true)}
                 </Text>
               </View>
             </>
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

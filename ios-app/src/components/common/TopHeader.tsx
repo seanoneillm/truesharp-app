@@ -8,9 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { globalStyles } from '../../styles/globalStyles';
 import { theme } from '../../styles/theme';
 import TrueSharpLogo from './TrueSharpLogo';
-import TrueSharpShield from './TrueSharpShield';
 import { supabase } from '../../lib/supabase';
 import { MainStackParamList } from '../../types';
+import { adminService } from '../../services/adminService';
 
 type NavigationProp = StackNavigationProp<MainStackParamList>;
 
@@ -19,10 +19,22 @@ export default function TopHeader() {
   const navigation = useNavigation<NavigationProp>();
   const [showDropdown, setShowDropdown] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchProfilePicture();
+    checkAdminAccess();
   }, [user]);
+
+  const checkAdminAccess = async () => {
+    try {
+      const hasAdminAccess = await adminService.validateAdminAccess(user);
+      setIsAdmin(hasAdminAccess);
+    } catch (error) {
+      console.error('Error checking admin access:', error);
+      setIsAdmin(false);
+    }
+  };
 
   const fetchProfilePicture = async () => {
     if (!user?.id) return;
@@ -70,6 +82,9 @@ export default function TopHeader() {
     setShowDropdown(false);
     
     switch (action) {
+      case 'admin':
+        navigation.navigate('Admin');
+        break;
       case 'settings':
         navigation.navigate('Settings');
         break;
@@ -88,9 +103,13 @@ export default function TopHeader() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        {/* Left side - TrueSharp Shield */}
+        {/* Left side - TrueSharp Logo */}
         <View style={styles.leftSection}>
-          <TrueSharpShield size={28} variant="default" />
+          <Image 
+            source={require('../../assets/truesharp-logo.png')} 
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Center - TrueSharp Logo */}
@@ -124,6 +143,20 @@ export default function TopHeader() {
           {/* Dropdown Menu */}
           {showDropdown && (
             <View style={styles.dropdown}>
+              {/* Admin button - only show for admin users */}
+              {isAdmin && (
+                <>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleDropdownAction('admin')}
+                  >
+                    <Ionicons name="shield-outline" size={20} color={theme.colors.primary} />
+                    <Text style={[styles.dropdownText, styles.adminText]}>Admin</Text>
+                  </TouchableOpacity>
+                  <View style={styles.separator} />
+                </>
+              )}
+              
               <TouchableOpacity
                 style={styles.dropdownItem}
                 onPress={() => handleDropdownAction('settings')}
@@ -184,6 +217,10 @@ const styles = StyleSheet.create({
   leftSection: {
     flex: 1,
     alignItems: 'flex-start',
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
   },
   centerSection: {
     flex: 2,
@@ -246,5 +283,9 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: theme.colors.status.error,
+  },
+  adminText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
 });

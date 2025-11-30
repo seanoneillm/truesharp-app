@@ -33,6 +33,7 @@ import {
   StripeSellerData,
   stripeSellerDataService,
 } from '../../services/stripeSellerDataService'
+import { MarketplaceStrategy, fetchMarketplaceLeaderboard } from '../../services/supabaseAnalytics'
 import { globalStyles } from '../../styles/globalStyles'
 import { theme } from '../../styles/theme'
 
@@ -82,7 +83,7 @@ export default function DashboardScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [timeframeStats, setTimeframeStats] = useState({ winRate: 0, totalBets: 0, totalProfit: 0 })
-  const [marketplaceStrategies, setMarketplaceStrategies] = useState<any[]>([])
+  const [marketplaceStrategies, setMarketplaceStrategies] = useState<MarketplaceStrategy[]>([])
   const [marketplaceLoading, setMarketplaceLoading] = useState(true)
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true)
@@ -181,90 +182,10 @@ export default function DashboardScreen() {
   const fetchMarketplaceData = async () => {
     try {
       setMarketplaceLoading(true)
-
-      // First fetch top strategies
-      const { data: strategiesData, error: strategiesError } = await supabase
-        .from('strategy_leaderboard')
-        .select('*')
-        .eq('is_monetized', true)
-        .not('roi_percentage', 'is', null)
-        .order('overall_rank', { ascending: true, nullsFirst: false })
-        .order('marketplace_rank_score', { ascending: false, nullsFirst: false })
-        .limit(3)
-
-      if (strategiesError) {
-        setMarketplaceStrategies([])
-        return
-      }
-
-      if (!strategiesData || strategiesData.length === 0) {
-        setMarketplaceStrategies([])
-        return
-      }
-
-      // Get unique user IDs to fetch seller profiles
-      const userIds = [...new Set(strategiesData.map(s => s.user_id))]
-
-      // Fetch seller profiles for these users
-      const { data: sellerProfilesData, error: sellerProfilesError } = await supabase
-        .from('seller_profiles')
-        .select('user_id, profile_img, banner_img, bio')
-        .in('user_id', userIds)
-
-      if (sellerProfilesError) {
-        console.error('Error fetching seller profiles:', sellerProfilesError)
-      }
-
-      // Create a map of user_id to seller profile
-      const sellerProfilesMap = new Map()
-      ;(sellerProfilesData || []).forEach(profile => {
-        sellerProfilesMap.set(profile.user_id, profile)
-      })
-
-      // Transform data with seller profiles
-      const transformedData = strategiesData.map((strategy: any) => {
-        const sellerProfile = sellerProfilesMap.get(strategy.user_id)
-
-        // Calculate corrected win rate: wins / (wins + losses) * 100, excluding pushes
-        let corrected_win_rate = 0
-        if (strategy.winning_bets !== undefined && strategy.losing_bets !== undefined) {
-          const settledBets = (strategy.winning_bets || 0) + (strategy.losing_bets || 0)
-          corrected_win_rate =
-            settledBets > 0 ? ((strategy.winning_bets || 0) / settledBets) * 100 : 0
-        } else if (strategy.win_rate !== undefined) {
-          // win_rate is stored as decimal (0-1), convert to percentage
-          corrected_win_rate = (strategy.win_rate || 0) * 100
-        }
-
-        return {
-          id: strategy.id,
-          strategy_id: strategy.strategy_id,
-          user_id: strategy.user_id,
-          strategy_name: strategy.strategy_name || 'Strategy',
-          strategy_description: strategy.strategy_description || '',
-          username: strategy.username || 'anonymous',
-          display_name: strategy.display_name || strategy.username || '',
-          profile_picture_url: sellerProfile?.profile_img || null,
-          avatar_url: sellerProfile?.profile_img || null,
-          banner_img: sellerProfile?.banner_img || null,
-          roi_percentage: strategy.roi_percentage || 0,
-          win_rate: strategy.win_rate || 0,
-          corrected_win_rate: corrected_win_rate,
-          wins: strategy.winning_bets || 0,
-          losses: strategy.losing_bets || 0,
-          total_bets: strategy.total_bets || 0,
-          primary_sport: strategy.primary_sport || '',
-          strategy_type: strategy.strategy_type || '',
-          pricing_monthly: strategy.subscription_price_monthly || 0,
-          pricing_weekly: strategy.subscription_price_weekly || 0,
-          pricing_yearly: strategy.subscription_price_yearly || 0,
-          price: strategy.subscription_price_monthly || 0,
-          subscriber_count: strategy.subscriber_count || 0,
-          is_verified: strategy.is_verified_seller || false,
-        }
-      })
-
-      setMarketplaceStrategies(transformedData)
+      
+      // Use the same algorithm as MarketplaceScreen - fetch top 3 strategies using marketplace ranking
+      const data = await fetchMarketplaceLeaderboard(3)
+      setMarketplaceStrategies(data)
     } catch (error) {
       console.error('Error fetching marketplace data:', error)
       setMarketplaceStrategies([])

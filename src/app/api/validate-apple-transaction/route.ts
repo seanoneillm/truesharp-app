@@ -86,63 +86,81 @@ export async function POST(request: NextRequest) {
     const apiToken = generateAppStoreAPIToken()
     console.log('✅ Apple API token generated successfully')
 
-    // Step 2: Validate subscription with App Store Server API using original transaction ID
-    console.log('📡 Validating with Apple App Store Server API...', {
-      originalTransactionId: originalTransactionId || transactionId,
-      environment: clientEnvironment,
-      timestamp: new Date().toISOString()
-    })
+    // NEW APPROACH: Quick validation check first, then background processing
+    console.log('🚀 Quick validation approach - checking for existing subscription first...')
     
-    const { transactionData, environment } = await validateTransactionWithAppStore(originalTransactionId || transactionId, transactionId, apiToken, clientEnvironment)
-    
-    console.log('✅ Apple validation successful', {
-      environment,
-      transactionId: transactionData.transactionId,
-      originalTransactionId: transactionData.originalTransactionId,
-      expiresDate: transactionData.expiresDate,
-      timestamp: new Date().toISOString()
-    })
-
-    // Step 3: Process the validated transaction
-    console.log('🗄️ Processing validated transaction - updating database...', {
+    // Step 2: Quick check for existing subscription or claimable subscription
+    const existingResult = await quickValidationCheck({
       userId,
+      transactionId,
       originalTransactionId: originalTransactionId || transactionId,
-      productId,
-      environment,
-      timestamp: new Date().toISOString()
+      productId
     })
     
-    const result = await processValidatedTransaction({
+    if (existingResult.found) {
+      console.log('✅ Quick validation successful - existing subscription found', {
+        subscriptionId: existingResult.subscription_id,
+        isActive: existingResult.is_active,
+        source: existingResult.source,
+        validationTime: Date.now() - startTime
+      })
+      
+      return NextResponse.json({
+        valid: true,
+        subscription: {
+          id: existingResult.subscription_id,
+          plan: existingResult.plan,
+          isActive: existingResult.is_active,
+          expirationDate: existingResult.expiration_date
+        },
+        meta: {
+          source: existingResult.source,
+          validationTime: Date.now() - startTime
+        }
+      })
+    }
+    
+    // Step 3: For new transactions, start background validation and return optimistic response
+    console.log('🔄 New transaction detected - starting background validation...')
+    
+    // Schedule background validation (don't await)
+    scheduleBackgroundValidation({
       userId,
       transactionId,
       originalTransactionId: originalTransactionId || transactionId,
       productId,
-      transactionData,
-      environment
-    })
-
-    console.log('✅ Database update successful - subscription created/updated', {
-      subscriptionId: result.subscription_id,
-      plan: result.plan,
-      isActive: result.is_active,
-      environment,
-      validationTime: Date.now() - startTime,
-      timestamp: new Date().toISOString()
+      clientEnvironment,
+      apiToken
+    }).catch(error => {
+      console.error('❌ Background validation failed:', error)
     })
     
-    // Note: Webhooks are logging transaction details, restore purchases handles activation via Apple API
-
+    // Return optimistic response immediately
+    const optimisticResult = await createOptimisticSubscription({
+      userId,
+      transactionId,
+      originalTransactionId: originalTransactionId || transactionId,
+      productId,
+      clientEnvironment
+    })
+    
+    console.log('⚡ Returning optimistic response - background validation in progress', {
+      subscriptionId: optimisticResult.subscription_id,
+      validationTime: Date.now() - startTime
+    })
+    
     return NextResponse.json({
       valid: true,
       subscription: {
-        id: result.subscription_id,
-        plan: result.plan,
-        isActive: result.is_active,
-        expirationDate: result.expiration_date
+        id: optimisticResult.subscription_id,
+        plan: optimisticResult.plan,
+        isActive: true, // Optimistic - will be corrected by background validation
+        expirationDate: optimisticResult.estimated_expiration
       },
       meta: {
-        environment,
-        validationTime: Date.now() - startTime
+        processing: 'background_validation_in_progress',
+        validationTime: Date.now() - startTime,
+        note: 'Subscription will be validated in background. Check status in a few seconds.'
       }
     })
 
@@ -389,6 +407,242 @@ function decodeJWSTransaction(jws: string): JWSTransaction {
     console.error('❌ Failed to decode JWS transaction:', error)
     throw new Error('Invalid transaction signature from Apple')
   }
+}
+
+/**
+ * Quick validation check for existing subscriptions
+ */
+async function quickValidationCheck({
+  userId,
+  transactionId,
+  originalTransactionId,
+  productId
+}: {
+  userId: string
+  transactionId: string
+  originalTransactionId: string
+  productId: string
+}) {
+  const cookieStore = await cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+  console.log('🔍 Checking for existing subscription...', {
+    userId,
+    originalTransactionId,
+    transactionId
+  })
+
+  // Check for existing subscription by original transaction ID first
+  const { data: existingSubscription, error } = await supabase
+    .from('pro_subscriptions')
+    .select('id, plan, current_period_end, status, user_id')
+    .eq('apple_original_transaction_id', originalTransactionId)
+    .maybeSingle()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('❌ Error checking existing subscription:', error)
+  }
+
+  if (existingSubscription) {
+    const isActive = new Date(existingSubscription.current_period_end) > new Date()
+    console.log('✅ Found existing subscription by original transaction ID')
+    
+    // If it's for a different user, this is suspicious
+    if (existingSubscription.user_id && existingSubscription.user_id !== userId) {
+      console.warn('⚠️ Transaction belongs to different user', {
+        existingUserId: existingSubscription.user_id,
+        requestUserId: userId
+      })
+      return { found: false }
+    }
+    
+    // If no user is set (claimable subscription), claim it
+    if (!existingSubscription.user_id) {
+      console.log('🎯 Found claimable subscription, claiming it...')
+      const claimResult = await supabase.rpc('claim_apple_subscription', {
+        p_user_id: userId,
+        p_original_transaction_id: originalTransactionId
+      })
+      
+      if (claimResult.data?.success) {
+        console.log('✅ Successfully claimed subscription')
+        return {
+          found: true,
+          subscription_id: claimResult.data.subscription_id,
+          plan: claimResult.data.plan,
+          is_active: claimResult.data.is_active,
+          expiration_date: claimResult.data.expiration_date,
+          source: 'claimed_webhook_subscription'
+        }
+      }
+    }
+    
+    return {
+      found: true,
+      subscription_id: existingSubscription.id,
+      plan: existingSubscription.plan,
+      is_active: isActive,
+      expiration_date: existingSubscription.current_period_end,
+      source: 'existing_subscription'
+    }
+  }
+
+  // Check for subscription by current transaction ID
+  const { data: byTransactionId } = await supabase
+    .from('pro_subscriptions')
+    .select('id, plan, current_period_end, status')
+    .eq('apple_transaction_id', transactionId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (byTransactionId) {
+    const isActive = new Date(byTransactionId.current_period_end) > new Date()
+    console.log('✅ Found existing subscription by transaction ID')
+    return {
+      found: true,
+      subscription_id: byTransactionId.id,
+      plan: byTransactionId.plan,
+      is_active: isActive,
+      expiration_date: byTransactionId.current_period_end,
+      source: 'existing_by_transaction_id'
+    }
+  }
+
+  console.log('ℹ️ No existing subscription found')
+  return { found: false }
+}
+
+/**
+ * Create optimistic subscription for immediate response
+ */
+async function createOptimisticSubscription({
+  userId,
+  transactionId,
+  originalTransactionId,
+  productId,
+  clientEnvironment
+}: {
+  userId: string
+  transactionId: string
+  originalTransactionId: string
+  productId: string
+  clientEnvironment?: string
+}) {
+  const cookieStore = await cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+  const plan = productId.includes('year') ? 'yearly' : 'monthly'
+  const estimatedExpiration = new Date()
+  estimatedExpiration.setMonth(estimatedExpiration.getMonth() + (plan === 'yearly' ? 12 : 1))
+
+  console.log('🚀 Creating optimistic subscription record...')
+
+  // Create optimistic subscription with 'processing' status
+  const { data, error } = await supabase
+    .from('pro_subscriptions')
+    .insert({
+      user_id: userId,
+      status: 'processing',
+      plan: plan,
+      current_period_start: new Date().toISOString(),
+      current_period_end: estimatedExpiration.toISOString(),
+      price_id: productId,
+      apple_transaction_id: transactionId,
+      apple_original_transaction_id: originalTransactionId,
+      apple_environment: clientEnvironment || 'sandbox',
+      receipt_validation_status: 'pending',
+      validation_attempts: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('❌ Failed to create optimistic subscription:', error)
+    throw new Error('Failed to create optimistic subscription')
+  }
+
+  // Optimistically update profile to pro
+  await supabase
+    .from('profiles')
+    .update({ pro: 'yes', updated_at: new Date().toISOString() })
+    .eq('id', userId)
+
+  console.log('✅ Created optimistic subscription:', data.id)
+
+  return {
+    subscription_id: data.id,
+    plan: plan,
+    estimated_expiration: estimatedExpiration.toISOString()
+  }
+}
+
+/**
+ * Schedule background validation (fire-and-forget)
+ */
+async function scheduleBackgroundValidation({
+  userId,
+  transactionId,
+  originalTransactionId,
+  productId,
+  clientEnvironment,
+  apiToken
+}: {
+  userId: string
+  transactionId: string
+  originalTransactionId: string
+  productId: string
+  clientEnvironment?: string
+  apiToken: string
+}) {
+  // Use setTimeout to run validation in background
+  setTimeout(async () => {
+    try {
+      console.log('🔄 Starting background validation for transaction:', transactionId)
+
+      const { transactionData, environment } = await validateTransactionWithAppStore(
+        originalTransactionId,
+        transactionId,
+        apiToken,
+        clientEnvironment
+      )
+
+      const result = await processValidatedTransaction({
+        userId,
+        transactionId,
+        originalTransactionId,
+        productId,
+        transactionData,
+        environment
+      })
+
+      console.log('✅ Background validation completed successfully:', {
+        subscriptionId: result.subscription_id,
+        isActive: result.is_active,
+        environment
+      })
+
+    } catch (error) {
+      console.error('❌ Background validation failed:', error)
+      
+      // Mark the optimistic subscription as failed
+      const cookieStore = await cookies()
+      const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+      
+      await supabase
+        .from('pro_subscriptions')
+        .update({
+          status: 'validation_failed',
+          receipt_validation_status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('apple_transaction_id', transactionId)
+        .eq('user_id', userId)
+
+      // Don't update profile to 'no' immediately - user might restore purchases
+    }
+  }, 100) // Start after 100ms
 }
 
 /**

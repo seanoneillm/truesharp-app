@@ -8,6 +8,7 @@ import {
   Alert,
   StyleSheet,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -19,8 +20,6 @@ import { theme } from '../../styles/theme';
 import InputField from '../../components/common/InputField';
 import CheckboxField from '../../components/common/CheckboxField';
 import LoadingButton from '../../components/common/LoadingButton';
-import TrueSharpLogo from '../../components/common/TrueSharpLogo';
-import TrueSharpShield from '../../components/common/TrueSharpShield';
 
 type LoginScreenProps = {
   navigation: StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -140,11 +139,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           <View style={styles.container}>
             {/* Branding Header */}
             <View style={styles.brandingSection}>
-              <View style={styles.shieldSection}>
-                <TrueSharpShield size={48} variant="default" />
-              </View>
-              <View style={styles.logoSection}>
-                <TrueSharpLogo size="large" variant="single-line" />
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../../assets/truesharp-logo.png')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
             </View>
 
@@ -152,7 +152,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <View style={styles.header}>
               <Text style={[globalStyles.h1, styles.title]}>Welcome Back</Text>
               <Text style={[globalStyles.bodySecondary, styles.subtitle]}>
-                Sign in to your TrueSharp account
+                Sign in to continue to your account
               </Text>
             </View>
 
@@ -226,15 +226,16 @@ const styles = StyleSheet.create({
   },
   brandingSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing['2xl'],
-    paddingTop: theme.spacing.lg,
+    marginBottom: theme.spacing['3xl'],
+    paddingTop: theme.spacing.xl,
   },
-  shieldSection: {
+  logoContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    justifyContent: 'center',
   },
-  logoSection: {
-    alignItems: 'center',
+  logoImage: {
+    width: 240,
+    height: 100,
   },
   header: {
     alignItems: 'center',
@@ -255,11 +256,12 @@ const styles = StyleSheet.create({
   form: {
     marginBottom: theme.spacing.xl,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    ...theme.shadows.md,
+    borderRadius: theme.borderRadius['2xl'],
+    padding: theme.spacing.xl,
+    ...theme.shadows.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    marginHorizontal: theme.spacing.xs,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -273,8 +275,9 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.medium,
   },
   loginButton: {
-    marginTop: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    marginTop: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
+    paddingVertical: theme.spacing.md,
   },
   footer: {
     flexDirection: 'row',

@@ -115,10 +115,49 @@ export const calculateBetSlipPayout = (
 };
 
 /**
+ * Calculate American odds from stake and potential payout
+ */
+export const calculateAmericanOddsFromPayout = (stake: number, potentialPayout: number): number => {
+  if (!stake || stake <= 0 || !potentialPayout || potentialPayout <= 0) {
+    return 100; // Default fallback
+  }
+  
+  // Calculate decimal odds: payout / stake
+  const decimalOdds = potentialPayout / stake;
+  
+  // Convert to American odds
+  if (decimalOdds >= 2) {
+    return Math.round((decimalOdds - 1) * 100);
+  } else {
+    return Math.round(-100 / (decimalOdds - 1));
+  }
+};
+
+/**
+ * Format odds for display (add + for positive odds)
+ * If odds are infinity and we have stake/payout data, calculate the actual odds
+ */
+export const formatOddsWithFallback = (odds: number, stake?: number, potentialPayout?: number): string => {
+  // If odds are finite, format normally
+  if (typeof odds === 'number' && isFinite(odds)) {
+    return odds > 0 ? `+${odds}` : `${odds}`;
+  }
+  
+  // If odds are infinity but we have stake and payout, calculate the actual odds
+  if (stake && potentialPayout && stake > 0 && potentialPayout > 0) {
+    const calculatedOdds = calculateAmericanOddsFromPayout(stake, potentialPayout);
+    return calculatedOdds > 0 ? `+${calculatedOdds}` : `${calculatedOdds}`;
+  }
+  
+  // Fallback for invalid data
+  return odds?.toString() || '+100';
+};
+
+/**
  * Format odds for display (add + for positive odds)
  */
 export const formatOdds = (odds: number): string => {
-  if (!odds || typeof odds !== 'number') {
+  if (!odds || typeof odds !== 'number' || !isFinite(odds)) {
     return '-';
   }
   

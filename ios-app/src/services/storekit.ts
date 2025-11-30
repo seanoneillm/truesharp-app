@@ -2,13 +2,8 @@ import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { logger } from '../utils/logger'
 
-// Safely import expo-in-app-purchases with fallback
-let InAppPurchases: any = null
-try {
-  InAppPurchases = require('expo-in-app-purchases')
-} catch (error) {
-  logger.error('Failed to import expo-in-app-purchases', error)
-}
+// Safely import expo-in-app-purchases
+import * as InAppPurchases from 'expo-in-app-purchases'
 
 // Receipt validation constants
 const MAX_RECEIPT_VALIDATION_ATTEMPTS = 6

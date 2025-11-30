@@ -28,6 +28,8 @@ import { BetData } from '../../services/supabaseAnalytics'
 import { globalStyles } from '../../styles/globalStyles'
 import { theme } from '../../styles/theme'
 import { TabParamList } from '../../types'
+import { formatOddsWithFallback } from '../../utils/oddsCalculation'
+import { parseMultiStatOddid } from '../../lib/betFormatting'
 
 const { width } = Dimensions.get('window')
 
@@ -216,6 +218,7 @@ export default function SubscriptionsScreen() {
       for (const subscription of formattedSubscriptions) {
         if (subscription.strategy_id) {
           // Fetch open bets via strategy_bets table
+          // Fetch all pending bets (including those with past game dates for proper parlay filtering)
           const { data: strategyBets } = await supabase
             .from('strategy_bets')
             .select(
@@ -251,7 +254,6 @@ export default function SubscriptionsScreen() {
             )
             .eq('strategy_id', subscription.strategy_id)
             .eq('bets.status', 'pending')
-            .gt('bets.game_date', new Date().toISOString())
             .order('bets(placed_at)', { ascending: false })
 
           // Fetch today's bets via strategy_bets table
@@ -294,19 +296,59 @@ export default function SubscriptionsScreen() {
             .order('bets(placed_at)', { ascending: false })
 
           // Transform the strategy_bets data to extract bets
-          const openBets = (strategyBets || []).map((sb: any) => ({
+          const allPendingBets = (strategyBets || []).map((sb: any) => ({
             ...sb.bets,
             strategy_id: subscription.strategy_id,
           }))
+
+          // Filter bets to only include those that should be shown as "open"
+          const currentTime = new Date().toISOString()
+          const openBets = allPendingBets.filter((bet: any) => {
+            // For single bets, only include if game_date is in the future (or null)
+            if (!bet.is_parlay || !bet.parlay_id) {
+              return !bet.game_date || bet.game_date > currentTime
+            }
+            
+            // For parlay legs, we'll filter them later by parlay
+            // For now, include all parlay legs so we can analyze complete parlays
+            return true
+          })
+
+          // Now filter out entire parlays if any leg has started
+          const parlayIds = new Set(
+            openBets
+              .filter((bet: any) => bet.is_parlay && bet.parlay_id)
+              .map((bet: any) => bet.parlay_id)
+          )
+
+          const validParlayIds = new Set()
+          for (const parlayId of Array.from(parlayIds)) {
+            const parlayLegs = allPendingBets.filter((bet: any) => bet.parlay_id === parlayId)
+            const allLegsHaveFutureGameDates = parlayLegs.every((leg: any) => 
+              !leg.game_date || leg.game_date > currentTime
+            )
+            
+            if (allLegsHaveFutureGameDates) {
+              validParlayIds.add(parlayId)
+            }
+          }
+
+          // Final filter: include single bets and only legs from valid parlays
+          const filteredOpenBets = openBets.filter((bet: any) => {
+            if (!bet.is_parlay || !bet.parlay_id) {
+              return true // Single bet already filtered above
+            }
+            return validParlayIds.has(bet.parlay_id)
+          })
 
           const todaysBets = (todaysStrategyBets || []).map((sb: any) => ({
             ...sb.bets,
             strategy_id: subscription.strategy_id,
           }))
 
-          subscription.open_bets = openBets
+          subscription.open_bets = filteredOpenBets
           // Group open bets to get accurate count (parlays count as 1, not individual legs)
-          const groupedOpenBets = groupBetsByParlay(openBets)
+          const groupedOpenBets = groupBetsByParlay(filteredOpenBets)
           subscription.open_bets_count =
             groupedOpenBets.parlays.length + groupedOpenBets.singles.length
 
@@ -820,36 +862,16 @@ const formatMarketLineForShare = (bet: BetData): string => {
       }
     }
 
-    // If prop_type was null or empty, try parsing from oddid
-    if (!propType && (bet as any).oddid) {
+    // Always check oddid for multi-stat combinations (takes priority)
+    if ((bet as any).oddid) {
       const oddid = (bet as any).oddid
-      const parts = oddid.split('-')
-      if (parts.length > 0) {
-        const statPart = parts[0]
-        if (statPart === 'touchdowns') propType = 'Touchdowns'
-        else if (statPart === 'passing_touchdowns') propType = 'Passing TDs'
-        else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs'
-        else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs'
-        else if (statPart === 'passing_yards') propType = 'Passing Yards'
-        else if (statPart === 'rushing_yards') propType = 'Rushing Yards'
-        else if (statPart === 'receiving_yards') propType = 'Receiving Yards'
-        else if (statPart === 'batting_hits') propType = 'Hits'
-        else if (statPart === 'batting_homeruns') propType = 'Home Runs'
-        else if (statPart === 'batting_rbi') propType = 'RBIs'
-        else if (statPart === 'batting_runs') propType = 'Runs'
-        else if (statPart === 'batting_totalbases') propType = 'Total Bases'
-        else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases'
-        else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts'
-        else if (statPart === 'rebounds') propType = 'Rebounds'
-        else if (statPart === 'assists') propType = 'Assists'
-        else if (statPart === 'steals') propType = 'Steals'
-        else if (statPart === 'blocks') propType = 'Blocks'
-        else if (statPart === 'goals') propType = 'Goals'
-        else if (statPart === 'saves') propType = 'Saves'
-        else {
-          // For other stat types, replace underscores and capitalize
-          propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        }
+      const parsedFromOddid = parseMultiStatOddid(oddid)
+      // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+      if (parsedFromOddid && parsedFromOddid.includes('+')) {
+        propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase())
+      } else if (!propType) {
+        // Fallback to oddid parsing for single stats only if prop_type is empty
+        propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase())
       }
     }
 
@@ -1021,11 +1043,10 @@ const formatPlacementInfoForShare = (bet: BetData): string => {
 const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
   const [isExpanded, setIsExpanded] = React.useState(false)
 
-  const formatOdds = (odds: string | number) => {
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     if (odds === undefined || odds === null) return '0'
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds
-    if (isNaN(numericOdds)) return odds?.toString() || '0'
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout) || '0'
   }
 
   const toggleExpanded = () => {
@@ -1178,7 +1199,7 @@ const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
             <Text style={styles.shareableBetTertiaryLine}>{formatPlacementInfo()}</Text>
           </View>
           <View style={styles.shareableBetRight}>
-            <Text style={styles.shareableBetOdds}>{formatOdds(parlay.odds)}</Text>
+            <Text style={styles.shareableBetOdds}>{formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}</Text>
             <Icon
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
               size={20}
@@ -1214,7 +1235,7 @@ const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
                 </View>
 
                 <View style={styles.shareableLegRight}>
-                  <Text style={styles.shareableLegOdds}>{formatOdds(leg.odds)}</Text>
+                  <Text style={styles.shareableLegOdds}>{formatOdds(leg.odds, leg.stake, leg.potential_payout)}</Text>
                 </View>
               </View>
             ))}
@@ -1240,7 +1261,7 @@ const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
             </Text>
           </View>
           <View style={styles.shareableBetRight}>
-            <Text style={styles.shareableBetOdds}>{formatOdds(singleBet.odds)}</Text>
+            <Text style={styles.shareableBetOdds}>{formatOdds(singleBet.odds, singleBet.stake, singleBet.potential_payout)}</Text>
           </View>
         </View>
       </View>
@@ -1250,10 +1271,9 @@ const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
 
 // Custom bet card for modal (no monetary info, teams first, description second, odds where payout was)
 function ModalBetCard({ bet }: { bet: BetData | any }) {
-  const formatOdds = (odds: string | number) => {
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds
-    if (isNaN(numericOdds)) return odds.toString()
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout) || odds.toString()
   }
 
   // Create teams display (first line)
@@ -1305,36 +1325,16 @@ function ModalBetCard({ bet }: { bet: BetData | any }) {
         }
       }
 
-      // If prop_type was null or empty, try parsing from oddid
-      if (!propType && (bet as any).oddid) {
+      // Always check oddid for multi-stat combinations (takes priority)
+      if ((bet as any).oddid) {
         const oddid = (bet as any).oddid
-        const parts = oddid.split('-')
-        if (parts.length > 0) {
-          const statPart = parts[0]
-          if (statPart === 'touchdowns') propType = 'Touchdowns'
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs'
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs'
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs'
-          else if (statPart === 'passing_yards') propType = 'Passing Yards'
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards'
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards'
-          else if (statPart === 'batting_hits') propType = 'Hits'
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs'
-          else if (statPart === 'batting_rbi') propType = 'RBIs'
-          else if (statPart === 'batting_runs') propType = 'Runs'
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases'
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases'
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts'
-          else if (statPart === 'rebounds') propType = 'Rebounds'
-          else if (statPart === 'assists') propType = 'Assists'
-          else if (statPart === 'steals') propType = 'Steals'
-          else if (statPart === 'blocks') propType = 'Blocks'
-          else if (statPart === 'goals') propType = 'Goals'
-          else if (statPart === 'saves') propType = 'Saves'
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid)
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase())
+        } else if (!propType) {
+          // Fallback to oddid parsing for single stats only if prop_type is empty
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase())
         }
       }
 
@@ -1394,7 +1394,7 @@ function ModalBetCard({ bet }: { bet: BetData | any }) {
         </View>
 
         <View style={styles.modalBetOdds}>
-          <Text style={styles.modalBetOddsText}>{formatOdds(bet.odds)}</Text>
+          <Text style={styles.modalBetOddsText}>{formatOdds(bet.odds, bet.stake, bet.potential_payout)}</Text>
           <Icon name="chevron-forward" size={14} color="white" style={styles.modalBetOddsIcon} />
         </View>
       </View>
@@ -1576,19 +1576,8 @@ function OpenBetsModal({ visible, onClose, subscription }: OpenBetsModalProps) {
       return { parlays: [], singles: [] }
     }
 
-    // Group the open bets (already filtered by database for pending status and future game dates)
-    const grouped = groupBetsByParlay(subscription.open_bets)
-
-    // Additional filter for parlays: ensure ALL legs are still in the open_bets list
-    // This handles edge cases where some legs might have been filtered out by the database query
-    const validParlays = grouped.parlays.filter((parlay: ParlayGroup) => {
-      // Check if all legs of this parlay are present in the open_bets
-      return parlay.legs.every((leg: BetData) =>
-        subscription.open_bets.some((openBet: BetData) => openBet.id === leg.id)
-      )
-    })
-
-    return { parlays: validParlays, singles: grouped.singles }
+    // Group the open bets (already properly filtered for parlays with started games)
+    return groupBetsByParlay(subscription.open_bets)
   }, [subscription.open_bets])
 
   const unifiedBetsList = useMemo(() => {

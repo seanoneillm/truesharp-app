@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { PanGestureHandlerGestureEvent } from 'react-native-gesture-handler'
+// import { PanGestureHandlerGestureEvent } from 'react-native-gesture-handler' // Removed due to iOS pod conflicts
 import { SafeAreaView } from 'react-native-safe-area-context'
 import TrueSharpShield from '../../components/common/TrueSharpShield'
 import FloatingBetSlip from '../../components/games/FloatingBetSlip'
@@ -394,7 +394,7 @@ export default function GamesScreen() {
     }
   }
 
-  const handleSwipeGesture = (event: PanGestureHandlerGestureEvent) => {
+  const handleSwipeGesture = (event: any) => {
     const { translationX, velocityX } = event.nativeEvent
 
     if (Math.abs(translationX) > 50 || Math.abs(velocityX) > 500) {

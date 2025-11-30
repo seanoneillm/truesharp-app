@@ -18,6 +18,7 @@ export type MainStackParamList = {
   Profile: undefined;
   Help: undefined;
   Feedback: undefined;
+  Admin: undefined;
 };
 
 export type TabParamList = {

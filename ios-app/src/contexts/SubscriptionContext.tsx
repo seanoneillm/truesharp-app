@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { modernStoreKitService, SubscriptionStatus } from '../services/modern-storekit';
 import { useAuth } from './AuthContext';
 import { logger } from '../utils/logger';
@@ -27,6 +27,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [statusCheckInterval, setStatusCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
 
   /**
@@ -54,7 +55,8 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         isActive: status.isActive,
         productId: status.productId,
         expirationDate: status.expirationDate,
-        isTrialPeriod: status.isTrialPeriod
+        isTrialPeriod: status.isTrialPeriod,
+        userId: user.id
       });
 
     } catch (error) {
@@ -122,7 +124,14 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   // Initialize subscription status when user changes
   useEffect(() => {
     refreshSubscriptionStatus();
-  }, [refreshSubscriptionStatus]);
+    
+    // Proactively initialize StoreKit on iOS for better performance
+    if (Platform.OS === 'ios' && user) {
+      modernStoreKitService.initialize().catch(error => {
+        logger.warn('⚠️ Could not proactively initialize StoreKit:', error);
+      });
+    }
+  }, [refreshSubscriptionStatus, user]);
 
   // Set up real-time subscription updates from Supabase
   useEffect(() => {
@@ -180,32 +189,80 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     };
   }, [user, refreshSubscriptionStatus]);
 
-  // Handle app state changes (foreground/background)
+  // Handle app state changes (foreground/background) - More conservative approach
   useEffect(() => {
     if (!user) return;
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
         logger.info('📱 App became active, refreshing subscription status...');
-        refreshSubscriptionStatus();
+        // Add a small delay to ensure app is fully active
+        setTimeout(() => {
+          refreshSubscriptionStatus();
+        }, 500);
       }
     };
 
     const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
 
-    // Auto-refresh subscription status periodically when app is active
+    // Reduce auto-refresh frequency to avoid excessive API calls
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') {
         logger.info('⏰ Auto-refreshing subscription status...');
         refreshSubscriptionStatus();
       }
-    }, 30 * 60 * 1000); // 30 minutes
+    }, 60 * 60 * 1000); // 60 minutes instead of 30
 
     return () => {
       appStateSubscription?.remove();
       clearInterval(interval);
     };
   }, [user, refreshSubscriptionStatus]);
+
+  /**
+   * Schedule periodic subscription status checks for pending validations
+   */
+  const scheduleSubscriptionStatusChecks = useCallback(() => {
+    // Clear any existing interval
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+    }
+
+    let checkCount = 0;
+    const maxChecks = 6; // Check for 1 minute (10 seconds * 6)
+
+    const interval = setInterval(async () => {
+      checkCount++;
+      logger.info(`🔄 Checking subscription status (${checkCount}/${maxChecks})...`);
+      
+      await refreshSubscriptionStatus();
+      
+      if (checkCount >= maxChecks || subscriptionStatus.isActive) {
+        logger.info('⏹️ Stopping subscription status checks');
+        clearInterval(interval);
+        setStatusCheckInterval(null);
+      }
+    }, 10000); // Check every 10 seconds
+
+    setStatusCheckInterval(interval);
+
+    // Auto-cleanup after 2 minutes
+    setTimeout(() => {
+      if (interval) {
+        clearInterval(interval);
+        setStatusCheckInterval(null);
+      }
+    }, 120000);
+  }, [refreshSubscriptionStatus, subscriptionStatus.isActive, statusCheckInterval]);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+      }
+    };
+  }, [statusCheckInterval]);
 
   // Computed properties for convenience
   const isProUser = subscriptionStatus.isActive;
@@ -254,11 +311,25 @@ export function useSubscriptionActions() {
     try {
       logger.info('🛒 Starting subscription purchase:', productId);
       
+      // Ensure StoreKit is initialized before purchase
+      if (Platform.OS === 'ios') {
+        const initialized = await modernStoreKitService.initialize();
+        if (!initialized) {
+          throw new Error('Unable to connect to App Store. Please check your internet connection and try again.');
+        }
+      }
+      
       const result = await modernStoreKitService.purchaseSubscription(productId);
       
       if (result.success) {
         // Refresh subscription status after successful purchase
         await refreshSubscriptionStatus();
+        
+        // If validation is still pending, schedule periodic checks
+        if (!result.serverValidated) {
+          logger.info('🔄 Purchase succeeded but validation pending - scheduling status checks');
+          scheduleSubscriptionStatusChecks();
+        }
       }
       
       return result;
@@ -271,6 +342,14 @@ export function useSubscriptionActions() {
   const restorePurchases = async () => {
     try {
       logger.info('🔄 Restoring purchases...');
+      
+      // Ensure StoreKit is initialized before restore
+      if (Platform.OS === 'ios') {
+        const initialized = await modernStoreKitService.initialize();
+        if (!initialized) {
+          throw new Error('Unable to connect to App Store. Please check your internet connection and try again.');
+        }
+      }
       
       const results = await modernStoreKitService.restorePurchases();
       

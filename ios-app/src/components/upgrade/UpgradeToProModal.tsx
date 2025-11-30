@@ -46,6 +46,7 @@ export default function UpgradeToProModal({
   const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([]);
   const [storeKitInitialized, setStoreKitInitialized] = useState(false);
   const [showLegalModals, setShowLegalModals] = useState(false);
+  const [preparingSubscriptions, setPreparingSubscriptions] = useState(false);
   const { user } = useAuth();
   const { purchaseSubscription, restorePurchases } = useSubscriptionActions();
 
@@ -94,26 +95,48 @@ export default function UpgradeToProModal({
     'Line movement & CLV analysis',
   ];
 
-  // Initialize StoreKit when modal opens (iOS only)
+  // Initialize StoreKit immediately when component mounts (iOS only)
   useEffect(() => {
-    if (visible && Platform.OS === 'ios' && !storeKitInitialized) {
+    if (Platform.OS === 'ios') {
       initializeStoreKit();
     }
-  }, [visible]);
+  }, []);
+
+  // Ensure prices are loaded when modal becomes visible
+  useEffect(() => {
+    if (visible && Platform.OS === 'ios' && storeKitInitialized && storeProducts.length === 0) {
+      loadStoreProducts();
+    }
+  }, [visible, storeKitInitialized]);
 
   const initializeStoreKit = async () => {
+    if (Platform.OS !== 'ios') return;
+    
     try {
+      setPreparingSubscriptions(true);
       const initialized = await modernStoreKitService.initialize();
       if (initialized) {
         setStoreKitInitialized(true);
-        const products = await modernStoreKitService.getProducts();
-        setStoreProducts(products);
+        // Load products immediately after initialization
+        await loadStoreProducts();
       } else {
+        console.warn('📱 Modal: StoreKit failed to initialize');
       }
     } catch (error) {
       console.error('📱 Modal: Failed to initialize StoreKit:', error);
       // Don't show alert immediately - let the purchase flow handle initialization
-      // Alert.alert('Error', 'Failed to load subscription options. Please try again.');
+    } finally {
+      setPreparingSubscriptions(false);
+    }
+  };
+
+  const loadStoreProducts = async () => {
+    try {
+      const products = await modernStoreKitService.getProducts();
+      setStoreProducts(products);
+    } catch (error) {
+      console.error('📱 Modal: Failed to load store products:', error);
+      // Products will be loaded during purchase if needed
     }
   };
 
@@ -141,49 +164,50 @@ export default function UpgradeToProModal({
           const initialized = await modernStoreKitService.initialize();
           if (initialized) {
             setStoreKitInitialized(true);
-            const products = await modernStoreKitService.getProducts();
-            setStoreProducts(products);
+            await loadStoreProducts();
           } else {
-            throw new Error('Failed to initialize StoreKit for purchase');
+            throw new Error('Unable to connect to App Store. Please check your internet connection and try again.');
           }
+        }
+
+        // Ensure products are loaded
+        if (storeProducts.length === 0) {
+          await loadStoreProducts();
         }
         
         // Use subscription context for iOS purchases (handles state updates)
         const result = await purchaseSubscription(tier.productId);
         
-        if (result.success && result.serverValidated) {
+        if (result.success) {
           const isSimulatorPurchase = result.transactionId?.includes('dev_txn');
-          const validationInfo = result.validationAttempts && result.validationAttempts > 1 
-            ? `\n\n🔄 Transaction validated after ${result.validationAttempts} attempts` 
-            : '';
           
-          const message = isSimulatorPurchase 
-            ? `Welcome to TrueSharp Pro ${tier.name}! Your subscription is now active.\n\n⚠️ Local Development: This was a mock purchase.`
-            : `Welcome to TrueSharp Pro ${tier.name}! Your subscription is now active.\n\n✅ Apple transaction validated and processed successfully.${validationInfo}\n\nTransaction ID: ${result.transactionId?.substring(0, 12)}...`;
-          
-          Alert.alert(
-            'Subscription Active! 🎉',
-            message,
-            [{ text: 'Continue', onPress: onClose }]
-          );
-        } else if (result.success && !result.serverValidated) {
-          // Purchase succeeded but server validation failed
-          Alert.alert(
-            'Purchase Verification Failed',
-            'Your purchase was processed by Apple but we couldn\'t validate the transaction. This may be due to a temporary issue. Please try restoring your purchase or contact support if the issue persists.',
-            [
-              { text: 'Try Restore', onPress: async () => {
-                try {
-                  const results = await restorePurchases();
-                  Alert.alert('Success', 'Purchase restored successfully!', [{ text: 'OK', onPress: onClose }]);
-                } catch (error) {
-                  Alert.alert('Error', 'Could not restore purchase. Please contact support.');
-                }
-              }},
-              { text: 'Contact Support', onPress: () => {/* Add support contact logic */} },
-              { text: 'OK', onPress: onClose }
-            ]
-          );
+          if (result.serverValidated) {
+            // Fully validated subscription
+            const validationInfo = result.validationAttempts && result.validationAttempts > 1 
+              ? `\n\n🔄 Transaction validated after ${result.validationAttempts} attempts` 
+              : '';
+            
+            const message = isSimulatorPurchase 
+              ? `Welcome to TrueSharp Pro ${tier.name}! Your subscription is now active.\n\n⚠️ Local Development: This was a mock purchase.`
+              : `Welcome to TrueSharp Pro ${tier.name}! Your subscription is now active.\n\n✅ Apple transaction validated and processed successfully.${validationInfo}\n\nTransaction ID: ${result.transactionId?.substring(0, 12)}...`;
+            
+            Alert.alert(
+              'Subscription Active! 🎉',
+              message,
+              [{ text: 'Continue', onPress: onClose }]
+            );
+          } else {
+            // Optimistic success - validation happening in background
+            const message = isSimulatorPurchase 
+              ? `Welcome to TrueSharp Pro ${tier.name}! Your subscription is now active.\n\n⚠️ Local Development: This was a mock purchase.`
+              : `Welcome to TrueSharp Pro ${tier.name}! Your subscription is being activated.\n\n✅ Purchase successful! Your subscription will be fully activated within a few moments.\n\nTransaction ID: ${result.transactionId?.substring(0, 12)}...`;
+            
+            Alert.alert(
+              'Purchase Successful! 🎉',
+              message,
+              [{ text: 'Continue', onPress: onClose }]
+            );
+          }
         } else if (result.error?.includes('canceled') || result.error?.includes('cancelled')) {
           Alert.alert(
             'Purchase Canceled',
@@ -192,8 +216,8 @@ export default function UpgradeToProModal({
           );
         } else if (result.error?.includes('timeout') || result.error?.includes('timed out')) {
           Alert.alert(
-            'Transaction Timeout',
-            'The purchase was initiated but Apple\'s transaction is taking longer than expected. This can happen with sandbox testing. Please check your Apple ID subscriptions or try restoring purchases.',
+            'Purchase Processing',
+            'Your purchase is being processed by Apple. This may take a few moments. If you don\'t see your subscription activated shortly, please use "Restore Purchases" below.',
             [
               { text: 'Try Restore', onPress: async () => {
                 try {
@@ -272,10 +296,9 @@ export default function UpgradeToProModal({
         const initialized = await modernStoreKitService.initialize();
         if (initialized) {
           setStoreKitInitialized(true);
-          const products = await modernStoreKitService.getProducts();
-          setStoreProducts(products);
+          await loadStoreProducts();
         } else {
-          throw new Error('Failed to initialize StoreKit for restore');
+          throw new Error('Unable to connect to App Store. Please check your internet connection and try again.');
         }
       }
 
@@ -416,9 +439,17 @@ export default function UpgradeToProModal({
 
           {/* Pricing Section - Moved to Top */}
           <View style={styles.pricingSection}>
-            <View style={styles.pricingTiers}>
-              {pricingTiers.map(renderPricingTier)}
-            </View>
+            {preparingSubscriptions && Platform.OS === 'ios' ? (
+              <View style={styles.preparingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.preparingText}>Loading subscription options from App Store...</Text>
+                <Text style={styles.preparingSubtext}>This may take a moment for first-time setup</Text>
+              </View>
+            ) : (
+              <View style={styles.pricingTiers}>
+                {pricingTiers.map(renderPricingTier)}
+              </View>
+            )}
           </View>
 
           {/* Features Section */}
@@ -589,6 +620,24 @@ const styles = StyleSheet.create({
   },
   pricingTiers: {
     gap: theme.spacing.sm,
+  },
+  preparingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  preparingText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  preparingSubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   pricingTierContainer: {
     position: 'relative',

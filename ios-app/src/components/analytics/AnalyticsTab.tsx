@@ -9,12 +9,15 @@ import TrueSharpShield from '../common/TrueSharpShield';
 import ProfitOverTimeChart from './ProfitOverTimeChart';
 import CustomChartCreator, { ChartConfig } from './CustomChartCreator';
 import UpgradeToProModal from '../upgrade/UpgradeToProModal';
+import { UnitDisplayOptions, formatProfitLoss, convertMetricsForDisplay } from '../../utils/unitCalculations';
 
 interface AnalyticsTabProps {
   analyticsData: AnalyticsData;
   loading: boolean;
   onRefresh: () => Promise<void>;
   filters?: any; // Optional filters for compatibility
+  unitOptions?: UnitDisplayOptions;
+  isProUser?: boolean;
 }
 
 interface ProChartWrapperProps {
@@ -51,15 +54,26 @@ const ProChartWrapper: React.FC<ProChartWrapperProps> = ({ title, children, isPr
   );
 };
 
-export default function AnalyticsTab({ analyticsData, loading, onRefresh, filters = {} }: AnalyticsTabProps) {
+export default function AnalyticsTab({ analyticsData, loading, onRefresh, filters = {}, unitOptions, isProUser = false }: AnalyticsTabProps) {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChart, setSelectedChart] = useState<'sport' | 'betType' | 'side'>('sport');
   const [customCharts, setCustomCharts] = useState<ChartConfig[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Determine if user is Pro
-  const isPro = user?.profile?.pro === 'yes';
+  // Format metric values based on unit options
+  const formatMetricValue = (amount: number, isProfit = false) => {
+    if (unitOptions) {
+      const amountInCents = Math.round(amount * 100);
+      return formatProfitLoss(amountInCents, unitOptions);
+    }
+    return isProfit 
+      ? `${amount >= 0 ? '+' : ''}$${Math.abs(amount).toFixed(0)}`
+      : `$${amount.toFixed(0)}`;
+  };
+
+  // Use the passed pro status from SubscriptionContext
+  const isPro = isProUser;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -399,6 +413,11 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
 
     const breakdownData = getBreakdownData();
     const formatCurrency = (amount: number) => {
+      if (unitOptions) {
+        // Convert dollars to cents and use unit formatting
+        const amountInCents = Math.round(amount * 100);
+        return formatProfitLoss(amountInCents, unitOptions);
+      }
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
@@ -472,7 +491,7 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
                       },
                     ]}
                   >
-                    {item.profit >= 0 ? '+' : ''}{formatCurrency(item.profit)}
+                    {formatCurrency(item.profit)}
                   </Text>
                 </View>
               ))}
@@ -497,6 +516,7 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
         chartData={analyticsData.dailyProfitData || []}
         filters={{} as any} // We'll pass empty filters for now
         loading={loading}
+        unitOptions={unitOptions}
       />
     );
   };
@@ -544,7 +564,7 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
           
           <View style={styles.activitySummary}>
             <Text style={styles.activitySummaryText}>
-              Average Stake: ${avgStake.toFixed(0)}
+              Average Stake: {unitOptions ? formatMetricValue(avgStake) : `$${avgStake.toFixed(0)}`}
             </Text>
           </View>
         </View>
@@ -554,19 +574,26 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
 
   // Utility functions for odds conversion
   const oddsToWinPercentage = (odds: number): number => {
+    // Handle edge cases
+    if (!odds || !isFinite(odds) || isNaN(odds)) return 50; // Default to 50% if invalid
+    
     if (odds > 0) {
-      // Positive odds: win% = 100 / (odds + 100)
+      // Positive odds: implied probability = 100 / (odds + 100)
       return (100 / (odds + 100)) * 100;
-    } else {
-      // Negative odds: win% = |odds| / (|odds| + 100)
+    } else if (odds < 0) {
+      // Negative odds: implied probability = |odds| / (|odds| + 100)
       return (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
+    } else {
+      // Edge case for odds = 0 (shouldn't happen but handle gracefully)
+      return 50;
     }
   };
 
   const getOddsBucket = (odds: number): number => {
     const winPercentage = oddsToWinPercentage(odds);
     // Create 10 buckets: 0-10%, 10-20%, ..., 90-100%
-    return Math.min(Math.floor(winPercentage / 10), 9);
+    // Ensure the bucket is between 0 and 9
+    return Math.min(Math.max(Math.floor(winPercentage / 10), 0), 9);
   };
 
   const getBucketLabel = (bucket: number): string => {
@@ -588,16 +615,23 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
         buckets[i] = { wins: 0, total: 0, bets: [] };
       }
 
-      // Process all settled bets
+      // Process all settled bets - include push/void as neutral outcomes
       analyticsData.recentBets
-        .filter(bet => bet.odds && ['won', 'lost'].includes(bet.status))
+        .filter(bet => {
+          const odds = Number(bet.odds);
+          const hasValidOdds = bet.odds && !isNaN(odds) && isFinite(odds) && odds !== 0;
+          const isSettled = ['won', 'lost', 'push', 'void'].includes(bet.status);
+          return hasValidOdds && isSettled;
+        })
         .forEach(bet => {
           const bucket = getOddsBucket(Number(bet.odds));
           buckets[bucket].total += 1;
           buckets[bucket].bets.push(bet);
+          // Only count wins, not pushes/voids (they don't count against win rate)
           if (bet.status === 'won') {
             buckets[bucket].wins += 1;
           }
+          // Push/void bets are tracked but don't affect win rate calculation
         });
 
       // Convert to chart data
@@ -605,7 +639,11 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
         .map(([bucketIndex, data]) => {
           const bucket = parseInt(bucketIndex);
           const expectedWinRate = (bucket * 10) + 5; // Middle of bucket range
-          const actualWinRate = data.total > 0 ? (data.wins / data.total) * 100 : 0;
+          
+          // Calculate actual win rate excluding push/void bets from denominator
+          const settledBets = data.bets.filter(bet => ['won', 'lost'].includes(bet.status));
+          const wins = data.bets.filter(bet => bet.status === 'won').length;
+          const actualWinRate = settledBets.length > 0 ? (wins / settledBets.length) * 100 : 0;
           
           return {
             bucket,
@@ -613,6 +651,7 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
             expected: expectedWinRate,
             actual: actualWinRate,
             bets: data.total,
+            settledBets: settledBets.length,
             betsList: data.bets
           };
         })
@@ -625,10 +664,15 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
     const getOddsAnalysis = () => {
       if (calibrationData.length === 0) return null;
       
-      const analysisData = calibrationData.map(item => ({
-        ...item,
-        performance: item.actual - item.expected // How much better/worse than expected
-      }));
+      const analysisData = calibrationData
+        .filter(item => item.settledBets >= 1) // Only consider ranges with at least 1 settled bet
+        .map(item => ({
+          ...item,
+          performance: item.actual - item.expected, // How much better/worse than expected
+          edge: ((item.actual - item.expected) / item.expected) * 100 // Percentage edge over expected
+        }));
+      
+      if (analysisData.length === 0) return null;
       
       const bestRange = analysisData.reduce((best, current) => 
         current.performance > best.performance ? current : best
@@ -642,6 +686,16 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
     };
 
     const analysis = getOddsAnalysis();
+    
+    // Debug logging to help troubleshoot
+    if (__DEV__) {
+      console.log('Odds Calibration Debug:', {
+        calibrationDataLength: calibrationData.length,
+        hasAnalysis: !!analysis,
+        calibrationData: calibrationData.slice(0, 3), // First 3 items for debugging
+        analysis: analysis ? { bestRange: analysis.bestRange.range, worstRange: analysis.worstRange.range } : null
+      });
+    }
     
     const chartConfig = {
       backgroundColor: theme.colors.card,
@@ -660,9 +714,10 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
       },
       propsForVerticalLabels: {
         rotation: 45, // Rotate x-axis labels 45 degrees
-        fontSize: 10,
+        fontSize: 9, // Slightly smaller font to fit better
         textAnchor: 'start' as const,
       },
+      paddingBottom: 15, // Extra padding for rotated labels
       propsForHorizontalLabels: {
         fontSize: 10,
       },
@@ -688,83 +743,108 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
               </View>
             </View>
             
-            <LineChart
-              data={{
-                labels: calibrationData.map(d => d.range),
-                datasets: [
-                  {
-                    // Expected win rate (diagonal line from 0,0 to 100,100)
-                    data: calibrationData.map(d => d.expected),
-                    color: (opacity = 1) => `rgba(217, 119, 6, ${opacity})`, // Orange for expected
-                    strokeWidth: 3,
-                  },
-                  {
-                    // Actual win rate (user's performance)
-                    data: calibrationData.map(d => d.actual),
-                    color: (opacity = 1) => `rgba(5, 150, 105, ${opacity})`, // Green for actual
-                    strokeWidth: 3,
-                  },
-                ],
-              }}
-              width={screenWidth - 64} // Reduced width to prevent cutoff
-              height={280} // Increased height for rotated labels
-              chartConfig={{
-                ...chartConfig,
-                formatYLabel: (value: string) => `${parseFloat(value).toFixed(0)}%`,
-              }}
-              bezier={false}
-              style={styles.chart}
-              withHorizontalLabels={true}
-              withVerticalLabels={true}
-              withInnerLines={true}
-              withOuterLines={false}
-              withShadow={false}
-              withDots={true}
-              fromZero={true}
-              yAxisLabel=""
-              yAxisSuffix=""
-              segments={4}
-              onDataPointClick={(data) => {
-                const pointIndex = data.index;
-                const point = calibrationData[pointIndex];
-                if (point) {
-                  Alert.alert(
-                    'Odds Range Details',
-                    `Win Rate Range: ${point.range}\nExpected: ${point.expected.toFixed(1)}%\nActual: ${point.actual.toFixed(1)}%\nTotal Bets: ${point.bets}\nPerformance: ${point.actual > point.expected ? 'Above' : 'Below'} expected`,
-                    [{ text: 'OK' }]
-                  );
-                }
-              }}
-            />
+            <View style={{ alignItems: 'center', paddingHorizontal: 10, paddingBottom: 20 }}>
+              <LineChart
+                data={{
+                  labels: calibrationData.map(d => d.range),
+                  datasets: [
+                    {
+                      // Expected win rate (diagonal line from 0,0 to 100,100)
+                      data: calibrationData.map(d => d.expected),
+                      color: (opacity = 1) => `rgba(217, 119, 6, ${opacity})`, // Orange for expected
+                      strokeWidth: 3,
+                    },
+                    {
+                      // Actual win rate (user's performance)
+                      data: calibrationData.map(d => d.actual),
+                      color: (opacity = 1) => `rgba(5, 150, 105, ${opacity})`, // Green for actual
+                      strokeWidth: 3,
+                    },
+                  ],
+                }}
+                width={screenWidth - 80} // Further reduced width to prevent cutoff 
+                height={260} // Increased height to accommodate rotated labels
+                chartConfig={{
+                  ...chartConfig,
+                  formatYLabel: (value: string) => `${parseFloat(value).toFixed(0)}%`,
+                }}
+                bezier={false}
+                style={[styles.chart, { marginBottom: 10 }]}
+                withHorizontalLabels={true}
+                withVerticalLabels={true}
+                withInnerLines={true}
+                withOuterLines={false}
+                withShadow={false}
+                withDots={true}
+                fromZero={true}
+                yAxisLabel=""
+                yAxisSuffix=""
+                segments={4}
+                onDataPointClick={(data) => {
+                  const pointIndex = data.index;
+                  const point = calibrationData[pointIndex];
+                  if (point) {
+                    Alert.alert(
+                      'Odds Range Details',
+                      `Win Rate Range: ${point.range}\nExpected: ${point.expected.toFixed(1)}%\nActual: ${point.actual.toFixed(1)}%\nTotal Bets: ${point.bets}\nSettled Bets: ${point.settledBets}\nPerformance: ${point.actual > point.expected ? 'Above' : 'Below'} expected by ${Math.abs(point.actual - point.expected).toFixed(1)}%`,
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
+              />
+            </View>
             
             {analysis && (
               <View style={styles.oddsAnalysisContainer}>
                 <View style={styles.oddsAnalysisItem}>
                   <View style={[styles.analysisIcon, { backgroundColor: `${theme.colors.betting.won}20` }]}>
-                    <Ionicons name="trending-up" size={16} color={theme.colors.betting.won} />
+                    <Ionicons name="trending-up" size={20} color={theme.colors.betting.won} />
                   </View>
                   <View style={styles.analysisContent}>
-                    <Text style={styles.analysisTitle}>Best Odds Range</Text>
-                    <Text style={styles.analysisRange}>{analysis.bestRange.range}</Text>
+                    <Text style={styles.analysisTitle}>🎯 Best Odds Range for You</Text>
+                    <Text style={styles.analysisRange}>{analysis.bestRange.range} implied win probability</Text>
                     <Text style={styles.analysisDescription}>
-                      You're {analysis.bestRange.performance > 0 ? 
-                        `${analysis.bestRange.performance.toFixed(1)}% above expected` : 
-                        'performing as expected'} in this range
+                      {analysis.bestRange.performance > 2 ? 
+                        `You're crushing it in this range, winning ${analysis.bestRange.performance.toFixed(1)}% more than the market expects. This is where you have your strongest edge - consider placing more bets here.` :
+                        analysis.bestRange.performance > 0 ?
+                        `You're outperforming the market by ${analysis.bestRange.performance.toFixed(1)}% in this range. Focus more of your betting here to maximize profits.` :
+                        `You're performing in line with market expectations in this range. ${analysis.bestRange.bets} bets tracked so far.`
+                      }
                     </Text>
                   </View>
                 </View>
                 
                 <View style={styles.oddsAnalysisItem}>
                   <View style={[styles.analysisIcon, { backgroundColor: `${theme.colors.betting.lost}20` }]}>
-                    <Ionicons name="trending-down" size={16} color={theme.colors.betting.lost} />
+                    <Ionicons name="trending-down" size={20} color={theme.colors.betting.lost} />
                   </View>
                   <View style={styles.analysisContent}>
-                    <Text style={styles.analysisTitle}>Challenging Odds Range</Text>
-                    <Text style={styles.analysisRange}>{analysis.worstRange.range}</Text>
+                    <Text style={styles.analysisTitle}>⚠️ Challenging Odds Range</Text>
+                    <Text style={styles.analysisRange}>{analysis.worstRange.range} implied win probability</Text>
                     <Text style={styles.analysisDescription}>
-                      You're {analysis.worstRange.performance < 0 ? 
-                        `${Math.abs(analysis.worstRange.performance).toFixed(1)}% below expected` : 
-                        'performing above expected'} in this range
+                      {analysis.worstRange.performance < -2 ? 
+                        `This range is tough for you - you're underperforming by ${Math.abs(analysis.worstRange.performance).toFixed(1)}%. Consider avoiding bets in this range or improving your selection process.` :
+                        analysis.worstRange.performance < 0 ?
+                        `You're slightly below expectations by ${Math.abs(analysis.worstRange.performance).toFixed(1)}% here. With better pick selection, you can turn this around.` :
+                        `Actually, you're doing well in this range too! ${analysis.worstRange.bets} bets show positive results.`
+                      }
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+            
+            {!analysis && calibrationData.length > 0 && (
+              <View style={styles.oddsAnalysisContainer}>
+                <Text style={styles.analysisHeader}>Performance Insights</Text>
+                <View style={styles.oddsAnalysisItem}>
+                  <View style={[styles.analysisIcon, { backgroundColor: `${theme.colors.primary}20` }]}>
+                    <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.analysisContent}>
+                    <Text style={styles.analysisTitle}>📊 Keep Betting to Unlock Insights</Text>
+                    <Text style={styles.analysisDescription}>
+                      Place more settled bets (won/lost) across different odds ranges to unlock personalized insights about where you have your strongest edge and which odds ranges you should focus on or avoid.
                     </Text>
                   </View>
                 </View>
@@ -900,14 +980,14 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
       },
       { 
         label: 'Total Profit', 
-        value: `${safeNumber(metrics.totalProfit) >= 0 ? '+' : ''}$${Math.abs(safeNumber(metrics.totalProfit)).toFixed(0)}`, 
+        value: formatMetricValue(safeNumber(metrics.totalProfit), true), 
         icon: 'cash',
         color: safeNumber(metrics.totalProfit) >= 0 ? theme.colors.betting.won : theme.colors.betting.lost,
         bgColor: safeNumber(metrics.totalProfit) >= 0 ? `${theme.colors.betting.won}15` : `${theme.colors.betting.lost}15`
       },
       { 
         label: 'Avg Stake', 
-        value: `$${safeNumber(metrics.avgStake).toFixed(0)}`, 
+        value: formatMetricValue(safeNumber(metrics.avgStake)), 
         icon: 'wallet',
         color: theme.colors.secondary,
         bgColor: `${theme.colors.secondary}15`
@@ -947,10 +1027,10 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
               <View style={[styles.metricIconContainer, { backgroundColor: metric.color }]}>
                 <Ionicons name={metric.icon as any} size={16} color="white" />
               </View>
-              <Text style={[styles.metricValue, { color: metric.color }]} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={[styles.metricValue, { color: metric.color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
                 {metric.value}
               </Text>
-              <Text style={styles.metricLabel} numberOfLines={2} adjustsFontSizeToFit>
+              <Text style={styles.metricLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                 {metric.label}
               </Text>
             </View>
@@ -1005,13 +1085,13 @@ const styles = StyleSheet.create({
   },
   metricsContainer: {
     paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.md,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.sm,
   },
   metricsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
     gap: theme.spacing.xs,
   },
   shieldIcon: {
@@ -1020,23 +1100,29 @@ const styles = StyleSheet.create({
   chartHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border + '20',
     gap: theme.spacing.xs,
   },
   profitBreakdownContainer: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
     marginHorizontal: theme.spacing.md,
     marginVertical: theme.spacing.xs,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '30',
     ...theme.shadows.sm,
   },
   breakdownListContainer: {
-    minHeight: 150,
-    maxHeight: 200,
+    minHeight: 140,
+    maxHeight: 180,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.xs,
   },
   breakdownList: {
     backgroundColor: theme.colors.card,
@@ -1046,10 +1132,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.border + '40',
     backgroundColor: theme.colors.card,
     marginBottom: 1,
   },
@@ -1081,7 +1167,7 @@ const styles = StyleSheet.create({
   emptyBreakdown: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
   },
   emptyBreakdownText: {
     fontSize: theme.typography.fontSize.base,
@@ -1092,15 +1178,16 @@ const styles = StyleSheet.create({
   proChartContainer: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
     marginHorizontal: theme.spacing.md,
     marginVertical: theme.spacing.xs,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '30',
     ...theme.shadows.sm,
   },
   proChartBlurred: {
-    height: 200,
+    height: 160,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     justifyContent: 'center',
@@ -1129,7 +1216,8 @@ const styles = StyleSheet.create({
   },
   // Betting Activity Chart Styles
   activityContainer: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   activityItem: {
     gap: theme.spacing.xs,
@@ -1179,9 +1267,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   calibrationChartContainer: {
-    paddingBottom: theme.spacing.lg, // Extra space for rotated labels
-    paddingHorizontal: theme.spacing.sm, // Horizontal padding for rotated labels
-    alignItems: 'center', // Center the chart
+    paddingBottom: theme.spacing.sm, // Reduced space for rotated labels
+    paddingHorizontal: theme.spacing.xs, // Less padding for chart
   },
   calibrationHeader: {
     flexDirection: 'row',
@@ -1289,14 +1376,14 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: '23%', // 4 cards per row with small gaps
-    aspectRatio: 1, // Square cards
+    aspectRatio: 1.1, // Slightly taller for better text fit
     backgroundColor: theme.colors.card,
     padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '40',
     ...theme.shadows.sm,
   },
   metricIconContainer: {
@@ -1312,21 +1399,28 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 2,
+    flexShrink: 1, // Allow shrinking to fit
+    maxWidth: '100%', // Ensure it doesn't overflow
+    paddingHorizontal: 2, // Small padding to prevent edge touching
   },
   metricLabel: {
     fontSize: 9,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 11,
+    flexShrink: 1, // Allow shrinking to fit
+    maxWidth: '100%', // Ensure it doesn't overflow
+    paddingHorizontal: 2, // Small padding to prevent edge touching
   },
   proChartsContainer: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
+    letterSpacing: 0.3,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1342,16 +1436,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '40',
   },
   chartSelectorButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
   },
   activeChartSelector: {
@@ -1388,7 +1483,7 @@ const styles = StyleSheet.create({
   emptyChart: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
   },
   emptyChartText: {
     fontSize: theme.typography.fontSize.base,
@@ -1397,11 +1492,11 @@ const styles = StyleSheet.create({
   },
   aiContainer: {
     marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.sm,
+    marginVertical: theme.spacing.xs,
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '30',
     overflow: 'hidden',
     ...theme.shadows.sm,
   },
@@ -1440,11 +1535,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   aiContent: {
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
   },
   aiHeroSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
   aiIconContainer: {
     width: 48,
@@ -1468,7 +1564,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   aiFeature: {
     flexDirection: 'row',
@@ -1536,42 +1632,58 @@ const styles = StyleSheet.create({
   },
   // Odds Analysis Styles
   oddsAnalysisContainer: {
-    marginTop: theme.spacing.md,
-    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    paddingHorizontal: 0, // Remove horizontal padding to span full width
+  },
+  analysisHeader: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
   },
   oddsAnalysisItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.lg,
     gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border + '40',
+    ...theme.shadows.sm,
+    width: '100%', // Ensure full width
+    alignSelf: 'stretch', // Stretch to fill container
   },
   analysisIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0, // Prevent icon from shrinking
   },
   analysisContent: {
     flex: 1,
+    minWidth: 0, // Allow content to shrink if needed
   },
   analysisTitle: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: 2,
+    marginBottom: theme.spacing.xs,
   },
   analysisRange: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.primary,
     marginBottom: theme.spacing.xs,
   },
   analysisDescription: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    lineHeight: 18,
+    color: theme.colors.text.primary,
+    lineHeight: 20,
+    flexWrap: 'wrap', // Allow text to wrap
   },
 });

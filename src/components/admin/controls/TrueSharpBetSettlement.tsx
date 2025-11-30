@@ -16,7 +16,10 @@ import {
   DollarSign,
   Calendar,
   User,
-  Gamepad2
+  Gamepad2,
+  MessageCircle,
+  X,
+  FileText
 } from 'lucide-react'
 
 interface GameInfo {
@@ -31,6 +34,21 @@ interface GameInfo {
   home_score: number | null
   away_score: number | null
   league: string
+}
+
+interface BetTicket {
+  id: string
+  bet_id: string
+  user_id: string
+  reason: string
+  custom_reason: string | null
+  description: string | null
+  status: 'open' | 'in_review' | 'resolved' | 'closed'
+  admin_notes: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 interface TrueSharpBet {
@@ -56,6 +74,7 @@ interface TrueSharpBet {
   profit: number | null
   score?: string | number | null // Score from odds table
   game?: GameInfo
+  ticket?: BetTicket // Associated ticket if this bet has issues reported
 }
 
 interface TrueSharpBetSettlementProps {
@@ -67,6 +86,7 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [settlingBets, setSettlingBets] = useState<Set<string>>(new Set())
+  const [dismissingTickets, setDismissingTickets] = useState<Set<string>>(new Set())
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { addToast } = useToast()
@@ -111,7 +131,7 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
 
   const settleBet = async (
     betId: string, 
-    status: 'won' | 'lost' | 'push'
+    status: 'won' | 'lost' | 'void'
   ) => {
     try {
       setSettlingBets(prev => new Set(prev).add(betId))
@@ -130,7 +150,7 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
         case 'lost':
           profit = Number((-bet.stake).toFixed(2))
           break
-        case 'push':
+        case 'void':
           profit = 0
           break
         default:
@@ -169,8 +189,8 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
         )
 
         addToast({
-          title: "Bet Settled",
-          description: `Bet settled as ${status.toUpperCase()}. Profit: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`,
+          title: bet.status === 'pending' ? "Bet Settled" : "Bet Updated",
+          description: result.message,
           variant: "success",
         })
 
@@ -193,6 +213,58 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
       setSettlingBets(prev => {
         const newSet = new Set(prev)
         newSet.delete(betId)
+        return newSet
+      })
+    }
+  }
+
+  const dismissTicket = async (ticketId: string) => {
+    try {
+      setDismissingTickets(prev => new Set(prev).add(ticketId))
+
+      const response = await fetch('/api/admin/dismiss-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to dismiss ticket: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Remove the bet with this ticket from the list
+        setBets(prevBets => 
+          prevBets.filter(bet => bet.ticket?.id !== ticketId)
+        )
+
+        addToast({
+          title: "Ticket Dismissed",
+          description: "Ticket has been successfully dismissed and closed.",
+          variant: "success",
+        })
+
+        // Refresh the list to ensure consistency
+        setTimeout(() => {
+          refreshBets()
+        }, 1000)
+      } else {
+        throw new Error(result.error || 'Failed to dismiss ticket')
+      }
+    } catch (err) {
+      console.error('Error dismissing ticket:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      addToast({
+        title: "Dismissal Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setDismissingTickets(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(ticketId)
         return newSet
       })
     }
@@ -263,10 +335,71 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
     }
   }
 
+  const isGameOverdue = (bet: TrueSharpBet) => {
+    if (!bet.game) return false
+    
+    const gameTime = new Date(bet.game.game_time)
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    yesterday.setHours(23, 59, 59, 999) // End of yesterday
+    
+    return gameTime <= yesterday
+  }
+
+  const getStatusBadge = (status: string, profit?: number | null) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge variant="outline" className="text-yellow-700 bg-yellow-100 border-yellow-300">
+            ⏳ Pending
+          </Badge>
+        )
+      case 'won':
+        return (
+          <Badge variant="outline" className="text-green-700 bg-green-100 border-green-300">
+            ✅ Won {profit !== null && profit !== undefined ? `(+$${profit.toFixed(2)})` : ''}
+          </Badge>
+        )
+      case 'lost':
+        return (
+          <Badge variant="outline" className="text-red-700 bg-red-100 border-red-300">
+            ❌ Lost {profit !== null && profit !== undefined ? `($${profit.toFixed(2)})` : ''}
+          </Badge>
+        )
+      case 'void':
+        return (
+          <Badge variant="outline" className="text-gray-700 bg-gray-100 border-gray-300">
+            ⚪ Void
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="outline" className="text-slate-700 bg-slate-100 border-slate-300">
+            {status}
+          </Badge>
+        )
+    }
+  }
+
   const pendingBets = bets
     .filter(bet => bet.status === 'pending')
     .sort((a, b) => {
-      // Sort by game date chronologically (earliest first)
+      // Prioritize tickets first, then sort by game date chronologically (earliest first)
+      if (a.ticket && !b.ticket) return -1
+      if (!a.ticket && b.ticket) return 1
+      
+      const dateA = a.game?.game_time ? new Date(a.game.game_time).getTime() : new Date(a.placed_at).getTime()
+      const dateB = b.game?.game_time ? new Date(b.game.game_time).getTime() : new Date(b.placed_at).getTime()
+      return dateA - dateB
+    })
+
+  const allBetsToDisplay = bets
+    .filter(bet => bet.status === 'pending' || bet.ticket) // Include all pending bets and any bets with tickets
+    .sort((a, b) => {
+      // Prioritize tickets first, then sort by game date chronologically (earliest first)
+      if (a.ticket && !b.ticket) return -1
+      if (!a.ticket && b.ticket) return 1
+      
       const dateA = a.game?.game_time ? new Date(a.game.game_time).getTime() : new Date(a.placed_at).getTime()
       const dateB = b.game?.game_time ? new Date(b.game.game_time).getTime() : new Date(b.placed_at).getTime()
       return dateA - dateB
@@ -300,9 +433,16 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-blue-600" />
             TrueSharp Bet Settlement
-            <Badge variant="outline" className="text-blue-600">
-              {pendingBets.length} Unsettled
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-blue-600">
+                {pendingBets.length} Unsettled
+              </Badge>
+              {bets.filter(bet => bet.ticket).length > 0 && (
+                <Badge variant="outline" className="text-orange-600 bg-orange-50">
+                  {bets.filter(bet => bet.ticket).length} Tickets
+                </Badge>
+              )}
+            </div>
           </CardTitle>
           <div className="flex items-center gap-2">
             {lastUpdated && (
@@ -336,7 +476,7 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
               </div>
             ))}
           </div>
-        ) : pendingBets.length === 0 ? (
+        ) : allBetsToDisplay.length === 0 ? (
           <div className="text-center py-8">
             <Target className="mx-auto h-12 w-12 text-slate-300" />
             <p className="mt-2 text-slate-500 font-medium">No unsettled TrueSharp bets</p>
@@ -344,20 +484,68 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
           </div>
         ) : (
           <div className="space-y-3">
-            {pendingBets.map((bet) => {
+            {allBetsToDisplay.map((bet) => {
               const isSettling = settlingBets.has(bet.id)
+              const isDismissing = bet.ticket ? dismissingTickets.has(bet.ticket.id) : false
               const gameStatus = getGameStatus(bet)
+              const isOverdue = isGameOverdue(bet)
               
               return (
-                <div key={bet.id} className="border border-slate-200 rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div key={bet.id} className={`border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow ${
+                  bet.ticket ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-white'
+                }`}>
+                  {/* Ticket Reason Section (if ticket exists) */}
+                  {bet.ticket && (
+                    <div className="mb-3 p-2 bg-orange-100 border border-orange-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <MessageCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-semibold text-orange-800">Issue Reported:</span>
+                            <Badge variant="outline" className="text-orange-700 bg-orange-200 border-orange-300">
+                              {bet.ticket.reason}
+                            </Badge>
+                          </div>
+                          {bet.ticket.custom_reason && (
+                            <p className="text-sm text-orange-700 mb-1">
+                              <strong>Custom reason:</strong> {bet.ticket.custom_reason}
+                            </p>
+                          )}
+                          {bet.ticket.description && (
+                            <p className="text-sm text-orange-700">
+                              <strong>Description:</strong> {bet.ticket.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-orange-600 mt-1">
+                            Reported on {new Date(bet.ticket.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-start justify-between gap-4">
                     {/* Bet Information */}
                     <div className="flex-1 space-y-2">
                       {/* Primary bet description */}
                       <div>
-                        <h3 className="font-semibold text-slate-900 text-sm mb-1">
-                          {bet.bet_description}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                            {bet.bet_description}
+                            {isOverdue && (
+                              <div 
+                                className="relative cursor-help" 
+                                title="Game occurred yesterday or earlier - needs settlement"
+                              >
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                <div className="absolute inset-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                              </div>
+                            )}
+                          </h3>
+                          <div className="flex-shrink-0">
+                            {getStatusBadge(bet.status, bet.profit)}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-3 text-xs text-slate-600">
                           <span>{bet.sport} • {bet.league}</span>
                           <span className="capitalize">{bet.bet_type}</span>
@@ -419,6 +607,14 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
                           <p className="text-slate-500">Placed</p>
                           <p className="font-medium">{new Date(bet.placed_at).toLocaleDateString()}</p>
                         </div>
+                        {bet.status !== 'pending' && (
+                          <div>
+                            <p className="text-slate-500">Settled</p>
+                            <p className="font-medium text-xs">
+                              {bet.updated_at ? new Date(bet.updated_at).toLocaleDateString() : 'Unknown'}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Score and Odd ID section */}
@@ -448,38 +644,76 @@ export function TrueSharpBetSettlement({ className }: TrueSharpBetSettlementProp
                     </div>
 
                     {/* Settlement Actions */}
-                    <div className="flex flex-col gap-1.5 min-w-[100px]">
+                    <div className="flex flex-col gap-1.5 min-w-[140px]">
+                      {/* Settlement buttons for all bets */}
+                      <div className="text-xs text-slate-500 mb-1 font-medium">
+                        {bet.status === 'pending' ? 'Settle Bet:' : 'Change Settlement:'}
+                      </div>
+                      
                       <Button
                         onClick={() => settleBet(bet.id, 'won')}
-                        disabled={isSettling}
-                        className="bg-green-600 hover:bg-green-700 text-white h-8"
+                        disabled={isSettling || isDismissing || bet.status === 'won'}
+                        className={`h-8 ${
+                          bet.status === 'won' 
+                            ? 'bg-green-200 text-green-800 cursor-not-allowed' 
+                            : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
                         size="sm"
                       >
                         <CheckCircle className="h-3 w-3 mr-1" />
-                        Win
+                        {bet.status === 'won' ? 'Won ✓' : bet.status === 'pending' ? 'Win' : 'Change to Win'}
                       </Button>
+                      
                       <Button
                         onClick={() => settleBet(bet.id, 'lost')}
-                        disabled={isSettling}
-                        variant="destructive"
-                        className="h-8"
+                        disabled={isSettling || isDismissing || bet.status === 'lost'}
+                        variant={bet.status === 'lost' ? 'outline' : 'destructive'}
+                        className={`h-8 ${
+                          bet.status === 'lost' 
+                            ? 'bg-red-200 text-red-800 cursor-not-allowed border-red-200' 
+                            : ''
+                        }`}
                         size="sm"
                       >
                         <XCircle className="h-3 w-3 mr-1" />
-                        Loss
+                        {bet.status === 'lost' ? 'Lost ✓' : bet.status === 'pending' ? 'Loss' : 'Change to Loss'}
                       </Button>
+                      
                       <Button
-                        onClick={() => settleBet(bet.id, 'push')}
-                        disabled={isSettling}
+                        onClick={() => settleBet(bet.id, 'void')}
+                        disabled={isSettling || isDismissing || bet.status === 'void'}
                         variant="outline"
-                        className="text-yellow-600 border-yellow-300 hover:bg-yellow-50 h-8"
+                        className={`h-8 ${
+                          bet.status === 'void' 
+                            ? 'bg-gray-200 text-gray-800 cursor-not-allowed border-gray-200' 
+                            : 'text-yellow-600 border-yellow-300 hover:bg-yellow-50'
+                        }`}
                         size="sm"
                       >
                         <Equal className="h-3 w-3 mr-1" />
-                        Push
+                        {bet.status === 'void' ? 'Void ✓' : bet.status === 'pending' ? 'Void' : 'Change to Void'}
                       </Button>
+
+                      {/* Dismiss ticket button (for bets with tickets) */}
+                      {bet.ticket && (
+                        <>
+                          <div className="border-t border-slate-200 mt-1 pt-1">
+                            <div className="text-xs text-slate-500 mb-1 font-medium">Ticket Action:</div>
+                          </div>
+                          <Button
+                            onClick={() => dismissTicket(bet.ticket!.id)}
+                            disabled={isSettling || isDismissing}
+                            variant="outline"
+                            className="text-gray-600 border-gray-300 hover:bg-gray-50 h-8"
+                            size="sm"
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Dismiss Ticket
+                          </Button>
+                        </>
+                      )}
                       
-                      {isSettling && (
+                      {(isSettling || isDismissing) && (
                         <div className="flex items-center justify-center">
                           <RefreshCw className="h-3 w-3 animate-spin text-blue-600" />
                         </div>

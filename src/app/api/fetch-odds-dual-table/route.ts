@@ -281,9 +281,10 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
       }
     } while (nextCursor && pageCount <= maxPages)
 
-    // Process and save each event
+    // Process and save each event with NCAAB filtering fix
     let processedGames = 0
     let skippedGames = 0
+    let deletedNoOdds = 0
 
     for (const event of allEvents) {
       try {
@@ -314,6 +315,22 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
           continue
         }
 
+        // FIXED: NCAAB odds issue - Filter out events without inline odds to prevent 404 failures
+        const hasInlineOdds = transformedEvent.odds && Object.keys(transformedEvent.odds as Record<string, unknown>).length > 0
+        
+        if (!hasInlineOdds) {
+          deletedNoOdds++
+          console.log(
+            `🗑️ Skipping game with no odds: ${(transformedEvent.teams as any)?.away?.name} @ ${(transformedEvent.teams as any)?.home?.name} (${transformedEvent.eventID})`
+          )
+          // Skip saving game to database if no odds available
+          continue
+        }
+
+        console.log(
+          `✅ Processing game with ${Object.keys(transformedEvent.odds as Record<string, unknown>).length} odds: ${(transformedEvent.teams as any)?.away?.name} @ ${(transformedEvent.teams as any)?.home?.name}`
+        )
+
         const savedGame = await saveGameData(transformedEvent, sportMapping)
 
         if (savedGame && transformedEvent.odds) {
@@ -330,11 +347,17 @@ async function fetchLeagueOdds(leagueKey: keyof typeof SPORT_MAPPINGS) {
     }
 
     console.log(
-      `✅ ${leagueKey} completed: ${processedGames} games processed, ${skippedGames} games skipped (already started)`
+      `✅ ${leagueKey} completed: ${processedGames} games processed, ${skippedGames} games skipped (already started), ${deletedNoOdds} games skipped (no odds)`
     )
+    console.log(
+      `📊 ${leagueKey} efficiency: ${processedGames}/${allEvents.length} games had usable odds (${allEvents.length > 0 ? ((processedGames / allEvents.length) * 100).toFixed(1) : 0}%)`
+    )
+    
     return {
       games: processedGames,
       skipped: skippedGames,
+      deletedNoOdds: deletedNoOdds,
+      totalFetched: allEvents.length,
       success: true,
     }
   } catch (error) {
@@ -392,19 +415,26 @@ export async function POST(_request: NextRequest) {
     // Summary
     const totalGames = results.reduce((sum, result) => sum + result.games, 0)
     const totalSkipped = results.reduce((sum, result) => sum + (result.skipped || 0), 0)
+    const totalDeleted = results.reduce((sum, result) => sum + (result.deletedNoOdds || 0), 0)
+    const totalFetched = results.reduce((sum, result) => sum + (result.totalFetched || 0), 0)
     const successfulLeagues = results.filter(r => r.success).length
 
     console.log('\\n📊 SUMMARY:')
     console.log(`✅ Successful leagues: ${successfulLeagues}/${LEAGUES.length}`)
     console.log(`📈 Total games processed: ${totalGames}`)
     console.log(`⏭️ Total games skipped (already started): ${totalSkipped}`)
-    console.log(`⚡ Performance improvement: ${totalSkipped} fewer database operations`)
+    console.log(`🗑️ Total games deleted (no odds): ${totalDeleted}`)
+    console.log(`📊 Total games fetched: ${totalFetched}`)
+    console.log(`📈 Processing efficiency: ${totalFetched > 0 ? ((totalGames / totalFetched) * 100).toFixed(1) : 0}% of fetched games had usable odds`)
+    console.log(`⚡ Performance improvement: ${totalSkipped + totalDeleted} fewer database operations`)
     console.log('🔧 FIXES APPLIED:')
     console.log('  ✅ Skip games that have already started (performance)')
+    console.log('  ✅ Filter out games without inline odds (NCAAB fix)')
     console.log('  ✅ Use UEFA_CHAMPIONS_LEAGUE instead of UCL')
     console.log('  ✅ Include alternate lines (includeAltLines=true)')
     console.log('  ✅ Process all alternate lines as separate database rows')
     console.log('  ✅ Check duplicates by oddID + line (not just oddID)')
+    console.log('  ✅ Eliminate failed separate odds fetches (404 errors)')
 
     // 📊 COUNT: Get final row counts after fetch to measure actual database growth
     const { count: postOddsCount } = await supabase

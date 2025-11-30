@@ -77,64 +77,105 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Username is already taken' }, { status: 409 })
     }
 
-    // Try with normal anon client signup first
-    const anonSupabase = createClient(
+    // Create user with service role admin API and then manually handle profile
+    const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    console.log('Attempting normal signup with anon client...')
+    console.log('Creating user with service role admin API...')
 
-    // Try normal signup first
-    const { data: authData, error: authError } = await anonSupabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
+    // Use service role to create user with a unique identifier to avoid trigger conflicts
+    const uniqueEmail = email
+    const tempPassword = password
+    
+    let authData, authError
+    let userCreated = false
+
+    // Try creating user with service role admin
+    try {
+      const result = await serviceSupabase.auth.admin.createUser({
+        email: uniqueEmail,
+        password: tempPassword,
+        user_metadata: {
           username: username,
+          signup_method: 'manual_api'
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
+        email_confirm: false
+      })
+      
+      authData = result.data
+      authError = result.error
+      
+      if (!authError && authData.user) {
+        userCreated = true
+        console.log('✅ User created with service role:', authData.user.id)
+      }
+    } catch (error) {
+      console.log('Service role user creation failed, trying fallback...')
+      authError = error as any
+    }
+
+    // If service role failed, try normal signup but ignore trigger errors
+    if (!userCreated) {
+      console.log('Trying normal signup as fallback...')
+      
+      const anonSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+
+      const fallbackResult = await anonSupabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            username: username,
+          },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        },
+      })
+      
+      authData = fallbackResult.data
+      authError = fallbackResult.error
+      
+      if (!authError && authData.user) {
+        userCreated = true
+        console.log('✅ User created with normal signup:', authData.user.id)
+      }
+    }
+
+    console.log('Final signup response:', { 
+      user: authData?.user?.id || 'none', 
+      error: authError?.message || 'none',
+      userCreated 
     })
 
-    console.log('Normal signup response:', { data: authData, error: authError })
-
-    if (authError) {
-      console.error('Signup auth error:', authError)
+    if (authError && !userCreated) {
+      console.error('All signup methods failed:', authError)
 
       let errorMessage = 'Signup failed'
 
-      switch (authError.message) {
-        case 'User already registered':
-          errorMessage = 'An account with this email already exists'
-          break
-        case 'Password should be at least 6 characters':
-          errorMessage = 'Password must be at least 8 characters long'
-          break
-        case 'Signup is disabled':
-          errorMessage = 'Account creation is temporarily disabled'
-          break
-        case 'Email rate limit exceeded':
-          errorMessage = 'Too many signup attempts. Please try again later'
-          break
-        default:
-          errorMessage = authError.message
+      const errorMsg = authError.message || ''
+      if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
+        errorMessage = 'An account with this email already exists'
+      } else if (errorMsg.includes('Password')) {
+        errorMessage = 'Password must be at least 8 characters long'
+      } else if (errorMsg.includes('rate limit')) {
+        errorMessage = 'Too many signup attempts. Please try again later'
+      } else {
+        errorMessage = errorMsg || 'Signup failed'
       }
 
       return NextResponse.json({ error: errorMessage }, { status: 400 })
     }
 
-    if (!authData.user) {
+    if (!authData?.user) {
       return NextResponse.json({ error: 'Signup failed - no user created' }, { status: 400 })
     }
 
     // Create profile directly using service role (no trigger dependency)
     console.log('Creating profile for user:', authData.user.id)
-
-    const serviceSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
 
     const { error: profileError } = await serviceSupabase.from('profiles').insert({
       id: authData.user.id,

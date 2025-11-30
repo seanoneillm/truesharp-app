@@ -1690,3 +1690,104 @@ const calculateLeagueBreakdown = (bets: BetData[]) => {
     winRate: data.bets > 0 ? (data.wins / data.bets) * 100 : 0,
   }))
 }
+
+export interface StrategyBettingMetrics {
+  avgBetsPerWeek: number
+  firstBetDate: string | null
+  totalWeeksActive: number
+  mostActivePeriod: string
+  recentActivity: 'high' | 'medium' | 'low'
+}
+
+export const fetchStrategyBettingMetrics = async (strategyId: string): Promise<StrategyBettingMetrics> => {
+  try {
+    // Query the strategy_bets table to get all bets for this strategy
+    const { data: strategyBets, error } = await supabase
+      .from('strategy_bets')
+      .select('added_at, created_at')
+      .eq('strategy_id', strategyId)
+      .order('added_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching strategy betting metrics:', error)
+      throw error
+    }
+
+    if (!strategyBets || strategyBets.length === 0) {
+      return {
+        avgBetsPerWeek: 0,
+        firstBetDate: null,
+        totalWeeksActive: 0,
+        mostActivePeriod: 'No data',
+        recentActivity: 'low'
+      }
+    }
+
+    // Find the first bet date (use added_at if available, otherwise created_at)
+    const firstBetDate = strategyBets[0].added_at || strategyBets[0].created_at
+    const firstDate = new Date(firstBetDate)
+    const now = new Date()
+
+    // Calculate total weeks active
+    const totalWeeksActive = Math.max(1, Math.ceil((now.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 7)))
+    
+    // Calculate average bets per week
+    const avgBetsPerWeek = Math.round((strategyBets.length / totalWeeksActive) * 10) / 10
+
+    // Analyze recent activity (last 30 days)
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+    const recentBets = strategyBets.filter(bet => {
+      const betDate = new Date(bet.added_at || bet.created_at)
+      return betDate >= thirtyDaysAgo
+    })
+
+    // Determine recent activity level based on realistic betting frequency
+    // High: 5-10+ bets per day (35-70+ bets per week)
+    // Medium: 2-4 bets per day (14-28 bets per week) 
+    // Low: Less than 2 bets per day (less than 14 bets per week)
+    let recentActivity: 'high' | 'medium' | 'low'
+    const recentBetsPerWeek = recentBets.length / 4.3 // approximate weeks in 30 days
+    
+    if (recentBetsPerWeek >= 35) {
+      recentActivity = 'high'   // 5+ bets per day
+    } else if (recentBetsPerWeek >= 14) {
+      recentActivity = 'medium' // 2-4 bets per day
+    } else {
+      recentActivity = 'low'    // Less than 2 bets per day
+    }
+
+    // Find most active period (month with highest bet count)
+    const monthlyBets: { [key: string]: number } = {}
+    strategyBets.forEach(bet => {
+      const betDate = new Date(bet.added_at || bet.created_at)
+      const monthKey = `${betDate.getFullYear()}-${String(betDate.getMonth() + 1).padStart(2, '0')}`
+      monthlyBets[monthKey] = (monthlyBets[monthKey] || 0) + 1
+    })
+
+    const mostActiveMonth = Object.entries(monthlyBets).reduce((max, [month, count]) => 
+      count > max.count ? { month, count } : max, 
+      { month: '', count: 0 }
+    )
+
+    const mostActivePeriod = mostActiveMonth.month ? 
+      new Date(mostActiveMonth.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) :
+      'No data'
+
+    return {
+      avgBetsPerWeek,
+      firstBetDate,
+      totalWeeksActive,
+      mostActivePeriod,
+      recentActivity
+    }
+  } catch (error) {
+    console.error('Error in fetchStrategyBettingMetrics:', error)
+    return {
+      avgBetsPerWeek: 0,
+      firstBetDate: null,
+      totalWeeksActive: 0,
+      mostActivePeriod: 'No data',
+      recentActivity: 'low'
+    }
+  }
+}

@@ -92,9 +92,9 @@ const getSubTabs = (sport: string, league: string, mainTab: MainTabType): string
       'mlb': ['Team Total Runs', 'Team Hits', 'Team Home Runs', 'Team Strikeouts'],
       'nfl': ['Team Scoring', 'Team Stats'],
       'ncaaf': ['Team Scoring', 'Team Stats'],
-      'nba': ['Team Total Points', 'Team Rebounds', 'Team Assists', 'Team Three-Pointers', 'Team Turnovers'],
-      'wnba': ['Team Total Points', 'Team Rebounds', 'Team Assists', 'Team Three-Pointers', 'Team Turnovers'],
-      'ncaab': ['Team Total Points', 'Team Rebounds', 'Team Assists', 'Team Three-Pointers', 'Team Turnovers'],
+      'nba': ['Team Total Points'],
+      'wnba': ['Team Total Points'],
+      'ncaab': ['Team Total Points'],
       'nhl': [], // Very limited Team Props in database
       'soccer': [], // Very limited Team Props in database
       'default': []
@@ -103,9 +103,9 @@ const getSubTabs = (sport: string, league: string, mainTab: MainTabType): string
       'mlb': ['Total Hits', 'Total Home Runs', 'Total Strikeouts', 'Innings'],
       'nfl': ['Quarters/Halves'],
       'ncaaf': ['Quarters/Halves'],
-      'nba': ['Total Rebounds', 'Total Assists', 'Total Three-Pointers', 'Game Flow', 'Quarters/Halves'],
-      'wnba': ['Total Rebounds', 'Total Assists', 'Total Three-Pointers', 'Game Flow', 'Quarters/Halves'],
-      'ncaab': ['Total Rebounds', 'Total Assists', 'Total Three-Pointers', 'Game Flow', 'Halves'],
+      'nba': ['Quarters/Halves'],
+      'wnba': ['Quarters/Halves'],
+      'ncaab': ['Quarters/Halves'],
       'nhl': [], // Very limited Game Props in database
       'soccer': [], // Very limited Game Props in database
       'default': []
@@ -393,17 +393,14 @@ const getMarketOddIds = (sport: string, league: string, mainTab: MainTabType, su
     // NBA Player Props (same for NCAAB)
     'nba-Scoring': {
       'Points': ['points-ANY_PLAYER_ID-game-ou-over', 'points-ANY_PLAYER_ID-game-ou-under'],
-      'Field Goals Made': ['fieldGoals_made-ANY_PLAYER_ID-game-ou-over', 'fieldGoals_made-ANY_PLAYER_ID-game-ou-under'],
-      'Field Goal Attempts': ['fieldGoals_attempts-ANY_PLAYER_ID-game-ou-over', 'fieldGoals_attempts-ANY_PLAYER_ID-game-ou-under'],
-      'Three-Pointers Made': ['threePointers_made-ANY_PLAYER_ID-game-ou-over', 'threePointers_made-ANY_PLAYER_ID-game-ou-under'],
-      'Three-Point Attempts': ['threePointers_attempts-ANY_PLAYER_ID-game-ou-over', 'threePointers_attempts-ANY_PLAYER_ID-game-ou-under'],
-      'Free Throws Made': ['freeThrows_made-ANY_PLAYER_ID-game-ou-over', 'freeThrows_made-ANY_PLAYER_ID-game-ou-under'],
-      'Free Throw Attempts': ['freeThrows_attempts-ANY_PLAYER_ID-game-ou-over', 'freeThrows_attempts-ANY_PLAYER_ID-game-ou-under']
+      'Field Goals Made': ['fieldGoalsMade-ANY_PLAYER_ID-game-ou-over', 'fieldGoalsMade-ANY_PLAYER_ID-game-ou-under'],
+      'Field Goal Attempts': ['fieldGoalsAttempted-ANY_PLAYER_ID-game-ou-over', 'fieldGoalsAttempted-ANY_PLAYER_ID-game-ou-under'],
+      'Two-Pointers Made': ['twoPointersMade-ANY_PLAYER_ID-game-ou-over', 'twoPointersMade-ANY_PLAYER_ID-game-ou-under'],
+      'Three-Pointers Made': ['threePointersMade-ANY_PLAYER_ID-game-ou-over', 'threePointersMade-ANY_PLAYER_ID-game-ou-under'],
+      'Free Throws Made': ['freeThrowsMade-ANY_PLAYER_ID-game-ou-over', 'freeThrowsMade-ANY_PLAYER_ID-game-ou-under']
     },
     'nba-Rebounding': {
-      'Total Rebounds': ['rebounds-ANY_PLAYER_ID-game-ou-over', 'rebounds-ANY_PLAYER_ID-game-ou-under'],
-      'Offensive Rebounds': ['rebounds_offensive-ANY_PLAYER_ID-game-ou-over', 'rebounds_offensive-ANY_PLAYER_ID-game-ou-under'],
-      'Defensive Rebounds': ['rebounds_defensive-ANY_PLAYER_ID-game-ou-over', 'rebounds_defensive-ANY_PLAYER_ID-game-ou-under']
+      'Total Rebounds': ['rebounds-ANY_PLAYER_ID-game-ou-over', 'rebounds-ANY_PLAYER_ID-game-ou-under']
     },
     'nba-Playmaking': {
       'Assists': ['assists-ANY_PLAYER_ID-game-ou-over', 'assists-ANY_PLAYER_ID-game-ou-under'],
@@ -416,11 +413,6 @@ const getMarketOddIds = (sport: string, league: string, mainTab: MainTabType, su
       'Points + Assists': ['points+assists-ANY_PLAYER_ID-game-ou-over', 'points+assists-ANY_PLAYER_ID-game-ou-under'],
       'Rebounds + Assists': ['rebounds+assists-ANY_PLAYER_ID-game-ou-over', 'rebounds+assists-ANY_PLAYER_ID-game-ou-under'],
       'Points + Rebounds + Assists': ['points+rebounds+assists-ANY_PLAYER_ID-game-ou-over', 'points+rebounds+assists-ANY_PLAYER_ID-game-ou-under'],
-      'Double-Double': ['doubleDouble-ANY_PLAYER_ID-game-yn-yes', 'doubleDouble-ANY_PLAYER_ID-game-yn-no'],
-      'Triple-Double': ['tripleDouble-ANY_PLAYER_ID-game-yn-yes', 'tripleDouble-ANY_PLAYER_ID-game-yn-no'],
-      'Fantasy Score': ['fantasyScore-ANY_PLAYER_ID-game-ou-over', 'fantasyScore-ANY_PLAYER_ID-game-ou-under'],
-      'First Basket': ['firstBasket-ANY_PLAYER_ID-game-yn-yes', 'firstBasket-ANY_PLAYER_ID-game-yn-no'],
-      'First Score': ['firstToScore-ANY_PLAYER_ID-game-yn-yes', 'firstToScore-ANY_PLAYER_ID-game-yn-no'],
       'Blocks + Steals': ['blocks+steals-ANY_PLAYER_ID-game-ou-over', 'blocks+steals-ANY_PLAYER_ID-game-ou-under']
     },
 
@@ -482,18 +474,10 @@ const getMarketOddIds = (sport: string, league: string, mainTab: MainTabType, su
       'Punches/Catches': ['punchesCatches-ANY_PLAYER_ID-game-ou-over', 'punchesCatches-ANY_PLAYER_ID-game-ou-under']
     },
 
-    // Team Props (direct subtab to oddid mapping)
+    // NBA Team Props (direct subtab to oddid mapping)
     'nba-Team Total Points': ['points-home-game-ou-over', 'points-away-game-ou-over', 'points-home-game-ou-under', 'points-away-game-ou-under'],
-    'nba-Team Rebounds': ['rebounds-home-game-ou-over', 'rebounds-away-game-ou-over', 'rebounds-home-game-ou-under', 'rebounds-away-game-ou-under'],
-    'nba-Team Assists': ['assists-home-game-ou-over', 'assists-away-game-ou-over', 'assists-home-game-ou-under', 'assists-away-game-ou-under'],
-    'nba-Team Three-Pointers': ['threePointers_made-home-game-ou-over', 'threePointers_made-away-game-ou-over', 'threePointers_made-home-game-ou-under', 'threePointers_made-away-game-ou-under'],
-    'nba-Team Turnovers': ['turnovers-home-game-ou-over', 'turnovers-away-game-ou-over', 'turnovers-home-game-ou-under', 'turnovers-away-game-ou-under'],
 
     // Game Props (direct subtab to oddid mapping)
-    'nba-Total Rebounds': ['rebounds-all-game-ou-over', 'rebounds-all-game-ou-under'],
-    'nba-Total Assists': ['assists-all-game-ou-over', 'assists-all-game-ou-under'],
-    'nba-Total Three-Pointers': ['threePointers_made-all-game-ou-over', 'threePointers_made-all-game-ou-under'],
-    'nba-Game Flow': ['turnovers-all-game-ou-over', 'turnovers-all-game-ou-under', 'steals-all-game-ou-over', 'steals-all-game-ou-under', 'blocks-all-game-ou-over', 'blocks-all-game-ou-under', 'overtime-all-game-yn-yes', 'overtime-all-game-yn-no'],
     'nba-Quarters/Halves': ['points-all-1q-ou-over', 'points-all-1q-ou-under', 'points-all-1h-ou-over', 'points-all-1h-ou-under', 'points-all-2h-ou-over', 'points-all-2h-ou-under'],
 
     // MLB Team Props
@@ -522,18 +506,8 @@ const getMarketOddIds = (sport: string, league: string, mainTab: MainTabType, su
     // NCAAF Game Props (same as NFL)
     'ncaaf-Quarters/Halves': ['points-all-1q-ou-over', 'points-all-1q-ou-under', 'points-all-2q-ou-over', 'points-all-2q-ou-under', 'points-all-3q-ou-over', 'points-all-3q-ou-under', 'points-all-4q-ou-over', 'points-all-4q-ou-under', 'points-all-1h-ou-over', 'points-all-1h-ou-under', 'points-all-2h-ou-over', 'points-all-2h-ou-under'],
 
-    // NCAAB Team Props
-    'ncaab-Team Total Points': ['points-home-game-ou-over', 'points-away-game-ou-over', 'points-home-game-ou-under', 'points-away-game-ou-under'],
-    'ncaab-Team Rebounds': ['rebounds-home-game-ou-over', 'rebounds-away-game-ou-over', 'rebounds-home-game-ou-under', 'rebounds-away-game-ou-under'],
-    'ncaab-Team Assists': ['assists-home-game-ou-over', 'assists-away-game-ou-over', 'assists-home-game-ou-under', 'assists-away-game-ou-under'],
-    'ncaab-Team Three-Pointers': ['threePointers_made-home-game-ou-over', 'threePointers_made-away-game-ou-over', 'threePointers_made-home-game-ou-under', 'threePointers_made-away-game-ou-under'],
-
     // NCAAB Game Props
-    'ncaab-Total Rebounds': ['rebounds-all-game-ou-over', 'rebounds-all-game-ou-under'],
-    'ncaab-Total Assists': ['assists-all-game-ou-over', 'assists-all-game-ou-under'],
-    'ncaab-Total Three-Pointers': ['threePointers_made-all-game-ou-over', 'threePointers_made-all-game-ou-under'],
-    'ncaab-Game Flow': ['overtime-all-game-yn-yes', 'overtime-all-game-yn-no'],
-    'ncaab-Halves': ['points-all-1h-ou-over', 'points-all-1h-ou-under', 'points-all-2h-ou-over', 'points-all-2h-ou-under'],
+    'ncaab-Quarters/Halves': ['points-all-1q-ou-over', 'points-all-1q-ou-under', 'points-all-1h-ou-over', 'points-all-1h-ou-under', 'points-all-2h-ou-over', 'points-all-2h-ou-under'],
 
     // NHL Team Props
     'nhl-Team Total Goals': ['points-home-game-ou-over', 'points-away-game-ou-over', 'points-home-game-ou-under', 'points-away-game-ou-under'],
@@ -582,31 +556,15 @@ const getMarketOddIds = (sport: string, league: string, mainTab: MainTabType, su
   
   // Copy NBA Team Props to WNBA
   marketOddIds['wnba-Team Total Points'] = marketOddIds['nba-Team Total Points'];
-  marketOddIds['wnba-Team Rebounds'] = marketOddIds['nba-Team Rebounds'];
-  marketOddIds['wnba-Team Assists'] = marketOddIds['nba-Team Assists'];
-  marketOddIds['wnba-Team Three-Pointers'] = marketOddIds['nba-Team Three-Pointers'];
-  marketOddIds['wnba-Team Turnovers'] = marketOddIds['nba-Team Turnovers'];
   
   // Copy NBA Game Props to WNBA
-  marketOddIds['wnba-Total Rebounds'] = marketOddIds['nba-Total Rebounds'];
-  marketOddIds['wnba-Total Assists'] = marketOddIds['nba-Total Assists'];
-  marketOddIds['wnba-Total Three-Pointers'] = marketOddIds['nba-Total Three-Pointers'];
-  marketOddIds['wnba-Game Flow'] = marketOddIds['nba-Game Flow'];
   marketOddIds['wnba-Quarters/Halves'] = marketOddIds['nba-Quarters/Halves'];
   
   // Copy NBA Team Props to NCAAB
   marketOddIds['ncaab-Team Total Points'] = marketOddIds['nba-Team Total Points'];
-  marketOddIds['ncaab-Team Rebounds'] = marketOddIds['nba-Team Rebounds'];
-  marketOddIds['ncaab-Team Assists'] = marketOddIds['nba-Team Assists'];
-  marketOddIds['ncaab-Team Three-Pointers'] = marketOddIds['nba-Team Three-Pointers'];
-  marketOddIds['ncaab-Team Turnovers'] = marketOddIds['nba-Team Turnovers'];
   
   // Copy NBA Game Props to NCAAB
-  marketOddIds['ncaab-Total Rebounds'] = marketOddIds['nba-Total Rebounds'];
-  marketOddIds['ncaab-Total Assists'] = marketOddIds['nba-Total Assists'];
-  marketOddIds['ncaab-Total Three-Pointers'] = marketOddIds['nba-Total Three-Pointers'];
-  marketOddIds['ncaab-Game Flow'] = marketOddIds['nba-Game Flow'];
-  marketOddIds['ncaab-Halves'] = marketOddIds['ncaab-Halves'];
+  marketOddIds['ncaab-Quarters/Halves'] = marketOddIds['nba-Quarters/Halves'];
   
   // Copy NFL Team Props to NCAAF
   marketOddIds['ncaaf-Team Scoring'] = marketOddIds['nfl-Team Scoring'];
@@ -830,7 +788,7 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
       marketName,
       playerName,
       teamName,
-      line: odd.line || undefined,
+      line: odd.line || (currentLineValue !== 'standard' ? currentLineValue : undefined),
       currentOdds: getBookOdds(odd),
       side,
     });
@@ -963,7 +921,8 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
         
         return subTabOddIds.some(pattern => {
           if (pattern.includes('ANY_PLAYER_ID')) {
-            const regexPattern = pattern.replace('ANY_PLAYER_ID', '[^-]+');
+            const escapedPattern = pattern.replace(/\+/g, '\\+');
+            const regexPattern = escapedPattern.replace('ANY_PLAYER_ID', '[A-Za-z0-9_]+');
             const regex = new RegExp(`^${regexPattern}$`);
             return regex.test(odd.oddid);
           } else {
@@ -977,12 +936,13 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
     if (selectedMainTab === 'Player Props') {
       if (!selectedMarketTab || relevantOddIds.length === 0) return [];
       
-      return odds.filter(odd => {
+      const filteredOdds = odds.filter(odd => {
         if (!odd.oddid) return false;
         
         return relevantOddIds.some(pattern => {
           if (pattern.includes('ANY_PLAYER_ID')) {
-            const regexPattern = pattern.replace('ANY_PLAYER_ID', '[^-]+');
+            const escapedPattern = pattern.replace(/\+/g, '\\+');
+            const regexPattern = escapedPattern.replace('ANY_PLAYER_ID', '[A-Za-z0-9_]+');
             const regex = new RegExp(`^${regexPattern}$`);
             return regex.test(odd.oddid);
           } else {
@@ -990,6 +950,67 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
           }
         });
       });
+
+      // Special filtering for "Anytime Touchdowns" - show players with 0.5 line OR yes/no data
+      if (selectedMarketTab === 'Anytime Touchdowns') {
+        // Get players who have either 0.5 line odds OR yes/no touchdown odds
+        const playersWithAnytimeData = new Set();
+        const ynOddsToConvert = []; // Store yes/no odds that need to be converted to 0.5 line
+        
+        // Find players with 0.5 line odds
+        filteredOdds.forEach(odd => {
+          if (odd.line === '0.5' && odd.oddid.includes('touchdowns-') && odd.oddid.includes('-game-ou-')) {
+            const playerMatch = odd.oddid.match(/touchdowns-([^-]+)-/);
+            if (playerMatch) {
+              playersWithAnytimeData.add(playerMatch[1]);
+            }
+          }
+        });
+        
+        // Find players with yes/no touchdown odds (who don't already have 0.5 line)
+        filteredOdds.forEach(odd => {
+          if (odd.oddid.includes('touchdowns-') && odd.oddid.includes('-game-yn-')) {
+            const playerMatch = odd.oddid.match(/touchdowns-([^-]+)-/);
+            if (playerMatch && !playersWithAnytimeData.has(playerMatch[1])) {
+              playersWithAnytimeData.add(playerMatch[1]);
+              
+              // Convert yes/no odds to 0.5 line odds
+              if (odd.oddid.includes('-yn-yes')) {
+                // Convert "yes" to "over 0.5"
+                const overOddId = odd.oddid.replace('-yn-yes', '-ou-over');
+                ynOddsToConvert.push({
+                  ...odd,
+                  oddid: overOddId,
+                  line: '0.5'
+                });
+              } else if (odd.oddid.includes('-yn-no')) {
+                // Convert "no" to "under 0.5"  
+                const underOddId = odd.oddid.replace('-yn-no', '-ou-under');
+                ynOddsToConvert.push({
+                  ...odd,
+                  oddid: underOddId,
+                  line: '0.5'
+                });
+              }
+            }
+          }
+        });
+        
+        
+        // Filter existing odds and add converted yes/no odds
+        const baseFilteredOdds = filteredOdds.filter(odd => {
+          const playerMatch = odd.oddid.match(/touchdowns-([^-]+)-/);
+          if (playerMatch) {
+            return playersWithAnytimeData.has(playerMatch[1]);
+          }
+          return true; // Keep non-player-specific odds
+        });
+        
+        // Add converted yes/no odds to the results
+        return [...baseFilteredOdds, ...ynOddsToConvert];
+      }
+
+      return filteredOdds;
     }
     
     return [];
@@ -1126,6 +1147,10 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
   const formatOdds = (odds: number): string => {
     // Handle 0 odds as +100
     if (odds === 0) {
+      return '+100';
+    }
+    // Handle infinity values
+    if (!isFinite(odds)) {
       return '+100';
     }
     if (odds > 0) {
@@ -1544,10 +1569,10 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
                           filteredOdds.forEach(odd => {
                             let playerName = '';
                             
-                            // Skip yes/no props for Player Props only since we cannot settle them
-                            // But keep them for Team Props and Game Props where they make sense
-                            if (selectedMainTab === 'Player Props' && (odd.oddid.includes('-yn-') || odd.oddid.includes('-eo-') || odd.oddid.includes('-ms-'))) {
-                              return; // Skip yes/no, even/odd, and multiple selection props for player props only
+                            // Skip even/odd and multiple selection props for Player Props only
+                            // Allow yes/no props since they display as over/under format
+                            if (selectedMainTab === 'Player Props' && (odd.oddid.includes('-eo-') || odd.oddid.includes('-ms-'))) {
+                              return; // Skip even/odd and multiple selection props for player props only
                             }
                             
                             if (selectedMainTab === 'Player Props') {
@@ -1585,15 +1610,65 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
                             }
                             
                             // Skip odds with no line value for Player Props, Team Props, and Game Props
+                            // BUT allow touchdown under odds which may have null line values (they are actually 1.5+ line bets)
                             if ((selectedMainTab === 'Player Props' || selectedMainTab === 'Team Props' || selectedMainTab === 'Game Props') && !odd.line) {
-                              return; // Skip odds without line value
+                              // Special handling for touchdown under odds that have null line values
+                              const isTouchdownUnder = odd.oddid.includes('touchdown') && odd.oddid.includes('-under');
+                              if (!isTouchdownUnder) {
+                                return; // Skip odds without line value, except touchdown under odds
+                              }
+                            }
+
+                            // Skip odds that have no real value (null TrueSharp odds or +100 with no sportsbook data)
+                            if (selectedMainTab === 'Player Props' && selectedMarketTab === 'Anytime Touchdowns') {
+                              // Check if this odd has any sportsbook data
+                              const hasSportsbookData = !!(
+                                odd.fanduelodds || odd.draftkingsodds || odd.ceasarsodds || odd.mgmodds ||
+                                odd.fanaticsodds || odd.bovadaodds || odd.unibetodds || odd.espnbetodds
+                              );
+                              
+                              // Skip odds with null TrueSharp value and no sportsbook data
+                              if ((odd.bookodds === null || odd.bookodds === 100) && !hasSportsbookData) {
+                                return; // Skip odds with no real data
+                              }
                             }
                             
                             if (!groupedOdds.has(playerName)) {
                               groupedOdds.set(playerName, new Map());
                             }
                             
-                            const lineKey = odd.line || 'standard';
+                            // Special handling for touchdown under odds with null line values
+                            let lineKey = odd.line || 'standard';
+                            if (!odd.line && odd.oddid.includes('touchdown') && odd.oddid.includes('-under')) {
+                              // These null line touchdown under odds are actually for anytime touchdowns (0.5 line)
+                              // Extract player name and find the corresponding 0.5 over odd
+                              const playerMatch = odd.oddid.match(/touchdowns-([^-]+)-/);
+                              if (playerMatch) {
+                                const playerNameFromOddid = playerMatch[1];
+                                // Look for corresponding 0.5 over odd first (anytime touchdown)
+                                const correspondingOverOdd = odds.find(o => 
+                                  o.oddid.includes(`touchdowns-${playerNameFromOddid}-`) && 
+                                  o.oddid.includes('-over') && 
+                                  o.line === '0.5'
+                                );
+                                if (correspondingOverOdd) {
+                                  lineKey = '0.5'; // This is the anytime touchdown line
+                                } else {
+                                  // If no 0.5 line found, check for other lines and pick the lowest
+                                  const anyOverOdd = odds.find(o => 
+                                    o.oddid.includes(`touchdowns-${playerNameFromOddid}-`) && 
+                                    o.oddid.includes('-over') && 
+                                    o.line
+                                  );
+                                  if (anyOverOdd) {
+                                    lineKey = anyOverOdd.line;
+                                  } else {
+                                    // Default to 0.5 for anytime touchdowns
+                                    lineKey = '0.5';
+                                  }
+                                }
+                              }
+                            }
                             if (!groupedOdds.get(playerName)!.has(lineKey)) {
                               groupedOdds.get(playerName)!.set(lineKey, {});
                             }

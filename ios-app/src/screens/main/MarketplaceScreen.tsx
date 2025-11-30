@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.md,
     marginVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
     ...theme.shadows.sm,
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   titleSection: {
     flex: 1,
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
   userInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   profileContainer: {
     position: 'relative',
@@ -919,8 +919,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
@@ -951,7 +951,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.medium,
   },
   pricingRow: {
-    paddingTop: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },

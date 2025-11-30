@@ -17,6 +17,7 @@ import {
 import { supabase } from '../../lib/supabase'
 import { theme } from '../../styles/theme'
 import TrueSharpShield from '../common/TrueSharpShield'
+import { StrategyBettingMetrics, fetchStrategyBettingMetrics } from '../../services/supabaseAnalytics'
 
 interface SellerInfo {
   user_id: string
@@ -62,6 +63,7 @@ export default function SubscribeToStrategyModal({
   const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null)
   const [strategyInfo, setStrategyInfo] = useState<StrategyInfo | null>(null)
   const [performanceInfo, setPerformanceInfo] = useState<PerformanceInfo | null>(null)
+  const [bettingMetrics, setBettingMetrics] = useState<StrategyBettingMetrics | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Load strategy data when modal opens
@@ -194,6 +196,22 @@ export default function SubscribeToStrategyModal({
         // Use the first result if multiple rows exist
         setPerformanceInfo(performanceData[0])
       }
+
+      // Fetch betting metrics
+      try {
+        const metrics = await fetchStrategyBettingMetrics(strategyId)
+        setBettingMetrics(metrics)
+      } catch (metricsError) {
+        console.error('Error fetching betting metrics:', metricsError)
+        // Set default values if metrics fetch fails
+        setBettingMetrics({
+          avgBetsPerWeek: 0,
+          firstBetDate: null,
+          totalWeeksActive: 0,
+          mostActivePeriod: 'No data',
+          recentActivity: 'low'
+        })
+      }
     } catch (err) {
       console.error('Error loading strategy data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load strategy data')
@@ -217,6 +235,15 @@ export default function SubscribeToStrategyModal({
 
   const formatRecord = (wins: number, losses: number, pushes: number) => {
     return `${wins}-${losses}${pushes > 0 ? `-${pushes}` : ''}`
+  }
+
+  const formatFirstBetDate = (dateString: string | null) => {
+    if (!dateString) return 'No data'
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
   }
 
   const getSellerUrl = () => {
@@ -380,6 +407,39 @@ export default function SubscribeToStrategyModal({
                 <View style={styles.performanceCard}>
                   <Text style={styles.performanceValue}>{performanceInfo.total_bets}</Text>
                   <Text style={styles.performanceLabel}>Bets</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Betting Activity Metrics */}
+          {bettingMetrics && (
+            <View style={styles.bettingMetricsContainer}>
+              <Text style={styles.sectionTitle}>Activity</Text>
+              <View style={styles.bettingMetricsGrid}>
+                <View style={styles.bettingMetricCard}>
+                  <Text style={styles.bettingMetricValue}>{bettingMetrics.avgBetsPerWeek}</Text>
+                  <Text style={styles.bettingMetricLabel}>Avg/Week</Text>
+                </View>
+                
+                <View style={styles.bettingMetricCard}>
+                  <Text style={styles.bettingMetricValue}>{formatFirstBetDate(bettingMetrics.firstBetDate)}</Text>
+                  <Text style={styles.bettingMetricLabel}>Since</Text>
+                </View>
+                
+                <View style={styles.bettingMetricCard}>
+                  <View style={[styles.activityIndicator, 
+                    { backgroundColor: 
+                        bettingMetrics.recentActivity === 'high' ? theme.colors.betting.won :
+                        bettingMetrics.recentActivity === 'medium' ? '#FFA500' :
+                        theme.colors.text.light
+                    }
+                  ]}>
+                    <Text style={styles.activityIndicatorText}>
+                      {bettingMetrics.recentActivity.charAt(0).toUpperCase() + bettingMetrics.recentActivity.slice(1)}
+                    </Text>
+                  </View>
+                  <Text style={styles.bettingMetricLabel}>Activity</Text>
                 </View>
               </View>
             </View>
@@ -925,5 +985,47 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
     textAlign: 'center',
+  },
+  
+  // Betting Metrics Section
+  bettingMetricsContainer: {
+    marginTop: theme.spacing.md,
+  },
+  bettingMetricsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.xs,
+  },
+  bettingMetricCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+    flex: 1,
+    minHeight: 55,
+  },
+  bettingMetricValue: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  bettingMetricLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  activityIndicator: {
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
+  },
+  activityIndicatorText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: 'white',
+    fontWeight: theme.typography.fontWeight.semibold,
   },
 })

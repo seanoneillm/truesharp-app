@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    if (!['won', 'lost', 'push'].includes(status)) {
+    if (!['won', 'lost', 'void'].includes(status)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid status. Must be: won, lost, or push' },
+        { success: false, error: 'Invalid status. Must be: won, lost, or void' },
         { status: 400 }
       )
     }
@@ -60,12 +60,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    if (existingBet.status !== 'pending') {
-      return NextResponse.json(
-        { success: false, error: 'This bet has already been settled' },
-        { status: 400 }
-      )
-    }
+    // Allow re-settlement (changing from any status to any other status)
+    // Remove the pending-only restriction
     
     // Update the bet with settlement information
     const { data: updatedBet, error: updateError } = await supabase
@@ -92,11 +88,14 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log(`✅ Successfully settled TrueSharp bet ${betId} as ${status} with profit ${profit}`)
+    const wasAlreadySettled = existingBet.status !== 'pending'
+    const actionType = wasAlreadySettled ? 'changed' : 'settled'
+    
+    console.log(`✅ Successfully ${actionType} TrueSharp bet ${betId} from ${existingBet.status} to ${status} with profit ${profit}`)
     
     return NextResponse.json({
       success: true,
-      message: `Bet settled as ${status} with profit $${profit.toFixed(2)}`,
+      message: `Bet ${actionType} as ${status.toUpperCase()}. Profit: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}${wasAlreadySettled ? ` (was ${existingBet.status})` : ''}`,
       data: updatedBet
     })
 

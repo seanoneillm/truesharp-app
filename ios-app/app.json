@@ -2,12 +2,11 @@
   "expo": {
     "name": "TrueSharp",
     "slug": "truesharp-mobile",
-    "version": "1.0.5",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "projectId": "f8b6a8f7-3b1e-4c6d-9e2a-5f7b8c9d0e1f",
     "scheme": "truesharp",
     "extra": {
       "EXPO_PUBLIC_API_BASE_URL": "https://truesharp.io",
@@ -56,12 +55,10 @@
           }
         }
       ],
-      "./plugins/withCookies.js",
       "expo-font"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "owner": "seanoneill715"
+    }
   }
 }

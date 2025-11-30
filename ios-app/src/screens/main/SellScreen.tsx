@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 // import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler'; // Removed due to iOS pod conflicts
 import { captureRef } from 'react-native-view-shot';
+import { fetchAnalyticsSettings } from '../../services/analyticsSettingsService';
+import { formatProfitLoss, UnitDisplayOptions } from '../../utils/unitCalculations';
+import { AnalyticsSettings } from '../../components/analytics/AnalyticsSettingsModal';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { globalStyles } from '../../styles/globalStyles';
@@ -12,7 +15,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { BetData, fetchStrategies, Strategy } from '../../services/supabaseAnalytics';
 import { validateBetAgainstStrategy, BetData as ValidationBetData, StrategyData, convertFiltersToWebFormat } from '../../utils/strategyValidation';
+import { parseMultiStatOddid } from '../../lib/betFormatting';
 import { groupBetsByParlay, ParlayGroup } from '../../services/parlayGrouping';
+import { formatOddsWithFallback } from '../../utils/oddsCalculation';
 import UnifiedBetCard from '../../components/analytics/UnifiedBetCard';
 import TrueSharpShield from '../../components/common/TrueSharpShield';
 import TrueSharpLogo from '../../components/common/TrueSharpLogo';
@@ -40,11 +45,10 @@ export default function SellScreen() {
   const [activeTab, setActiveTab] = useState<SellTabType>('overview');
   
   // Format odds function for use throughout the component
-  const formatOdds = (odds: string | number) => {
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     if (odds === undefined || odds === null) return '0';
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
-    if (isNaN(numericOdds)) return '0';
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`;
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout) || '0';
   };
   
   // Seller stats state
@@ -80,6 +84,23 @@ export default function SellScreen() {
   const [stripeBrowserUrl, setStripeBrowserUrl] = useState<string | null>(null);
   const [showAllBetsModal, setShowAllBetsModal] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [dropdownVisibility, setDropdownVisibility] = useState<Record<string, boolean>>({});
+  const [showYesterdayModal, setShowYesterdayModal] = useState(false);
+  const [selectedStrategyForYesterday, setSelectedStrategyForYesterday] = useState<Strategy | null>(null);
+  const [showLastWeekModal, setShowLastWeekModal] = useState(false);
+  const [selectedStrategyForLastWeek, setSelectedStrategyForLastWeek] = useState<Strategy | null>(null);
+  const [showLastMonthModal, setShowLastMonthModal] = useState(false);
+  const [selectedStrategyForLastMonth, setSelectedStrategyForLastMonth] = useState<Strategy | null>(null);
+  const [analyticsSettings, setAnalyticsSettings] = useState<AnalyticsSettings | null>(null);
+  const [yesterdayBets, setYesterdayBets] = useState<BetData[]>([]);
+  const [yesterdayLoading, setYesterdayLoading] = useState(false);
+  const [yesterdayPLValues, setYesterdayPLValues] = useState<Record<string, string>>({});
+  const [lastWeekBets, setLastWeekBets] = useState<BetData[]>([]);
+  const [lastWeekLoading, setLastWeekLoading] = useState(false);
+  const [lastWeekPLValues, setLastWeekPLValues] = useState<Record<string, string>>({});
+  const [lastMonthBets, setLastMonthBets] = useState<BetData[]>([]);
+  const [lastMonthLoading, setLastMonthLoading] = useState(false);
+  const [lastMonthPLValues, setLastMonthPLValues] = useState<Record<string, string>>({});
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [strategyBets, setStrategyBets] = useState<BetData[]>([]);
@@ -105,8 +126,16 @@ export default function SellScreen() {
   const [checkingSellerStatus, setCheckingSellerStatus] = useState(false);
   const [selectedShareBets, setSelectedShareBets] = useState<string[]>([]);
   const [sharePreviewMode, setSharePreviewMode] = useState(false);
+  const [isStrategyPromotion, setIsStrategyPromotion] = useState(false);
+  const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set());
   const shareTemplateRef = useRef<View>(null);
+  const yesterdayTemplateRef = useRef<View>(null);
+  const lastWeekTemplateRef = useRef<View>(null);
+  const lastMonthTemplateRef = useRef<View>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingYesterdayImage, setIsGeneratingYesterdayImage] = useState(false);
+  const [isGeneratingLastWeekImage, setIsGeneratingLastWeekImage] = useState(false);
+  const [isGeneratingLastMonthImage, setIsGeneratingLastMonthImage] = useState(false);
   const [sellerProfile, setSellerProfile] = useState<{
     user_id?: string;
     display_name?: string;
@@ -966,15 +995,8 @@ export default function SellScreen() {
   };
 
   const handleStrategySelection = (strategyId: string) => {
-    // Only allow selection if strategy is compatible with selected bets
-    if (!strategyCompatibility[strategyId]) {
-      Alert.alert(
-        'Incompatible Strategy', 
-        'This strategy\'s filters don\'t match the selected bets. Only strategies compatible with your selected bets can be chosen.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
+    // Only allow selection if strategy is compatible
+    if (strategyCompatibility[strategyId] === false) return;
 
     setSelectedStrategyIds(prev =>
       prev.includes(strategyId)
@@ -989,8 +1011,8 @@ export default function SellScreen() {
     setShowStrategyModal(true);
   };
 
-  // Filter strategies based on selected bets compatibility
-  const filterStrategiesForBets = useCallback(async () => {
+  // Filter strategies based on selected bets compatibility - using BetDetailsModal approach
+  const filterStrategiesForBets = useCallback(() => {
     if (selectedBetIds.length === 0 || userStrategies.length === 0) {
       setFilteredStrategies(userStrategies);
       setStrategyCompatibility({});
@@ -998,108 +1020,79 @@ export default function SellScreen() {
     }
 
     try {
-      // Fetch the selected bets - handle both single bets (by ID) and parlays (by parlay_id)
-      const { data: selectedBets, error: betsError } = await supabase
-        .from('bets')
-        .select('*')
-        .or(`id.in.(${selectedBetIds.join(',')}),parlay_id.in.(${selectedBetIds.join(',')})`)
-        .eq('user_id', user?.id);
-
-      if (betsError || !selectedBets) {
-        console.error('Error fetching selected bets:', betsError);
-        setFilteredStrategies(userStrategies);
-        setStrategyCompatibility({});
-        return;
-      }
-
       const compatibility: Record<string, boolean> = {};
       
-      // Check compatibility for each strategy
-      userStrategies.forEach(strategy => {
-        // Skip strategies that don't have required fields
-        if (!strategy || !strategy.id || !strategy.name) {
-          return;
-        }
-
-        // Convert strategy to StrategyData format once
-        const validationStrategy: StrategyData = {
+      // Use the current openBets instead of fetching again
+      const bets = openBets;
+      
+      for (const strategy of userStrategies) {
+        let isCompatible = true;
+        
+        const strategyData: StrategyData = {
           id: strategy.id,
           name: strategy.name,
-          sport: strategy.sport || 'All',
-          filter_config: strategy.filter_config || (strategy.filters ? convertFiltersToWebFormat(strategy.filters) : {}),
-          user_id: strategy.user_id || user?.id || ''
+          sport: strategy.sport,
+          filter_config: strategy.filter_config || {},
+          user_id: strategy.user_id,
         };
-
-        let hasCompatibleBets = false;
-        try {
-          hasCompatibleBets = selectedBetIds.some(selectedId => {
-            // Check if this selectedId is a single bet or a parlay
-            const singleBet = selectedBets.find(bet => bet.id === selectedId);
+        
+        // Check each selected bet/parlay for compatibility
+        for (const selectedId of selectedBetIds) {
+          // Check if it's a direct bet ID
+          const directBet = bets.find(bet => bet.id === selectedId);
+          
+          if (directBet && !directBet.is_parlay) {
+            // Single bet validation
+            const betData = {
+              id: directBet.id,
+              sport: directBet.sport,
+              bet_type: directBet.bet_type,
+              side: directBet.side,
+              is_parlay: directBet.is_parlay,
+              sportsbook: directBet.sportsbook,
+              odds: typeof directBet.odds === 'string' ? parseFloat(directBet.odds) : directBet.odds,
+              stake: typeof directBet.stake === 'string' ? parseFloat(directBet.stake) : directBet.stake,
+              line_value: directBet.line_value,
+              status: directBet.status,
+              created_at: directBet.placed_at || directBet.created_at,
+            };
             
-            if (singleBet) {
-              // It's a single bet - validate it directly
-              const validationBet: ValidationBetData = {
-                id: singleBet.id,
-                sport: singleBet.sport,
-                bet_type: singleBet.bet_type,
-                side: singleBet.side,
-                is_parlay: singleBet.is_parlay || false,
-                sportsbook: singleBet.sportsbook,
-                odds: singleBet.odds || 0,
-                stake: singleBet.stake || 0,
-                line_value: singleBet.line_value,
-                status: singleBet.status,
-                created_at: singleBet.created_at
-              };
-              try {
-                return validateBetAgainstStrategy(validationBet, validationStrategy);
-              } catch (validationError) {
-                console.error(`Validation error for bet ${singleBet.id} against strategy ${strategy.name}:`, validationError);
-                return false;
-              }
-            } else {
-              // It's a parlay - find all legs and validate ALL of them
-              const parlayLegs = selectedBets.filter(bet => bet.parlay_id === selectedId);
+            if (!validateBetAgainstStrategy(betData, strategyData)) {
+              isCompatible = false;
+              break;
+            }
+          } else {
+            // It's a parlay ID - find all legs for this parlay
+            const parlayLegs = bets.filter(bet => bet.parlay_id === selectedId);
+            
+            if (parlayLegs.length > 0) {
+              // For parlays, check all legs
+              const parlayLegData = parlayLegs.map(leg => ({
+                id: leg.id,
+                sport: leg.sport,
+                bet_type: leg.bet_type,
+                side: leg.side,
+                is_parlay: leg.is_parlay,
+                sportsbook: leg.sportsbook,
+                odds: typeof leg.odds === 'string' ? parseFloat(leg.odds) : leg.odds,
+                stake: typeof leg.stake === 'string' ? parseFloat(leg.stake) : leg.stake,
+                line_value: leg.line_value,
+                status: leg.status,
+                created_at: leg.placed_at || leg.created_at,
+              }));
               
-              if (parlayLegs.length === 0) return false;
-              
-              // For parlays, ALL legs must match the strategy filters
-              try {
-                return parlayLegs.every(leg => {
-                  const validationBet: ValidationBetData = {
-                    id: leg.id,
-                    sport: leg.sport,
-                    bet_type: leg.bet_type,
-                    side: leg.side,
-                    is_parlay: leg.is_parlay || false,
-                    sportsbook: leg.sportsbook,
-                    odds: leg.odds || 0,
-                    stake: leg.stake || 0,
-                    line_value: leg.line_value,
-                    status: leg.status,
-                    created_at: leg.created_at
-                  };
-                  try {
-                    return validateBetAgainstStrategy(validationBet, validationStrategy);
-                  } catch (legValidationError) {
-                    console.error(`Validation error for parlay leg ${leg.id} against strategy ${strategy.name}:`, legValidationError);
-                    return false;
-                  }
-                });
-              } catch (parlayValidationError) {
-                console.error(`Parlay validation error for ${selectedId} against strategy ${strategy.name}:`, parlayValidationError);
-                return false;
+              // All legs must be compatible for parlay to be valid
+              if (!parlayLegData.every(leg => validateBetAgainstStrategy(leg, strategyData))) {
+                isCompatible = false;
+                break;
               }
             }
-          });
-        } catch (strategyValidationError) {
-          console.error(`Strategy validation error for ${strategy.name}:`, strategyValidationError);
-          hasCompatibleBets = false;
+          }
         }
-
-        compatibility[strategy.id] = hasCompatibleBets;
-      });
-
+        
+        compatibility[strategy.id] = isCompatible;
+      }
+      
       setStrategyCompatibility(compatibility);
       setFilteredStrategies(userStrategies);
     } catch (error) {
@@ -1107,196 +1100,64 @@ export default function SellScreen() {
       setFilteredStrategies(userStrategies);
       setStrategyCompatibility({});
     }
-  }, [selectedBetIds, userStrategies, user?.id]);
+  }, [selectedBetIds, userStrategies, openBets]);
 
   const confirmAddBetsToStrategies = async () => {
-    if (selectedStrategyIds.length === 0 || selectedBetIds.length === 0) return;
+    if (selectedStrategyIds.length === 0 || selectedBetIds.length === 0 || !user?.id) return;
     
     setAddingToStrategies(true);
+    
     try {
-      // 1. Fetch the selected bets to validate them - handle both single bets and parlays
-      const { data: bets, error: betsError } = await supabase
-        .from('bets')
-        .select('*')
-        .or(`id.in.(${selectedBetIds.join(',')}),parlay_id.in.(${selectedBetIds.join(',')})`)
-        .eq('user_id', user?.id)
-        .eq('status', 'pending');
-
-      if (betsError) {
-        throw new Error('Failed to fetch selected bets');
+      const betIds = [];
+      const bets = openBets;
+      
+      // Collect all bet IDs to add to strategies
+      for (const selectedId of selectedBetIds) {
+        const directBet = bets.find(bet => bet.id === selectedId);
+        
+        if (directBet && !directBet.is_parlay) {
+          // Single bet
+          betIds.push(directBet.id);
+        } else {
+          // Parlay - add all legs
+          const parlayLegs = bets.filter(bet => bet.parlay_id === selectedId);
+          betIds.push(...parlayLegs.map(leg => leg.id));
+        }
       }
-
-      if (!bets || bets.length === 0) {
-        throw new Error('No valid bets found');
-      }
-
-      // 2. Fetch the selected strategies to validate them  
-      const { data: strategies, error: strategiesError } = await supabase
-        .from('strategies')
-        .select('*')
-        .in('id', selectedStrategyIds)
-        .eq('user_id', user?.id);
-
-      if (strategiesError) {
-        throw new Error('Failed to fetch selected strategies');
-      }
-
-      if (!strategies || strategies.length === 0) {
-        throw new Error('No valid strategies found');
-      }
-
-      // 3. Check for existing strategy_bets to prevent duplicates
-      const { data: existingStrategyBets, error: existingError } = await supabase
-        .from('strategy_bets')
-        .select('strategy_id, bet_id')
-        .in('strategy_id', selectedStrategyIds)
-        .in('bet_id', selectedBetIds);
-
-      if (existingError) {
-        throw new Error('Failed to check existing strategy bets');
-      }
-
-      const existingCombos = new Set(
-        existingStrategyBets?.map(sb => `${sb.strategy_id}-${sb.bet_id}`) || []
+      
+      // Create strategy_bets entries for each selected strategy
+      const insertPromises = selectedStrategyIds.flatMap(strategyId =>
+        betIds.map(betId => {
+          // Find the bet to get parlay_id if needed
+          const bet = bets.find(b => b.id === betId);
+          return {
+            strategy_id: strategyId,
+            bet_id: betId,
+            added_at: new Date().toISOString(),
+            parlay_id: bet?.parlay_id || null,
+          };
+        })
       );
-
-      // 4. Prepare strategy_bets to insert (skip duplicates)
-      const strategyBetsToInsert = [];
-      let duplicateCount = 0;
-
-      for (const strategy of strategies) {
-        // Convert strategy to StrategyData format once
-        const validationStrategy: StrategyData = {
-          id: strategy.id,
-          name: strategy.name,
-          sport: strategy.sport,
-          filter_config: strategy.filter_config || (strategy.filters ? convertFiltersToWebFormat(strategy.filters) : {}),
-          user_id: strategy.user_id
-        };
-
-        for (const selectedId of selectedBetIds) {
-          // Check if this selectedId is a single bet or a parlay
-          const singleBet = bets.find(bet => bet.id === selectedId);
-          
-          if (singleBet) {
-            // It's a single bet - validate and add it
-            const comboKey = `${strategy.id}-${singleBet.id}`;
-            
-            if (existingCombos.has(comboKey)) {
-              duplicateCount++;
-              continue;
-            }
-
-            const validationBet: ValidationBetData = {
-              id: singleBet.id,
-              sport: singleBet.sport,
-              bet_type: singleBet.bet_type,
-              side: singleBet.side,
-              is_parlay: singleBet.is_parlay || false,
-              sportsbook: singleBet.sportsbook,
-              odds: singleBet.odds || 0,
-              stake: singleBet.stake || 0,
-              line_value: singleBet.line_value,
-              status: singleBet.status,
-              created_at: singleBet.created_at
-            };
-
-            // Only add if bet matches strategy filters
-            if (validateBetAgainstStrategy(validationBet, validationStrategy)) {
-              strategyBetsToInsert.push({
-                strategy_id: strategy.id,
-                bet_id: singleBet.id,
-                added_at: new Date().toISOString(),
-                parlay_id: singleBet.parlay_id || null,
-              });
-            }
-          } else {
-            // It's a parlay - find all legs and validate ALL of them
-            const parlayLegs = bets.filter(bet => bet.parlay_id === selectedId);
-            
-            if (parlayLegs.length === 0) continue;
-            
-            // For parlays, ALL legs must match the strategy filters
-            const allLegsValid = parlayLegs.every(leg => {
-              const validationBet: ValidationBetData = {
-                id: leg.id,
-                sport: leg.sport,
-                bet_type: leg.bet_type,
-                side: leg.side,
-                is_parlay: leg.is_parlay || false,
-                sportsbook: leg.sportsbook,
-                odds: leg.odds || 0,
-                stake: leg.stake || 0,
-                line_value: leg.line_value,
-                status: leg.status,
-                created_at: leg.created_at
-              };
-              return validateBetAgainstStrategy(validationBet, validationStrategy);
-            });
-
-            // If all legs are valid, add all legs to the strategy
-            if (allLegsValid) {
-              for (const leg of parlayLegs) {
-                const comboKey = `${strategy.id}-${leg.id}`;
-                
-                if (existingCombos.has(comboKey)) {
-                  duplicateCount++;
-                  continue;
-                }
-
-                strategyBetsToInsert.push({
-                  strategy_id: strategy.id,
-                  bet_id: leg.id,
-                  added_at: new Date().toISOString(),
-                  parlay_id: leg.parlay_id || null,
-                });
-              }
-            }
-          }
-        }
+      
+      const { error } = await supabase
+        .from('strategy_bets')
+        .insert(insertPromises);
+      
+      if (error) {
+        console.error('Error adding bets to strategies:', error);
+        Alert.alert('Error', 'Failed to add bet to strategies');
+        return;
       }
-      let insertedCount = 0;
-
-      // 5. Insert valid strategy_bets
-      if (strategyBetsToInsert.length > 0) {
-        const { data: insertResult, error: insertError } = await supabase
-          .from('strategy_bets')
-          .insert(strategyBetsToInsert);
-
-        if (insertError) {
-          console.error('Insert error:', insertError);
-          throw new Error('Failed to add bets to strategies');
-        }
-
-        insertedCount = strategyBetsToInsert.length;
-      }
-
-      // 6. Show appropriate success/info message
-      if (insertedCount > 0) {
-        Alert.alert(
-          'Success!',
-          `Successfully added ${insertedCount} bet${insertedCount !== 1 ? 's' : ''} to strategies`,
-          [{ text: 'OK' }]
-        );
-      } else if (duplicateCount > 0) {
-        Alert.alert(
-          'No Changes Made',
-          'All selected bets already exist in the selected strategies.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'No Changes Made',
-          'No valid bet-strategy combinations were found.',
-          [{ text: 'OK' }]
-        );
-      }
-
-      // Clear selections and close modal
-      setSelectedBetIds([]);
-      setSelectedStrategyIds([]);
+      
+      Alert.alert(
+        'Success',
+        `Bet added to ${selectedStrategyIds.length} strateg${selectedStrategyIds.length === 1 ? 'y' : 'ies'}`
+      );
+      
       setShowStrategyModal(false);
-
+      setSelectedStrategyIds([]);
+      setSelectedBetIds([]);
+      
       // Refresh open bets display
       await fetchOpenBets();
       
@@ -1359,21 +1220,924 @@ export default function SellScreen() {
     setShowOpenBetsModal(true);
   };
 
+  // Promote strategy handler
+  const handlePromoteStrategy = (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setSelectedShareBets([]);
+    setSharePreviewMode(true);
+    setIsStrategyPromotion(true);
+    setShowShareModal(true);
+  };
+
+  // Handle modal close with proper state reset
+  const handleCloseShareModal = () => {
+    setShowShareModal(false);
+    setIsStrategyPromotion(false);
+    setSelectedShareBets([]);
+    setSharePreviewMode(false);
+    setExpandedParlays(new Set());
+  };
+
+  const toggleStrategyDropdown = async (strategyId: string) => {
+    setDropdownVisibility(prev => ({
+      ...prev,
+      [strategyId]: !prev[strategyId]
+    }));
+    
+    // Clear existing P/L values for this strategy to force fresh calculation
+    // Use placeholder values first to force UI update, then calculate fresh
+    setYesterdayPLValues(prev => ({ ...prev, [strategyId]: 'Loading...' }));
+    setLastWeekPLValues(prev => ({ ...prev, [strategyId]: 'Loading...' }));
+    setLastMonthPLValues(prev => ({ ...prev, [strategyId]: 'Loading...' }));
+    
+    // Load P/L for all time periods when opening dropdown (always recalculate to ensure fresh data)
+    if (!dropdownVisibility[strategyId]) {
+      try {
+        // Always fetch fresh analytics settings to ensure we have the latest unit size
+        let currentAnalyticsSettings = analyticsSettings;
+        if (user?.id) {
+          try {
+            currentAnalyticsSettings = await fetchAnalyticsSettings(user.id);
+            setAnalyticsSettings(currentAnalyticsSettings);
+          } catch (error) {
+            console.error('Error loading analytics settings for dropdown:', error);
+            currentAnalyticsSettings = analyticsSettings; // fallback to existing
+          }
+        }
+        
+        const dollarDisplayOptions: UnitDisplayOptions = {
+          showUnits: false, // Show in dollars instead of units
+          unitSize: currentAnalyticsSettings?.unit_size || 1000
+        };
+        
+        // Load yesterday P/L
+        try {
+          const yesterdayBets = await fetchYesterdayBets(strategyId);
+          const yesterdayPerformance = calculateYesterdayPerformance(yesterdayBets);
+          const formattedYesterdayPL = formatProfitLoss(yesterdayPerformance.totalProfit, dollarDisplayOptions);
+          setYesterdayPLValues(prev => ({ ...prev, [strategyId]: formattedYesterdayPL }));
+        } catch (error) {
+          setYesterdayPLValues(prev => ({ ...prev, [strategyId]: '$0.00' }));
+        }
+        
+        // Load last week P/L
+        try {
+          const lastWeekBets = await fetchLastWeekBets(strategyId);
+          const lastWeekPerformance = calculateYesterdayPerformance(lastWeekBets); // Same calculation logic
+          const formattedLastWeekPL = formatProfitLoss(lastWeekPerformance.totalProfit, dollarDisplayOptions);
+          setLastWeekPLValues(prev => ({ ...prev, [strategyId]: formattedLastWeekPL }));
+        } catch (error) {
+          console.error(`Error calculating last week P/L for strategy ${strategyId}:`, error);
+          setLastWeekPLValues(prev => ({ ...prev, [strategyId]: '$0.00' }));
+        }
+        
+        // Load last month P/L
+        try {
+          const lastMonthBets = await fetchLastMonthBets(strategyId);
+          const lastMonthPerformance = calculateYesterdayPerformance(lastMonthBets); // Same calculation logic
+          const formattedLastMonthPL = formatProfitLoss(lastMonthPerformance.totalProfit, dollarDisplayOptions);
+          setLastMonthPLValues(prev => ({ ...prev, [strategyId]: formattedLastMonthPL }));
+        } catch (error) {
+          setLastMonthPLValues(prev => ({ ...prev, [strategyId]: '$0.00' }));
+        }
+        
+      } catch (error) {
+        console.error('Error loading P/L values for dropdown:', error);
+      }
+    }
+  };
+
+  const handleYesterdayClick = async (strategy: Strategy) => {
+    setSelectedStrategyForYesterday(strategy);
+    setYesterdayLoading(true);
+    
+    // Load analytics settings if not already loaded
+    if (!analyticsSettings && user?.id) {
+      try {
+        const settings = await fetchAnalyticsSettings(user.id);
+        setAnalyticsSettings(settings);
+      } catch (error) {
+        console.error('Error loading analytics settings:', error);
+      }
+    }
+    
+    // Fetch yesterday's bets
+    try {
+      const bets = await fetchYesterdayBets(strategy.id);
+      setYesterdayBets(bets);
+    } catch (error) {
+      console.error('Error fetching yesterday bets:', error);
+      setYesterdayBets([]);
+    } finally {
+      setYesterdayLoading(false);
+    }
+    
+    setShowYesterdayModal(true);
+  };
+
+  const handleLastWeekClick = async (strategy: Strategy) => {
+    setSelectedStrategyForLastWeek(strategy);
+    setLastWeekLoading(true);
+    
+    // Load analytics settings if not already loaded
+    if (!analyticsSettings && user?.id) {
+      try {
+        const settings = await fetchAnalyticsSettings(user.id);
+        setAnalyticsSettings(settings);
+      } catch (error) {
+        console.error('Error loading analytics settings:', error);
+      }
+    }
+    
+    // Fetch last week's bets
+    try {
+      const bets = await fetchLastWeekBets(strategy.id);
+      setLastWeekBets(bets);
+    } catch (error) {
+      console.error('Error fetching last week bets:', error);
+      setLastWeekBets([]);
+    } finally {
+      setLastWeekLoading(false);
+    }
+    
+    setShowLastWeekModal(true);
+  };
+
+  const handleLastMonthClick = async (strategy: Strategy) => {
+    setSelectedStrategyForLastMonth(strategy);
+    setLastMonthLoading(true);
+    
+    // Load analytics settings if not already loaded
+    if (!analyticsSettings && user?.id) {
+      try {
+        const settings = await fetchAnalyticsSettings(user.id);
+        setAnalyticsSettings(settings);
+      } catch (error) {
+        console.error('Error loading analytics settings:', error);
+      }
+    }
+    
+    // Fetch last month's bets
+    try {
+      const bets = await fetchLastMonthBets(strategy.id);
+      setLastMonthBets(bets);
+    } catch (error) {
+      console.error('Error fetching last month bets:', error);
+      setLastMonthBets([]);
+    } finally {
+      setLastMonthLoading(false);
+    }
+    
+    setShowLastMonthModal(true);
+  };
+
+  const handleGenerateYesterdayImage = async () => {
+    if (!yesterdayTemplateRef.current) {
+      Alert.alert('Error', 'Yesterday template not ready. Please try again.');
+      return;
+    }
+
+    try {
+      setIsGeneratingYesterdayImage(true);
+      
+      // Delay to ensure the template is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Capture the yesterday template as an image
+      const templateWidth = Math.min(350, Dimensions.get('window').width - 60);
+      const uri = await captureRef(yesterdayTemplateRef.current, {
+        format: 'png',
+        quality: 0.9,
+        width: templateWidth,
+        backgroundColor: 'white',
+        result: 'tmpfile',
+      });
+
+      // Share the captured image
+      await Share.share({
+        url: uri,
+        message: `Check out yesterday's performance for ${selectedStrategyForYesterday?.name}!`,
+      });
+    } catch (error) {
+      console.error('Error generating yesterday image:', error);
+      Alert.alert('Error', 'Failed to generate image. Please try again.');
+    } finally {
+      setIsGeneratingYesterdayImage(false);
+    }
+  };
+
+  const handleGenerateLastWeekImage = async () => {
+    if (!lastWeekTemplateRef.current) {
+      Alert.alert('Error', 'Last week template not ready. Please try again.');
+      return;
+    }
+
+    try {
+      setIsGeneratingLastWeekImage(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const templateWidth = Math.min(350, Dimensions.get('window').width - 60);
+      const uri = await captureRef(lastWeekTemplateRef.current, {
+        format: 'png',
+        quality: 0.9,
+        width: templateWidth,
+        backgroundColor: 'white',
+        result: 'tmpfile',
+      });
+
+      await Share.share({
+        url: uri,
+        message: `Check out last week's performance for ${selectedStrategyForLastWeek?.name}!`,
+      });
+    } catch (error) {
+      console.error('Error generating last week image:', error);
+      Alert.alert('Error', 'Failed to generate image. Please try again.');
+    } finally {
+      setIsGeneratingLastWeekImage(false);
+    }
+  };
+
+  const handleGenerateLastMonthImage = async () => {
+    if (!lastMonthTemplateRef.current) {
+      Alert.alert('Error', 'Last month template not ready. Please try again.');
+      return;
+    }
+
+    try {
+      setIsGeneratingLastMonthImage(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const templateWidth = Math.min(350, Dimensions.get('window').width - 60);
+      const uri = await captureRef(lastMonthTemplateRef.current, {
+        format: 'png',
+        quality: 0.9,
+        width: templateWidth,
+        backgroundColor: 'white',
+        result: 'tmpfile',
+      });
+
+      // Get month name for message
+      const now = new Date();
+      const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('default', { month: 'long' });
+
+      await Share.share({
+        url: uri,
+        message: `Check out ${lastMonthName}'s performance for ${selectedStrategyForLastMonth?.name}!`,
+      });
+    } catch (error) {
+      console.error('Error generating last month image:', error);
+      Alert.alert('Error', 'Failed to generate image. Please try again.');
+    } finally {
+      setIsGeneratingLastMonthImage(false);
+    }
+  };
+
+  // Get yesterday's bets for a strategy using strategy_bets table
+  const fetchYesterdayBets = async (strategyId: string) => {
+    if (!user?.id) return [];
+    
+    try {
+      // Calculate yesterday's date range
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: strategyBetsData, error } = await supabase
+        .from('strategy_bets')
+        .select(`
+          bet_id,
+          strategy_id,
+          bets (*)
+        `)
+        .eq('strategy_id', strategyId);
+        
+      if (error) throw error;
+      
+      // Flatten the data to get bet objects
+      const allBets = (strategyBetsData || []).map(sb => sb.bets).filter(Boolean);
+      
+      // Filter for yesterday's bets
+      const yesterdayBets = allBets.filter(bet => {
+        const betDate = new Date(bet.bet_date || bet.placed_at);
+        betDate.setHours(0, 0, 0, 0);
+        return betDate.getTime() === yesterday.getTime();
+      });
+      
+      return yesterdayBets;
+    } catch (error) {
+      console.error('Error fetching yesterday bets:', error);
+      return [];
+    }
+  };
+
+  // Get last week's bets (last completed week: Monday to Sunday)
+  const fetchLastWeekBets = async (strategyId: string) => {
+    if (!user?.id) return [];
+    
+    try {
+      // Calculate last completed week (Sunday to Sunday)
+      const now = new Date();
+      const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Find the last Sunday that has passed
+      const daysToLastSunday = currentDayOfWeek === 0 ? 7 : currentDayOfWeek; // If today is Sunday, go back 7 days to previous Sunday
+      
+      const lastWeekEnd = new Date(now);
+      lastWeekEnd.setDate(now.getDate() - daysToLastSunday); // Last completed Sunday
+      lastWeekEnd.setHours(23, 59, 59, 999);
+      
+      const lastWeekStart = new Date(lastWeekEnd);
+      lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // Monday of that week
+      lastWeekStart.setHours(0, 0, 0, 0);
+      
+      const { data: strategyBetsData, error } = await supabase
+        .from('strategy_bets')
+        .select(`
+          bet_id,
+          strategy_id,
+          bets (*)
+        `)
+        .eq('strategy_id', strategyId);
+        
+      if (error) throw error;
+      
+      // Flatten the data to get bet objects
+      const allBets = (strategyBetsData || []).map(sb => sb.bets).filter(Boolean);
+      
+      // Filter for last week's bets
+      const lastWeekBets = allBets.filter(bet => {
+        const betDate = new Date(bet.bet_date || bet.placed_at);
+        return betDate >= lastWeekStart && betDate <= lastWeekEnd;
+      });
+      
+      return lastWeekBets;
+    } catch (error) {
+      console.error('Error fetching last week bets:', error);
+      return [];
+    }
+  };
+
+  // Get last month's bets (last completed month)
+  const fetchLastMonthBets = async (strategyId: string) => {
+    if (!user?.id) return [];
+    
+    try {
+      // Calculate last month's date range
+      const now = new Date();
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      lastMonthStart.setHours(0, 0, 0, 0);
+      
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      lastMonthEnd.setHours(23, 59, 59, 999);
+      
+      const { data: strategyBetsData, error } = await supabase
+        .from('strategy_bets')
+        .select(`
+          bet_id,
+          strategy_id,
+          bets (*)
+        `)
+        .eq('strategy_id', strategyId);
+        
+      if (error) throw error;
+      
+      // Flatten the data to get bet objects
+      const allBets = (strategyBetsData || []).map(sb => sb.bets).filter(Boolean);
+      
+      // Filter for last month's bets
+      const lastMonthBets = allBets.filter(bet => {
+        const betDate = new Date(bet.bet_date || bet.placed_at);
+        return betDate >= lastMonthStart && betDate <= lastMonthEnd;
+      });
+      
+      return lastMonthBets;
+    } catch (error) {
+      console.error('Error fetching last month bets:', error);
+      return [];
+    }
+  };
+
+  // Calculate yesterday's performance with proper parlay handling
+  const calculateYesterdayPerformance = (yesterdayBets: BetData[]) => {
+    // Use the same parlay grouping logic as analytics screen
+    const { parlays, singles } = groupBetsByParlay(yesterdayBets);
+    
+    // Count total bets: each parlay counts as 1 bet + all singles (matches analytics screen)
+    const totalBets = parlays.length + singles.length;
+    
+    // Create unified bet array for calculations (matches analytics exactly)
+    const unifiedBets = [
+      // Parlays with their calculated profit/stake from groupBetsByParlay (profit is in dollars)
+      ...parlays.map(parlay => ({
+        status: parlay.status,
+        stake: parlay.stake,
+        profit: parlay.profit * 100, // Convert dollars to cents
+        placed_at: parlay.placed_at,
+        is_parlay: true,
+      })),
+      // Singles with their profit calculated
+      ...singles.map(single => ({
+        status: single.status,
+        stake: single.stake || 0,
+        // Calculate profit for singles (database profit is in dollars, convert to cents)
+        profit: single.profit !== null && single.profit !== undefined
+          ? single.profit * 100 // Convert dollars to cents 
+          : single.status === 'won'
+            ? (single.potential_payout || 0) - (single.stake || 0)
+            : single.status === 'lost'
+              ? -(single.stake || 0)
+              : 0,
+        placed_at: single.placed_at || single.game_date,
+        is_parlay: false,
+      })),
+    ];
+    
+    const settledBets = unifiedBets.filter(bet => bet.status === 'won' || bet.status === 'lost');
+    const wonBets = settledBets.filter(bet => bet.status === 'won');
+    
+    // Calculate total profit from unified bets (now all in cents)
+    const totalProfit = unifiedBets.reduce((sum, bet) => {
+      return sum + bet.profit;
+    }, 0);
+    
+    
+    return {
+      record: `${wonBets.length}-${settledBets.length - wonBets.length}`,
+      totalProfit,
+      totalBets,
+      settledBets: settledBets.length,
+      pendingBets: totalBets - settledBets.length
+    };
+  };
+
+
+  // Render yesterday performance modal
+  const renderYesterdayModal = () => {
+    if (!selectedStrategyForYesterday || !showYesterdayModal) return null;
+    
+    const performance = calculateYesterdayPerformance(yesterdayBets);
+    
+    const unitDisplayOptions: UnitDisplayOptions = {
+      showUnits: true,
+      unitSize: analyticsSettings?.unit_size || 1000 // Default to $10 per unit (1000 cents)
+    };
+    
+    const formattedProfit = formatProfitLoss(performance.totalProfit, unitDisplayOptions);
+    const sellerName = sellerProfile?.display_name || sellerProfile?.username || 'Anonymous';
+    
+    return (
+      <Modal
+        visible={showYesterdayModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowYesterdayModal(false)}
+      >
+        <View style={styles.popupOverlay}>
+          <View style={styles.popupContainer}>
+            <TouchableOpacity
+              style={styles.popupCloseButton}
+              onPress={() => setShowYesterdayModal(false)}
+            >
+              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+            
+            {/* Yesterday Performance Preview */}
+            <View style={styles.popupImageContainer}>
+              <View 
+                ref={yesterdayTemplateRef}
+                style={styles.yesterdayPerformanceTemplate}
+              >
+                {/* Main Content Card */}
+                <View style={styles.yesterdayMainCard}>
+                  {/* Header with Profile Picture and Strategy Info */}
+                  <View style={styles.yesterdayHeader}>
+                    <View style={styles.yesterdayProfilePicture}>
+                      {sellerProfile?.profile_picture_url ? (
+                        <Image 
+                          source={{ uri: sellerProfile.profile_picture_url }}
+                          style={styles.yesterdayProfileImage}
+                        />
+                      ) : (
+                        <View style={styles.yesterdayDefaultProfileImage}>
+                          <Ionicons name="person" size={20} color="white" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.yesterdayHeaderText}>
+                      <Text style={styles.yesterdaySellerName}>@{sellerName}</Text>
+                      <Text style={styles.yesterdayStrategyName}>{selectedStrategyForYesterday.name}</Text>
+                      <Text style={styles.yesterdayTitle}>Yesterday's Performance</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Performance Stats */}
+                  <View style={styles.yesterdayStats}>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Record</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.record}</Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>P/L</Text>
+                      <Text style={[
+                        styles.yesterdayStatValue,
+                        { color: performance.totalProfit >= 0 ? theme.colors.betting.won : theme.colors.betting.lost }
+                      ]}>
+                        {formattedProfit}
+                      </Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Bets</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.totalBets}</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Loading State */}
+                  {yesterdayLoading && (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <Text style={styles.loadingText}>Loading performance...</Text>
+                    </View>
+                  )}
+                  
+                  {/* No Data Message */}
+                  {!yesterdayLoading && yesterdayBets.length === 0 && (
+                    <Text style={styles.noDataText}>No bets found for yesterday</Text>
+                  )}
+                  
+                  {/* TrueSharp Branding at Bottom */}
+                  <View style={styles.yesterdayBrandingBubble}>
+                    <TrueSharpShield size={12} variant="light" />
+                    <Text style={styles.yesterdayBrandingText}>Powered by TrueSharp</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            
+            {/* Share Button */}
+            <TouchableOpacity
+              style={[
+                styles.yesterdayShareButton,
+                isGeneratingYesterdayImage && styles.shareButtonDisabled
+              ]}
+              onPress={handleGenerateYesterdayImage}
+              disabled={isGeneratingYesterdayImage}
+            >
+              {isGeneratingYesterdayImage ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="share-outline" size={18} color="white" />
+              )}
+              <Text style={styles.yesterdayShareButtonText}>
+                {isGeneratingYesterdayImage ? 'Generating...' : "Share Yesterday's Performance"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Render last week performance modal
+  const renderLastWeekModal = () => {
+    if (!selectedStrategyForLastWeek || !showLastWeekModal) return null;
+    
+    const performance = calculateYesterdayPerformance(lastWeekBets); // Same calculation logic
+    
+    const unitDisplayOptions: UnitDisplayOptions = {
+      showUnits: true,
+      unitSize: analyticsSettings?.unit_size || 1000 // Default to $10 per unit (1000 cents)
+    };
+    
+    const formattedProfit = formatProfitLoss(performance.totalProfit, unitDisplayOptions);
+    const sellerName = sellerProfile?.display_name || sellerProfile?.username || 'Anonymous';
+    
+    return (
+      <Modal
+        visible={showLastWeekModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLastWeekModal(false)}
+      >
+        <View style={styles.popupOverlay}>
+          <View style={styles.popupContainer}>
+            <TouchableOpacity
+              style={styles.popupCloseButton}
+              onPress={() => setShowLastWeekModal(false)}
+            >
+              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+            
+            {/* Last Week Performance Preview */}
+            <View style={styles.popupImageContainer}>
+              <View 
+                ref={lastWeekTemplateRef}
+                style={styles.yesterdayPerformanceTemplate}
+              >
+                {/* Main Content Card */}
+                <View style={styles.yesterdayMainCard}>
+                  {/* Header with Profile Picture and Strategy Info */}
+                  <View style={styles.yesterdayHeader}>
+                    <View style={styles.yesterdayProfilePicture}>
+                      {sellerProfile?.profile_picture_url ? (
+                        <Image 
+                          source={{ uri: sellerProfile.profile_picture_url }}
+                          style={styles.yesterdayProfileImage}
+                        />
+                      ) : (
+                        <View style={styles.yesterdayDefaultProfileImage}>
+                          <Ionicons name="person" size={20} color="white" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.yesterdayHeaderText}>
+                      <Text style={styles.yesterdaySellerName}>@{sellerName}</Text>
+                      <Text style={styles.yesterdayStrategyName}>{selectedStrategyForLastWeek.name}</Text>
+                      <Text style={styles.yesterdayTitle}>Last Week's Performance</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Performance Stats */}
+                  <View style={styles.yesterdayStats}>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Record</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.record}</Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>P/L</Text>
+                      <Text style={[
+                        styles.yesterdayStatValue,
+                        { color: performance.totalProfit >= 0 ? theme.colors.betting.won : theme.colors.betting.lost }
+                      ]}>
+                        {formattedProfit}
+                      </Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Bets</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.totalBets}</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Loading State */}
+                  {lastWeekLoading && (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <Text style={styles.loadingText}>Loading performance...</Text>
+                    </View>
+                  )}
+                  
+                  {/* No Data Message */}
+                  {!lastWeekLoading && lastWeekBets.length === 0 && (
+                    <Text style={styles.noDataText}>No bets found for last week</Text>
+                  )}
+                  
+                  {/* TrueSharp Branding at Bottom */}
+                  <View style={styles.yesterdayBrandingBubble}>
+                    <TrueSharpShield size={12} variant="light" />
+                    <Text style={styles.yesterdayBrandingText}>Powered by TrueSharp</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            
+            {/* Share Button */}
+            <TouchableOpacity
+              style={[
+                styles.yesterdayShareButton,
+                isGeneratingLastWeekImage && styles.shareButtonDisabled
+              ]}
+              onPress={handleGenerateLastWeekImage}
+              disabled={isGeneratingLastWeekImage}
+            >
+              {isGeneratingLastWeekImage ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="share-outline" size={18} color="white" />
+              )}
+              <Text style={styles.yesterdayShareButtonText}>
+                {isGeneratingLastWeekImage ? 'Generating...' : "Share Last Week's Performance"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Render last month performance modal
+  const renderLastMonthModal = () => {
+    if (!selectedStrategyForLastMonth || !showLastMonthModal) return null;
+    
+    const performance = calculateYesterdayPerformance(lastMonthBets); // Same calculation logic
+    
+    const unitDisplayOptions: UnitDisplayOptions = {
+      showUnits: true,
+      unitSize: analyticsSettings?.unit_size || 1000 // Default to $10 per unit (1000 cents)
+    };
+    
+    const formattedProfit = formatProfitLoss(performance.totalProfit, unitDisplayOptions);
+    const sellerName = sellerProfile?.display_name || sellerProfile?.username || 'Anonymous';
+    
+    // Get month name
+    const now = new Date();
+    const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('default', { month: 'long' });
+    
+    return (
+      <Modal
+        visible={showLastMonthModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLastMonthModal(false)}
+      >
+        <View style={styles.popupOverlay}>
+          <View style={styles.popupContainer}>
+            <TouchableOpacity
+              style={styles.popupCloseButton}
+              onPress={() => setShowLastMonthModal(false)}
+            >
+              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+            
+            {/* Last Month Performance Preview */}
+            <View style={styles.popupImageContainer}>
+              <View 
+                ref={lastMonthTemplateRef}
+                style={styles.yesterdayPerformanceTemplate}
+              >
+                {/* Main Content Card */}
+                <View style={styles.yesterdayMainCard}>
+                  {/* Header with Profile Picture and Strategy Info */}
+                  <View style={styles.yesterdayHeader}>
+                    <View style={styles.yesterdayProfilePicture}>
+                      {sellerProfile?.profile_picture_url ? (
+                        <Image 
+                          source={{ uri: sellerProfile.profile_picture_url }}
+                          style={styles.yesterdayProfileImage}
+                        />
+                      ) : (
+                        <View style={styles.yesterdayDefaultProfileImage}>
+                          <Ionicons name="person" size={20} color="white" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.yesterdayHeaderText}>
+                      <Text style={styles.yesterdaySellerName}>@{sellerName}</Text>
+                      <Text style={styles.yesterdayStrategyName}>{selectedStrategyForLastMonth.name}</Text>
+                      <Text style={styles.yesterdayTitle}>{lastMonthName}'s Performance</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Performance Stats */}
+                  <View style={styles.yesterdayStats}>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Record</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.record}</Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>P/L</Text>
+                      <Text style={[
+                        styles.yesterdayStatValue,
+                        { color: performance.totalProfit >= 0 ? theme.colors.betting.won : theme.colors.betting.lost }
+                      ]}>
+                        {formattedProfit}
+                      </Text>
+                    </View>
+                    <View style={styles.yesterdayStatItem}>
+                      <Text style={styles.yesterdayStatLabel}>Bets</Text>
+                      <Text style={styles.yesterdayStatValue}>{performance.totalBets}</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Loading State */}
+                  {lastMonthLoading && (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <Text style={styles.loadingText}>Loading performance...</Text>
+                    </View>
+                  )}
+                  
+                  {/* No Data Message */}
+                  {!lastMonthLoading && lastMonthBets.length === 0 && (
+                    <Text style={styles.noDataText}>No bets found for {lastMonthName}</Text>
+                  )}
+                  
+                  {/* TrueSharp Branding at Bottom */}
+                  <View style={styles.yesterdayBrandingBubble}>
+                    <TrueSharpShield size={12} variant="light" />
+                    <Text style={styles.yesterdayBrandingText}>Powered by TrueSharp</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            
+            {/* Share Button */}
+            <TouchableOpacity
+              style={[
+                styles.yesterdayShareButton,
+                isGeneratingLastMonthImage && styles.shareButtonDisabled
+              ]}
+              onPress={handleGenerateLastMonthImage}
+              disabled={isGeneratingLastMonthImage}
+            >
+              {isGeneratingLastMonthImage ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="share-outline" size={18} color="white" />
+              )}
+              <Text style={styles.yesterdayShareButtonText}>
+                {isGeneratingLastMonthImage ? 'Generating...' : `Share ${lastMonthName}'s Performance`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   // Share modal handlers
   const handleShareBetSelection = (bet: BetData | ParlayGroup) => {
     const betId = 'legs' in bet ? bet.parlay_id : bet.id;
-    setSelectedShareBets(prev =>
-      prev.includes(betId)
-        ? prev.filter(id => id !== betId)
-        : [...prev, betId]
-    );
+    const isParlay = 'legs' in bet;
+    
+    setSelectedShareBets(prev => {
+      const isCurrentlySelected = prev.includes(betId);
+      
+      if (isCurrentlySelected) {
+        // Deselecting - always allowed
+        return prev.filter(id => id !== betId);
+      }
+      
+      // Selecting - check constraints
+      if (prev.length === 0) {
+        // First selection - always allowed
+        return [betId];
+      }
+      
+      // Check if we already have selections
+      const currentSelections = currentOpenBets.filter(b => {
+        const id = 'legs' in b ? b.parlay_id : b.id;
+        return prev.includes(id);
+      });
+      
+      if (isParlay) {
+        // Trying to select a parlay - only allow if no other bets are selected
+        if (currentSelections.length > 0) {
+          Alert.alert(
+            'Selection Limit',
+            'You can only select one parlay at a time. Please deselect other bets first.',
+            [{ text: 'OK' }]
+          );
+          return prev;
+        }
+        return [betId]; // Only select this parlay
+      } else {
+        // Trying to select a straight bet - only allow if no parlays are selected
+        const hasParlay = currentSelections.some(selection => 'legs' in selection);
+        if (hasParlay) {
+          Alert.alert(
+            'Selection Limit', 
+            'You cannot select straight bets when a parlay is selected. Please deselect the parlay first.',
+            [{ text: 'OK' }]
+          );
+          return prev;
+        }
+        return [...prev, betId];
+      }
+    });
   };
 
   const handleSelectAllShareBets = () => {
     if (selectedShareBets.length === currentOpenBets.length) {
       setSelectedShareBets([]);
     } else {
-      setSelectedShareBets(currentOpenBets.map(bet => 'legs' in bet ? bet.parlay_id : bet.id));
+      // Check if there are any parlays in currentOpenBets
+      const parlays = currentOpenBets.filter(bet => 'legs' in bet);
+      const straightBets = currentOpenBets.filter(bet => !('legs' in bet));
+      
+      if (parlays.length > 0 && straightBets.length > 0) {
+        // Mixed types - only select straight bets (safer choice)
+        Alert.alert(
+          'Mixed Bet Types',
+          'Cannot select all bets when there are both parlays and straight bets. Selecting straight bets only.',
+          [{ text: 'OK' }]
+        );
+        setSelectedShareBets(straightBets.map(bet => bet.id));
+      } else if (parlays.length > 1) {
+        // Multiple parlays - only select the first one
+        Alert.alert(
+          'Multiple Parlays',
+          'Cannot select multiple parlays. Selecting the first parlay only.',
+          [{ text: 'OK' }]
+        );
+        setSelectedShareBets([parlays[0].parlay_id]);
+      } else {
+        // All same type or single parlay - select all
+        setSelectedShareBets(currentOpenBets.map(bet => 'legs' in bet ? bet.parlay_id : bet.id));
+      }
     }
   };
 
@@ -1383,7 +2147,8 @@ export default function SellScreen() {
       return;
     }
 
-    if (selectedShareBets.length === 0) {
+    // For strategy promotion, no bet selection required
+    if (!isStrategyPromotion && selectedShareBets.length === 0) {
       Alert.alert('No Bets Selected', 'Please select at least one bet to share.');
       return;
     }
@@ -1402,17 +2167,25 @@ export default function SellScreen() {
         width: templateWidth,
         height: undefined, // Let it calculate based on content
       });
-      // Share the generated image with custom message
-      const strategyName = selectedStrategy?.name || 'My Strategy';
-      const selectedBetsCount = selectedShareBets.length;
-      const sellerName = sellerProfile?.display_name || sellerProfile?.username || 'A TrueSharp user';
       
       // Get username for the marketplace link
       const username = sellerProfile?.username || user?.email?.split('@')[0] || 'user';
       
+      let shareMessage = '';
+      if (isStrategyPromotion) {
+        // Strategy promotion message
+        const strategyName = selectedStrategy?.name || 'My Strategy';
+        shareMessage = `Check out my ${strategyName} betting strategy on TrueSharp!\n\nFollow my picks: https://truesharp.io/marketplace/${username}`;
+      } else {
+        // Bet sharing message
+        const strategyName = selectedStrategy?.name || 'My Strategy';
+        const selectedBetsCount = selectedShareBets.length;
+        shareMessage = `Check out today's bet!\nSubscribe to my ${strategyName} strategy on https://truesharp.io/marketplace/${username}`;
+      }
+      
       await Share.share({
         url: uri,
-        message: `Check out today's bet!\nSubscribe to my ${strategyName} strategy on truesharp.io/marketplace/${username}`,
+        message: shareMessage,
       });
     } catch (error) {
       console.error('Error generating share image:', error);
@@ -1578,22 +2351,39 @@ export default function SellScreen() {
     const allBets = getStrategyAllBets(strategy);
     const leaderboard = strategy.leaderboard;
     return (
-      <View key={strategy.id} style={styles.strategyCard}>
+      <View key={strategy.id}>
+        <View style={styles.strategyCard}>
         <View style={styles.strategyHeader}>
           <View style={styles.strategyCardInfo}>
-            <Text style={styles.strategyCardName} numberOfLines={1}>
-              {strategy.name}
-            </Text>
+            <View style={styles.strategyNameRow}>
+              <Text style={styles.strategyCardName} numberOfLines={1}>
+                {strategy.name}
+              </Text>
+              {(strategy.monetized || leaderboard?.is_monetized) && (
+                <Ionicons name="cash" size={18} color="#10B981" style={styles.monetizedIcon} />
+              )}
+            </View>
             <Text style={styles.strategyCardDescription} numberOfLines={2}>
               {strategy.description || 'No description'}
             </Text>
           </View>
-          {(strategy.monetized || leaderboard?.is_monetized) && (
-            <View style={styles.monetizedBadge}>
-              <Ionicons name="cash" size={16} color="white" />
-              <Text style={styles.monetizedText}>MONETIZED</Text>
-            </View>
-          )}
+          <View style={styles.strategyHeaderRight}>
+            <TouchableOpacity
+              style={styles.promoteButtonContainer}
+              onPress={() => handlePromoteStrategy(strategy)}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#007AFF', '#0051D5', '#003D9A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.promoteButton}
+              >
+                <TrueSharpShield size={14} variant="light" />
+                <Text style={styles.promoteButtonText}>Promote</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.strategyStats}>
@@ -1688,6 +2478,94 @@ export default function SellScreen() {
               <Text style={styles.actionButtonText}>All Bets</Text>
             </LinearGradient>
           </TouchableOpacity>
+        </View>
+        </View>
+      
+        {/* Dropdown Tongue - Outside the card */}
+        <View style={styles.dropdownTongueContainer}>
+          <TouchableOpacity 
+            style={styles.dropdownTab}
+            onPress={() => toggleStrategyDropdown(strategy.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dropdownTabText}>Performance</Text>
+            <Ionicons 
+              name={dropdownVisibility[strategy.id] ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color="#666"
+            />
+          </TouchableOpacity>
+          
+          {/* Dropdown Content */}
+          {dropdownVisibility[strategy.id] && (
+            <View style={styles.dropdownContent}>
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={() => handleYesterdayClick(strategy)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownItemText}>Yesterday</Text>
+                <Text style={[
+                  styles.dropdownPLText,
+                  { 
+                    color: yesterdayPLValues[strategy.id]?.startsWith('+') 
+                      ? theme.colors.betting.won 
+                      : yesterdayPLValues[strategy.id]?.startsWith('-')
+                        ? theme.colors.betting.lost
+                        : theme.colors.text.secondary
+                  }
+                ]}>
+                  {yesterdayPLValues[strategy.id] || '—'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={() => handleLastWeekClick(strategy)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownItemText}>Last Week</Text>
+                <Text style={[
+                  styles.dropdownPLText,
+                  { 
+                    color: lastWeekPLValues[strategy.id]?.startsWith('+') 
+                      ? theme.colors.betting.won 
+                      : lastWeekPLValues[strategy.id]?.startsWith('-')
+                        ? theme.colors.betting.lost
+                        : theme.colors.text.secondary
+                  }
+                ]}>
+                  {lastWeekPLValues[strategy.id] || '—'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={() => handleLastMonthClick(strategy)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownItemText}>{
+                  (() => {
+                    const now = new Date();
+                    const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('default', { month: 'long' });
+                    return lastMonthName;
+                  })()
+                }</Text>
+                <Text style={[
+                  styles.dropdownPLText,
+                  { 
+                    color: lastMonthPLValues[strategy.id]?.startsWith('+') 
+                      ? theme.colors.betting.won 
+                      : lastMonthPLValues[strategy.id]?.startsWith('-')
+                        ? theme.colors.betting.lost
+                        : theme.colors.text.secondary
+                  }
+                ]}>
+                  {lastMonthPLValues[strategy.id] || '—'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -2192,6 +3070,7 @@ export default function SellScreen() {
               setTimeout(() => {
                 setSelectedShareBets([]);
                 setSharePreviewMode(false);
+                setIsStrategyPromotion(false);
                 setShowShareModal(true);
               }, 100);
             }}
@@ -2362,14 +3241,95 @@ export default function SellScreen() {
               </View>
               <View style={styles.blurredBetRight}>
                 <Text style={styles.blurredBetOdds}>
-                  {formatOdds(parlay.odds)}
+                  {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
                 </Text>
               </View>
             </View>
           </View>
         );
       } else {
-        // No preview mode: match ShareableUnifiedBetCard format exactly
+        // No preview mode: show parlay with legs for image generation
+        // Helper functions for formatting leg details (reused from ShareableUnifiedBetCard)
+        const formatLegMarketLine = (leg: any): string => {
+          // Special handling for SharpSports legs - use parsed bet_description
+          if (leg.bet_source === 'sharpsports' && leg.bet_description) {
+            const parts = leg.bet_description.split(' - ');
+            if (parts.length >= 2) {
+              const betDetails = parts.slice(1).join(' - ');
+              // Apply reordering rules for better readability
+              const moneylineMatch = betDetails.match(/^Moneyline - (.+)$/);
+              if (moneylineMatch) {
+                return `${moneylineMatch[1]} Moneyline`;
+              }
+              return betDetails;
+            }
+          }
+
+          // Default logic for all other bet sources
+          const betType = leg.bet_type || 'Unknown';
+          const side = leg.side;
+          const lineValue = leg.line_value;
+          const playerName = leg.player_name;
+
+          if (betType.toLowerCase() === 'moneyline') {
+            const teamName = side === 'home' ? leg.home_team : side === 'away' ? leg.away_team : side;
+            return `${teamName || 'Team'} ML`;
+          }
+
+          if (betType.toLowerCase() === 'spread') {
+            const teamName = side === 'home' ? leg.home_team : side === 'away' ? leg.away_team : side;
+            const formattedLine = lineValue !== null && lineValue !== undefined ? 
+              (lineValue > 0 ? `+${lineValue}` : `${lineValue}`) : '';
+            return `${teamName || 'Team'} ${formattedLine}`;
+          }
+
+          if (betType.toLowerCase() === 'total' || betType.toLowerCase() === 'over' || betType.toLowerCase() === 'under') {
+            const overUnder = side ? side.toUpperCase() : (betType.toLowerCase() === 'over' ? 'OVER' : betType.toLowerCase() === 'under' ? 'UNDER' : 'OVER');
+            return `${overUnder} ${lineValue || ''}`;
+          }
+
+          if (betType.toLowerCase().includes('prop') && playerName) {
+            const overUnder = side ? side.toUpperCase() : 'OVER';
+            let propType = 'Points';
+            
+            if (leg.prop_type) {
+              const propTypeStr = leg.prop_type.toString();
+              if (propTypeStr === 'home_runs') propType = 'Home Runs';
+              else if (propTypeStr === 'total_bases') propType = 'Total Bases';
+              else if (propTypeStr === 'passing_yards') propType = 'Passing Yards';
+              else if (propTypeStr === 'rushing_yards') propType = 'Rushing Yards';
+              else if (propTypeStr === 'receiving_yards') propType = 'Receiving Yards';
+              else if (propTypeStr === 'touchdowns') propType = 'Touchdowns';
+              else {
+                propType = propTypeStr.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());
+              }
+            }
+            
+            return `${playerName} ${propType} ${overUnder} ${lineValue || ''}`;
+          }
+
+          return leg.bet_description || `${betType} ${lineValue || ''}`;
+        };
+
+        const formatLegTeamMatchup = (leg: any): string => {
+          // Special handling for SharpSports legs - extract matchup from bet_description
+          if (leg.bet_source === 'sharpsports' && leg.bet_description) {
+            const parts = leg.bet_description.split(' - ');
+            if (parts.length >= 2) {
+              const matchup = parts[0].trim();
+              if (matchup.includes(' @ ')) {
+                return matchup;
+              }
+            }
+          }
+
+          // Default logic for other bet sources
+          if (!leg.home_team || !leg.away_team) {
+            return '';
+          }
+          return `${leg.away_team} @ ${leg.home_team}`;
+        };
+        
         return (
           <View style={styles.blurredBetCard}>
             <View style={styles.blurredBetContent}>
@@ -2391,9 +3351,41 @@ export default function SellScreen() {
               </View>
               <View style={styles.blurredBetRight}>
                 <Text style={styles.blurredBetOdds}>
-                  {formatOdds(parlay.odds)}
+                  {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
                 </Text>
               </View>
+            </View>
+            
+            {/* Parlay Legs Section for image generation */}
+            <View style={styles.blurredParlayLegs}>
+              {parlay.legs.map((leg, index) => (
+                <View key={leg.id} style={styles.blurredLegRow}>
+                  {/* Leg Number */}
+                  <View style={styles.blurredLegNumber}>
+                    <Text style={styles.blurredLegNumberText}>{index + 1}</Text>
+                  </View>
+                  
+                  {/* Leg Content */}
+                  <View style={styles.blurredLegContent}>
+                    <Text style={styles.blurredLegMarketLine} numberOfLines={1}>
+                      {formatLegMarketLine(leg)}
+                    </Text>
+                    <Text style={styles.blurredLegTeamMatchup} numberOfLines={1}>
+                      {formatLegTeamMatchup(leg)}
+                    </Text>
+                    <Text style={styles.blurredLegInfo} numberOfLines={1}>
+                      {leg.bet_type || 'Unknown'} • {leg.league || leg.sport || 'Unknown'}
+                    </Text>
+                  </View>
+
+                  {/* Leg Odds */}
+                  <View style={styles.blurredLegRight}>
+                    <Text style={styles.blurredLegOdds}>
+                      {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
         );
@@ -2473,37 +3465,54 @@ export default function SellScreen() {
         ref={shareTemplateRef}
         style={styles.enhancedShareTemplate}
       >
-        {/* Enhanced Header with gradient background */}
-        <LinearGradient
-          colors={[theme.colors.primary, theme.colors.primaryDark]}
-          style={styles.enhancedHeader}
-        >
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            <View style={styles.profileImageContainer}>
-              {sellerProfile?.profile_picture_url ? (
-                <Image 
-                  source={{ uri: sellerProfile.profile_picture_url }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={styles.defaultProfileImage}>
-                  <Ionicons name="person" size={24} color="white" />
-                </View>
-              )}
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.sellerName}>{sellerName}</Text>
-              <Text style={styles.mainStrategyTitle}>{strategyName}</Text>
-            </View>
-          </View>
+        {/* Banner Section with natural aspect ratio */}
+        <View style={styles.bannerSection}>
+          {sellerProfile?.banner_img ? (
+            <Image
+              source={{ uri: sellerProfile.banner_img }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={[theme.colors.primary, theme.colors.primaryDark]}
+              style={styles.defaultBanner}
+            />
+          )}
           
-          {/* TrueSharp Subtitle */}
-          <View style={styles.truesharpSubtitle}>
-            <TrueSharpShield size={16} variant="light" />
-            <Text style={styles.poweredByTrueSharp}>Powered by TrueSharp</Text>
+          {/* TrueSharp Badge overlaying banner */}
+          <View style={styles.truesharpBadgeOverlay}>
+            <TrueSharpShield size={10} variant="light" />
+            <Text style={styles.poweredByTrueSharpOverlay}>Powered by TrueSharp</Text>
           </View>
-        </LinearGradient>
+        </View>
+
+        {/* Profile Picture overlapping banner */}
+        <View style={styles.profilePictureContainer}>
+          {sellerProfile?.profile_picture_url ? (
+            <Image 
+              source={{ uri: sellerProfile.profile_picture_url }}
+              style={styles.overlappingProfileImage}
+            />
+          ) : (
+            <View style={styles.overlappingDefaultProfileImage}>
+              <Ionicons name="person" size={28} color="white" />
+            </View>
+          )}
+        </View>
+
+        {/* Profile Info Section with username beside photo */}
+        <View style={styles.profileInfoRowSection}>
+          <View style={styles.profilePhotoSpacer} />
+          <View style={styles.profileTextSection}>
+            <Text style={styles.sellerNameBeside}>{sellerName}</Text>
+          </View>
+        </View>
+
+        {/* Strategy title directly under profile photo */}
+        <View style={styles.strategyTitleSection}>
+          <Text style={styles.strategyNameBelow}>{strategyName}</Text>
+        </View>
 
         {/* Bets section with enhanced styling */}
         <View style={styles.enhancedBetsContainer}>
@@ -2539,19 +3548,159 @@ export default function SellScreen() {
     );
   };
 
+  // Strategy Share Template component for strategy promotion
+  const StrategyShareTemplate = () => {
+    const strategy = selectedStrategy;
+    if (!strategy) return null;
+
+    const groupedOpenBets = getStrategyOpenBets(strategy);
+    const allBets = getStrategyAllBets(strategy);
+    const leaderboard = strategy.leaderboard;
+    const sellerName = sellerProfile?.display_name || sellerProfile?.username || 'Anonymous';
+
+    return (
+      <View 
+        ref={shareTemplateRef}
+        style={styles.strategyShareTemplate}
+      >
+        {/* Banner Section */}
+        <View style={styles.bannerSection}>
+          {sellerProfile?.banner_img ? (
+            <Image
+              source={{ uri: sellerProfile.banner_img }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={[theme.colors.primary, theme.colors.primaryDark]}
+              style={styles.defaultBanner}
+            />
+          )}
+          
+          {/* TrueSharp Badge overlaying banner */}
+          <View style={styles.truesharpBadgeOverlay}>
+            <TrueSharpShield size={10} variant="light" />
+            <Text style={styles.poweredByTrueSharpOverlay}>Powered by TrueSharp</Text>
+          </View>
+        </View>
+
+        {/* Profile Picture overlapping banner */}
+        <View style={styles.profilePictureContainer}>
+          {sellerProfile?.profile_picture_url ? (
+            <Image 
+              source={{ uri: sellerProfile.profile_picture_url }}
+              style={styles.overlappingProfileImage}
+            />
+          ) : (
+            <View style={styles.overlappingDefaultProfileImage}>
+              <Ionicons name="person" size={28} color="white" />
+            </View>
+          )}
+        </View>
+
+        {/* Strategy Card Section - moved up to reduce white space */}
+        <View style={styles.strategyShareCardContainer}>
+          <View style={styles.strategyShareCard}>
+            <Text style={styles.strategyShareTitle}>{strategy.name}</Text>
+            <Text style={styles.strategyShareDescription} numberOfLines={2}>
+              {strategy.description || 'No description'}
+            </Text>
+            
+            {/* Strategy Stats */}
+            <View style={styles.strategyShareStats}>
+              <View style={styles.shareStatItem}>
+                <Text style={styles.shareStatLabel}>Total Bets</Text>
+                <Text style={styles.shareStatValue}>
+                  {leaderboard?.total_bets !== undefined ? leaderboard.total_bets : allBets.length}
+                </Text>
+              </View>
+              <View style={styles.shareStatItem}>
+                <Text style={styles.shareStatLabel}>Win Rate</Text>
+                <Text style={styles.shareStatValue}>
+                  {leaderboard?.win_rate !== undefined && leaderboard.win_rate !== null 
+                    ? `${(leaderboard.win_rate * 100).toFixed(1)}%` 
+                    : (strategy.performance_win_rate ? `${strategy.performance_win_rate.toFixed(1)}%` : 'N/A')}
+                </Text>
+              </View>
+              <View style={styles.shareStatItem}>
+                <Text style={styles.shareStatLabel}>ROI</Text>
+                <Text style={styles.shareStatValue}>
+                  {leaderboard?.roi_percentage !== undefined && leaderboard.roi_percentage !== null
+                    ? `${leaderboard.roi_percentage.toFixed(1)}%`
+                    : (strategy.performance_roi ? `${strategy.performance_roi.toFixed(1)}%` : 'N/A')}
+                </Text>
+              </View>
+              <View style={styles.shareStatItem}>
+                <Text style={styles.shareStatLabel}>Subs</Text>
+                <Text style={styles.shareStatValue}>{strategy.subscriber_count || 0}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderShareModal = () => {
+    if (isStrategyPromotion) {
+      return (
+        <Modal
+          visible={showShareModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={handleCloseShareModal}
+        >
+          <View style={styles.popupOverlay}>
+            <View style={styles.popupContainer}>
+              <TouchableOpacity
+                style={styles.popupCloseButton}
+                onPress={handleCloseShareModal}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+              
+              {/* Strategy Share Preview */}
+              <View style={styles.popupImageContainer}>
+                <StrategyShareTemplate />
+              </View>
+
+              {/* Share Button */}
+              <TouchableOpacity
+                style={[
+                  styles.popupShareButton,
+                  isGeneratingImage && styles.shareButtonDisabled
+                ]}
+                onPress={handleGenerateShareImage}
+                disabled={isGeneratingImage}
+              >
+                {isGeneratingImage ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="share-outline" size={20} color="white" />
+                    <Text style={styles.shareButtonText}>Share Strategy</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      );
+    }
+
     return (
     <Modal
       visible={showShareModal}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={() => setShowShareModal(false)}
+      onRequestClose={handleCloseShareModal}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity
             style={styles.modalCloseButton}
-            onPress={() => setShowShareModal(false)}
+            onPress={handleCloseShareModal}
           >
             <Ionicons name="close" size={24} color={theme.colors.text.primary} />
           </TouchableOpacity>
@@ -2705,7 +3854,7 @@ export default function SellScreen() {
             </View>
             <View style={styles.betRightSection}>
               <Text style={styles.betOdds}>
-                {formatOdds(parlay.odds)}
+                {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
               </Text>
               <Text style={styles.betStake}>${parlay.stake}</Text>
             </View>
@@ -2759,7 +3908,7 @@ export default function SellScreen() {
                   </View>
                   <View style={styles.legRightSection}>
                     <Text style={styles.betOdds}>
-                      {formatOdds(leg.odds)}
+                      {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
                     </Text>
                     <Text style={styles.betStake}>${leg.stake}</Text>
                   </View>
@@ -2781,10 +3930,21 @@ export default function SellScreen() {
                                 (bet as any).odd_source === 'TrueSharp';
     
     if (isTrueSharpOrManual && bet.player_name) {
-      // Try to determine prop type from prop_type column first, then oddid, fallback to 'Prop'
+      // Try to determine prop type - prioritize oddid for multi-stat combinations
       let propType = null;
       
-      if (bet.prop_type) {
+      // First, check oddid for multi-stat combinations (takes priority)
+      if ((bet as any).oddid) {
+        const oddid = (bet as any).oddid;
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+      
+      // If not a multi-stat combination, use prop_type from database
+      if (!propType && bet.prop_type) {
         // Convert prop_type from database format to display format
         const propTypeStr = bet.prop_type.toString();
         if (propTypeStr === 'home_runs') propType = 'Home Runs';
@@ -2804,38 +3964,12 @@ export default function SellScreen() {
           // For other prop types, replace underscores and capitalize
           propType = propTypeStr.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
-      }
-      
-      // If prop_type was null or empty, try parsing from oddid
-      if (!propType && (bet as any).oddid) {
+      } else if (!propType && (bet as any).oddid) {
+        // Final fallback: parse single stats from oddid
         const oddid = (bet as any).oddid;
-        const parts = oddid.split('-');
-        if (parts.length > 0) {
-          const statPart = parts[0];
-          if (statPart === 'touchdowns') propType = 'Touchdowns';
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs';
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs';
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs';
-          else if (statPart === 'passing_yards') propType = 'Passing Yards';
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards';
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards';
-          else if (statPart === 'batting_hits') propType = 'Hits';
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs';
-          else if (statPart === 'batting_rbi') propType = 'RBIs';
-          else if (statPart === 'batting_runs') propType = 'Runs';
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases';
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases';
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts';
-          else if (statPart === 'rebounds') propType = 'Rebounds';
-          else if (statPart === 'assists') propType = 'Assists';
-          else if (statPart === 'steals') propType = 'Steals';
-          else if (statPart === 'blocks') propType = 'Blocks';
-          else if (statPart === 'goals') propType = 'Goals';
-          else if (statPart === 'saves') propType = 'Saves';
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        if (parsedFromOddid) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
         }
       }
       
@@ -2930,10 +4064,21 @@ export default function SellScreen() {
     if (betType.toLowerCase().includes('prop') && playerName) {
       const overUnder = side ? side.toUpperCase() : 'OVER';
       
-      // Parse prop type from oddid if prop_type is null or fallback to 'Points'
+      // Parse prop type - prioritize oddid for multi-stat combinations, fallback to 'Points'
       let propType = 'Points';
       
-      if (bet.prop_type) {
+      // First, check oddid for multi-stat combinations (takes priority)
+      if ((bet as any).oddid) {
+        const oddid = (bet as any).oddid;
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+      
+      // If not a multi-stat combination, use prop_type from database
+      if (propType === 'Points' && bet.prop_type) {
         // Convert prop_type from database format to display format
         const propTypeStr = bet.prop_type.toString();
         if (propTypeStr === 'home_runs') propType = 'Home Runs';
@@ -2953,36 +4098,12 @@ export default function SellScreen() {
           // For other prop types, replace underscores and capitalize
           propType = propTypeStr.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
-      } else if ((bet as any).oddid) {
-        // If prop_type is null, parse from oddid
+      } else if (propType === 'Points' && (bet as any).oddid) {
+        // Final fallback: parse single stats from oddid
         const oddid = (bet as any).oddid;
-        const parts = oddid.split('-');
-        if (parts.length > 0) {
-          const statPart = parts[0];
-          if (statPart === 'touchdowns') propType = 'Touchdowns';
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs';
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs';
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs';
-          else if (statPart === 'passing_yards') propType = 'Passing Yards';
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards';
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards';
-          else if (statPart === 'batting_hits') propType = 'Hits';
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs';
-          else if (statPart === 'batting_rbi') propType = 'RBIs';
-          else if (statPart === 'batting_runs') propType = 'Runs';
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases';
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases';
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts';
-          else if (statPart === 'rebounds') propType = 'Rebounds';
-          else if (statPart === 'assists') propType = 'Assists';
-          else if (statPart === 'steals') propType = 'Steals';
-          else if (statPart === 'blocks') propType = 'Blocks';
-          else if (statPart === 'goals') propType = 'Goals';
-          else if (statPart === 'saves') propType = 'Saves';
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        if (parsedFromOddid) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
         }
       }
       
@@ -3100,10 +4221,96 @@ export default function SellScreen() {
   };
 
   // ShareableUnifiedBetCard - version without monetary values for share modal
-  const ShareableUnifiedBetCard = ({ bet }: { bet: BetData | ParlayGroup }) => {
+  const ShareableUnifiedBetCard = ({ bet, showLegs = false, onToggleExpand }: { 
+    bet: BetData | ParlayGroup; 
+    showLegs?: boolean; 
+    onToggleExpand?: () => void;
+  }) => {
     if ('legs' in bet) {
       // It's a parlay - match EnhancedParlayCard format
       const parlay = bet as ParlayGroup;
+      
+      // Helper functions for formatting leg details (adapted from EnhancedParlayCard)
+      const formatLegMarketLine = (leg: any): string => {
+        // Special handling for SharpSports legs - use parsed bet_description
+        if (leg.bet_source === 'sharpsports' && leg.bet_description) {
+          const parts = leg.bet_description.split(' - ');
+          if (parts.length >= 2) {
+            const betDetails = parts.slice(1).join(' - ');
+            // Apply reordering rules for better readability
+            const moneylineMatch = betDetails.match(/^Moneyline - (.+)$/);
+            if (moneylineMatch) {
+              return `${moneylineMatch[1]} Moneyline`;
+            }
+            return betDetails;
+          }
+        }
+
+        // Default logic for all other bet sources
+        const betType = leg.bet_type || 'Unknown';
+        const side = leg.side;
+        const lineValue = leg.line_value;
+        const playerName = leg.player_name;
+
+        if (betType.toLowerCase() === 'moneyline') {
+          const teamName = side === 'home' ? leg.home_team : side === 'away' ? leg.away_team : side;
+          return `${teamName || 'Team'} ML`;
+        }
+
+        if (betType.toLowerCase() === 'spread') {
+          const teamName = side === 'home' ? leg.home_team : side === 'away' ? leg.away_team : side;
+          const formattedLine = lineValue !== null && lineValue !== undefined ? 
+            (lineValue > 0 ? `+${lineValue}` : `${lineValue}`) : '';
+          return `${teamName || 'Team'} ${formattedLine}`;
+        }
+
+        if (betType.toLowerCase() === 'total' || betType.toLowerCase() === 'over' || betType.toLowerCase() === 'under') {
+          const overUnder = side ? side.toUpperCase() : (betType.toLowerCase() === 'over' ? 'OVER' : betType.toLowerCase() === 'under' ? 'UNDER' : 'OVER');
+          return `${overUnder} ${lineValue || ''}`;
+        }
+
+        if (betType.toLowerCase().includes('prop') && playerName) {
+          const overUnder = side ? side.toUpperCase() : 'OVER';
+          let propType = 'Points';
+          
+          if (leg.prop_type) {
+            const propTypeStr = leg.prop_type.toString();
+            if (propTypeStr === 'home_runs') propType = 'Home Runs';
+            else if (propTypeStr === 'total_bases') propType = 'Total Bases';
+            else if (propTypeStr === 'passing_yards') propType = 'Passing Yards';
+            else if (propTypeStr === 'rushing_yards') propType = 'Rushing Yards';
+            else if (propTypeStr === 'receiving_yards') propType = 'Receiving Yards';
+            else if (propTypeStr === 'touchdowns') propType = 'Touchdowns';
+            else {
+              propType = propTypeStr.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+          }
+          
+          return `${playerName} ${propType} ${overUnder} ${lineValue || ''}`;
+        }
+
+        return leg.bet_description || `${betType} ${lineValue || ''}`;
+      };
+
+      const formatLegTeamMatchup = (leg: any): string => {
+        // Special handling for SharpSports legs - extract matchup from bet_description
+        if (leg.bet_source === 'sharpsports' && leg.bet_description) {
+          const parts = leg.bet_description.split(' - ');
+          if (parts.length >= 2) {
+            const matchup = parts[0].trim();
+            if (matchup.includes(' @ ')) {
+              return matchup;
+            }
+          }
+        }
+
+        // Default logic for other bet sources
+        if (!leg.home_team || !leg.away_team) {
+          return '';
+        }
+        return `${leg.away_team} @ ${leg.home_team}`;
+      };
+      
       return (
         <View style={styles.shareableBetCard}>
           <View style={styles.shareableBetContent}>
@@ -3125,10 +4332,59 @@ export default function SellScreen() {
             </View>
             <View style={styles.shareableBetRight}>
               <Text style={styles.shareableBetOdds}>
-                {formatOdds(parlay.odds)}
+                {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
               </Text>
             </View>
+
+            {/* Expand/Collapse Icon - only show in selection area (when onToggleExpand is provided) */}
+            {onToggleExpand && (
+              <TouchableOpacity 
+                style={styles.shareableExpandIcon}
+                onPress={onToggleExpand}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons 
+                  name={expandedParlays.has(parlay.parlay_id) ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color={theme.colors.text.secondary} 
+                />
+              </TouchableOpacity>
+            )}
           </View>
+          
+          {/* Parlay Legs Section - show when showLegs is true (image generation) OR when expanded in selection area */}
+          {(showLegs || expandedParlays.has(parlay.parlay_id)) && (
+            <View style={styles.shareableParlayLegs}>
+              {parlay.legs.map((leg, index) => (
+                <View key={leg.id} style={styles.shareableLegRow}>
+                  {/* Leg Number */}
+                  <View style={styles.shareableLegNumber}>
+                    <Text style={styles.shareableLegNumberText}>{index + 1}</Text>
+                  </View>
+                  
+                  {/* Leg Content */}
+                  <View style={styles.shareableLegContent}>
+                    <Text style={styles.shareableLegMarketLine} numberOfLines={1}>
+                      {formatLegMarketLine(leg)}
+                    </Text>
+                    <Text style={styles.shareableLegTeamMatchup} numberOfLines={1}>
+                      {formatLegTeamMatchup(leg)}
+                    </Text>
+                    <Text style={styles.shareableLegInfo} numberOfLines={1}>
+                      {leg.bet_type || 'Unknown'} • {leg.league || leg.sport || 'Unknown'}
+                    </Text>
+                  </View>
+
+                  {/* Leg Odds */}
+                  <View style={styles.shareableLegRight}>
+                    <Text style={styles.shareableLegOdds}>
+                      {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       );
     } else {
@@ -3170,6 +4426,26 @@ export default function SellScreen() {
     previewMode: boolean;
     onPress: () => void;
   }) => {
+    const isParlay = 'legs' in bet;
+    // For image generation (when showLegs=true), we want to force show legs regardless of preview mode
+    // For selection area (when showLegs=false), we respect the expanded state
+    const showLegs = !previewMode && isParlay; // This forces legs to show in image generation
+    
+    const handleToggleExpand = () => {
+      if ('legs' in bet) {
+        const parlayId = bet.parlay_id;
+        setExpandedParlays(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(parlayId)) {
+            newSet.delete(parlayId);
+          } else {
+            newSet.add(parlayId);
+          }
+          return newSet;
+        });
+      }
+    };
+    
     return (
       <TouchableOpacity
         style={[
@@ -3182,7 +4458,11 @@ export default function SellScreen() {
       >
         <View style={styles.shareModalBetContent}>
           <View style={styles.unifiedBetCardContainer}>
-            <ShareableUnifiedBetCard bet={bet} />
+            <ShareableUnifiedBetCard 
+              bet={bet} 
+              showLegs={false} // Never force show legs in selection area - use expand state instead
+              onToggleExpand={isParlay ? handleToggleExpand : undefined}
+            />
           </View>
           <View style={[
             styles.shareModalSelectionIndicator,
@@ -3227,7 +4507,8 @@ export default function SellScreen() {
               style={styles.compactKpiGrowth}
               numberOfLines={1}
               adjustsFontSizeToFit={true}
-              minimumFontScale={0.8}
+              minimumFontScale={0.6}
+              allowFontScaling={false}
             >
               {financialData.monthlyGrowthRate >= 0 ? '+' : ''}{financialData.monthlyGrowthRate.toFixed(1)}%
             </Text>
@@ -3448,9 +4729,9 @@ export default function SellScreen() {
   // Revenue by Frequency chart
   const renderRevenueByFrequency = () => {
     const data = [
-      { name: 'Weekly', value: financialData.revenueByFrequency.weekly, color: '#3B82F6', icon: 'calendar' },
-      { name: 'Monthly', value: financialData.revenueByFrequency.monthly, color: '#10B981', icon: 'calendar-outline' },
-      { name: 'Yearly', value: financialData.revenueByFrequency.yearly, color: '#F59E0B', icon: 'time' }
+      { name: 'Weekly', value: financialData.revenueByFrequency.weekly, color: theme.colors.primary, icon: 'calendar' },
+      { name: 'Monthly', value: financialData.revenueByFrequency.monthly, color: theme.colors.betting.won, icon: 'calendar-outline' },
+      { name: 'Yearly', value: financialData.revenueByFrequency.yearly, color: theme.colors.secondary, icon: 'time' }
     ];
 
     const totalRevenue = data.reduce((sum, item) => sum + item.value, 0);
@@ -3458,7 +4739,7 @@ export default function SellScreen() {
     return (
       <View style={styles.modernChartContainer}>
         <View style={styles.modernChartHeader}>
-          <Ionicons name="bar-chart" size={20} color={theme.colors.text.primary} />
+          <Ionicons name="bar-chart" size={18} color={theme.colors.text.primary} />
           <Text style={styles.modernChartTitle}>Revenue by Frequency</Text>
         </View>
         
@@ -3470,7 +4751,13 @@ export default function SellScreen() {
                 <View style={[styles.frequencyIconContainer, { backgroundColor: item.color + '20' }]}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} />
                 </View>
-                <Text style={styles.frequencyValue}>
+                <Text 
+                  style={styles.frequencyValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit={true}
+                  minimumFontScale={0.5}
+                  allowFontScaling={false}
+                >
                   {stripeSellerDataService.formatCurrency(item.value)}
                 </Text>
                 <Text style={styles.frequencyLabel}>{item.name}</Text>
@@ -3491,7 +4778,7 @@ export default function SellScreen() {
       return (
         <View style={styles.modernChartContainer}>
           <View style={styles.modernChartHeader}>
-            <Ionicons name="trophy" size={20} color={theme.colors.text.primary} />
+            <Ionicons name="trophy" size={18} color={theme.colors.text.primary} />
             <Text style={styles.modernChartTitle}>Top Strategies</Text>
           </View>
           <View style={styles.emptyStateContainer}>
@@ -3506,13 +4793,13 @@ export default function SellScreen() {
     return (
       <View style={styles.modernChartContainer}>
         <View style={styles.modernChartHeader}>
-          <Ionicons name="trophy" size={20} color={theme.colors.text.primary} />
+          <Ionicons name="trophy" size={18} color={theme.colors.text.primary} />
           <Text style={styles.modernChartTitle}>Top Strategies</Text>
         </View>
         
         <View style={styles.strategyList}>
           {financialData.topPerformingStrategies.slice(0, 3).map((strategy, index) => {
-            const colors = ['#10B981', '#3B82F6', '#8B5CF6'];
+            const colors = [theme.colors.betting.won, theme.colors.primary, theme.colors.secondary];
             const color = colors[index];
             
             return (
@@ -3531,7 +4818,13 @@ export default function SellScreen() {
                 </View>
                 
                 <View style={styles.modernStrategyRevenue}>
-                  <Text style={[styles.modernStrategyAmount, { color }]}>
+                  <Text 
+                    style={[styles.modernStrategyAmount, { color }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.5}
+                    allowFontScaling={false}
+                  >
                     {stripeSellerDataService.formatCurrency(strategy.revenue)}
                   </Text>
                   <Text style={styles.modernStrategyPeriod}>monthly</Text>
@@ -3549,37 +4842,40 @@ export default function SellScreen() {
     return (
       <View style={styles.modernChartContainer}>
         <View style={styles.modernChartHeader}>
-          <Ionicons name="calculator" size={20} color={theme.colors.text.primary} />
+          <Ionicons name="calculator" size={18} color={theme.colors.text.primary} />
           <Text style={styles.modernChartTitle}>Revenue Breakdown</Text>
         </View>
         
         <View style={styles.breakdownContainer}>
           <View style={styles.breakdownRow}>
             <View style={styles.breakdownLabel}>
-              <View style={[styles.breakdownDot, { backgroundColor: '#3B82F6' }]} />
+              <View style={[styles.breakdownDot, { backgroundColor: theme.colors.primary }]} />
               <Text style={styles.breakdownText}>Gross Revenue</Text>
             </View>
-            <Text style={[styles.breakdownValue, { color: '#3B82F6' }]}>
+            <Text 
+              style={[styles.breakdownValue, { color: theme.colors.primary }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.5}
+              allowFontScaling={false}
+            >
               {stripeSellerDataService.formatCurrency(financialData.totalGrossRevenue)}
             </Text>
           </View>
           
-          <View style={styles.breakdownRow}>
-            <View style={styles.breakdownLabel}>
-              <View style={[styles.breakdownDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.breakdownText}>Platform Fee</Text>
-            </View>
-            <Text style={[styles.breakdownValue, { color: '#F59E0B' }]}>
-              -{stripeSellerDataService.formatCurrency(financialData.totalPlatformFees)}
-            </Text>
-          </View>
           
           <View style={[styles.breakdownRow, styles.breakdownTotal]}>
             <View style={styles.breakdownLabel}>
-              <View style={[styles.breakdownDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.breakdownDot, { backgroundColor: theme.colors.betting.won }]} />
               <Text style={[styles.breakdownText, styles.breakdownTextBold]}>Your Earnings</Text>
             </View>
-            <Text style={[styles.breakdownValue, styles.breakdownValueBold, { color: '#10B981' }]}>
+            <Text 
+              style={[styles.breakdownValue, styles.breakdownValueBold, { color: theme.colors.betting.won }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.5}
+              allowFontScaling={false}
+            >
               {stripeSellerDataService.formatCurrency(financialData.totalNetRevenue)}
             </Text>
           </View>
@@ -3699,7 +4995,7 @@ export default function SellScreen() {
             </View>
             <View style={styles.betRightSection}>
               <Text style={styles.betOdds}>
-                {formatOdds(parlay.odds)}
+                {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
               </Text>
               <Text style={styles.betStake}>${parlay.stake}</Text>
               <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
@@ -3756,7 +5052,7 @@ export default function SellScreen() {
                   </View>
                   <View style={styles.legRightSection}>
                     <Text style={styles.betOdds}>
-                      {formatOdds(leg.odds)}
+                      {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
                     </Text>
                     <Text style={styles.betStake}>${leg.stake}</Text>
                   </View>
@@ -3917,6 +5213,9 @@ export default function SellScreen() {
             {renderAllBetsModal()}
             {renderOpenBetsModal()}
             {renderShareModal()}
+            {renderYesterdayModal()}
+            {renderLastWeekModal()}
+            {renderLastMonthModal()}
             
             {/* Enhanced Monetization Modals */}
             <MonetizeStrategyModal
@@ -4899,10 +6198,15 @@ const styles = StyleSheet.create({
   strategyCard: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    padding: theme.spacing.md,
+    marginBottom: 0,
+    paddingTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     ...theme.shadows.sm,
   },
   strategyHeader: {
@@ -4915,11 +6219,47 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: theme.spacing.sm,
   },
+  strategyNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  monetizedIcon: {
+    marginLeft: theme.spacing.xs,
+  },
+  strategyHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+  },
+  promoteButtonContainer: {
+    borderRadius: theme.borderRadius.lg,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  promoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.xs,
+    minWidth: 85,
+  },
+  promoteButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: 'white',
+    letterSpacing: 0.3,
+  },
   strategyCardName: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    flex: 1,
   },
   strategyCardDescription: {
     fontSize: theme.typography.fontSize.sm,
@@ -5022,6 +6362,179 @@ const styles = StyleSheet.create({
     color: 'white',
     marginLeft: theme.spacing.xs,
     fontWeight: theme.typography.fontWeight.medium,
+  },
+  
+  // Dropdown tongue styles
+  dropdownTongueContainer: {
+    marginHorizontal: theme.spacing.sm,
+    marginTop: 0,
+    marginBottom: theme.spacing.md,
+  },
+  dropdownTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: theme.borderRadius.md,
+    borderBottomRightRadius: theme.borderRadius.md,
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderColor: theme.colors.border,
+    ...theme.shadows.sm,
+  },
+  dropdownTabText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  dropdownContent: {
+    backgroundColor: theme.colors.surface,
+    borderBottomLeftRadius: theme.borderRadius.md,
+    borderBottomRightRadius: theme.borderRadius.md,
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderColor: theme.colors.border,
+    marginTop: 1,
+    ...theme.shadows.sm,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  dropdownItemText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+  },
+  dropdownPLText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  
+  // Yesterday performance modal styles
+  yesterdayPerformanceTemplate: {
+    backgroundColor: 'white',
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  yesterdayMainCard: {
+    padding: theme.spacing.lg,
+    backgroundColor: 'white',
+  },
+  yesterdayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  yesterdayProfilePicture: {
+    marginRight: theme.spacing.sm,
+  },
+  yesterdayProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'white',
+  },
+  yesterdayDefaultProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.text.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+  },
+  yesterdayHeaderText: {
+    flex: 1,
+  },
+  yesterdaySellerName: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: 4,
+  },
+  yesterdayStrategyName: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: 4,
+  },
+  yesterdayTitle: {
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.text.secondary,
+  },
+  yesterdayStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: theme.spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.sm,
+  },
+  yesterdayStatItem: {
+    alignItems: 'center',
+  },
+  yesterdayStatLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  yesterdayStatValue: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  yesterdayBrandingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 20,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    alignSelf: 'center',
+  },
+  yesterdayBrandingText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: 'white',
+    marginLeft: theme.spacing.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  noDataText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+    fontStyle: 'italic',
+  },
+  yesterdayShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    alignSelf: 'center',
+  },
+  yesterdayShareButtonText: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: 'white',
+    marginLeft: theme.spacing.xs,
   },
   
   // Modal form styles
@@ -5302,6 +6815,108 @@ const styles = StyleSheet.create({
     maxHeight: 200, // Limit height to make room for preview
   },
   // Enhanced share template styles
+  // Strategy promotion styles
+  popupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.sm,
+  },
+  popupContainer: {
+    backgroundColor: 'white',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+    width: '95%',
+  },
+  popupCloseButton: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    right: theme.spacing.md,
+    zIndex: 10,
+    padding: theme.spacing.xs,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 20,
+  },
+  popupImageContainer: {
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+  },
+  popupShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    ...theme.shadows.md,
+  },
+  strategyShareTemplate: {
+    width: Math.min(300, Dimensions.get('window').width - 100),
+    backgroundColor: 'white',
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  strategyShareCardContainer: {
+    padding: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+  },
+  strategyShareCard: {
+    backgroundColor: 'white',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  strategyShareTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  strategyShareDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  strategyShareStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.sm,
+  },
+  shareStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  shareStatLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.light,
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  shareStatValue: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
   enhancedShareTemplate: {
     width: Math.min(350, Dimensions.get('window').width - 60), // Responsive width with max 350
     backgroundColor: 'white',
@@ -5312,17 +6927,105 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
   },
-  enhancedHeader: {
-    padding: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
+  truesharpBadgeOverlay: {
+    position: 'absolute',
+    top: 6,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  poweredByTrueSharpOverlay: {
+    fontSize: 8,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: 'black',
+    marginLeft: 2,
+  },
+  bannerSection: {
+    width: '100%',
+    height: 80, // Reduced height to make banner thinner
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  defaultBanner: {
+    width: '100%',
+    height: '100%',
+  },
+  profilePictureContainer: {
+    position: 'absolute',
+    top: 50, // Position to overlap the banner (80px banner - 30px overlap)
+    left: 12, // Slightly to the left as requested
+    zIndex: 3,
+  },
+  profileInfoRowSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: theme.spacing.xs,
+    paddingRight: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    backgroundColor: 'white',
+  },
+  profilePhotoSpacer: {
+    width: 72, // Width to account for profile photo (60px) + margin (12px)
+  },
+  profileTextSection: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  strategyTitleSection: {
+    paddingLeft: 12, // Align with profile photo position
+    paddingRight: theme.spacing.md,
+    paddingTop: 0,
+    paddingBottom: theme.spacing.xs,
+    backgroundColor: 'white',
+  },
+  strategyNameBelow: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginBottom: 0,
+  },
+  overlappingProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'white',
+    backgroundColor: 'white',
+  },
+  overlappingDefaultProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'white',
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sellerNameBeside: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: 2,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
+    position: 'relative',
+    zIndex: 1,
+    padding: theme.spacing.md,
+    paddingBottom: 0,
   },
   profileImageContainer: {
     marginRight: theme.spacing.sm,
@@ -5369,6 +7072,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.borderRadius.full,
+    position: 'relative',
+    zIndex: 1,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   poweredByTrueSharp: {
     fontSize: theme.typography.fontSize.xs,
@@ -5873,47 +7580,45 @@ const styles = StyleSheet.create({
   compactKpiValue: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.status.success,
-    marginBottom: 4,
+    color: theme.colors.betting.won,
+    marginBottom: 2,
     textAlign: 'center',
-    numberOfLines: 1,
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.8,
+    flexShrink: 1,
+    minWidth: 0,
   },
   compactKpiValueSecondary: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: 2,
     textAlign: 'center',
-    numberOfLines: 1,
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.8,
+    flexShrink: 1,
+    minWidth: 0,
   },
   compactKpiLabel: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    numberOfLines: 1,
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.7,
+    flexShrink: 1,
+    minWidth: 0,
   },
   compactKpiLabelSecondary: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    numberOfLines: 1,
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.7,
+    flexShrink: 1,
+    minWidth: 0,
   },
   compactKpiGrowth: {
     fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.status.success,
+    color: theme.colors.betting.won,
     fontWeight: theme.typography.fontWeight.medium,
-    marginTop: 2,
+    marginTop: 1,
     textAlign: 'center',
+    flexShrink: 1,
+    minWidth: 0,
   },
 
   // Modern Chart Styles
@@ -5942,16 +7647,19 @@ const styles = StyleSheet.create({
   // Frequency Grid Styles
   frequencyGrid: {
     flexDirection: 'row',
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
   },
   frequencyCard: {
     flex: 1,
     alignItems: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border + '20',
   },
   frequencyIconContainer: {
     width: 36,
@@ -5966,6 +7674,9 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     marginBottom: 2,
+    textAlign: 'center',
+    flexShrink: 1,
+    minWidth: 0,
   },
   frequencyLabel: {
     fontSize: theme.typography.fontSize.sm,
@@ -5979,18 +7690,19 @@ const styles = StyleSheet.create({
 
   // Strategy Card Styles
   strategyList: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   modernStrategyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border + '40',
   },
   modernStrategyRank: {
     width: 28,
@@ -6026,6 +7738,9 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     marginBottom: 2,
+    textAlign: 'right',
+    flexShrink: 1,
+    minWidth: 0,
   },
   modernStrategyPeriod: {
     fontSize: theme.typography.fontSize.xs,
@@ -6034,14 +7749,16 @@ const styles = StyleSheet.create({
 
   // Breakdown Styles
   breakdownContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.sm,
   },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    minHeight: 32,
   },
   breakdownTotal: {
     borderTopWidth: 1,
@@ -6052,6 +7769,8 @@ const styles = StyleSheet.create({
   breakdownLabel: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
   breakdownDot: {
     width: 8,
@@ -6070,17 +7789,23 @@ const styles = StyleSheet.create({
   breakdownValue: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'right',
   },
   breakdownValueBold: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'right',
   },
 
   // Empty State Styles
   emptyStateContainer: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.sm,
   },
   emptyStateText: {
     fontSize: theme.typography.fontSize.lg,
@@ -6230,5 +7955,150 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.inverse,
+  },
+  
+  // Parlay legs styles for share modal
+  shareableParlayLegs: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  shareableLegsHeader: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  shareableLegsHeaderText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+  },
+  shareableLegRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    minHeight: 45,
+  },
+  shareableLegNumber: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.sm,
+  },
+  shareableLegNumberText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'white',
+  },
+  shareableLegContent: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+    justifyContent: 'space-between',
+    minHeight: 32,
+  },
+  shareableLegMarketLine: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: 1,
+    lineHeight: 14,
+  },
+  shareableLegTeamMatchup: {
+    fontSize: 9,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    marginBottom: 1,
+    lineHeight: 12,
+  },
+  shareableLegInfo: {
+    fontSize: 8,
+    color: theme.colors.text.light,
+    lineHeight: 10,
+  },
+  shareableLegRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 32,
+  },
+  shareableLegOdds: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+  },
+  shareableExpandIcon: {
+    marginLeft: theme.spacing.sm,
+    justifyContent: 'center',
+  },
+  
+  // Blurred parlay legs styles for image generation
+  blurredParlayLegs: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  blurredLegRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    minHeight: 40,
+  },
+  blurredLegNumber: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.sm,
+  },
+  blurredLegNumberText: {
+    fontSize: 10,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'white',
+  },
+  blurredLegContent: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+    justifyContent: 'space-between',
+    minHeight: 28,
+  },
+  blurredLegMarketLine: {
+    fontSize: 11,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: 1,
+    lineHeight: 13,
+  },
+  blurredLegTeamMatchup: {
+    fontSize: 9,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    marginBottom: 1,
+    lineHeight: 11,
+  },
+  blurredLegInfo: {
+    fontSize: 8,
+    color: theme.colors.text.light,
+    lineHeight: 10,
+  },
+  blurredLegRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28,
+  },
+  blurredLegOdds: {
+    fontSize: 10,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
   },
 });

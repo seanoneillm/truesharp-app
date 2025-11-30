@@ -5,14 +5,17 @@ import { theme } from '../../styles/theme';
 import { BetData } from '../../services/supabaseAnalytics';
 import { groupBetsByParlay, ParlayGroup } from '../../services/parlayGrouping';
 import UnifiedBetCard from './UnifiedBetCard';
+import { UnitDisplayOptions } from '../../utils/unitCalculations';
 
 interface BetsTabProps {
   bets: BetData[];
   loading: boolean;
   onRefresh: () => Promise<void>;
+  onBetPress?: (betId: string, parlayGroup?: ParlayGroup) => void;
+  unitOptions?: UnitDisplayOptions;
 }
 
-export default function BetsTab({ bets, loading, onRefresh }: BetsTabProps) {
+export default function BetsTab({ bets, loading, onRefresh, onBetPress, unitOptions }: BetsTabProps) {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -60,7 +63,7 @@ export default function BetsTab({ bets, loading, onRefresh }: BetsTabProps) {
   const totalBetsCount = groupedBets.parlays.length + groupedBets.singles.length;
 
   const renderBetItem = ({ item }: { item: BetData | ParlayGroup }) => (
-    <UnifiedBetCard bet={item} />
+    <UnifiedBetCard bet={item} onPress={onBetPress} unitOptions={unitOptions} />
   );
 
   const renderHeader = () => (

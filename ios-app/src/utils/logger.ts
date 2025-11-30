@@ -5,31 +5,31 @@
 
 export const logger = {
   /**
-   * Debug logging - only in development
+   * Debug logging - disabled in production
    */
   debug: (message: string, ...args: any[]) => {
-    // Debug logging removed for production
+    // No logging in production
   },
 
   /**
-   * Info logging - only in development
+   * Info logging - disabled in production
    */
   info: (message: string, ...args: any[]) => {
-    // Info logging removed for production
+    // No logging in production
   },
 
   /**
-   * Warning logging - only in development
+   * Warning logging - disabled in production
    */
   warn: (message: string, ...args: any[]) => {
-    // Warning logging removed for production
+    // No logging in production
   },
 
   /**
-   * Error logging - ALWAYS active in production
+   * Error logging - disabled in production
    */
   error: (message: string, error?: any) => {
-    console.error(`[ERROR] ${message}`, error);
+    // No logging in production
   }
 };
 

@@ -10,7 +10,7 @@ if (typeof global.Buffer === 'undefined') {
 
 import { StatusBar } from 'expo-status-bar'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import 'react-native-gesture-handler'
+// import 'react-native-gesture-handler' // Removed due to iOS pod conflicts
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { View, Image, Animated, Text } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -20,9 +20,11 @@ import { NavigationContainerRef } from '@react-navigation/native'
 
 import { AuthProvider } from './src/contexts/AuthContext'
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext'
+import { AppStateProvider } from './src/contexts/AppStateContext'
 import RootNavigator from './src/navigation/RootNavigator'
 import { pushNotificationService } from './src/services/pushNotificationService'
 import { theme } from './src/styles/theme'
+import SessionManager from './src/components/common/SessionManager'
 
 const LoadingScreen = () => {
   const fadeValue = new Animated.Value(0)
@@ -248,8 +250,11 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <SubscriptionProvider>
-          <RootNavigator navigationRef={navigationRef} />
-          <StatusBar style="dark" />
+          <AppStateProvider>
+            <SessionManager />
+            <RootNavigator navigationRef={navigationRef} />
+            <StatusBar style="dark" />
+          </AppStateProvider>
         </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>

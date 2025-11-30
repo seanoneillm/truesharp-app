@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UI
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
 import { ParlayGroup } from '../../services/parlayGrouping';
-import { getStatusColor } from '../../lib/betFormatting';
+import { getStatusColor, parseMultiStatOddid } from '../../lib/betFormatting';
+import { formatOddsWithFallback } from '../../utils/oddsCalculation';
+import { UnitDisplayOptions, formatCurrencyOrUnits, formatStakeAmount, formatProfitLoss } from '../../utils/unitCalculations';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager?.setLayoutAnimationEnabledExperimental) {
@@ -12,9 +14,11 @@ if (Platform.OS === 'android' && UIManager?.setLayoutAnimationEnabledExperimenta
 
 interface EnhancedParlayCardProps {
   parlay: ParlayGroup;
+  onPress?: (betId: string) => void;
+  unitOptions?: UnitDisplayOptions;
 }
 
-export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) {
+export default function EnhancedParlayCard({ parlay, onPress, unitOptions }: EnhancedParlayCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const toggleExpanded = () => {
@@ -31,18 +35,36 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
     setIsExpanded(!isExpanded);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const handleParlayPress = () => {
+    // If there's an onPress handler, use it for bet details
+    if (onPress) {
+      onPress(parlay.parlay_id);
+    } else {
+      // Otherwise, just toggle expansion
+      toggleExpanded();
+    }
   };
 
-  const formatOdds = (odds: string | number) => {
+  // Format currency based on unit options  
+  const formatAmount = (amount: number, isProfit = false) => {
+    if (!unitOptions) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    }
+    
+    // Convert dollars to cents for unit calculations
+    const amountInCents = Math.round(amount * 100);
+    return isProfit ? formatProfitLoss(amountInCents, unitOptions) : formatStakeAmount(amountInCents, unitOptions);
+  };
+
+  const formatOdds = (odds: string | number, stake?: number, potentialPayout?: number) => {
     if (odds === undefined || odds === null) return '0';
     const numericOdds = typeof odds === 'string' ? parseFloat(odds) : odds;
-    if (isNaN(numericOdds)) return odds?.toString() || '0';
-    return numericOdds > 0 ? `+${numericOdds}` : `${numericOdds}`;
+    return formatOddsWithFallback(numericOdds, stake, potentialPayout);
   };
 
   // Parse SharpSports bet_description to extract bet details
@@ -238,36 +260,18 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
           // For other prop types, replace underscores and capitalize
           propType = propTypeStr.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
-      } else if ((leg as any).oddid) {
-        // If prop_type is null, parse from oddid
+      }
+      
+      // Always check oddid for multi-stat combinations (takes priority)
+      if ((leg as any).oddid) {
         const oddid = (leg as any).oddid;
-        const parts = oddid.split('-');
-        if (parts.length > 0) {
-          const statPart = parts[0];
-          if (statPart === 'touchdowns') propType = 'Touchdowns';
-          else if (statPart === 'passing_touchdowns') propType = 'Passing TDs';
-          else if (statPart === 'rushing_touchdowns') propType = 'Rushing TDs';
-          else if (statPart === 'receiving_touchdowns') propType = 'Receiving TDs';
-          else if (statPart === 'passing_yards') propType = 'Passing Yards';
-          else if (statPart === 'rushing_yards') propType = 'Rushing Yards';
-          else if (statPart === 'receiving_yards') propType = 'Receiving Yards';
-          else if (statPart === 'batting_hits') propType = 'Hits';
-          else if (statPart === 'batting_homeruns') propType = 'Home Runs';
-          else if (statPart === 'batting_rbi') propType = 'RBIs';
-          else if (statPart === 'batting_runs') propType = 'Runs';
-          else if (statPart === 'batting_totalbases') propType = 'Total Bases';
-          else if (statPart === 'batting_stolenbases') propType = 'Stolen Bases';
-          else if (statPart === 'pitching_strikeouts') propType = 'Strikeouts';
-          else if (statPart === 'rebounds') propType = 'Rebounds';
-          else if (statPart === 'assists') propType = 'Assists';
-          else if (statPart === 'steals') propType = 'Steals';
-          else if (statPart === 'blocks') propType = 'Blocks';
-          else if (statPart === 'goals') propType = 'Goals';
-          else if (statPart === 'saves') propType = 'Saves';
-          else {
-            // For other stat types, replace underscores and capitalize
-            propType = statPart.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
+        const parsedFromOddid = parseMultiStatOddid(oddid);
+        // Use oddid parsing if it contains multiple stats (indicated by '+' in the result)
+        if (parsedFromOddid && parsedFromOddid.includes('+')) {
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
+        } else if (!propType) {
+          // Fallback to oddid parsing for single stats only if prop_type is empty
+          propType = parsedFromOddid.replace(/\b\w/g, l => l.toUpperCase());
         }
       }
       
@@ -341,7 +345,7 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
   return (
     <View style={[styles.container, getBorderStyle()]}>
       {/* Main Parlay Card */}
-      <TouchableOpacity style={styles.betCard} onPress={toggleExpanded} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.betCard} onPress={handleParlayPress} activeOpacity={0.7}>
         <View style={styles.cardContent}>
           {/* Left Side - 3 Lines of Text */}
           <View style={styles.leftContent}>
@@ -369,7 +373,7 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
                 <View style={styles.rightRow}>
                   {/* Odds */}
                   <Text style={styles.odds}>
-                    {formatOdds(parlay.odds)}
+                    {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
                   </Text>
                   
                   {/* Status Badge for pending only */}
@@ -383,10 +387,10 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
                 {/* Pending parlay info */}
                 <View style={styles.pendingBetInfo}>
                   <Text style={styles.wager}>
-                    Stake: {formatCurrency(parlay.stake || 0)}
+                    Stake: {formatAmount(parlay.stake || 0)}
                   </Text>
                   <Text style={[styles.payout, { color: statusColor }]}>
-                    {amountLabel}: {formatCurrency(displayAmount)}
+                    {amountLabel}: {formatAmount(displayAmount, true)}
                   </Text>
                 </View>
               </>
@@ -395,7 +399,7 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
               <>
                 <View style={styles.settledRightRow}>
                   <Text style={styles.odds}>
-                    {formatOdds(parlay.odds)}
+                    {formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}
                   </Text>
                 </View>
                 
@@ -405,7 +409,7 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
                            parlay.status === 'lost' ? theme.colors.status.error : 
                            theme.colors.text.secondary 
                   }]}>
-                    {formatCurrency(displayAmount)}
+                    {formatAmount(displayAmount, true)}
                   </Text>
                 </View>
               </>
@@ -413,13 +417,17 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
           </View>
 
           {/* Expand/Collapse Icon */}
-          <View style={styles.expandIcon}>
+          <TouchableOpacity 
+            style={styles.expandIcon}
+            onPress={toggleExpanded}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons 
               name={isExpanded ? "chevron-up" : "chevron-down"} 
               size={20} 
               color={theme.colors.text.secondary} 
             />
-          </View>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
 
@@ -456,7 +464,7 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
                 {/* Leg Right Content */}
                 <View style={styles.legRightContent}>
                   <Text style={styles.legOdds}>
-                    {formatOdds(leg.odds)}
+                    {formatOdds(leg.odds, leg.stake, leg.potential_payout)}
                   </Text>
                   <View style={[styles.legStatusBadge, { backgroundColor: legStatusColor }]}>
                     <Text style={styles.legStatusText}>
@@ -475,15 +483,15 @@ export default function EnhancedParlayCard({ parlay }: EnhancedParlayCardProps) 
           <View style={styles.parlayTotals}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Odds:</Text>
-              <Text style={styles.totalValue}>{formatOdds(parlay.odds)}</Text>
+              <Text style={styles.totalValue}>{formatOdds(parlay.odds, parlay.stake, parlay.potential_payout)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Stake:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(parlay.stake || 0)}</Text>
+              <Text style={styles.totalValue}>{formatAmount(parlay.stake || 0)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Potential Payout:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(parlay.potential_payout || 0)}</Text>
+              <Text style={styles.totalValue}>{formatAmount(parlay.potential_payout || 0, true)}</Text>
             </View>
           </View>
         </View>
