@@ -1,20 +1,26 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
   Image,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { captureRef } from 'react-native-view-shot'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Line as SvgLine, Text as SvgText } from 'react-native-svg'
 import UnifiedBetCard from '../../components/analytics/UnifiedBetCard'
+import PerformanceCalendar, { DailyPnL } from '../../components/analytics/PerformanceCalendar'
+import DailyBetsModal from '../../components/analytics/DailyBetsModal'
 import TrueSharpShield from '../../components/common/TrueSharpShield'
 import SellerProfileModal from '../../components/marketplace/SellerProfileModal'
 import UpgradeToProModal from '../../components/upgrade/UpgradeToProModal'
@@ -80,7 +86,10 @@ export default function DashboardScreen() {
     parlay_groups: [],
   })
   const [profitData, setProfitData] = useState<ProfitData[]>([])
-  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month')
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'year'>('month')
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [dailyPnLData, setDailyPnLData] = useState<DailyPnL[]>([])
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [timeframeStats, setTimeframeStats] = useState({ winRate: 0, totalBets: 0, totalProfit: 0 })
   const [marketplaceStrategies, setMarketplaceStrategies] = useState<MarketplaceStrategy[]>([])
@@ -90,10 +99,17 @@ export default function DashboardScreen() {
   const [selectedSellerUsername, setSelectedSellerUsername] = useState<string | null>(null)
   const [showSellerModal, setShowSellerModal] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showDailyBetsModal, setShowDailyBetsModal] = useState(false)
+  const [selectedDayData, setSelectedDayData] = useState<any>(null)
   const [stripeData, setStripeData] = useState<StripeSellerData | null>(null)
   const [stripeLoading, setStripeLoading] = useState(false)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics | null>(null)
   const [monetizedStrategiesCount, setMonetizedStrategiesCount] = useState(0)
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+
+  // Refs for performance cards
+  const performanceCardRef = useRef<View>(null)
+  const shareTemplateRef = useRef<View>(null)
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true)
@@ -155,7 +171,7 @@ export default function DashboardScreen() {
     }
   }
 
-  const loadAnalyticsData = async (period: 'week' | 'month' | 'year') => {
+  const loadAnalyticsData = async (period: 'month' | 'year') => {
     if (!user?.id) return
 
     try {
@@ -174,9 +190,362 @@ export default function DashboardScreen() {
     }
   }
 
-  const handlePeriodChange = (period: 'week' | 'month' | 'year') => {
+  const handlePeriodChange = (period: 'month' | 'year') => {
     setSelectedPeriod(period)
     loadAnalyticsData(period)
+  }
+
+  // Fetch daily P/L data and update metrics for calendar with parlay awareness
+  const fetchDailyPnLData = async (month: number, year: number) => {
+    if (!user?.id) return
+
+    try {
+      // Get start and end of the selected month in local timezone
+      const startDate = new Date(year, month, 1, 0, 0, 0, 0)
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999) // End of last day of month
+      
+      // Fetch all bets for the month using placed_at like analytics screen
+      const { data: bets, error } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString())
+        .order('placed_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching daily P/L data:', error)
+        return
+      }
+
+      if (!bets || bets.length === 0) {
+        setDailyPnLData([])
+        return
+      }
+
+      // Process bets exactly like analytics screen using the same logic
+      const { parlays, singles } = processAnalyticsBets(bets)
+      const dailyPnLMap = new Map<string, number>()
+      const dailyStakeMap = new Map<string, number>()
+
+      // Process single bets like analytics screen
+      singles.forEach(bet => {
+        const betDate = bet.placed_at || bet.game_date
+        if (!betDate) return
+        
+        // Handle timezone properly to avoid date offset issues
+        const betDateObj = new Date(betDate)
+        const dateKey = betDateObj.getFullYear() + '-' + 
+          String(betDateObj.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(betDateObj.getDate()).padStart(2, '0')
+        
+        // Initialize maps if needed
+        if (!dailyPnLMap.has(dateKey)) {
+          dailyPnLMap.set(dateKey, 0)
+        }
+        if (!dailyStakeMap.has(dateKey)) {
+          dailyStakeMap.set(dateKey, 0)
+        }
+        
+        // Add stake for all bets (settled and pending)
+        dailyStakeMap.set(dateKey, dailyStakeMap.get(dateKey)! + (bet.stake || 0))
+        
+        // Add profit only for settled bets
+        if (bet.status === 'won' || bet.status === 'lost') {
+          // Use actual profit field from database, fall back to calculation only if null
+          let profit = 0
+          if (bet.profit !== null && bet.profit !== undefined) {
+            profit = bet.profit
+          } else if (bet.status === 'won') {
+            profit = (bet.potential_payout || 0) - (bet.stake || 0)
+          } else if (bet.status === 'lost') {
+            profit = -(bet.stake || 0)
+          }
+          
+          dailyPnLMap.set(dateKey, dailyPnLMap.get(dateKey)! + profit)
+        }
+      })
+
+      // Process parlay bets like analytics screen
+      parlays.forEach(parlay => {
+        const parlayDate = parlay.legs[0]?.placed_at || parlay.legs[0]?.game_date
+        if (!parlayDate) return
+        
+        // Handle timezone properly to avoid date offset issues
+        const parlayDateObj = new Date(parlayDate)
+        const dateKey = parlayDateObj.getFullYear() + '-' + 
+          String(parlayDateObj.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(parlayDateObj.getDate()).padStart(2, '0')
+        
+        // Initialize maps if needed
+        if (!dailyPnLMap.has(dateKey)) {
+          dailyPnLMap.set(dateKey, 0)
+        }
+        if (!dailyStakeMap.has(dateKey)) {
+          dailyStakeMap.set(dateKey, 0)
+        }
+        
+        // Add stake for all parlays (settled and pending)
+        dailyStakeMap.set(dateKey, dailyStakeMap.get(dateKey)! + (parlay.stake || 0))
+        
+        // Add profit only for settled parlays
+        if (parlay.status === 'won' || parlay.status === 'lost') {
+          // Use parlay profit directly (already calculated in processAnalyticsBets)
+          dailyPnLMap.set(dateKey, dailyPnLMap.get(dateKey)! + parlay.profit)
+        }
+      })
+
+      // Convert maps to array, combining profit and stake data
+      const allDates = new Set([...dailyPnLMap.keys(), ...dailyStakeMap.keys()])
+      const dailyData: DailyPnL[] = Array.from(allDates).map(date => ({
+        date,
+        profit: dailyPnLMap.get(date) || 0,
+        stake: dailyStakeMap.get(date) || 0
+      }))
+
+      setDailyPnLData(dailyData)
+
+      // Update timeframe stats to reflect the selected month/year using analytics logic
+      const { parlays: processedParlays, singles: processedSingles } = processAnalyticsBets(bets)
+      
+      // Count bets like analytics screen - parlays count as 1 bet, not per leg
+      const totalBets = processedParlays.length + processedSingles.length
+      
+      // Calculate settled bets and win rate using parlay-aware logic
+      const settledParlays = processedParlays.filter(parlay => parlay.status === 'won' || parlay.status === 'lost')
+      const settledSingles = processedSingles.filter(single => single.status === 'won' || single.status === 'lost')
+      const wonParlays = processedParlays.filter(parlay => parlay.status === 'won').length
+      const wonSingles = processedSingles.filter(single => single.status === 'won').length
+      
+      const totalSettled = settledParlays.length + settledSingles.length
+      const totalWon = wonParlays + wonSingles
+      const winRate = totalSettled > 0 ? (totalWon / totalSettled) * 100 : 0
+      
+      // Calculate total profit for the selected period
+      const totalProfit = dailyData.reduce((sum, day) => sum + day.profit, 0)
+      
+      setTimeframeStats({
+        winRate,
+        totalBets,
+        totalProfit,
+      })
+    } catch (error) {
+      console.error('Error calculating daily P/L:', error)
+      setDailyPnLData([])
+      setTimeframeStats({ winRate: 0, totalBets: 0, totalProfit: 0 })
+    }
+  }
+
+  // Helper function to process bets exactly like analytics screen
+  const processAnalyticsBets = (bets: any[]): { parlays: any[], singles: any[] } => {
+    const parlayGroups = new Map<string, any[]>()
+    const singles: any[] = []
+
+    // Group bets by parlay_id or treat as singles
+    bets.forEach(bet => {
+      if (bet.parlay_id && bet.is_parlay) {
+        if (!parlayGroups.has(bet.parlay_id)) {
+          parlayGroups.set(bet.parlay_id, [])
+        }
+        parlayGroups.get(bet.parlay_id)!.push(bet)
+      } else {
+        singles.push(bet)
+      }
+    })
+
+    // Process parlays to determine outcomes
+    const parlays: any[] = Array.from(parlayGroups.entries()).map(([parlay_id, legs]) => {
+      const firstLeg = legs[0]
+      const stake = firstLeg.stake || 0
+      const potential_payout = firstLeg.potential_payout || 0
+
+      // For parlays, use the profit field from the database if available
+      let profit = 0
+      let status: 'won' | 'lost' | 'pending' | 'void' | 'push'
+
+      // Check if we have a profit value from the database
+      if (firstLeg.profit !== null && firstLeg.profit !== undefined) {
+        profit = firstLeg.profit
+        // Determine status based on profit value
+        if (profit > 0) {
+          status = 'won'
+        } else if (profit < 0) {
+          status = 'lost'
+        } else {
+          status = (firstLeg.status as any) || 'pending'
+        }
+      } else {
+        // Fall back to leg-by-leg analysis if no profit field
+        const settledLegs = legs.filter(
+          leg =>
+            leg.status === 'won' ||
+            leg.status === 'lost' ||
+            leg.status === 'void' ||
+            leg.status === 'push'
+        )
+        const wonLegs = legs.filter(leg => leg.status === 'won')
+        const lostLegs = legs.filter(leg => leg.status === 'lost')
+        const voidLegs = legs.filter(leg => leg.status === 'void')
+
+        // Determine parlay status based on leg results
+        if (settledLegs.length === legs.length) {
+          if (lostLegs.length > 0) {
+            status = 'lost'
+            profit = -stake
+          } else if (voidLegs.length === legs.length) {
+            status = 'void'
+            profit = 0
+          } else if (wonLegs.length === legs.length - voidLegs.length) {
+            status = 'won'
+            profit = potential_payout - stake
+          } else {
+            status = 'pending'
+            profit = 0
+          }
+        } else {
+          status = 'pending'
+          profit = 0
+        }
+      }
+
+      // Calculate parlay odds from potential payout and stake
+      const calculateOddsFromPayout = (payout: number, stake: number): number => {
+        if (stake === 0) return 0;
+        const profit = payout - stake;
+        if (profit === 0) return 0;
+        
+        // Convert to American odds
+        if (profit > 0) {
+          return Math.round((profit / stake) * 100);
+        } else {
+          return Math.round((stake / Math.abs(profit)) * -100);
+        }
+      };
+
+      const odds = calculateOddsFromPayout(potential_payout, stake);
+
+      return {
+        parlay_id,
+        legs: legs.sort((a: any, b: any) => new Date(a.placed_at || '').getTime() - new Date(b.placed_at || '').getTime()),
+        stake,
+        potential_payout,
+        odds,
+        status,
+        profit,
+      }
+    })
+
+    return { parlays, singles }
+  }
+
+  // Handle day press to show daily bets modal
+  const handleDayPress = async (dateString: string) => {
+    try {
+      if (!user?.id) return;
+
+      // Fetch bets for the specific date
+      const startDate = new Date(dateString);
+      const endDate = new Date(dateString);
+      endDate.setDate(endDate.getDate() + 1);
+
+      const { data: bets, error } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('placed_at', startDate.toISOString())
+        .lt('placed_at', endDate.toISOString())
+        .order('placed_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching daily bets:', error);
+        return;
+      }
+
+      if (!bets || bets.length === 0) {
+        // Show empty state for days with no bets
+        setSelectedDayData({
+          date: dateString,
+          bets: [],
+          profit: 0,
+          totalBets: 0,
+          winRate: 0,
+          totalStake: 0,
+        });
+        setShowDailyBetsModal(true);
+        return;
+      }
+
+      // Process bets using the same logic as the dashboard
+      const { parlays, singles } = processAnalyticsBets(bets);
+      
+      // Calculate metrics
+      const allBets = [...singles, ...parlays];
+      const settledBets = allBets.filter(bet => bet.status === 'won' || bet.status === 'lost');
+      const wonBets = settledBets.filter(bet => bet.status === 'won');
+      const totalProfit = settledBets.reduce((sum, bet) => sum + (bet.profit || 0), 0);
+      const totalStake = allBets.reduce((sum, bet) => sum + (bet.stake || 0), 0);
+      const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0;
+
+      setSelectedDayData({
+        date: dateString,
+        bets: allBets,
+        profit: totalProfit,
+        totalBets: allBets.length,
+        winRate: winRate,
+        totalStake: totalStake,
+      });
+      
+      setShowDailyBetsModal(true);
+    } catch (error) {
+      console.error('Error handling day press:', error);
+    }
+  };
+
+  // Helper function to process bets (adapted from dashboardApi.ts)
+  const processBets = (bets: any[]): { straight_bets: any[], parlay_groups: any[] } => {
+    const straightBets: any[] = []
+    const parlayMap = new Map<string, any[]>()
+
+    bets.forEach(bet => {
+      if (bet.is_parlay && bet.parlay_id) {
+        if (!parlayMap.has(bet.parlay_id)) {
+          parlayMap.set(bet.parlay_id, [])
+        }
+        parlayMap.get(bet.parlay_id)!.push(bet)
+      } else {
+        straightBets.push(bet)
+      }
+    })
+
+    const parlayGroups: any[] = []
+    parlayMap.forEach((legs, parlayId) => {
+      const wonLegs = legs.filter(leg => leg.status === 'won').length
+      const lostLegs = legs.filter(leg => leg.status === 'lost').length
+      const voidLegs = legs.filter(leg => leg.status === 'void').length
+      const pendingLegs = legs.filter(leg => leg.status === 'pending').length
+
+      let parlayStatus = 'pending'
+      if (lostLegs > 0) {
+        parlayStatus = 'lost'
+      } else if (voidLegs === legs.length) {
+        parlayStatus = 'void'
+      } else if (wonLegs === legs.length) {
+        parlayStatus = 'won'
+      }
+
+      const legWithStake = legs.find(leg => leg.stake && leg.stake > 0) || legs[0]
+
+      parlayGroups.push({
+        parlay_id: parlayId,
+        legs: legs.sort((a: any, b: any) => new Date(a.placed_at || '').getTime() - new Date(b.placed_at || '').getTime()),
+        total_stake: legWithStake?.stake || 0,
+        total_potential_payout: legWithStake?.potential_payout || 0,
+        status: parlayStatus,
+        placed_at: legs[0]?.placed_at || '',
+      })
+    })
+
+    return { straight_bets: straightBets, parlay_groups: parlayGroups }
   }
 
   const fetchMarketplaceData = async () => {
@@ -548,7 +917,17 @@ export default function DashboardScreen() {
     fetchMarketplaceData()
     fetchSubscriptionsData()
     fetchStripeData()
+    if (user?.id) {
+      fetchDailyPnLData(selectedMonth, selectedYear)
+    }
   }, [user?.id])
+
+  // Load daily P/L data when month/year changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchDailyPnLData(selectedMonth, selectedYear)
+    }
+  }, [selectedMonth, selectedYear, user?.id])
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -578,6 +957,43 @@ export default function DashboardScreen() {
       style: 'currency',
       currency: 'USD',
     }).format(amount)
+  }
+
+  const handleSharePerformance = async () => {
+    try {
+      setIsGeneratingImage(true)
+      
+      // Delay to ensure the card is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Capture the shareable performance card as an image
+      const uri = await captureRef(shareTemplateRef.current, {
+        format: 'png',
+        quality: 0.95,
+        result: 'tmpfile',
+        width: Math.min(400, Dimensions.get('window').width - 32),
+      })
+
+      const shareMessage = `Check out my performance on TrueSharp! 🎯\n\nTotal P/L: ${
+        timeframeStats.totalProfit >= 0 
+          ? `+$${Math.abs(timeframeStats.totalProfit) >= 1000
+              ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
+              : timeframeStats.totalProfit.toFixed(2)}`
+          : `-$${Math.abs(timeframeStats.totalProfit) >= 1000
+              ? (Math.abs(timeframeStats.totalProfit) / 1000).toFixed(1) + 'k'
+              : Math.abs(timeframeStats.totalProfit).toFixed(2)}`
+      }\nWin Rate: ${timeframeStats.winRate.toFixed(1)}%\nTotal Bets: ${timeframeStats.totalBets}\n\nDownload TrueSharp: truesharp.io`
+
+      await Share.share({
+        url: uri,
+        message: shareMessage,
+      })
+    } catch (error) {
+      console.error('Error generating share image:', error)
+      Alert.alert('Error', 'Failed to generate share image. Please try again.')
+    } finally {
+      setIsGeneratingImage(false)
+    }
   }
 
   const formatPercentage = (value: number) => {
@@ -673,6 +1089,101 @@ export default function DashboardScreen() {
       </SafeAreaView>
     )
   }
+
+  // Shareable Performance Card component for image generation
+  const ShareablePerformanceCard = () => (
+    <View ref={shareTemplateRef} style={styles.shareableCard}>
+      <View style={styles.shareableHeader}>
+        <View style={styles.shareableHeaderLeft}>
+          <View style={styles.titleWithShield}>
+            {getProfilePicture() ? (
+              <Image
+                source={{ uri: getProfilePicture()! }}
+                style={styles.shareableProfileImage}
+              />
+            ) : (
+              <View style={styles.shareableProfileImagePlaceholder}>
+                <Text style={styles.shareableProfileInitial}>
+                  {getDisplayName().charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.titleTextContainer}>
+              <Text style={styles.analyticsTitle}>Performance Overview</Text>
+              <Text style={styles.analyticsSubtitle}>Your betting performance</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Metrics Row */}
+      <View style={styles.metricsRow}>
+        <View style={styles.primaryMetric}>
+          <View
+            style={[
+              styles.metricIconContainer,
+              {
+                backgroundColor: timeframeStats.totalProfit >= 0 ? '#059669' : '#DC2626',
+              },
+            ]}
+          >
+            <Ionicons
+              name={timeframeStats.totalProfit >= 0 ? 'trending-up' : 'trending-down'}
+              size={16}
+              color="white"
+            />
+          </View>
+          <View style={styles.metricContent}>
+            <Text
+              style={[
+                styles.primaryMetricValue,
+                {
+                  color: timeframeStats.totalProfit >= 0 ? '#059669' : '#DC2626',
+                },
+              ]}
+            >
+              {timeframeStats.totalProfit >= 0 
+                ? `+$${Math.abs(timeframeStats.totalProfit) >= 1000
+                    ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
+                    : timeframeStats.totalProfit.toFixed(2)}`
+                : `-$${Math.abs(timeframeStats.totalProfit) >= 1000
+                    ? (Math.abs(timeframeStats.totalProfit) / 1000).toFixed(1) + 'k'
+                    : Math.abs(timeframeStats.totalProfit).toFixed(2)}`
+              }
+            </Text>
+            <Text style={styles.primaryMetricLabel}>
+              Total P/L
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.secondaryMetrics}>
+          <View style={styles.secondaryMetric}>
+            <Text style={styles.secondaryMetricValue}>
+              {timeframeStats.winRate.toFixed(1)}%
+            </Text>
+            <Text style={styles.secondaryMetricLabel}>Win Rate</Text>
+          </View>
+          <View style={styles.secondaryMetric}>
+            <Text style={styles.secondaryMetricValue}>{timeframeStats.totalBets}</Text>
+            <Text style={styles.secondaryMetricLabel}>Total Bets</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Performance Calendar */}
+      <View style={styles.calendarContainer}>
+        <PerformanceCalendar
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+          dailyPnL={dailyPnLData}
+          onDayPress={() => {}} // Disable interaction in share template
+        />
+      </View>
+    </View>
+  )
 
   return (
     <SafeAreaView style={globalStyles.safeArea} edges={['bottom']}>
@@ -854,7 +1365,7 @@ export default function DashboardScreen() {
             </View>
 
             {/* Performance Analytics - Shield Next to Text */}
-            <View style={styles.analyticsCard}>
+            <View ref={performanceCardRef} style={styles.analyticsCard}>
               <View style={styles.analyticsHeader}>
                 <View style={styles.analyticsHeaderContent}>
                   <View style={styles.analyticsHeaderLeft}>
@@ -870,36 +1381,27 @@ export default function DashboardScreen() {
                       </View>
                     </View>
                   </View>
+                  <View style={styles.analyticsHeaderRight}>
+                    <TouchableOpacity
+                      style={[styles.shareButton, isGeneratingImage && styles.shareButtonDisabled]}
+                      onPress={handleSharePerformance}
+                      disabled={isGeneratingImage}
+                    >
+                      {isGeneratingImage ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                      ) : (
+                        <Ionicons 
+                          name="share-outline" 
+                          size={20} 
+                          color={theme.colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 
-              {/* Compact Period Toggles */}
-              <View style={styles.compactPeriodToggleContainer}>
-                {[
-                  { label: 'Week', value: 'week' as const },
-                  { label: 'Month', value: 'month' as const },
-                  { label: 'Year', value: 'year' as const },
-                ].map(period => (
-                  <TouchableOpacity
-                    key={period.value}
-                    style={[
-                      styles.compactPeriodToggle,
-                      selectedPeriod === period.value && styles.compactPeriodToggleActive,
-                    ]}
-                    onPress={() => handlePeriodChange(period.value)}
-                    disabled={analyticsLoading}
-                  >
-                    <Text
-                      style={[
-                        styles.compactPeriodToggleText,
-                        selectedPeriod === period.value && styles.compactPeriodToggleTextActive,
-                      ]}
-                    >
-                      {period.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Removed period toggles - now handled by calendar dropdown */}
 
               {/* Streamlined Metrics Row */}
               <View style={styles.metricsRow}>
@@ -927,17 +1429,17 @@ export default function DashboardScreen() {
                         },
                       ]}
                     >
-                      {timeframeStats.totalProfit >= 0 ? '+' : ''}$
-                      {Math.abs(timeframeStats.totalProfit) >= 1000
-                        ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
-                        : timeframeStats.totalProfit.toFixed(2)}
+                      {timeframeStats.totalProfit >= 0 
+                        ? `+$${Math.abs(timeframeStats.totalProfit) >= 1000
+                            ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
+                            : timeframeStats.totalProfit.toFixed(2)}`
+                        : `-$${Math.abs(timeframeStats.totalProfit) >= 1000
+                            ? (Math.abs(timeframeStats.totalProfit) / 1000).toFixed(1) + 'k'
+                            : Math.abs(timeframeStats.totalProfit).toFixed(2)}`
+                      }
                     </Text>
                     <Text style={styles.primaryMetricLabel}>
-                      {selectedPeriod === 'week'
-                        ? 'This Week'
-                        : selectedPeriod === 'month'
-                          ? 'This Month'
-                          : 'This Year'}
+                      Total P/L
                     </Text>
                   </View>
                 </View>
@@ -956,27 +1458,16 @@ export default function DashboardScreen() {
                 </View>
               </View>
 
-              {/* Enhanced Chart Display */}
-              <View style={styles.enhancedChartContainer}>
-                {analyticsLoading ? (
-                  <View style={styles.chartPlaceholder}>
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={styles.chartPlaceholderText}>Loading chart data...</Text>
-                  </View>
-                ) : profitData.length === 0 ? (
-                  <View style={styles.chartPlaceholder}>
-                    <Ionicons name="bar-chart-outline" size={32} color={theme.colors.text.light} />
-                    <Text style={styles.chartPlaceholderText}>No data for this period</Text>
-                    <Text style={styles.chartPlaceholderSubtext}>
-                      No settled bets in this timeframe
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.chartWrapper}>
-                    <Text style={styles.chartTitle}>Profit Trend</Text>
-                    <SimpleLineChart data={profitData} selectedPeriod={selectedPeriod} />
-                  </View>
-                )}
+              {/* Performance Calendar */}
+              <View style={styles.calendarContainer}>
+                <PerformanceCalendar
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                  onMonthChange={setSelectedMonth}
+                  onYearChange={setSelectedYear}
+                  dailyPnL={dailyPnLData}
+                  onDayPress={handleDayPress}
+                />
               </View>
 
               {/* View Analytics Button */}
@@ -1009,7 +1500,7 @@ export default function DashboardScreen() {
                       style={{ accessibilityLabel: 'TrueSharp Marketplace Card' }}
                     />
                     <View style={styles.titleTextContainer}>
-                      <Text style={styles.marketplaceTitle}>Marketplace Stars</Text>
+                      <Text style={styles.marketplaceTitle}>Handicapper Spotlight</Text>
                       <Text style={styles.marketplaceSubtitle}>Top performing strategies</Text>
                     </View>
                   </View>
@@ -1479,6 +1970,25 @@ export default function DashboardScreen() {
           setShowUpgradeModal(false)
         }}
       />
+      
+      {/* Daily Bets Modal */}
+      <DailyBetsModal
+        visible={showDailyBetsModal}
+        onClose={() => {
+          setShowDailyBetsModal(false)
+          setSelectedDayData(null)
+        }}
+        data={selectedDayData}
+        onBetPress={(betId, parlayGroup) => {
+          // Handle bet press - could navigate to bet details
+          console.log('Bet pressed:', betId, parlayGroup)
+        }}
+      />
+      
+      {/* Off-screen shareable performance card for image generation */}
+      <View style={styles.offscreenContainer}>
+        <ShareablePerformanceCard />
+      </View>
     </SafeAreaView>
   )
 }
@@ -2122,7 +2632,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   analyticsButtonContainer: {
-    marginTop: theme.spacing.sm,
+    marginTop: 0,
     alignItems: 'center',
   },
   analyticsButton: {
@@ -2133,8 +2643,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
     ...theme.shadows.lg,
   },
   buttonIcon: {
@@ -2949,10 +3459,10 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   primaryMetric: {
     flexDirection: 'row',
@@ -2960,9 +3470,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing.sm,
@@ -2971,9 +3481,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryMetricValue: {
-    fontSize: theme.typography.fontSize.xl,
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
-    lineHeight: theme.typography.lineHeight.tight * theme.typography.fontSize.xl,
+    lineHeight: theme.typography.lineHeight.tight * theme.typography.fontSize.lg,
   },
   primaryMetricLabel: {
     fontSize: theme.typography.fontSize.xs,
@@ -2982,13 +3492,13 @@ const styles = StyleSheet.create({
   },
   secondaryMetrics: {
     flexDirection: 'row',
-    gap: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   secondaryMetric: {
     alignItems: 'center',
   },
   secondaryMetricValue: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
     lineHeight: theme.typography.lineHeight.tight * theme.typography.fontSize.lg,
@@ -2998,21 +3508,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginTop: 2,
   },
-  // Enhanced chart styles
-  enhancedChartContainer: {
-    marginBottom: theme.spacing.md,
-  },
-  chartWrapper: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
-  },
-  chartTitle: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
+  // Calendar container styles
+  calendarContainer: {
+    marginTop: 0,
+    marginBottom: 0,
   },
   // Strategy profile image styles
   strategyAvatarSection: {
@@ -3075,5 +3574,69 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: '600' as const,
     color: '#3B82F6',
+  },
+  // Share button styles
+  analyticsHeaderRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonDisabled: {
+    opacity: 0.5,
+  },
+  // Off-screen container styles
+  offscreenContainer: {
+    position: 'absolute',
+    top: -10000, // Move off-screen
+    left: 0,
+    opacity: 0, // Make invisible
+  },
+  // Shareable card styles
+  shareableCard: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 12,
+    padding: 12, // Reduced from 16
+    margin: 8, // Reduced from 16
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    width: 350, // Fixed width for consistent images
+  },
+  shareableHeader: {
+    marginBottom: 12, // Reduced from 16
+  },
+  shareableHeaderLeft: {
+    flex: 1,
+  },
+  shareableProfileImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 10, // Reduced from 12
+  },
+  shareableProfileImagePlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10, // Reduced from 12
+  },
+  shareableProfileInitial: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: 'white',
   },
 })

@@ -13,6 +13,7 @@ import {
 // import { PanGestureHandlerGestureEvent } from 'react-native-gesture-handler' // Removed due to iOS pod conflicts
 import { SafeAreaView } from 'react-native-safe-area-context'
 import TrueSharpShield from '../../components/common/TrueSharpShield'
+import { LeagueLogo } from '../../components/common/LeagueLogo'
 import FloatingBetSlip from '../../components/games/FloatingBetSlip'
 import UniversalGameCard from '../../components/games/UniversalGameCard'
 import { BetSlipProvider } from '../../contexts/BetSlipContext'
@@ -35,16 +36,16 @@ type LeagueType =
   | 'Champions League'
   | 'MLS'
 
-const LEAGUES: { name: LeagueType; icon: string; color: string }[] = [
-  { name: 'MLB', icon: '⚾', color: theme.colors.sports.mlb },
-  { name: 'NFL', icon: '🏈', color: theme.colors.sports.nfl },
-  { name: 'NBA', icon: '🏀', color: theme.colors.sports.nba },
-  { name: 'WNBA', icon: '🏀', color: theme.colors.sports.ncaab },
-  { name: 'NHL', icon: '🏒', color: theme.colors.sports.nhl },
-  { name: 'NCAAF', icon: '🏈', color: theme.colors.sports.ncaaf },
-  { name: 'NCAAB', icon: '🏀', color: theme.colors.sports.ncaab },
-  { name: 'Champions League', icon: '⚽', color: theme.colors.sports.soccer },
-  { name: 'MLS', icon: '⚽', color: theme.colors.sports.soccer },
+const LEAGUES: { name: LeagueType; color: string }[] = [
+  { name: 'MLB', color: theme.colors.sports.mlb },
+  { name: 'NFL', color: theme.colors.sports.nfl },
+  { name: 'NBA', color: theme.colors.sports.nba },
+  { name: 'WNBA', color: theme.colors.sports.ncaab },
+  { name: 'NHL', color: theme.colors.sports.nhl },
+  { name: 'NCAAF', color: theme.colors.sports.ncaaf },
+  { name: 'NCAAB', color: theme.colors.sports.ncaab },
+  { name: 'Champions League', color: theme.colors.sports.soccer },
+  { name: 'MLS', color: theme.colors.sports.soccer },
 ]
 
 interface Game {
@@ -596,7 +597,7 @@ export default function GamesScreen() {
                     onPress={() => setSelectedLeague(league.name)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.leagueIcon}>{league.icon}</Text>
+                    <LeagueLogo leagueName={league.name} size={20} style={{ marginRight: theme.spacing.xs }} />
                     <Text
                       style={[
                         styles.leagueTabText,
@@ -845,10 +846,6 @@ const styles = StyleSheet.create({
   leagueTabActive: {
     borderColor: 'transparent',
     ...theme.shadows.sm,
-  },
-  leagueIcon: {
-    fontSize: 16,
-    marginRight: theme.spacing.xs,
   },
   leagueTabText: {
     fontSize: theme.typography.fontSize.sm,

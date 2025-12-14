@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
+import { LeagueLogo } from './LeagueLogo';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ interface DropdownProps {
   icon?: string;
   isPro?: boolean;
   showProBadge?: boolean;
+  isLeagueDropdown?: boolean;
 }
 
 export default function Dropdown({
@@ -45,6 +47,7 @@ export default function Dropdown({
   icon,
   isPro = false,
   showProBadge = false,
+  isLeagueDropdown = false,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localSelectedValues, setLocalSelectedValues] = useState<string[]>(
@@ -100,9 +103,14 @@ export default function Dropdown({
         onPress={() => handleOptionPress(item.value)}
         disabled={isLocked}
       >
-        <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>
-          {item.label}
-        </Text>
+        <View style={styles.optionContent}>
+          {isLeagueDropdown && (
+            <LeagueLogo leagueName={item.value} size={20} style={styles.optionLogo} />
+          )}
+          <Text style={[styles.optionText, isSelected && styles.selectedOptionText, isLeagueDropdown && styles.optionTextWithLogo]}>
+            {item.label}
+          </Text>
+        </View>
         {multiSelect && isSelected && (
           <Ionicons name="checkmark" size={18} color={theme.colors.primary} />
         )}
@@ -315,6 +323,17 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  optionLogo: {
+    marginRight: theme.spacing.sm,
+  },
+  optionTextWithLogo: {
+    flex: 1,
   },
   selectedOption: {
     backgroundColor: `${theme.colors.primary}10`,

@@ -260,7 +260,10 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
 
       // Process parlays as single bets
       parlayGroups.forEach((parlayLegs, parlayId) => {
-        const firstLeg = parlayLegs[0];
+        // Find leg with non-zero profit value for wins
+        const legWithProfit = parlayLegs.find(leg => (leg.profit || 0) !== 0) || parlayLegs[0];
+        const legWithStake = parlayLegs.find(leg => (leg.stake || 0) > 0) || parlayLegs[0];
+        const legWithPayout = parlayLegs.find(leg => (leg.potential_payout || 0) > 0) || parlayLegs[0];
         
         // For breakdown categorization, we need to decide how to categorize parlays
         let key: string;
@@ -290,10 +293,10 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
         // Count the parlay as 1 bet (not per leg)
         breakdownData[key].bets += 1;
         
-        // Use profit from first leg (all legs should have same profit for parlays)
-        if (firstLeg.profit !== null && firstLeg.profit !== undefined) {
-          breakdownData[key].profit += firstLeg.profit;
-          if (firstLeg.profit > 0) breakdownData[key].wins += 1;
+        // Use profit from leg that has non-zero value (handles wins properly)
+        if (legWithProfit.profit !== null && legWithProfit.profit !== undefined && legWithProfit.profit !== 0) {
+          breakdownData[key].profit += legWithProfit.profit;
+          if (legWithProfit.profit > 0) breakdownData[key].wins += 1;
         } else {
           // Fall back to parlay calculation based on leg statuses
           const lostLegs = parlayLegs.filter(leg => leg.status === 'lost');
@@ -305,11 +308,15 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
           if (settledLegs.length === parlayLegs.length) {
             if (lostLegs.length > 0) {
               // Parlay lost
-              breakdownData[key].profit -= (firstLeg.stake || 0);
+              breakdownData[key].profit -= (legWithStake.stake || 0);
             } else if (wonLegs.length === parlayLegs.length) {
-              // Parlay won
-              const parlayProfit = (firstLeg.potential_payout || 0) - (firstLeg.stake || 0);
-              breakdownData[key].profit += parlayProfit;
+              // Parlay won - check for actual profit data first
+              if (legWithProfit.profit !== null && legWithProfit.profit !== undefined && legWithProfit.profit !== 0) {
+                breakdownData[key].profit += legWithProfit.profit;
+              } else {
+                const parlayProfit = (legWithPayout.potential_payout || 0) - (legWithStake.stake || 0);
+                breakdownData[key].profit += parlayProfit;
+              }
               breakdownData[key].wins += 1;
             }
             // Void/push cases result in no profit/loss
@@ -710,17 +717,21 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
       propsForBackgroundLines: {
         strokeDasharray: '5,5',
         stroke: theme.colors.border,
-        strokeWidth: 1,
+        strokeWidth: 0.8,
       },
       propsForVerticalLabels: {
-        rotation: 45, // Rotate x-axis labels 45 degrees
-        fontSize: 9, // Slightly smaller font to fit better
+        rotation: 45,
+        fontSize: 9,
         textAnchor: 'start' as const,
       },
-      paddingBottom: 15, // Extra padding for rotated labels
       propsForHorizontalLabels: {
         fontSize: 10,
       },
+      // Reduced axis spacing for tighter layout
+      paddingLeft: 10,
+      paddingRight: 15,
+      paddingTop: 10,
+      paddingBottom: 15, // Increased for rotated X-axis labels
     };
 
     return (
@@ -743,7 +754,7 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
               </View>
             </View>
             
-            <View style={{ alignItems: 'center', paddingHorizontal: 10, paddingBottom: 20 }}>
+            <View style={{ alignItems: 'center', paddingHorizontal: 5, paddingBottom: 15 }}>
               <LineChart
                 data={{
                   labels: calibrationData.map(d => d.range),
@@ -751,31 +762,31 @@ export default function AnalyticsTab({ analyticsData, loading, onRefresh, filter
                     {
                       // Expected win rate (diagonal line from 0,0 to 100,100)
                       data: calibrationData.map(d => d.expected),
-                      color: (opacity = 1) => `rgba(217, 119, 6, ${opacity})`, // Orange for expected
-                      strokeWidth: 3,
+                      color: (opacity = 1) => `rgba(150, 60, 0, ${opacity})`, // Much darker orange for expected
+                      strokeWidth: 2.5, // Professional stock-style line weight
                     },
                     {
                       // Actual win rate (user's performance)
                       data: calibrationData.map(d => d.actual),
-                      color: (opacity = 1) => `rgba(5, 150, 105, ${opacity})`, // Green for actual
-                      strokeWidth: 3,
+                      color: (opacity = 1) => `rgba(0, 80, 50, ${opacity})`, // Much darker green for actual
+                      strokeWidth: 2.5, // Consistent professional line weight
                     },
                   ],
                 }}
-                width={screenWidth - 80} // Further reduced width to prevent cutoff 
-                height={260} // Increased height to accommodate rotated labels
+                width={screenWidth - 60} // Reduced margins for tighter layout
+                height={270} // Increased height to accommodate rotated X-axis labels
                 chartConfig={{
                   ...chartConfig,
                   formatYLabel: (value: string) => `${parseFloat(value).toFixed(0)}%`,
                 }}
-                bezier={false}
-                style={[styles.chart, { marginBottom: 10 }]}
+                bezier={false} // Sharp, precise lines for professional stock-style appearance
+                style={[styles.chart, { marginLeft: -15, marginBottom: 5 }]} // More space under X-axis labels
                 withHorizontalLabels={true}
                 withVerticalLabels={true}
                 withInnerLines={true}
                 withOuterLines={false}
                 withShadow={false}
-                withDots={true}
+                withDots={false} // Remove dots for cleaner professional appearance
                 fromZero={true}
                 yAxisLabel=""
                 yAxisSuffix=""

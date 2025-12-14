@@ -413,6 +413,18 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   const invoiceData = invoice as any
   if (!invoiceData.subscription) return
 
+  // Get the subscription to check metadata
+  const stripeSubscription = await stripe.subscriptions.retrieve(invoiceData.subscription)
+  const subscriptionMetadata = stripeSubscription.metadata || {}
+  
+  // Check if this subscription needs manual transfer (for restricted countries)
+  const isTransferRestricted = subscriptionMetadata.transfer_restricted === 'true'
+  
+  if (isTransferRestricted && subscriptionMetadata.seller_connect_account_id) {
+    console.log('💰 Processing manual transfer for restricted account:', subscriptionMetadata.seller_connect_account_id)
+    await handleManualTransfer(invoice, subscriptionMetadata)
+  }
+
   // Check if subscription record already exists
   const { data: existingSubscription } = await supabase
     .from('subscriptions')
@@ -709,5 +721,51 @@ async function handleProSubscriptionDeleted(subscription: any, metadata: any) {
     } else {
       console.log('✅ Pro status synced:', syncResult)
     }
+  }
+}
+
+async function handleManualTransfer(invoice: any, subscriptionMetadata: any) {
+  try {
+    console.log('💰 Starting manual transfer for invoice:', invoice.id)
+    
+    // Calculate transfer amount (subtract platform fee)
+    const totalAmount = invoice.amount_paid // Amount in cents
+    const platformFeePercent = STRIPE_CONFIG.marketplaceFeePercentage / 100
+    const platformFee = Math.round(totalAmount * platformFeePercent)
+    const transferAmount = totalAmount - platformFee
+    
+    console.log('📊 Transfer calculation:', {
+      totalAmount,
+      platformFeePercent: STRIPE_CONFIG.marketplaceFeePercentage,
+      platformFee,
+      transferAmount
+    })
+    
+    if (transferAmount <= 0) {
+      console.error('❌ Transfer amount is zero or negative, skipping transfer')
+      return
+    }
+    
+    // Create the transfer
+    const transfer = await stripe.transfers.create({
+      amount: transferAmount,
+      currency: invoice.currency || 'usd',
+      destination: subscriptionMetadata.seller_connect_account_id,
+      description: `Subscription payment for strategy ${subscriptionMetadata.strategy_id}`,
+      metadata: {
+        invoice_id: invoice.id,
+        subscription_id: subscriptionMetadata.subscription_id || invoice.subscription,
+        strategy_id: subscriptionMetadata.strategy_id,
+        seller_id: subscriptionMetadata.seller_id,
+        subscriber_id: subscriptionMetadata.subscriber_id,
+      },
+    })
+    
+    console.log('✅ Manual transfer created successfully:', transfer.id)
+    console.log('💰 Transfer amount:', transferAmount / 100, invoice.currency?.toUpperCase())
+    
+  } catch (error) {
+    console.error('❌ Error creating manual transfer:', error)
+    // Don't throw - we don't want to fail the entire webhook processing
   }
 }

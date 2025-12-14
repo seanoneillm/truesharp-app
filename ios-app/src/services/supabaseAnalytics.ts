@@ -332,10 +332,10 @@ export const fetchAnalyticsData = async (
       if (sanitizedFilters.timeframe === 'custom') {
         // Use custom date range
         if (sanitizedFilters.dateRange.start) {
-          query = query.gte('placed_at', sanitizedFilters.dateRange.start)
+          query = query.gte('game_date', sanitizedFilters.dateRange.start)
         }
         if (sanitizedFilters.dateRange.end) {
-          query = query.lte('placed_at', sanitizedFilters.dateRange.end)
+          query = query.lte('game_date', sanitizedFilters.dateRange.end)
         }
       } else {
         const days = {
@@ -348,7 +348,7 @@ export const fetchAnalyticsData = async (
         if (days) {
           const startDate = new Date()
           startDate.setDate(startDate.getDate() - days)
-          query = query.gte('placed_at', startDate.toISOString())
+          query = query.gte('game_date', startDate.toISOString())
         }
       }
     }
@@ -423,16 +423,16 @@ export const fetchAnalyticsData = async (
 
     // Basic start date filter (available to all users)
     if (sanitizedFilters.basicStartDate) {
-      query = query.gte('placed_at', sanitizedFilters.basicStartDate)
+      query = query.gte('game_date', sanitizedFilters.basicStartDate)
     }
 
     // Pro filter: Individual start/end dates
     if (sanitizedFilters.startDate) {
-      query = query.gte('placed_at', sanitizedFilters.startDate)
+      query = query.gte('game_date', sanitizedFilters.startDate)
     }
 
     if (sanitizedFilters.endDate) {
-      query = query.lte('placed_at', sanitizedFilters.endDate)
+      query = query.lte('game_date', sanitizedFilters.endDate)
     }
 
     // Execute query
@@ -1190,6 +1190,7 @@ interface ParlayGroup {
 /**
  * Group parlay legs and calculate parlay outcomes based on database profit values
  * Each parlay is counted as 1 bet regardless of how many legs it has
+ * UPDATED: Use exact same logic as dashboard to ensure consistent results
  */
 const processParlaysAndSingles = (
   bets: BetData[]
@@ -1209,28 +1210,32 @@ const processParlaysAndSingles = (
     }
   })
 
-  // Process parlays to determine outcomes
+  // Process parlays to determine outcomes - use EXACT same logic as dashboard
   const parlays: ParlayGroup[] = Array.from(parlayGroups.entries()).map(([parlay_id, legs]) => {
-    // Use the first leg's information (all legs should have same parlay data)
     const firstLeg = legs[0]
-    const stake = firstLeg.stake || 0
-    const potential_payout = firstLeg.potential_payout || 0
-
+    
+    // For parlays, find legs with non-zero values - sometimes only one leg has accurate data
+    const legWithStake = legs.find(leg => (leg.stake || 0) > 0) || firstLeg
+    const legWithPayout = legs.find(leg => (leg.potential_payout || 0) > 0) || firstLeg
+    const legWithProfit = legs.find(leg => (leg.profit || 0) !== 0) || firstLeg
+    
+    const stake = legWithStake.stake || 0
+    const potential_payout = legWithPayout.potential_payout || 0
+    
+    
     // For parlays, use the profit field from the database if available
-    // All legs of a parlay should have the same profit value
     let profit = 0
     let status: 'won' | 'lost' | 'pending' | 'void' | 'push'
-
-    // Check if we have a profit value from the database
-    if (firstLeg.profit !== null && firstLeg.profit !== undefined) {
-      profit = firstLeg.profit
+    
+    // Check if we have a meaningful profit value from the database (check all legs)
+    // Don't trust profit: 0, always recalculate to get actual stake loss
+    if (legWithProfit.profit !== null && legWithProfit.profit !== undefined && legWithProfit.profit !== 0) {
+      profit = legWithProfit.profit
       // Determine status based on profit value
       if (profit > 0) {
         status = 'won'
       } else if (profit < 0) {
         status = 'lost'
-      } else {
-        status = (firstLeg.status as any) || 'pending'
       }
     } else {
       // Fall back to leg-by-leg analysis if no profit field
@@ -1244,33 +1249,34 @@ const processParlaysAndSingles = (
       const wonLegs = legs.filter(leg => leg.status === 'won')
       const lostLegs = legs.filter(leg => leg.status === 'lost')
       const voidLegs = legs.filter(leg => leg.status === 'void')
-      const pushLegs = legs.filter(leg => leg.status === 'push')
-
-      // Determine parlay status based on leg results
+      
+      // Determine parlay status based on leg results - EXACT dashboard logic
       if (settledLegs.length === legs.length) {
         if (lostLegs.length > 0) {
           status = 'lost'
           profit = -stake
-        } else if (wonLegs.length === legs.length) {
+        } else if (voidLegs.length === legs.length) {
+          status = 'void'
+          profit = 0
+        } else if (wonLegs.length === legs.length - voidLegs.length) {
           status = 'won'
-          profit = potential_payout - stake
-        } else if (voidLegs.length > 0 || pushLegs.length > 0) {
-          if (wonLegs.length === legs.length - voidLegs.length - pushLegs.length) {
-            status = 'push'
-            profit = 0
+          // For wins, check if any leg has actual profit data, otherwise calculate
+          if (legWithProfit.profit !== null && legWithProfit.profit !== undefined && legWithProfit.profit !== 0) {
+            profit = legWithProfit.profit
           } else {
-            status = 'lost'
-            profit = -stake
+            profit = potential_payout - stake
           }
         } else {
-          status = 'lost'
-          profit = -stake
+          status = 'pending'
+          profit = 0
         }
       } else {
         status = 'pending'
         profit = 0
       }
+      
     }
+
 
     return {
       parlay_id,
@@ -1318,7 +1324,7 @@ const calculateMetrics = (bets: BetData[]): AnalyticsMetrics => {
       status: parlay.status,
       stake: parlay.stake,
       profit: parlay.profit,
-      placed_at: parlay.legs[0]?.placed_at || parlay.legs[0]?.game_date,
+      placed_at: parlay.legs[0]?.game_date || parlay.legs[0]?.placed_at,
       is_parlay: true,
     })),
     ...singles.map(single => ({
@@ -1414,12 +1420,12 @@ const processChartData = (bets: BetData[]): ChartDataPoint[] => {
   // Create unified bet array with proper dates and profits from the database
   const unifiedBets = [
     ...parlays.map(parlay => ({
-      date: parlay.legs[0]?.placed_at || parlay.legs[0]?.game_date || '',
+      date: parlay.legs[0]?.game_date || parlay.legs[0]?.placed_at || '',
       profit: parlay.profit, // Use calculated parlay profit
       status: parlay.status,
     })),
     ...singles.map(single => ({
-      date: single.placed_at || single.game_date || '',
+      date: single.game_date || single.placed_at || '',
       // Use the actual profit field from the database, fall back to calculation only if null
       profit:
         single.profit !== null && single.profit !== undefined
@@ -1442,7 +1448,11 @@ const processChartData = (bets: BetData[]): ChartDataPoint[] => {
   const dailyData: { [date: string]: { profit: number; bets: number } } = {}
 
   sortedBets.forEach(bet => {
-    const date = new Date(bet.date).toISOString().split('T')[0]
+    // Handle timezone properly to avoid date offset issues
+    const betDateObj = new Date(bet.date)
+    const date = betDateObj.getFullYear() + '-' + 
+      String(betDateObj.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(betDateObj.getDate()).padStart(2, '0')
     if (!dailyData[date]) {
       dailyData[date] = { profit: 0, bets: 0 }
     }
@@ -1513,9 +1523,17 @@ const calculateSportBreakdown = (bets: BetData[]): SportBreakdown[] => {
     }
 
     sportData[sport].bets += 1
-    sportData[sport].stake += parlay.stake
-    sportData[sport].profit += parlay.profit
-    if (parlay.profit > 0) sportData[sport].wins += 1
+    
+    // Use the stake and profit from legs that have non-zero values
+    const legWithStake = parlay.legs.find(leg => (leg.stake || 0) > 0) || parlay.legs[0]
+    const legWithProfit = parlay.legs.find(leg => (leg.profit || 0) !== 0) || parlay.legs[0]
+    
+    sportData[sport].stake += legWithStake.stake || 0
+    
+    // Use parlay profit (which is already calculated correctly) or leg profit
+    const actualProfit = parlay.profit !== 0 ? parlay.profit : (legWithProfit.profit || 0)
+    sportData[sport].profit += actualProfit
+    if (actualProfit > 0) sportData[sport].wins += 1
   })
 
   return Object.entries(sportData).map(([sport, data]) => ({
@@ -1568,8 +1586,13 @@ const calculateBetTypeBreakdown = (bets: BetData[]) => {
 
     parlays.forEach(parlay => {
       betTypeData[parlayBetType].bets += 1
-      betTypeData[parlayBetType].profit += parlay.profit
-      if (parlay.profit > 0) betTypeData[parlayBetType].wins += 1
+      
+      // Use the calculated profit which already handles non-zero values
+      const legWithProfit = parlay.legs.find(leg => (leg.profit || 0) !== 0) || parlay.legs[0]
+      const actualProfit = parlay.profit !== 0 ? parlay.profit : (legWithProfit.profit || 0)
+      
+      betTypeData[parlayBetType].profit += actualProfit
+      if (actualProfit > 0) betTypeData[parlayBetType].wins += 1
     })
   }
 
@@ -1624,8 +1647,13 @@ const calculateSideBreakdown = (bets: BetData[]) => {
     }
 
     sideData[side].bets += 1
-    sideData[side].profit += parlay.profit
-    if (parlay.profit > 0) sideData[side].wins += 1
+    
+    // Use the calculated profit which already handles non-zero values
+    const legWithProfit = parlay.legs.find(leg => (leg.profit || 0) !== 0) || parlay.legs[0]
+    const actualProfit = parlay.profit !== 0 ? parlay.profit : (legWithProfit.profit || 0)
+    
+    sideData[side].profit += actualProfit
+    if (actualProfit > 0) sideData[side].wins += 1
   })
 
   return Object.entries(sideData).map(([side, data]) => ({
@@ -1679,8 +1707,13 @@ const calculateLeagueBreakdown = (bets: BetData[]) => {
     }
 
     leagueData[league].bets += 1
-    leagueData[league].profit += parlay.profit
-    if (parlay.profit > 0) leagueData[league].wins += 1
+    
+    // Use the calculated profit which already handles non-zero values
+    const legWithProfit = parlay.legs.find(leg => (leg.profit || 0) !== 0) || parlay.legs[0]
+    const actualProfit = parlay.profit !== 0 ? parlay.profit : (legWithProfit.profit || 0)
+    
+    leagueData[league].profit += actualProfit
+    if (actualProfit > 0) leagueData[league].wins += 1
   })
 
   return Object.entries(leagueData).map(([league, data]) => ({

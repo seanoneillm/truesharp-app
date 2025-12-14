@@ -7,6 +7,7 @@ import { globalStyles } from '../../styles/globalStyles';
 import { theme } from '../../styles/theme';
 import { MarketplaceStrategy, fetchMarketplaceLeaderboard, StrategyLeaderboard } from '../../services/supabaseAnalytics';
 import TrueSharpShield from '../../components/common/TrueSharpShield';
+import { LeagueLogo } from '../../components/common/LeagueLogo';
 import SellerProfileModal from '../../components/marketplace/SellerProfileModal';
 import SubscribeToStrategyModal from '../../components/subscription/SubscribeToStrategyModal';
 
@@ -329,6 +330,7 @@ export default function MarketplaceScreen() {
           </View>
           {strategy.primary_sport && (
             <View style={styles.sportTag}>
+              <LeagueLogo leagueName={strategy.primary_sport} size={16} style={styles.sportLogo} />
               <Text style={styles.sportText}>{strategy.primary_sport}</Text>
             </View>
           )}
@@ -582,12 +584,18 @@ export default function MarketplaceScreen() {
                   onPress={() => handleLeagueSelect(league)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[
-                    styles.dropdownItemText,
-                    selectedLeague === league && styles.dropdownItemTextSelected
-                  ]}>
-                    {league === 'all' ? 'All Leagues' : league}
-                  </Text>
+                  <View style={styles.dropdownItemContent}>
+                    {league !== 'all' && (
+                      <LeagueLogo leagueName={league} size={20} style={styles.dropdownLeagueLogo} />
+                    )}
+                    <Text style={[
+                      styles.dropdownItemText,
+                      selectedLeague === league && styles.dropdownItemTextSelected,
+                      league !== 'all' && styles.dropdownItemTextWithLogo
+                    ]}>
+                      {league === 'all' ? 'All Leagues' : league}
+                    </Text>
+                  </View>
                   {selectedLeague === league && (
                     <Ionicons name="checkmark" size={16} color={theme.colors.primary} />
                   )}
@@ -815,6 +823,17 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: theme.typography.fontWeight.medium,
   },
+  dropdownItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownLeagueLogo: {
+    marginRight: theme.spacing.sm,
+  },
+  dropdownItemTextWithLogo: {
+    marginLeft: 0,
+  },
   strategyCard: {
     flexDirection: 'row',
     backgroundColor: theme.colors.card,
@@ -940,10 +959,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   sportTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.xs,
+  },
+  sportLogo: {
+    // No additional styles needed, just for reference
   },
   sportText: {
     fontSize: theme.typography.fontSize.xs,

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Modal, FlatList } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
@@ -20,6 +20,26 @@ const screenWidth = Dimensions.get('window').width;
 
 export default function ProfitOverTimeChart({ chartData, filters, loading, unitOptions }: ProfitOverTimeChartProps) {
   const [selectedRange, setSelectedRange] = useState<DateRange>('month');
+  // Default to current month and year
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
+
+  // Generate months array
+  const months = [
+    { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
+    { value: 3, label: 'April' }, { value: 4, label: 'May' }, { value: 5, label: 'June' },
+    { value: 6, label: 'July' }, { value: 7, label: 'August' }, { value: 8, label: 'September' },
+    { value: 9, label: 'October' }, { value: 10, label: 'November' }, { value: 11, label: 'December' }
+  ];
+
+  // Generate years array (current year and 4 years back)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => ({
+    value: currentYear - i,
+    label: (currentYear - i).toString()
+  }));
 
   // Process data based on selected date range - starting from 0 for each period
   const processedData = useMemo(() => {
@@ -29,6 +49,7 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
     let filteredData = [...chartData];
     let dateFormat: (date: Date) => string;
     let startDate: Date;
+    let endDate: Date;
 
     switch (selectedRange) {
       case 'week':
@@ -37,7 +58,13 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
         const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Handle Sunday as 6 days from Monday
         startDate = new Date(now.getTime() - daysFromMonday * 24 * 60 * 60 * 1000);
         startDate.setHours(0, 0, 0, 0); // Start of Monday
-        filteredData = chartData.filter(point => new Date(point.date) >= startDate);
+        
+        // Use string-based date comparison for consistency
+        const weekStartString = startDate.getFullYear() + '-' + 
+          String(startDate.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(startDate.getDate()).padStart(2, '0');
+        
+        filteredData = chartData.filter(point => point.date >= weekStartString);
         dateFormat = (date: Date) => {
           const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           return days[date.getDay()];
@@ -45,18 +72,40 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
         break;
       
       case 'month':
-        // From 1st of current month until now
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0); // Start of first day
-        filteredData = chartData.filter(point => new Date(point.date) >= startDate);
+        // From 1st of selected month to last day of selected month
+        startDate = new Date(selectedYear, selectedMonth, 1);
+        endDate = new Date(selectedYear, selectedMonth + 1, 0); // Last day of the month
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        // Use string-based date comparison to avoid timezone issues
+        const monthStartString = selectedYear + '-' + 
+          String(selectedMonth + 1).padStart(2, '0') + '-01';
+        const monthEndString = selectedYear + '-' + 
+          String(selectedMonth + 1).padStart(2, '0') + '-' + 
+          String(endDate.getDate()).padStart(2, '0');
+        
+        filteredData = chartData.filter(point => {
+          // point.date should already be in YYYY-MM-DD format from processChartData
+          return point.date >= monthStartString && point.date <= monthEndString;
+        });
         dateFormat = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
         break;
       
       case 'year':
-        // From January 1st of current year until now
-        startDate = new Date(now.getFullYear(), 0, 1);
-        startDate.setHours(0, 0, 0, 0); // Start of January 1st
-        filteredData = chartData.filter(point => new Date(point.date) >= startDate);
+        // From January 1st of selected year to December 31st of selected year
+        startDate = new Date(selectedYear, 0, 1);
+        endDate = new Date(selectedYear, 11, 31); // December 31st of selected year
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        // Use string-based date comparison to avoid timezone issues
+        const yearStartString = selectedYear + '-01-01';
+        const yearEndString = selectedYear + '-12-31';
+        
+        filteredData = chartData.filter(point => {
+          return point.date >= yearStartString && point.date <= yearEndString;
+        });
         
         // Group by month and aggregate daily profits
         const monthlyData = new Map<string, { profit: number; lastDate: string }>();
@@ -114,33 +163,40 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
       bets: 0
     });
 
-    // Generate labels with proper spacing
+    // Generate labels with proper spacing and cleaner logic
     let labels: string[];
     
     if (selectedRange === 'month') {
-      // For month view, show dates every 7 days starting from the 1st
-      const firstOfMonth = new Date(startDate);
+      // For month view, show dates with better spacing to avoid overlap
       const monthLabels: string[] = [];
+      const maxLabels = Math.min(6, processedPoints.length); // Max 6 labels to avoid crowding
+      const step = Math.max(1, Math.floor(processedPoints.length / maxLabels));
       
       for (let i = 0; i < processedPoints.length; i++) {
         const pointDate = new Date(processedPoints[i].date);
-        const dayOfMonth = pointDate.getDate();
         
-        // Show labels on 1st, 8th, 15th, 22nd, 29th of month
-        if (dayOfMonth === 1 || dayOfMonth % 7 === 1 || i === processedPoints.length - 1) {
+        // Show first, last, and evenly spaced labels in between
+        if (i === 0 || i === processedPoints.length - 1 || i % step === 0) {
           monthLabels.push(dateFormat(pointDate));
         } else {
           monthLabels.push('');
         }
       }
       labels = monthLabels;
+    } else if (selectedRange === 'week') {
+      // For week view, show all 7 days but use shorter format
+      labels = processedPoints.map((point, index) => {
+        const pointDate = new Date(point.date);
+        const shortDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+        return shortDays[pointDate.getDay()];
+      });
     } else {
-      // For week and year, use existing logic
-      const maxLabels = selectedRange === 'week' ? 7 : 12;
+      // For year view, show months with better spacing
+      const maxLabels = 6; // Max 6 month labels to avoid crowding
       const step = Math.max(1, Math.floor(processedPoints.length / maxLabels));
       
       labels = processedPoints.map((point, index) => {
-        if (index % step === 0 || index === processedPoints.length - 1) {
+        if (index === 0 || index === processedPoints.length - 1 || index % step === 0) {
           return dateFormat(new Date(point.date));
         }
         return '';
@@ -168,13 +224,13 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
       datasets: [
         {
           data: profits,
-          color: (opacity = 1) => `rgba(${currentProfit >= 0 ? '5, 150, 105' : '220, 38, 38'}, ${opacity})`,
-          strokeWidth: 3,
+          color: (opacity = 1) => `rgba(${currentProfit >= 0 ? '0, 80, 50' : '140, 15, 15'}, ${opacity})`,
+          strokeWidth: 2.5, // Slightly thinner for professional stock appearance
         },
         {
           data: roiData,
-          color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Blue for ROI
-          strokeWidth: 3,
+          color: (opacity = 1) => `rgba(20, 60, 140, ${opacity})`,
+          strokeWidth: 2.5, // Consistent professional line weight
         },
       ],
       isEmpty: false,
@@ -182,7 +238,7 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
       lineColor,
       currentROI: roiData[roiData.length - 1] || 0
     };
-  }, [chartData, selectedRange]);
+  }, [chartData, selectedRange, selectedMonth, selectedYear]);
 
   const chartConfig = {
     backgroundColor: theme.colors.card,
@@ -197,13 +253,13 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
       borderRadius: theme.borderRadius.lg,
     },
     propsForDots: {
-      r: '0', // No dots for cleaner look
+      r: '0',
       strokeWidth: '0',
     },
     propsForBackgroundLines: {
       strokeDasharray: '5,5',
       stroke: theme.colors.border,
-      strokeWidth: 1,
+      strokeWidth: 0.8,
     },
     formatYLabel: (value: string) => {
       const num = parseFloat(value);
@@ -212,36 +268,90 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
       }
       return `$${num.toFixed(0)}`;
     },
-    // Clean up axis spacing
+    // Better axis spacing for cleaner labels
     yAxisInterval: 1,
-    paddingLeft: 20,
+    paddingLeft: 15,
     paddingRight: 20,
+    paddingTop: 15,
+    paddingBottom: 10,
   };
 
   const renderRangeSelector = () => (
     <View style={styles.rangeSelectorContainer}>
-      {(['week', 'month', 'year'] as DateRange[]).map((range) => (
-        <TouchableOpacity
-          key={range}
+      {/* Week Button */}
+      <TouchableOpacity
+        style={[
+          styles.rangeButton,
+          selectedRange === 'week' && styles.activeRangeButton,
+        ]}
+        onPress={() => setSelectedRange('week')}
+        disabled={loading}
+      >
+        <Text
           style={[
-            styles.rangeButton,
-            selectedRange === range && styles.activeRangeButton,
+            styles.rangeButtonText,
+            selectedRange === 'week' && styles.activeRangeButtonText,
           ]}
-          onPress={() => setSelectedRange(range)}
-          disabled={loading}
         >
-          <Text
-            style={[
-              styles.rangeButtonText,
-              selectedRange === range && styles.activeRangeButtonText,
-            ]}
-          >
-            {range === 'week' ? 'This Week' : 
-             range === 'month' ? 'This Month' : 
-             'This Year'}
-          </Text>
-        </TouchableOpacity>
-      ))}
+          This Week
+        </Text>
+      </TouchableOpacity>
+
+      {/* Month Dropdown */}
+      <TouchableOpacity
+        style={[
+          styles.rangeButton,
+          styles.dropdownButton,
+          selectedRange === 'month' && styles.activeRangeButton,
+        ]}
+        onPress={() => {
+          setSelectedRange('month');
+          setShowMonthDropdown(true);
+        }}
+        disabled={loading}
+      >
+        <Text
+          style={[
+            styles.rangeButtonText,
+            selectedRange === 'month' && styles.activeRangeButtonText,
+          ]}
+        >
+          {months.find(m => m.value === selectedMonth)?.label || 'Month'}
+        </Text>
+        <Ionicons
+          name="chevron-down"
+          size={16}
+          color={selectedRange === 'month' ? theme.colors.text.inverse : theme.colors.text.secondary}
+        />
+      </TouchableOpacity>
+
+      {/* Year Dropdown */}
+      <TouchableOpacity
+        style={[
+          styles.rangeButton,
+          styles.dropdownButton,
+          selectedRange === 'year' && styles.activeRangeButton,
+        ]}
+        onPress={() => {
+          setSelectedRange('year');
+          setShowYearDropdown(true);
+        }}
+        disabled={loading}
+      >
+        <Text
+          style={[
+            styles.rangeButtonText,
+            selectedRange === 'year' && styles.activeRangeButtonText,
+          ]}
+        >
+          {selectedYear}
+        </Text>
+        <Ionicons
+          name="chevron-down"
+          size={16}
+          color={selectedRange === 'year' ? theme.colors.text.inverse : theme.colors.text.secondary}
+        />
+      </TouchableOpacity>
     </View>
   );
 
@@ -338,23 +448,103 @@ export default function ProfitOverTimeChart({ chartData, filters, loading, unitO
             labels: processedData.labels,
             datasets: processedData.datasets,
           }}
-          width={screenWidth - 64} // Account for card padding + margins
-          height={240}
+          width={screenWidth - 40} // Optimized margins for better label visibility
+          height={220} // Slightly reduced height
           chartConfig={chartConfig}
-          bezier={true} // Smooth line
+          bezier={true} // Smooth, rounded lines for better visual appeal
           style={styles.chart}
           withHorizontalLabels={true}
           withVerticalLabels={true}
           withInnerLines={true}
           withOuterLines={false}
           withShadow={false}
-          withDots={false} // Remove dots for smoother appearance
+          withDots={false} // Clean lines without dots
           fromZero={false}
           yAxisLabel=""
           yAxisSuffix=""
-          segments={4} // Control number of horizontal lines
+          segments={4} // Clean grid lines
         />
       )}
+
+      {/* Month Dropdown Modal */}
+      <Modal
+        visible={showMonthDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMonthDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMonthDropdown(false)}
+        >
+          <View style={styles.dropdownModal}>
+            <FlatList
+              data={months}
+              keyExtractor={(item) => item.value.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownItem,
+                    selectedMonth === item.value && styles.selectedDropdownItem
+                  ]}
+                  onPress={() => {
+                    setSelectedMonth(item.value);
+                    setShowMonthDropdown(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    selectedMonth === item.value && styles.selectedDropdownItemText
+                  ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Year Dropdown Modal */}
+      <Modal
+        visible={showYearDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowYearDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearDropdown(false)}
+        >
+          <View style={styles.dropdownModal}>
+            <FlatList
+              data={years}
+              keyExtractor={(item) => item.value.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownItem,
+                    selectedYear === item.value && styles.selectedDropdownItem
+                  ]}
+                  onPress={() => {
+                    setSelectedYear(item.value);
+                    setShowYearDropdown(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    selectedYear === item.value && styles.selectedDropdownItemText
+                  ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -477,8 +667,9 @@ const styles = StyleSheet.create({
   },
   chart: {
     borderRadius: theme.borderRadius.lg,
-    marginLeft: -5, // Slight left adjustment for better centering
-    alignSelf: 'center', // Center the chart horizontally
+    marginLeft: -10, // Optimized left margin for better label spacing
+    marginBottom: -5, // Optimized bottom margin
+    alignSelf: 'center',
   },
   emptyChart: {
     alignItems: 'center',
@@ -505,5 +696,44 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
+  },
+  // Dropdown styles
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownModal: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    maxHeight: 300,
+    minWidth: 200,
+    marginHorizontal: theme.spacing.xl,
+    ...theme.shadows.lg,
+  },
+  dropdownItem: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  selectedDropdownItem: {
+    backgroundColor: theme.colors.primary + '20',
+  },
+  dropdownItemText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  selectedDropdownItemText: {
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
 });

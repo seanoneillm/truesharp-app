@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Modal, TextInput, Alert, Switch, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../styles/theme';
 import { StrategyLeaderboard, fetchUserStrategiesFromLeaderboard, createStrategy, AnalyticsFilters } from '../../services/supabaseAnalytics';
 import { 
@@ -497,169 +498,174 @@ export default function StrategiesTab({ loading = false, onRefresh, filters }: S
   const renderStrategyDetailsModal = () => (
     <Modal
       visible={!!showStrategyDetails}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={() => setShowStrategyDetails(null)}
     >
       {showStrategyDetails && (
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowStrategyDetails(null)}>
-              <Text style={styles.modalCancelButton}>Close</Text>
+        <View style={styles.detailsModalContainer}>
+          {/* Enhanced Modal Header with Gradient - Similar to BetDetailsModal */}
+          <LinearGradient
+            colors={[theme.colors.primary, '#1e40af', '#0f172a']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.detailsModalHeader}
+          >
+            <TouchableOpacity onPress={() => setShowStrategyDetails(null)} style={styles.detailsCloseButton}>
+              <View style={styles.detailsCloseButtonContainer}>
+                <Ionicons name="close" size={22} color="white" />
+              </View>
             </TouchableOpacity>
-            <View style={styles.modalTitleContainer}>
-              <TrueSharpShield size={20} variant="default" style={styles.modalShieldIcon} />
-              <Text style={styles.modalTitle}>Strategy Details</Text>
-            </View>
-            <View style={styles.modalPlaceholder} />
-          </View>
-
-          <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalScrollContent}>
-            {/* Strategy Header */}
-            <View style={styles.strategyDetailHeader}>
-              <Text style={styles.detailsTitle}>{showStrategyDetails.strategy_name}</Text>
-              <View style={styles.strategyBadges}>
-                {showStrategyDetails.is_monetized && (
-                  <View style={styles.monetizedBadge}>
-                    <Ionicons name="cash" size={12} color="white" />
-                    <Text style={styles.monetizedBadgeText}>Monetized</Text>
-                  </View>
-                )}
-                
-                {showStrategyDetails.verification_status !== 'unverified' && (
-                  <View style={[styles.verificationBadge, 
-                    { backgroundColor: showStrategyDetails.verification_status === 'premium' ? theme.colors.primary : theme.colors.secondary }
-                  ]}>
-                    <Ionicons name="checkmark-circle" size={12} color="white" />
-                    <Text style={styles.verificationBadgeText}>
-                      {showStrategyDetails.verification_status === 'premium' ? 'Premium' : 'Verified'}
-                    </Text>
-                  </View>
-                )}
-                
-                {showStrategyDetails.overall_rank && (
-                  <View style={styles.rankBadge}>
-                    <Ionicons name="trophy" size={12} color={theme.colors.primary} />
-                    <Text style={styles.rankBadgeText}>#{showStrategyDetails.overall_rank}</Text>
-                  </View>
-                )}
+            
+            <View style={styles.detailsHeaderCenter}>
+              <View style={styles.detailsTitleContainer}>
+                <Text style={styles.detailsModalTitle}>Strategy Details</Text>
+                <Text style={styles.detailsModalSubtitle}>Performance & Analysis</Text>
               </View>
             </View>
+            
+            <View style={styles.detailsHeaderSpacer} />
+          </LinearGradient>
 
-            {/* Strategy Meta Information */}
-            <View style={styles.strategyMetaDetails}>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Strategy Type:</Text>
-                <Text style={styles.metaValue}>{showStrategyDetails.strategy_type || 'General Strategy'}</Text>
-              </View>
-              {showStrategyDetails.primary_sport && (
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Primary Sport:</Text>
-                  <Text style={styles.metaValue}>{showStrategyDetails.primary_sport}</Text>
+          <ScrollView style={styles.detailsContent} showsVerticalScrollIndicator={false}>
+            {/* Strategy Header - Compact Design */}
+            <View style={styles.detailsSection}>
+              <View style={styles.detailsSectionHeader}>
+                <View style={styles.detailsSectionHeaderContent}>
+                  <View style={styles.detailsSectionIconContainer}>
+                    <TrueSharpShield size={18} variant="default" />
+                  </View>
+                  <Text style={styles.detailsSectionTitle}>Strategy Information</Text>
                 </View>
-              )}
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Verification Status:</Text>
-                <Text style={[styles.metaValue, { 
-                  color: showStrategyDetails.verification_status === 'premium' ? theme.colors.primary : 
-                         showStrategyDetails.verification_status === 'verified' ? theme.colors.secondary : 
-                         theme.colors.text.secondary 
-                }]}>
-                  {(() => {
-                    if (showStrategyDetails.verification_status === 'premium') return 'Premium Verified';
-                    if (showStrategyDetails.verification_status === 'verified') return 'Verified';
-                    return 'Unverified';
-                  })()}
-                </Text>
-              </View>
-            </View>
-
-            {/* Performance Metrics */}
-            <View style={styles.performanceSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="analytics" size={16} color={theme.colors.primary} />
-                <Text style={styles.sectionTitle}>Performance Metrics</Text>
               </View>
               
-              <View style={styles.detailsMetrics}>
-                <View style={[styles.detailsMetricCard, styles.primaryMetricCard]}>
-                  <Text style={styles.detailsMetricLabel}>ROI</Text>
-                  <Text 
-                    style={[
-                      styles.detailsMetricValue,
-                      styles.primaryMetricValue,
-                      { color: showStrategyDetails.roi_percentage >= 0 ? theme.colors.betting.won : theme.colors.betting.lost }
-                    ]}
-                  >
-                    {showStrategyDetails.roi_percentage >= 0 ? '+' : ''}{showStrategyDetails.roi_percentage.toFixed(2)}%
-                  </Text>
+              <View style={styles.detailsStrategyInfo}>
+                <Text style={styles.detailsStrategyName}>{showStrategyDetails.strategy_name}</Text>
+                <View style={styles.detailsMetaContainer}>
+                  <View style={styles.detailsMetaRow}>
+                    <Ionicons name="options" size={16} color={theme.colors.text.secondary} />
+                    <Text style={styles.detailsMetaLabel}>Type</Text>
+                    <Text style={styles.detailsMetaValue}>{showStrategyDetails.strategy_type || 'General Strategy'}</Text>
+                  </View>
+                  {showStrategyDetails.primary_sport && (
+                    <View style={styles.detailsMetaRow}>
+                      <Ionicons name="basketball" size={16} color={theme.colors.text.secondary} />
+                      <Text style={styles.detailsMetaLabel}>Sport</Text>
+                      <Text style={styles.detailsMetaValue}>{showStrategyDetails.primary_sport}</Text>
+                    </View>
+                  )}
+                  {showStrategyDetails.overall_rank && (
+                    <View style={styles.detailsMetaRow}>
+                      <Ionicons name="trophy" size={16} color={theme.colors.primary} />
+                      <Text style={styles.detailsMetaLabel}>Rank</Text>
+                      <Text style={[styles.detailsMetaValue, { color: theme.colors.primary, fontWeight: '700' }]}>#{showStrategyDetails.overall_rank}</Text>
+                    </View>
+                  )}
+                  {showStrategyDetails.is_monetized && (
+                    <View style={styles.detailsMetaRow}>
+                      <Ionicons name="cash" size={16} color={theme.colors.status.success} />
+                      <Text style={styles.detailsMetaLabel}>Status</Text>
+                      <Text style={[styles.detailsMetaValue, { color: theme.colors.status.success, fontWeight: '600' }]}>Monetized</Text>
+                    </View>
+                  )}
                 </View>
+              </View>
+            </View>
 
-                <View style={[styles.detailsMetricCard, styles.primaryMetricCard]}>
-                  <Text style={styles.detailsMetricLabel}>Win Rate</Text>
-                  <Text style={[styles.detailsMetricValue, styles.primaryMetricValue]}>
-                    {(showStrategyDetails.win_rate * 100).toFixed(1)}%
-                  </Text>
+            {/* Performance Metrics - Enhanced Cards */}
+            <View style={styles.detailsSection}>
+              <View style={[styles.detailsSectionHeader, { backgroundColor: theme.colors.primary }]}>
+                <View style={styles.detailsSectionHeaderContent}>
+                  <View style={[styles.detailsSectionIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Ionicons name="analytics" size={18} color="white" />
+                  </View>
+                  <Text style={[styles.detailsSectionTitle, { color: 'white', fontWeight: '700' }]}>Performance Metrics</Text>
                 </View>
-
-                <View style={styles.detailsMetricCard}>
-                  <Text style={styles.detailsMetricLabel}>Total Bets</Text>
-                  <Text style={styles.detailsMetricValue}>
-                    {showStrategyDetails.total_bets}
-                  </Text>
-                </View>
-
-                <View style={styles.detailsMetricCard}>
-                  <Text style={styles.detailsMetricLabel}>Winning Bets</Text>
-                  <Text style={[styles.detailsMetricValue, { color: theme.colors.betting.won }]}>
-                    {showStrategyDetails.winning_bets}
-                  </Text>
-                </View>
-
-                <View style={styles.detailsMetricCard}>
-                  <Text style={styles.detailsMetricLabel}>Losing Bets</Text>
-                  <Text style={[styles.detailsMetricValue, { color: theme.colors.betting.lost }]}>
-                    {showStrategyDetails.losing_bets}
-                  </Text>
-                </View>
-
-                <View style={styles.detailsMetricCard}>
-                  <Text style={styles.detailsMetricLabel}>Push/Void Bets</Text>
-                  <Text style={styles.detailsMetricValue}>
-                    {showStrategyDetails.total_bets - showStrategyDetails.winning_bets - showStrategyDetails.losing_bets}
-                  </Text>
+              </View>
+              
+              <View style={styles.detailsMetricsContainer}>
+                {/* Primary Metrics */}
+                <View style={styles.detailsFinancialCardsContainer}>
+                  <View style={[
+                    styles.detailsFinancialCard, 
+                    showStrategyDetails.roi_percentage >= 0 ? styles.detailsFinancialCardGreen : styles.detailsFinancialCardRed
+                  ]}>
+                    <Text style={styles.detailsCardLabel}>ROI</Text>
+                    <Text style={styles.detailsCardValue}>
+                      {showStrategyDetails.roi_percentage >= 0 ? '+' : ''}{showStrategyDetails.roi_percentage.toFixed(1)}%
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.detailsFinancialCard, styles.detailsFinancialCardWhite]}>
+                    <Text style={styles.detailsCardLabelBlack}>Win Rate</Text>
+                    <Text style={styles.detailsCardValueBlack}>
+                      {(showStrategyDetails.win_rate * 100).toFixed(1)}%
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.detailsFinancialCard, styles.detailsFinancialCardWhite]}>
+                    <Text style={styles.detailsCardLabelBlack}>Total Bets</Text>
+                    <Text style={styles.detailsCardValueBlack}>
+                      {showStrategyDetails.total_bets}
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.detailsFinancialCard, styles.detailsFinancialCardWhite]}>
+                    <Text style={styles.detailsCardLabelBlack}>Won</Text>
+                    <Text style={[styles.detailsCardValueBlack, { color: theme.colors.betting.won }]}>
+                      {showStrategyDetails.winning_bets}
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.detailsFinancialCard, styles.detailsFinancialCardWhite]}>
+                    <Text style={styles.detailsCardLabelBlack}>Lost</Text>
+                    <Text style={[styles.detailsCardValueBlack, { color: theme.colors.betting.lost }]}>
+                      {showStrategyDetails.losing_bets}
+                    </Text>
+                  </View>
+                  
+                  <View style={[styles.detailsFinancialCard, styles.detailsFinancialCardWhite]}>
+                    <Text style={styles.detailsCardLabelBlack}>Push/Void</Text>
+                    <Text style={styles.detailsCardValueBlack}>
+                      {showStrategyDetails.total_bets - showStrategyDetails.winning_bets - showStrategyDetails.losing_bets}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
 
             {/* Pricing Details (if monetized) */}
             {showStrategyDetails.is_monetized && (
-              <View style={styles.pricingSection}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="cash" size={16} color={theme.colors.status.success} />
-                  <Text style={styles.sectionTitle}>Subscription Pricing</Text>
+              <View style={styles.detailsSection}>
+                <View style={styles.detailsSectionHeader}>
+                  <View style={styles.detailsSectionHeaderContent}>
+                    <View style={styles.detailsSectionIconContainer}>
+                      <Ionicons name="cash" size={18} color={theme.colors.status.success} />
+                    </View>
+                    <Text style={styles.detailsSectionTitle}>Subscription Pricing</Text>
+                  </View>
                 </View>
-                <View style={styles.pricingGrid}>
+                <View style={styles.detailsPricingContainer}>
                   {showStrategyDetails.subscription_price_weekly && (
-                    <View style={styles.pricingCard}>
-                      <Text style={styles.pricingPeriod}>Weekly</Text>
-                      <Text style={styles.pricingAmount}>
+                    <View style={styles.detailsPricingCard}>
+                      <Text style={styles.detailsPricingPeriod}>Weekly</Text>
+                      <Text style={styles.detailsPricingAmount}>
                         {formatCurrency(showStrategyDetails.subscription_price_weekly)}
                       </Text>
                     </View>
                   )}
                   {showStrategyDetails.subscription_price_monthly && (
-                    <View style={styles.pricingCard}>
-                      <Text style={styles.pricingPeriod}>Monthly</Text>
-                      <Text style={styles.pricingAmount}>
+                    <View style={styles.detailsPricingCard}>
+                      <Text style={styles.detailsPricingPeriod}>Monthly</Text>
+                      <Text style={styles.detailsPricingAmount}>
                         {formatCurrency(showStrategyDetails.subscription_price_monthly)}
                       </Text>
                     </View>
                   )}
                   {showStrategyDetails.subscription_price_yearly && (
-                    <View style={styles.pricingCard}>
-                      <Text style={styles.pricingPeriod}>Yearly</Text>
-                      <Text style={styles.pricingAmount}>
+                    <View style={styles.detailsPricingCard}>
+                      <Text style={styles.detailsPricingPeriod}>Yearly</Text>
+                      <Text style={styles.detailsPricingAmount}>
                         {formatCurrency(showStrategyDetails.subscription_price_yearly)}
                       </Text>
                     </View>
@@ -668,33 +674,28 @@ export default function StrategiesTab({ loading = false, onRefresh, filters }: S
               </View>
             )}
 
-            {/* Timeline Information */}
-            <View style={styles.timelineSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="time" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.sectionTitle}>Timeline</Text>
+            {/* Timeline Information - Simplified */}
+            <View style={styles.detailsSection}>
+              <View style={styles.detailsSectionHeader}>
+                <View style={styles.detailsSectionHeaderContent}>
+                  <View style={styles.detailsSectionIconContainer}>
+                    <Ionicons name="time" size={18} color={theme.colors.text.secondary} />
+                  </View>
+                  <Text style={styles.detailsSectionTitle}>Timeline</Text>
+                </View>
               </View>
-              <View style={styles.timelineDetails}>
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Created</Text>
-                    <Text style={styles.timelineDate}>{formatDate(showStrategyDetails.created_at)}</Text>
-                  </View>
+              <View style={styles.detailsTimelineContainer}>
+                <View style={styles.detailsTimelineRow}>
+                  <Text style={styles.detailsTimelineLabel}>Created</Text>
+                  <Text style={styles.detailsTimelineValue}>{formatDate(showStrategyDetails.created_at)}</Text>
                 </View>
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Last Updated</Text>
-                    <Text style={styles.timelineDate}>{formatDate(showStrategyDetails.updated_at)}</Text>
-                  </View>
+                <View style={styles.detailsTimelineRow}>
+                  <Text style={styles.detailsTimelineLabel}>Last Updated</Text>
+                  <Text style={styles.detailsTimelineValue}>{formatDate(showStrategyDetails.updated_at)}</Text>
                 </View>
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Last Calculated</Text>
-                    <Text style={styles.timelineDate}>{formatDate(showStrategyDetails.last_calculated_at)}</Text>
-                  </View>
+                <View style={styles.detailsTimelineRow}>
+                  <Text style={styles.detailsTimelineLabel}>Last Calculated</Text>
+                  <Text style={styles.detailsTimelineValue}>{formatDate(showStrategyDetails.last_calculated_at)}</Text>
                 </View>
               </View>
             </View>
@@ -1422,5 +1423,250 @@ const styles = StyleSheet.create({
   timelineDate: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.primary,
+  },
+  
+  // Enhanced Strategy Details Modal Styles (based on BetDetailsModal)
+  detailsModalContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  detailsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    ...theme.shadows.lg,
+    elevation: 8,
+  },
+  detailsHeaderCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsHeaderSpacer: {
+    width: 44,
+  },
+  detailsTitleContainer: {
+    alignItems: 'center',
+  },
+  detailsModalTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
+  },
+  detailsModalSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  detailsCloseButton: {
+    padding: theme.spacing.xs,
+    zIndex: 1,
+  },
+  detailsCloseButtonContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsContent: {
+    flex: 1,
+    paddingTop: theme.spacing.xs,
+  },
+  
+  // Enhanced Section Styles
+  detailsSection: {
+    backgroundColor: 'white',
+    marginHorizontal: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.md,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  detailsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: '#ffffff',
+  },
+  detailsSectionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  detailsSectionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsSectionTitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    letterSpacing: 0.3,
+  },
+  
+  // Strategy Info
+  detailsStrategyInfo: {
+    padding: theme.spacing.md,
+  },
+  detailsStrategyName: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+  },
+  detailsMetaContainer: {
+    gap: 2,
+  },
+  detailsMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: '#f8fafc',
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
+    gap: theme.spacing.xs,
+  },
+  detailsMetaLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailsMetaValue: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: '600',
+  },
+  
+  // Financial Cards Container
+  detailsMetricsContainer: {
+    padding: theme.spacing.md,
+  },
+  detailsFinancialCardsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  detailsFinancialCard: {
+    flex: 1,
+    minWidth: '30%',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    ...theme.shadows.sm,
+    elevation: 3,
+  },
+  detailsFinancialCardWhite: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  detailsFinancialCardGreen: {
+    backgroundColor: '#16a34a',
+    borderColor: '#14532d',
+  },
+  detailsFinancialCardRed: {
+    backgroundColor: '#dc2626',
+    borderColor: '#991b1b',
+  },
+  detailsCardLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailsCardValue: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: 'white',
+    textAlign: 'center',
+  },
+  detailsCardLabelBlack: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailsCardValueBlack: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  
+  // Pricing Styles
+  detailsPricingContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  detailsPricingCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.status.success + '30',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  detailsPricingPeriod: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+    marginBottom: theme.spacing.xs,
+    textTransform: 'uppercase',
+  },
+  detailsPricingAmount: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.status.success,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  
+  // Timeline Styles
+  detailsTimelineContainer: {
+    padding: theme.spacing.md,
+    gap: 2,
+  },
+  detailsTimelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: '#f8fafc',
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
+  },
+  detailsTimelineLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+  },
+  detailsTimelineValue: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: '600',
   },
 });

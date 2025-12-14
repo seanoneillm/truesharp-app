@@ -409,6 +409,7 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
                   icon={config.icon}
                   isPro={isProFilter}
                   showProBadge={showProBadge}
+                  isLeagueDropdown={true}
                 />
               );
             
@@ -663,21 +664,26 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
+      // Use timezone-safe date string construction to avoid UTC conversion issues
+      const dateString = selectedDate.getFullYear() + '-' + 
+        String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(selectedDate.getDate()).padStart(2, '0');
+      
       if (datePickerType === 'basicStart') {
         setSelectedBasicStartDate(selectedDate);
-        handleFilterUpdate('basicStartDate', selectedDate.toISOString());
+        handleFilterUpdate('basicStartDate', dateString);
       } else if (datePickerType === 'start') {
         setSelectedStartDate(selectedDate);
         // Check if we're setting a custom range date or individual Pro dates
         if (localFilters.timeframe === 'custom') {
           const newDateRange = {
-            start: selectedDate.toISOString(),
+            start: dateString,
             end: localFilters.dateRange?.end || null
           };
           handleFilterUpdate('dateRange', newDateRange);
         } else {
           // Individual Pro start date
-          handleFilterUpdate('startDate', selectedDate.toISOString());
+          handleFilterUpdate('startDate', dateString);
         }
       } else {
         setSelectedEndDate(selectedDate);
@@ -685,12 +691,12 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
         if (localFilters.timeframe === 'custom') {
           const newDateRange = {
             start: localFilters.dateRange?.start || null,
-            end: selectedDate.toISOString()
+            end: dateString
           };
           handleFilterUpdate('dateRange', newDateRange);
         } else {
           // Individual Pro end date
-          handleFilterUpdate('endDate', selectedDate.toISOString());
+          handleFilterUpdate('endDate', dateString);
         }
       }
     }

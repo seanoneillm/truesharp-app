@@ -24,9 +24,12 @@ export interface GroupedBetsResult {
  * A parlay is pending if ANY leg is still pending
  */
 function determineParlayStatus(legs: BetData[]): { status: 'won' | 'lost' | 'pending' | 'void' | 'push', profit: number } {
-  const firstLeg = legs[0];
-  const stake = firstLeg.stake || 0;
-  const potential_payout = firstLeg.potential_payout || 0;
+  // Find legs with non-zero values for stake and potential_payout
+  const legWithStake = legs.find(leg => (leg.stake || 0) > 0) || legs[0];
+  const legWithPayout = legs.find(leg => (leg.potential_payout || 0) > 0) || legs[0];
+  
+  const stake = legWithStake.stake || 0;
+  const potential_payout = legWithPayout.potential_payout || 0;
 
   // Always use leg-by-leg analysis (matches web app behavior)
   // Do NOT trust database profit values for status determination
@@ -53,10 +56,16 @@ function determineParlayStatus(legs: BetData[]): { status: 'won' | 'lost' | 'pen
     parlayStatus = 'pending';
   }
 
-  // Calculate profit based on determined status (ignore database profit for pending)
+  // Calculate profit based on determined status
   let profit: number;
   if (parlayStatus === 'won') {
-    profit = potential_payout - stake;
+    // For wins, check if any leg has a non-zero profit value in the database
+    const legWithDbProfit = legs.find(leg => (leg.profit || 0) !== 0);
+    if (legWithDbProfit && legWithDbProfit.profit !== null && legWithDbProfit.profit !== undefined) {
+      profit = legWithDbProfit.profit;
+    } else {
+      profit = potential_payout - stake;
+    }
   } else if (parlayStatus === 'lost') {
     profit = -stake;
   } else if (parlayStatus === 'void' || parlayStatus === 'push') {
@@ -139,7 +148,7 @@ export function groupBetsByParlay(bets: BetData[]): GroupedBetsResult {
     const { status, profit } = determineParlayStatus(legs);
     
     // For parlays, find the leg with non-zero stake and potential_payout
-    // All legs in a parlay should have the same stake and potential_payout
+    // Sometimes only one leg has the accurate values while others show 0
     const legWithStake = legs.find(leg => (leg.stake || 0) > 0) || firstLeg;
     const legWithPayout = legs.find(leg => (leg.potential_payout || 0) > 0) || firstLeg;
     

@@ -64,12 +64,28 @@ export default function TabNavigator() {
           },
         })}
       >
-        <Tab.Screen name="Dashboard" component={DashboardScreen} />
-        <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+        <Tab.Screen 
+          name="Dashboard" 
+          component={DashboardScreen}
+          options={{ tabBarLabel: 'Home' }}
+        />
+        <Tab.Screen 
+          name="Analytics" 
+          component={AnalyticsScreen}
+          options={{ tabBarLabel: 'Stats' }}
+        />
         <Tab.Screen name="Games" component={GamesScreen} />
-        <Tab.Screen name="Marketplace" component={MarketplaceScreen} />
+        <Tab.Screen 
+          name="Marketplace" 
+          component={MarketplaceScreen}
+          options={{ tabBarLabel: 'Market' }}
+        />
         <Tab.Screen name="Sell" component={SellScreen} />
-        <Tab.Screen name="Subscriptions" component={SubscriptionsScreen} />
+        <Tab.Screen 
+          name="Subscriptions" 
+          component={SubscriptionsScreen}
+          options={{ tabBarLabel: 'Subs' }}
+        />
       </Tab.Navigator>
   );
 }

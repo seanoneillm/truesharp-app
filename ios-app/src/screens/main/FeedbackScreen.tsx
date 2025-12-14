@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { globalStyles } from '../../styles/globalStyles';
@@ -105,30 +106,47 @@ export default function FeedbackScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Enhanced Gradient Header */}
+        <LinearGradient
+          colors={[theme.colors.primary, '#1e40af', '#0f172a']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <TouchableOpacity 
             style={styles.backArrow}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.colors.text.inverse} />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <View style={styles.headerIconContainer}>
-              <Ionicons name="chatbubble" size={24} color={theme.colors.text.inverse} />
+            <View style={styles.backButtonContainer}>
+              <Ionicons name="arrow-back" size={20} color="white" />
             </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Feedback</Text>
-              <Text style={styles.headerSubtitle}>Help us improve TrueSharp</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleContainer}>
+              <View style={styles.headerRow}>
+                <View style={styles.headerIconContainer}>
+                  <Ionicons name="chatbubble" size={16} color="white" />
+                </View>
+                <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>Feedback</Text>
+              </View>
+              <Text style={styles.headerSubtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>Help us improve TrueSharp</Text>
             </View>
           </View>
-        </View>
+          
+          <View style={styles.headerSpacer} />
+        </LinearGradient>
 
-        {/* Feedback Form */}
+        {/* Enhanced Feedback Form */}
         <View style={styles.formSection}>
-          <Text style={styles.formLabel}>
-            Share your feedback, suggestions, or report issues
-          </Text>
+          <View style={styles.formHeader}>
+            <View style={styles.formHeaderContent}>
+              <Ionicons name="create" size={18} color={theme.colors.primary} />
+              <Text style={styles.formLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+                Share your feedback, suggestions, or report issues
+              </Text>
+            </View>
+          </View>
           
           <View style={styles.textInputContainer}>
             <TextInput
@@ -141,30 +159,49 @@ export default function FeedbackScreen() {
               placeholder="Tell us what you think... What features would you like to see? What could we improve?"
               placeholderTextColor={theme.colors.text.light}
               multiline
-              numberOfLines={8}
+              numberOfLines={6}
               textAlignVertical="top"
               editable={!isSubmitting}
               maxLength={2000}
             />
             <View style={styles.characterCount}>
-              <Text style={styles.characterCountText}>
+              <Text style={styles.characterCountText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {feedback.length}/2000 characters
               </Text>
             </View>
           </View>
 
           <View style={styles.formFooter}>
-            <Text style={styles.formFooterText}>
+            <Text style={styles.formFooterText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
               Your feedback helps us build a better platform for everyone
             </Text>
             
-            <LoadingButton
-              title={isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            <TouchableOpacity
               onPress={handleSubmit}
-              loading={isSubmitting}
-              disabled={!feedback.trim()}
-              style={styles.submitButton}
-            />
+              disabled={!feedback.trim() || isSubmitting}
+              style={[
+                styles.submitButton,
+                (!feedback.trim() || isSubmitting) && styles.submitButtonDisabled
+              ]}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={(!feedback.trim() || isSubmitting) 
+                  ? ['#9ca3af', '#6b7280'] 
+                  : [theme.colors.primary, '#1e40af']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitButtonGradient}
+              >
+                {isSubmitting && (
+                  <Ionicons name="refresh" size={16} color="white" style={styles.submitButtonIcon} />
+                )}
+                <Text style={styles.submitButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
           {submitResult && (
@@ -191,19 +228,30 @@ export default function FeedbackScreen() {
           )}
         </View>
 
-        {/* Info Section */}
+        {/* Enhanced Info Section */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>What kind of feedback are we looking for?</Text>
+          <View style={styles.infoHeader}>
+            <View style={styles.infoHeaderContent}>
+              <Ionicons name="information-circle" size={18} color={theme.colors.primary} />
+              <Text style={styles.infoTitle} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+                What kind of feedback are we looking for?
+              </Text>
+            </View>
+          </View>
           
           <View style={styles.feedbackTypesList}>
             {feedbackTypes.map((type, index) => (
               <View key={index} style={styles.feedbackTypeItem}>
                 <View style={styles.feedbackTypeIcon}>
-                  <Ionicons name={type.icon as any} size={20} color={theme.colors.primary} />
+                  <Ionicons name={type.icon as any} size={18} color={theme.colors.primary} />
                 </View>
                 <View style={styles.feedbackTypeContent}>
-                  <Text style={styles.feedbackTypeTitle}>{type.title}</Text>
-                  <Text style={styles.feedbackTypeDescription}>{type.description}</Text>
+                  <Text style={styles.feedbackTypeTitle} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+                    {type.title}
+                  </Text>
+                  <Text style={styles.feedbackTypeDescription} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
+                    {type.description}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -220,109 +268,163 @@ export default function FeedbackScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  backArrow: {
-    position: 'absolute',
-    left: theme.spacing.lg,
-    top: theme.spacing.lg,
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 1,
+    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
   },
+  
+  // Enhanced Header Styles - Thinner
   header: {
-    backgroundColor: theme.colors.primary,
-    marginBottom: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
-    ...theme.shadows.md,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: theme.spacing.xl, // Add padding to avoid overlap with back button
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.lg,
+    elevation: 8,
+  },
+  backArrow: {
+    padding: theme.spacing.xs,
+    zIndex: 1,
+  },
+  backButtonContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  headerTextContainer: {
-    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.inverse,
-    marginBottom: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: theme.typography.fontSize.xs,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+    textAlign: 'center',
   },
+  // Enhanced Form Section Styles
   formSection: {
-    backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    backgroundColor: 'white',
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.xl,
-    ...theme.shadows.md,
+    overflow: 'hidden',
+    ...theme.shadows.lg,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  formHeader: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  formHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   formLabel: {
-    fontSize: 16,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.lg,
+    flex: 1,
   },
   textInputContainer: {
-    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   textInput: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    fontSize: 16,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
-    backgroundColor: theme.colors.background,
-    minHeight: 140,
+    backgroundColor: '#f8fafc',
+    minHeight: 120,
     textAlignVertical: 'top',
+    fontFamily: theme.typography.fontFamily,
   },
   textInputFocused: {
     borderColor: theme.colors.primary,
     borderWidth: 2,
+    backgroundColor: 'white',
   },
   characterCount: {
     alignItems: 'flex-end',
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   characterCountText: {
-    fontSize: 12,
-    color: theme.colors.text.light,
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.secondary,
   },
   formFooter: {
-    gap: theme.spacing.lg,
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
   },
   formFooterText: {
-    fontSize: 14,
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   submitButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    ...theme.shadows.sm,
+    elevation: 3,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  submitButtonIcon: {
+    marginRight: theme.spacing.xs,
+  },
+  submitButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.3,
   },
   resultContainer: {
     flexDirection: 'row',
@@ -353,52 +455,73 @@ const styles = StyleSheet.create({
   errorText: {
     color: theme.colors.status.error,
   },
+  // Enhanced Info Section Styles
   infoSection: {
-    backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    backgroundColor: 'white',
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.xl,
-    ...theme.shadows.sm,
+    overflow: 'hidden',
+    ...theme.shadows.lg,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  infoHeader: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  infoHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   infoTitle: {
-    fontSize: 18,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
+    flex: 1,
   },
   feedbackTypesList: {
-    gap: theme.spacing.lg,
+    padding: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   feedbackTypeItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: '#f8fafc',
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
   },
   feedbackTypeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.surface,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: theme.spacing.sm,
   },
   feedbackTypeContent: {
     flex: 1,
   },
   feedbackTypeTitle: {
-    fontSize: 16,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.xs / 2,
   },
   feedbackTypeDescription: {
-    fontSize: 14,
+    fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.secondary,
-    lineHeight: 20,
+    lineHeight: 16,
   },
   bottomSpacing: {
-    height: theme.spacing['2xl'],
+    height: theme.spacing.lg,
   },
 });

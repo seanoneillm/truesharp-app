@@ -36,6 +36,10 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // The original precision issue was caused by ROI calculations exceeding DECIMAL(5,2)
+    // This has been fixed by updating user_performance_cache.roi to DECIMAL(8,2)
+    console.log(`🔍 Profit to be stored: ${profit}`)
+    
     const supabase = await createServiceRoleClient()
     
     // First, verify the bet exists and is a TrueSharp bet in pending status
@@ -78,11 +82,15 @@ export async function POST(request: NextRequest) {
     
     if (updateError) {
       console.error('❌ Error updating bet:', updateError)
+      console.error('❌ Full error details:', JSON.stringify(updateError, null, 2))
+      console.error('❌ Attempted values:', { betId, status, profit })
+      
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Failed to settle bet',
-          details: updateError.message 
+          error: 'Failed to settle bet - database constraint issue',
+          details: updateError.message,
+          dbError: updateError
         },
         { status: 500 }
       )

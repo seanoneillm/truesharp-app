@@ -756,16 +756,20 @@ function BillingTab({ subscriptions, formatCurrency, onManageBilling }: BillingT
 }
 
 // Helper function for rendering profile pictures
-function renderProfilePicture(url?: string, username?: string) {
+function renderProfilePicture(url?: string, username?: string, enhanced?: boolean) {
+  const pictureStyle = enhanced ? styles.enhancedProfilePicture : styles.profilePicture
+  const initialsStyle = enhanced ? styles.enhancedInitialsContainer : styles.initialsContainer
+  const textStyle = enhanced ? styles.enhancedInitialsText : styles.initialsText
+  
   if (url && url.trim() !== '') {
-    return <Image source={{ uri: url }} style={styles.profilePicture} onError={error => {}} />
+    return <Image source={{ uri: url }} style={pictureStyle} onError={error => {}} />
   }
 
   // Show user initials as fallback
   const initials = username ? username.substring(0, 2).toUpperCase() : '??'
   return (
-    <View style={[styles.profilePicture, styles.initialsContainer]}>
-      <Text style={styles.initialsText}>{initials}</Text>
+    <View style={[pictureStyle, initialsStyle]}>
+      <Text style={textStyle}>{initials}</Text>
     </View>
   )
 }
@@ -1421,123 +1425,125 @@ function SubscriptionCard({
   formatPercentage,
 }: SubscriptionCardProps) {
   return (
-    <View style={styles.subscriptionCard}>
-      {/* Header */}
-      <View style={styles.subscriptionHeader}>
-        <LinearGradient
-          colors={['#F8FAFC', '#F1F5F9'] as readonly [string, string]}
-          style={styles.subscriptionHeaderGradient}
-        >
-          <View style={styles.subscriptionHeaderContent}>
-            <View style={styles.subscriptionHeaderLeft}>
-              {renderProfilePicture(subscription.seller_avatar_url, subscription.seller_username)}
-              <View style={styles.subscriptionHeaderText}>
-                <Text style={styles.subscriptionTitle}>
-                  {subscription.strategy_name || 'Strategy'}
+    <View style={styles.enhancedSubscriptionCard}>
+      {/* Clean Header - No Gradient */}
+      <View style={styles.enhancedSubscriptionHeader}>
+        <View style={styles.enhancedHeaderContent}>
+          <View style={styles.enhancedHeaderLeft}>
+            {renderProfilePicture(subscription.seller_avatar_url, subscription.seller_username, true)}
+            <View style={styles.enhancedHeaderText}>
+              <Text style={styles.enhancedSubscriptionTitle} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {subscription.strategy_name || 'Strategy'}
+              </Text>
+              <Text style={styles.enhancedSellerText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>
+                by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
+              </Text>
+              {subscription.strategy_description && (
+                <Text style={styles.enhancedDescription} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {subscription.strategy_description}
                 </Text>
-                <Text style={styles.subscriptionSellerText}>
-                  by @
-                  {subscription.seller_username || subscription.seller_display_name || 'Unknown'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusBadgeText}>✓ Active</Text>
+              )}
             </View>
           </View>
-          {subscription.strategy_description && (
-            <Text style={styles.subscriptionDescription}>{subscription.strategy_description}</Text>
-          )}
-        </LinearGradient>
-      </View>
-
-      {/* Performance Metrics */}
-      <View style={styles.performanceSection}>
-        <View style={styles.performanceMetrics}>
-          <View style={styles.performanceMetric}>
-            <View style={styles.performanceMetricCard}>
-              <Text style={styles.performanceMetricLabel}>ROI</Text>
-              <Text
-                style={[
-                  styles.performanceMetricValue,
-                  {
-                    color:
-                      (subscription.roi_percentage || 0) >= 0
-                        ? theme.colors.status.success
-                        : theme.colors.status.error,
-                  },
-                ]}
-              >
-                {formatPercentage(subscription.roi_percentage)}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.performanceMetric}>
-            <View style={styles.performanceMetricCard}>
-              <Text style={styles.performanceMetricLabel}>Win Rate</Text>
-              <Text style={[styles.performanceMetricValue, { color: theme.colors.primary }]}>
-                {subscription.win_rate !== null && subscription.win_rate !== undefined
-                  ? `${(subscription.win_rate * 100).toFixed(0)}%`
-                  : 'N/A'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.performanceMetric}>
-            <View style={styles.performanceMetricCard}>
-              <Text style={styles.performanceMetricLabel}>Bets</Text>
-              <Text style={[styles.performanceMetricValue, { color: theme.colors.accent }]}>
-                {subscription.total_bets || 0}
-              </Text>
-            </View>
+          <View style={styles.enhancedStatusBadge}>
+            <Icon name="checkmark-circle" size={12} color={theme.colors.status.success} />
+            <Text style={styles.enhancedStatusText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Active</Text>
           </View>
         </View>
       </View>
 
-      {/* Today's Bets Notification */}
+      {/* Enhanced Performance Metrics - Financial Card Style */}
+      <View style={styles.enhancedMetricsSection}>
+        <View style={styles.enhancedMetricsContainer}>
+          <View style={[
+            styles.enhancedMetricCard, 
+            (subscription.roi_percentage || 0) >= 0 ? styles.enhancedMetricCardGreen : styles.enhancedMetricCardRed
+          ]}>
+            <Text style={styles.enhancedMetricLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>ROI</Text>
+            <Text style={styles.enhancedMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {formatPercentage(subscription.roi_percentage)}
+            </Text>
+          </View>
+          
+          <View style={[styles.enhancedMetricCard, styles.enhancedMetricCardWhite]}>
+            <Text style={styles.enhancedMetricLabelBlack} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Win Rate</Text>
+            <Text style={styles.enhancedMetricValueBlack} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {subscription.win_rate !== null && subscription.win_rate !== undefined
+                ? `${(subscription.win_rate * 100).toFixed(0)}%`
+                : 'N/A'}
+            </Text>
+          </View>
+          
+          <View style={[styles.enhancedMetricCard, styles.enhancedMetricCardWhite]}>
+            <Text style={styles.enhancedMetricLabelBlack} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Total Bets</Text>
+            <Text style={styles.enhancedMetricValueBlack} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {subscription.total_bets || 0}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Enhanced Open Bets Banner - More Prominent */}
       <TouchableOpacity
-        style={styles.todaysBetsSection}
+        style={styles.enhancedOpenBetsSection}
         onPress={() => onOpenBets(subscription)}
         activeOpacity={0.7}
       >
         <LinearGradient
-          colors={['#EFF6FF', '#DBEAFE'] as readonly [string, string]}
-          style={styles.todaysBetsGradient}
+          colors={['#3B82F6', '#1E40AF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.enhancedOpenBetsGradient}
         >
-          <View style={styles.todaysBetsHeader}>
-            <Icon name="time-outline" size={18} color="#2563EB" />
-            <Text style={styles.todaysBetsTitle}>
-              {subscription.open_bets_count || 0} open bets available
-            </Text>
-            <Icon name="chevron-forward" size={18} color="#2563EB" />
+          <View style={styles.enhancedOpenBetsContent}>
+            <View style={styles.enhancedOpenBetsLeft}>
+              <View style={styles.enhancedOpenBetsIconContainer}>
+                <Icon name="notifications" size={20} color="white" />
+              </View>
+              <View style={styles.enhancedOpenBetsText}>
+                <Text style={styles.enhancedOpenBetsTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {subscription.open_bets_count || 0} Open Bets Available
+                </Text>
+                <Text style={styles.enhancedOpenBetsSubtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>
+                  Tap to view strategy bets
+                </Text>
+              </View>
+            </View>
+            <View style={styles.enhancedOpenBetsRight}>
+              <Icon name="chevron-forward" size={20} color="white" />
+            </View>
           </View>
-          <Text style={styles.todaysBetsDescription}>Tap to view open bets from this strategy</Text>
-          {/* Notification Badge */}
+          {/* Enhanced Notification Badge */}
           {(subscription.open_bets_count || 0) > 0 && (
-            <View style={styles.notificationBadge}>
-              <Icon name="notifications" size={12} color="white" />
+            <View style={styles.enhancedNotificationBadge}>
+              <Text style={styles.enhancedNotificationText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{subscription.open_bets_count}</Text>
             </View>
           )}
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Subscription Details */}
-      <View style={styles.subscriptionDetails}>
-        <View style={styles.subscriptionDetailsLeft}>
-          <Text style={styles.subscriptionDetailsTitle}>
-            <Icon name="cash" size={16} color={theme.colors.status.success} /> Subscription Details
-          </Text>
-          <View style={styles.subscriptionDetailItem}>
-            <Text style={styles.subscriptionDetailLabel}>Price</Text>
-            <View style={styles.priceTag}>
-              <Text style={styles.priceTagText}>
+      {/* Enhanced Subscription Details - Compact */}
+      <View style={styles.enhancedDetailsSection}>
+        <View style={styles.enhancedDetailsGrid}>
+          <View style={styles.enhancedDetailRow}>
+            <View style={styles.enhancedDetailRowContent}>
+              <Icon name="cash" size={16} color={theme.colors.status.success} />
+              <Text style={styles.enhancedDetailLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Price</Text>
+            </View>
+            <View style={styles.enhancedPriceTag}>
+              <Text style={styles.enhancedPriceText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {formatCurrency(subscription.price)} / {subscription.frequency}
               </Text>
             </View>
           </View>
+          
           {subscription.next_billing_date && (
-            <View style={styles.subscriptionDetailItem}>
-              <Text style={styles.subscriptionDetailLabel}>Next Billing</Text>
-              <Text style={styles.subscriptionDetailValue}>
+            <View style={styles.enhancedDetailRow}>
+              <View style={styles.enhancedDetailRowContent}>
+                <Icon name="calendar" size={16} color={theme.colors.text.secondary} />
+                <Text style={styles.enhancedDetailLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Next Billing</Text>
+              </View>
+              <Text style={styles.enhancedDetailValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {new Date(subscription.next_billing_date).toLocaleDateString()}
               </Text>
             </View>
@@ -1545,14 +1551,14 @@ function SubscriptionCard({
         </View>
 
         {subscription.status === 'active' && (
-          <View style={styles.subscriptionActions}>
-            <TouchableOpacity style={styles.manageBillingButton} onPress={onManageBilling}>
-              <Icon name="card" size={16} color={theme.colors.primary} />
-              <Text style={styles.manageBillingButtonText}>Manage Billing</Text>
+          <View style={styles.enhancedActionsRow}>
+            <TouchableOpacity style={styles.enhancedManageButton} onPress={onManageBilling}>
+              <Icon name="card" size={14} color={theme.colors.primary} />
+              <Text style={styles.enhancedManageButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Manage</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(subscription.id)}>
-              <Icon name="close" size={16} color={theme.colors.status.error} />
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+            <TouchableOpacity style={styles.enhancedCancelButton} onPress={() => onCancel(subscription.id)}>
+              <Icon name="close" size={14} color={theme.colors.status.error} />
+              <Text style={styles.enhancedCancelButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -2459,5 +2465,318 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.sm,
+  },
+
+  // Enhanced Subscription Card Styles (based on BetDetailsModal theme)
+  enhancedSubscriptionCard: {
+    backgroundColor: 'white',
+    borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.lg,
+    overflow: 'hidden',
+    ...theme.shadows.lg,
+    elevation: 8,
+    // Enhanced floating effect
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    shadowOpacity: 0.15,
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+
+  // Clean Header - No Gradient
+  enhancedSubscriptionHeader: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  enhancedHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  enhancedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  enhancedHeaderText: {
+    marginLeft: theme.spacing.sm,
+    flex: 1,
+  },
+  enhancedSubscriptionTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+    letterSpacing: 0.3,
+  },
+  enhancedSellerText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  enhancedDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
+  },
+  enhancedStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    gap: theme.spacing.xs,
+  },
+  enhancedStatusText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '600',
+    color: '#047857',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Enhanced Metrics Section
+  enhancedMetricsSection: {
+    padding: theme.spacing.md,
+    backgroundColor: 'white',
+  },
+  enhancedMetricsContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  enhancedMetricCard: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    ...theme.shadows.sm,
+    elevation: 3,
+  },
+  enhancedMetricCardWhite: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  enhancedMetricCardGreen: {
+    backgroundColor: '#16a34a',
+    borderColor: '#14532d',
+  },
+  enhancedMetricCardRed: {
+    backgroundColor: '#dc2626',
+    borderColor: '#991b1b',
+  },
+  enhancedMetricLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  enhancedMetricValue: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: 'white',
+    textAlign: 'center',
+  },
+  enhancedMetricLabelBlack: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  enhancedMetricValueBlack: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+
+  // Enhanced Open Bets Section
+  enhancedOpenBetsSection: {
+    marginHorizontal: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadows.md,
+    elevation: 4,
+  },
+  enhancedOpenBetsGradient: {
+    position: 'relative',
+  },
+  enhancedOpenBetsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+  },
+  enhancedOpenBetsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  enhancedOpenBetsIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+  },
+  enhancedOpenBetsText: {
+    flex: 1,
+  },
+  enhancedOpenBetsTitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 2,
+    letterSpacing: 0.3,
+  },
+  enhancedOpenBetsSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  enhancedOpenBetsRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enhancedNotificationBadge: {
+    position: 'absolute',
+    top: theme.spacing.xs,
+    right: theme.spacing.xs,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xs,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  enhancedNotificationText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: '700',
+    color: 'white',
+  },
+
+  // Enhanced Details Section
+  enhancedDetailsSection: {
+    padding: theme.spacing.md,
+    backgroundColor: 'white',
+  },
+  enhancedDetailsGrid: {
+    marginBottom: theme.spacing.md,
+  },
+  enhancedDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: '#f8fafc',
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 2,
+  },
+  enhancedDetailRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    flex: 1,
+  },
+  enhancedDetailLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+  },
+  enhancedDetailValue: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: '600',
+  },
+  enhancedPriceTag: {
+    backgroundColor: theme.colors.primary + '10',
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  enhancedPriceText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+
+  // Enhanced Actions Row
+  enhancedActionsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  enhancedManageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary + '10',
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.xs,
+  },
+  enhancedManageButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  enhancedCancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.status.error + '10',
+    borderWidth: 1,
+    borderColor: theme.colors.status.error + '30',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.xs,
+  },
+  enhancedCancelButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.status.error,
+    fontWeight: '600',
+  },
+
+  // Enhanced Profile Picture Styles
+  enhancedProfilePicture: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  enhancedInitialsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+  },
+  enhancedInitialsText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'white',
   },
 })

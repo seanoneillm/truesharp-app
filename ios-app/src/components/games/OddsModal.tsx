@@ -10,12 +10,15 @@ import {
   ActivityIndicator,
   Animated,
   PanResponder,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../../styles/theme';
 import TrueSharpShield from '../common/TrueSharpShield';
+import { TeamLogo } from '../common/TeamLogo';
 import { OddsDetailModal } from './OddsDetailModal';
 import { supabase } from '../../lib/supabase';
 
@@ -788,7 +791,7 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
       marketName,
       playerName,
       teamName,
-      line: odd.line || (currentLineValue !== 'standard' ? currentLineValue : undefined),
+      line: odd.line,
       currentOdds: getBookOdds(odd),
       side,
     });
@@ -1224,30 +1227,37 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.modalContainer} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Enhanced Header with Gradient */}
+        <LinearGradient
+          colors={[theme.colors.primary, '#1e40af', '#0f172a']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <View style={styles.headerContent}>
             <TouchableOpacity
-              style={styles.closeButton}
+              style={styles.closeButtonContainer}
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              <Ionicons name="close" size={20} color="white" />
             </TouchableOpacity>
           </View>
+          
           <View style={styles.gameInfoContainer}>
             <View style={styles.matchupContainer}>
               <View style={styles.teamContainer}>
                 <Text style={styles.teamLabel}>AWAY</Text>
-                <Text style={styles.teamName}>{game.away_team}</Text>
+                <TeamLogo teamName={game.away_team} league={league} size={68} />
+                <Text style={[styles.teamName, styles.teamNameWithLogo]}>{game.away_team}</Text>
               </View>
               <View style={styles.vsContainer}>
-                <TrueSharpShield size={16} variant="light" style={styles.shieldIcon} />
                 <Text style={styles.vsText}>@</Text>
               </View>
               <View style={styles.teamContainer}>
                 <Text style={styles.teamLabel}>HOME</Text>
-                <Text style={styles.teamName}>{game.home_team}</Text>
+                <TeamLogo teamName={game.home_team} league={league} size={68} />
+                <Text style={[styles.teamName, styles.teamNameWithLogo]}>{game.home_team}</Text>
               </View>
             </View>
             <View style={styles.gameDetailsContainer}>
@@ -1256,7 +1266,7 @@ export default function OddsModal({ isVisible, onClose, game, league }: OddsModa
               </Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Main Tabs */}
         <View style={styles.mainTabsSection}>
@@ -2033,77 +2043,83 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   
-  // Header
+  // Enhanced Header
   header: {
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    ...theme.shadows.sm,
+    ...theme.shadows.lg,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.sm,
+    paddingRight: theme.spacing.md,
+  },
+  closeButtonContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.xs,
   },
   gameInfoContainer: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
+    paddingTop: 0,
+    paddingBottom: theme.spacing.sm,
   },
   matchupContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
   },
   teamContainer: {
     flex: 1,
     alignItems: 'center',
   },
   teamLabel: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.xs - 1,
+    fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.inverse,
-    opacity: 0.8,
-    marginBottom: theme.spacing.xs / 2,
-    letterSpacing: 1,
+    opacity: 0.7,
+    marginBottom: 2,
+    letterSpacing: 0.8,
   },
   teamName: {
-    fontSize: theme.typography.fontSize.xl,
+    fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.inverse,
     textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  teamNameWithLogo: {
+    marginTop: theme.spacing.xs / 2,
   },
   vsContainer: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column',
-  },
-  shieldIcon: {
-    marginBottom: theme.spacing.xs / 2,
   },
   vsText: {
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.inverse,
-    opacity: 0.7,
+    opacity: 0.8,
+    letterSpacing: 0.5,
   },
   gameDetailsContainer: {
     alignItems: 'center',
   },
   dateTimeText: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.inverse,
     textAlign: 'center',
-    opacity: 0.9,
-  },
-  closeButton: {
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.surface,
+    opacity: 0.85,
+    letterSpacing: 0.3,
   },
 
   // Main Tabs

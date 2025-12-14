@@ -14,118 +14,127 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../styles/theme';
 import { useBetSlip, BetSlipBet } from '../../contexts/BetSlipContext';
 import TrueSharpShield from '../common/TrueSharpShield';
+import { formatOddsWithFallback } from '../../utils/oddsCalculation';
+import { formatTeamsDisplayPublic } from '../../lib/betFormatting';
+import { Image } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Format odds helper
-const formatOdds = (odds: number): string => {
+// Format odds helper using the same logic as EnhancedBetCard
+const formatOdds = (odds: number, stake?: number, potentialPayout?: number): string => {
   if (!isFinite(odds)) {
     return '+100'; // Default fallback for infinity
   }
-  if (odds > 0) {
-    return `+${odds}`;
+  return formatOddsWithFallback(odds, stake, potentialPayout);
+};
+
+// Format Market + Side + Line using EnhancedBetCard logic
+const formatMarketLine = (bet: BetSlipBet): string => {
+  // Create a synthetic bet object that matches the structure expected by the formatting logic
+  const betType = bet.marketType?.includes('-ml-') ? 'moneyline' : 
+                  bet.marketType?.includes('-sp-') ? 'spread' : 
+                  bet.marketType?.includes('-ou-') ? 'total' : 'prop';
+  const side = bet.selection?.toLowerCase();
+  const lineValue = bet.line;
+  const playerName = extractPlayerName(bet.marketType || '');
+
+  if (betType === 'moneyline') {
+    const teamName = side === 'home' ? bet.homeTeam : side === 'away' ? bet.awayTeam : bet.selection;
+    return `${teamName || 'Team'} Moneyline`;
   }
-  return odds.toString();
+
+  if (betType === 'spread') {
+    const teamName = side === 'home' ? bet.homeTeam : side === 'away' ? bet.awayTeam : bet.selection;
+    const formattedLine = lineValue !== null && lineValue !== undefined ? 
+      (lineValue > 0 ? `+${lineValue}` : `${lineValue}`) : '';
+    return `${teamName || 'Team'} ${formattedLine}`;
+  }
+
+  if (playerName) {
+    let propType = extractPropType(bet.marketType || '');
+    if (!propType) propType = 'Prop';
+    
+    const overUnder = side?.toUpperCase() || 'OVER';
+    return lineValue && (overUnder === 'OVER' || overUnder === 'UNDER') 
+      ? `${overUnder} ${lineValue} ${propType}`
+      : `${playerName} ${propType}`;
+  }
+
+  if (betType === 'total') {
+    const overUnder = side?.toUpperCase() || 'OVER';
+    const totalType = getSportTotalType(bet.sport || '');
+    return `${overUnder} ${lineValue || ''} ${totalType}`;
+  }
+
+  // Fallback
+  return bet.selection || 'Bet';
 };
 
 // Helper function to extract player name from market type
-const getPlayerName = (marketType: string): string => {
+const extractPlayerName = (marketType: string): string | null => {
   const nameMatch = marketType.match(/-([A-Z_]+_[A-Z_]+)_1_[A-Z]+-game/);
   if (nameMatch && nameMatch[1]) {
-    const playerName = nameMatch[1]
+    return nameMatch[1]
       .split('_')
       .map(part => part.charAt(0) + part.slice(1).toLowerCase())
       .join(' ');
-    return playerName;
   }
-  return 'Player';
+  return null;
 };
 
-// Helper function to get prop display name from market type
-const getPropDisplayName = (marketType: string): string => {
+// Helper function to extract prop type from market type
+const extractPropType = (marketType: string): string => {
   const lowerMarketType = marketType.toLowerCase();
-
-  // Baseball props
   if (lowerMarketType.includes('batting_hits')) return 'Hits';
-  if (lowerMarketType.includes('batting_homeruns') || lowerMarketType.includes('batting_homerun'))
-    return 'Home Runs';
+  if (lowerMarketType.includes('batting_homeruns') || lowerMarketType.includes('batting_homerun')) return 'Home Runs';
   if (lowerMarketType.includes('batting_rbi')) return 'RBIs';
   if (lowerMarketType.includes('batting_runs')) return 'Runs';
   if (lowerMarketType.includes('batting_totalbases')) return 'Total Bases';
   if (lowerMarketType.includes('pitching_strikeouts')) return 'Strikeouts';
   if (lowerMarketType.includes('pitching_hits')) return 'Hits Allowed';
-
-  // Football props
   if (lowerMarketType.includes('passing_yards')) return 'Passing Yards';
   if (lowerMarketType.includes('rushing_yards')) return 'Rushing Yards';
   if (lowerMarketType.includes('receiving_yards')) return 'Receiving Yards';
   if (lowerMarketType.includes('passing_touchdowns')) return 'Passing TDs';
   if (lowerMarketType.includes('rushing_touchdowns')) return 'Rushing TDs';
   if (lowerMarketType.includes('receiving_touchdowns')) return 'Receiving TDs';
-
-  // Basketball props
   if (lowerMarketType.includes('points') && !lowerMarketType.includes('team')) return 'Points';
   if (lowerMarketType.includes('rebounds')) return 'Rebounds';
   if (lowerMarketType.includes('assists')) return 'Assists';
-
-  // Hockey props
   if (lowerMarketType.includes('goals')) return 'Goals';
   if (lowerMarketType.includes('saves')) return 'Saves';
-
   return 'Prop';
 };
 
-// Parse bet information for better display
-const parseBetInfo = (bet: BetSlipBet) => {
-  const isPlayerProp =
-    bet.marketType.match(/-[A-Z_]+_1_[A-Z]+-game/) || bet.marketType.match(/\d{4,}/);
-  const isMainLine =
-    bet.marketType.includes('points-home-game-ml') ||
-    bet.marketType.includes('points-away-game-ml') ||
-    bet.marketType.includes('points-home-game-sp') ||
-    bet.marketType.includes('points-away-game-sp') ||
-    bet.marketType.includes('points-all-game-ou');
-
-  let playerOrTeam = '';
-  let marketDisplay = '';
-  let selectionDisplay = bet.selection;
-
-  if (isPlayerProp) {
-    playerOrTeam = getPlayerName(bet.marketType);
-    marketDisplay = getPropDisplayName(bet.marketType);
-    // For over/under, show Over/Under instead of just the selection
-    if (bet.marketType.includes('-ou-over')) {
-      selectionDisplay = 'Over';
-    } else if (bet.marketType.includes('-ou-under')) {
-      selectionDisplay = 'Under';
-    }
-  } else if (isMainLine) {
-    // For main lines, use team names
-    playerOrTeam = bet.selection;
-    if (bet.marketType.includes('-ml-')) {
-      marketDisplay = 'Moneyline';
-    } else if (bet.marketType.includes('-sp-')) {
-      marketDisplay = 'Spread';
-    } else if (bet.marketType.includes('-ou-')) {
-      marketDisplay = 'Total';
-      selectionDisplay = bet.marketType.includes('over') ? 'Over' : 'Under';
-    }
-  } else {
-    // Fallback for other bet types
-    playerOrTeam = bet.selection;
-    marketDisplay = bet.marketType;
-  }
-
-  return {
-    playerOrTeam,
-    marketDisplay,
-    selectionDisplay,
-    isPlayerProp,
-    isMainLine,
+// Helper function to get sport-specific total type
+const getSportTotalType = (sport: string): string => {
+  const sportTotals: { [key: string]: string } = {
+    mlb: 'Runs',
+    nfl: 'Points',
+    nba: 'Points',
+    ncaab: 'Points',
+    ncaaf: 'Points',
+    nhl: 'Goals',
+    soccer: 'Goals',
   };
+  return sportTotals[sport?.toLowerCase()] || 'Points';
+};
+
+// Format team matchup
+const formatTeamMatchup = (bet: BetSlipBet): string => {
+  if (!bet.homeTeam || !bet.awayTeam) {
+    return '';
+  }
+  return formatTeamsDisplayPublic(bet.homeTeam, bet.awayTeam) || '';
+};
+
+// Format sportsbook info
+const formatBetInfo = (bet: BetSlipBet): string => {
+  return bet.sportsbook || 'TrueSharp';
 };
 
 const FloatingBetSlip: React.FC = () => {
@@ -146,6 +155,7 @@ const FloatingBetSlip: React.FC = () => {
   const [isFullModalVisible, setIsFullModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   // Don't render if no bets
   if (totalLegs === 0) return null;
@@ -202,35 +212,41 @@ const FloatingBetSlip: React.FC = () => {
 
   return (
     <>
-      {/* Floating Bar */}
-      <View style={styles.floatingContainer}>
+      {/* Tongue-Style Bet Slip Button */}
+      <View style={[styles.tongueContainer, { bottom: -30 }]}>
         <TouchableOpacity
-          style={styles.floatingBar}
+          style={styles.tongueButton}
           onPress={handleFloatingBarPress}
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={[theme.colors.primary, theme.colors.primary + 'DD']}
-            style={styles.floatingBarGradient}
+            colors={[theme.colors.primary, '#1e40af', '#0f172a']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tongueGradient}
           >
-            <View style={styles.floatingBarContent}>
-              <View style={styles.floatingBarLeft}>
-                <TrueSharpShield size={16} variant="light" />
-                <Text style={styles.floatingBarText}>
+            <View style={styles.tongueContent}>
+              <View style={styles.tongueLeft}>
+                <Image 
+                  source={require('../../assets/truesharp-logo.png')} 
+                  style={styles.tongueLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.tongueText}>
                   Bet Slip ({totalLegs})
                 </Text>
               </View>
-              <View style={styles.floatingBarRight}>
+              <View style={styles.tongueRight}>
                 {parlayOdds ? (
-                  <Text style={styles.floatingBarOdds}>
+                  <Text style={styles.tongueOdds}>
                     {formatOdds(parlayOdds)}
                   </Text>
                 ) : (
-                  <Text style={styles.floatingBarOdds}>
+                  <Text style={styles.tongueOdds}>
                     {formatOdds(bets[0]?.odds || 0)}
                   </Text>
                 )}
-                <Ionicons name="chevron-up" size={16} color={theme.colors.text.inverse} />
+                <Ionicons name="chevron-up" size={14} color={theme.colors.text.inverse} />
               </View>
             </View>
           </LinearGradient>
@@ -257,113 +273,108 @@ const FloatingBetSlip: React.FC = () => {
             </View>
           )}
 
-          {/* Header */}
+          {/* Enhanced Modal Header with gradient like BetDetailsModal */}
           <LinearGradient
-            colors={[theme.colors.primary, theme.colors.primary + 'E6']}
+            colors={[theme.colors.primary, '#1e40af', '#0f172a']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={styles.modalHeader}
           >
-            <View style={styles.modalHeaderContent}>
-              <View style={styles.modalHeaderLeft}>
-                <TrueSharpShield size={24} variant="light" />
-                <Text style={styles.modalTitle}>TrueSharp Bet Slip</Text>
+            <TouchableOpacity 
+              onPress={() => setIsFullModalVisible(false)} 
+              style={styles.closeButtonNew}
+            >
+              <View style={styles.closeButtonContainer}>
+                <Ionicons name="close" size={22} color="white" />
               </View>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsFullModalVisible(false)}
-              >
-                <Ionicons name="close" size={24} color={theme.colors.text.inverse} />
-              </TouchableOpacity>
+            </TouchableOpacity>
+            
+            <View style={styles.headerCenter}>
+              <View style={styles.headerContent}>
+                <Image 
+                  source={require('../../assets/truesharp-logo.png')} 
+                  style={styles.headerLogo}
+                  resizeMode="contain"
+                />
+                <View style={styles.titleContainer}>
+                  <Text style={styles.modalTitleNew}>Bet Slip</Text>
+                  <Text style={styles.modalSubtitle}>TrueSharp Betting</Text>
+                </View>
+              </View>
             </View>
+            
+            <View style={styles.headerSpacer} />
           </LinearGradient>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Bets List */}
-            <View style={styles.betsSection}>
-              <Text style={styles.sectionTitle}>Your Bets ({totalLegs})</Text>
+            <View style={styles.betsContainer}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderContent}>
+                  <View style={styles.sectionIconContainer}>
+                    <Ionicons name="receipt" size={18} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.sectionTitle}>Your Bets ({totalLegs})</Text>
+                </View>
+              </View>
               
-              {bets.map(bet => {
-                const betInfo = parseBetInfo(bet);
-                return (
-                  <View key={bet.id} style={styles.betCard}>
-                    <View style={styles.betCardContent}>
-                      {/* Game Info */}
-                      <Text style={styles.gameInfo}>
-                        {bet.awayTeam} @ {bet.homeTeam}
-                      </Text>
+              <View style={styles.betsContent}>
+                {bets.map((bet, index) => {
+                  return (
+                    <View key={bet.id} style={[styles.betCard, index === bets.length - 1 && { borderBottomWidth: 0 }]}>
+                      {/* Left Side - Bet Information */}
+                      <View style={styles.betLeft}>
+                        <Text style={styles.betDescription} numberOfLines={1}>
+                          {formatMarketLine(bet)}
+                        </Text>
+                        <Text style={styles.betMatchup} numberOfLines={1}>
+                          {formatTeamMatchup(bet)}
+                        </Text>
+                        <Text style={styles.betSportsbook} numberOfLines={1}>
+                          {formatBetInfo(bet)}
+                        </Text>
+                      </View>
 
-                      {/* Player/Team Name */}
-                      <Text style={styles.betTitle}>
-                        {betInfo.isPlayerProp ? (
-                          <Text style={styles.playerName}>{betInfo.playerOrTeam}</Text>
-                        ) : (
-                          <Text style={styles.teamName}>{betInfo.playerOrTeam}</Text>
-                        )}
-                      </Text>
-
-                      {/* Market Info */}
-                      <View style={styles.betDetails}>
-                        <Text style={styles.marketName}>{betInfo.marketDisplay}</Text>
-                        {betInfo.selectionDisplay &&
-                          betInfo.selectionDisplay !== betInfo.playerOrTeam && (
-                            <>
-                              <Text style={styles.detailSeparator}>•</Text>
-                              <Text style={styles.selection}>
-                                {betInfo.selectionDisplay}
-                              </Text>
-                            </>
-                          )}
-                        {bet.line && bet.line !== null && (
-                          <>
-                            <Text style={styles.detailSeparator}>•</Text>
-                            <Text style={styles.line}>
-                              Line: {bet.line.toString()}
-                            </Text>
-                          </>
-                        )}
-                        <Text style={styles.detailSeparator}>•</Text>
-                        <Text style={styles.sportsbook}>{bet.sportsbook}</Text>
+                      {/* Right Side - Odds and Remove */}
+                      <View style={styles.betRight}>
+                        <View style={styles.oddsContainer}>
+                          <Text style={styles.odds}>
+                            {formatOdds(bet.odds, wagerAmount, calculatePayout().payout)}
+                          </Text>
+                        </View>
+                        
+                        <TouchableOpacity
+                          style={styles.removeButton}
+                          onPress={() => removeBet(bet.id)}
+                        >
+                          <Ionicons name="close" size={14} color={theme.colors.status.error} />
+                        </TouchableOpacity>
                       </View>
                     </View>
-
-                    <View style={styles.betCardRight}>
-                      {/* Odds */}
-                      <LinearGradient
-                        colors={['#3b82f6', '#1d4ed8']}
-                        style={styles.oddsContainer}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                      >
-                        <Text style={styles.odds}>{formatOdds(bet.odds)}</Text>
-                      </LinearGradient>
-
-                      {/* Remove Button */}
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() => removeBet(bet.id)}
-                      >
-                        <Ionicons name="close" size={16} color={theme.colors.status.error} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
 
-            {/* Wager Section */}
-            <View style={styles.wagerSection}>
-              <Text style={styles.sectionTitle}>Wager Amount</Text>
-              <View style={styles.wagerInputContainer}>
+            {/* Wager Input */}
+            <View style={styles.wagerContainer}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderContent}>
+                  <View style={styles.sectionIconContainer}>
+                    <Ionicons name="wallet" size={18} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.sectionTitle}>Wager Amount</Text>
+                </View>
+              </View>
+              <View style={styles.wagerInput}>
                 <Text style={styles.dollarSign}>$</Text>
                 <TextInput
-                  style={styles.wagerInput}
+                  style={styles.wagerField}
                   value={wagerAmount?.toString() || '10'}
                   onChangeText={(text) => {
-                    // Only allow numbers and decimal point
                     const numericText = text.replace(/[^0-9.]/g, '');
-                    // Ensure only one decimal point
                     const parts = numericText.split('.');
                     const cleanText = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : numericText;
-                    
                     const numValue = parseFloat(cleanText) || 0;
                     if (numValue <= 10000) {
                       setWagerAmount(numValue);
@@ -378,9 +389,17 @@ const FloatingBetSlip: React.FC = () => {
               <Text style={styles.wagerLimits}>Min: $1 • Max: $10,000</Text>
             </View>
 
-            {/* Payout Section */}
-            <View style={styles.payoutSection}>
-              <View style={styles.payoutCard}>
+            {/* Payout Summary */}
+            <View style={styles.payoutContainer}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderContent}>
+                  <View style={styles.sectionIconContainer}>
+                    <Ionicons name="trending-up" size={18} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.sectionTitle}>Payout Summary</Text>
+                </View>
+              </View>
+              <View style={styles.payoutContent}>
                 <View style={styles.payoutRow}>
                   <Text style={styles.payoutLabel}>Potential Payout</Text>
                   <Text style={styles.payoutValue}>
@@ -388,26 +407,27 @@ const FloatingBetSlip: React.FC = () => {
                   </Text>
                 </View>
                 <View style={styles.payoutRow}>
-                  <Text style={styles.profitLabel}>Profit: ${(calculateProfit() || 0).toFixed(2)}</Text>
-                  {totalLegs > 1 && parlayOdds && (
-                    <View style={styles.parlayOddsContainer}>
-                      <Text style={styles.parlayOdds}>
-                        {formatOdds(parlayOdds)}
-                      </Text>
-                    </View>
-                  )}
+                  <Text style={styles.profitLabel}>Potential Profit</Text>
+                  <Text style={styles.profitValue}>
+                    ${(calculateProfit() || 0).toFixed(2)}
+                  </Text>
                 </View>
+                {totalLegs > 1 && parlayOdds && (
+                  <View style={styles.payoutRow}>
+                    <Text style={styles.parlayLabel}>Parlay Odds</Text>
+                    <Text style={styles.parlayValue}>
+                      {formatOdds(parlayOdds)}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
             {/* Action Buttons */}
-            <View style={styles.actionSection}>
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={clearAllBets}
-              >
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity style={styles.clearButton} onPress={clearAllBets}>
                 <Ionicons name="trash-outline" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.clearButtonText}>Clear All</Text>
+                <Text style={styles.clearButtonText}>Clear</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -420,29 +440,26 @@ const FloatingBetSlip: React.FC = () => {
               >
                 <LinearGradient
                   colors={wagerAmount >= 1 && !isPlacingBet ? [theme.colors.primary, theme.colors.primary + 'DD'] : ['#9ca3af', '#6b7280']}
-                  style={styles.placeBetButtonGradient}
+                  style={styles.placeBetGradient}
                 >
                   {isPlacingBet ? (
-                    <ActivityIndicator size="small" color={theme.colors.text.inverse} />
+                    <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Ionicons name="checkmark" size={16} color={theme.colors.text.inverse} />
+                    <Text style={styles.placeBetText}>
+                      {wagerAmount >= 1 ? `Place Bet ($${wagerAmount.toFixed(2)})` : 'Place Bet'}
+                    </Text>
                   )}
-                  <Text style={styles.placeBetButtonText}>
-                    {isPlacingBet ? 'Placing...' : `Place Bet (${wagerAmount >= 1 ? `$${wagerAmount.toFixed(2)}` : ''})`}
-                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
 
-            {/* Disclaimer */}
-            <View style={styles.disclaimerSection}>
+            {/* Footer */}
+            <View style={styles.footer}>
               <Text style={styles.disclaimerText}>
-                This is a theoretical wager for strategy testing and subscriber sharing purposes only. No real money is wagered.
+                This is a theoretical wager for strategy testing purposes only.
               </Text>
+              <Text style={styles.betCount}>{totalLegs}/10 legs</Text>
             </View>
-
-            {/* Bet Count */}
-            <Text style={styles.betCount}>{totalLegs}/10 legs</Text>
           </ScrollView>
         </View>
       </Modal>
@@ -451,47 +468,57 @@ const FloatingBetSlip: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  // Floating Bar
-  floatingContainer: {
+  // Tongue-Style Bet Slip Button
+  tongueContainer: {
     position: 'absolute',
-    bottom: 0, // Position flush with bottom
-    left: theme.spacing.sm,
-    right: theme.spacing.sm,
-    zIndex: 9999, // Higher z-index to appear over modals
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    margin: 0,
+    padding: 0,
   },
-  floatingBar: {
-    borderRadius: theme.borderRadius.lg,
+  tongueButton: {
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     overflow: 'hidden',
-    ...theme.shadows.lg,
+    margin: 0,
+    marginBottom: -30,
+    paddingBottom: 30,
   },
-  floatingBarGradient: {
+  tongueGradient: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
   },
-  floatingBarContent: {
+  tongueContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  floatingBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  floatingBarText: {
-    color: theme.colors.text.inverse,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-  },
-  floatingBarRight: {
+  tongueLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
   },
-  floatingBarOdds: {
+  tongueLogo: {
+    width: 24,
+    height: 24,
+  },
+  tongueText: {
     color: theme.colors.text.inverse,
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
+  },
+  tongueRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  tongueOdds: {
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '700',
     fontFamily: 'monospace',
   },
 
@@ -501,174 +528,191 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   modalHeader: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border + '40',
-    ...theme.shadows.sm,
-  },
-  modalHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    ...theme.shadows.lg,
+    elevation: 8,
   },
-  modalHeaderLeft: {
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  modalTitle: {
-    color: theme.colors.text.inverse,
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: theme.typography.fontWeight.bold,
+  headerLogo: {
+    width: 40,
+    height: 40,
   },
-  closeButton: {
+  headerSpacer: {
+    width: 44,
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
+  modalTitleNew: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
+  },
+  modalSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  closeButtonNew: {
+    padding: theme.spacing.xs,
+    zIndex: 1,
+  },
+  closeButtonContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
 
-  // Bets Section
-  betsSection: {
-    marginVertical: theme.spacing.md,
+  // Sections
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  sectionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  sectionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
     color: theme.colors.text.primary,
+    letterSpacing: 0.3,
+  },
+  
+  // Bets Container
+  betsContainer: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
+  },
+
+  // Bet Cards
+  betsContent: {
+    paddingTop: 2,
   },
   betCard: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.sm,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  betCardContent: {
+  betLeft: {
     flex: 1,
+    marginRight: theme.spacing.md,
   },
-  gameInfo: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.semibold,
-    marginBottom: theme.spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  betTitle: {
+  betDescription: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
     marginBottom: 2,
   },
-  playerName: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.primary,
-  },
-  teamName: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  betDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    marginTop: 2,
-  },
-  marketName: {
+  betMatchup: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.primary,
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
   },
-  detailSeparator: {
-    fontSize: theme.typography.fontSize.sm,
+  betSportsbook: {
+    fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.light,
   },
-  selection: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  line: {
-    fontSize: theme.typography.fontSize.sm,
-    fontFamily: 'monospace',
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.secondary,
-  },
-  sportsbook: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '10',
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  betCardRight: {
+  betRight: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    minWidth: 80,
+    gap: theme.spacing.sm,
   },
+
   oddsContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.lg,
-    ...theme.shadows.sm,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+    minWidth: 60,
+    alignItems: 'center',
   },
   odds: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.inverse,
-    fontFamily: 'monospace',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '700',
+    color: 'white',
   },
+
   removeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.colors.status.error + '15',
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.status.error + '30',
+    borderColor: theme.colors.border,
   },
 
   // Wager Section
-  wagerSection: {
-    marginBottom: theme.spacing.md,
+  wagerContainer: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
   },
-  wagerInputContainer: {
+  wagerInput: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.primary + '30',
+    borderColor: theme.colors.primary,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.xs,
-    ...theme.shadows.sm,
   },
   dollarSign: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.primary,
     marginRight: theme.spacing.xs,
   },
-  wagerInput: {
+  wagerField: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontWeight: '700',
     color: theme.colors.text.primary,
-    fontFamily: 'monospace',
     flex: 1,
   },
   wagerLimits: {
@@ -678,16 +722,15 @@ const styles = StyleSheet.create({
   },
 
   // Payout Section
-  payoutSection: {
-    marginBottom: theme.spacing.md,
-  },
-  payoutCard: {
-    backgroundColor: theme.colors.status.success + '08',
+  payoutContainer: {
+    backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.status.success + '20',
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     ...theme.shadows.sm,
+  },
+  payoutContent: {
+    paddingTop: 2,
   },
   payoutRow: {
     flexDirection: 'row',
@@ -697,60 +740,60 @@ const styles = StyleSheet.create({
   },
   payoutLabel: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.status.success,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
   },
   payoutValue: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: '700',
     color: theme.colors.status.success,
-    fontFamily: 'monospace',
   },
   profitLabel: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  profitValue: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: '700',
     color: theme.colors.status.success,
   },
-  parlayOddsContainer: {
-    backgroundColor: theme.colors.status.success,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.sm,
+  parlayLabel: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
   },
-  parlayOdds: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.inverse,
-    fontFamily: 'monospace',
+  parlayValue: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
 
-  // Action Section
-  actionSection: {
+  // Actions
+  actionsContainer: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   clearButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.status.error,
     gap: theme.spacing.xs,
-    ...theme.shadows.sm,
   },
   clearButtonText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.secondary,
+    fontWeight: '600',
+    color: theme.colors.status.error,
   },
   placeBetButton: {
-    flex: 2,
+    flex: 1,
     borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
     ...theme.shadows.sm,
@@ -758,38 +801,34 @@ const styles = StyleSheet.create({
   placeBetButtonDisabled: {
     opacity: 0.6,
   },
-  placeBetButtonGradient: {
-    flexDirection: 'row',
+  placeBetGradient: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-    gap: theme.spacing.xs,
   },
-  placeBetButtonText: {
+  placeBetText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.inverse,
+    fontWeight: '700',
+    color: 'white',
   },
 
-  // Disclaimer
-  disclaimerSection: {
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
   },
   disclaimerText: {
     fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.secondary,
+    color: theme.colors.text.light,
     textAlign: 'center',
-    lineHeight: theme.typography.fontSize.xs * 1.4,
-    fontStyle: 'italic',
+    lineHeight: 16,
+    marginBottom: theme.spacing.sm,
   },
-
-  // Bet Count
   betCount: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.lg,
+    fontWeight: '500',
   },
 
   // Error/Success Toasts

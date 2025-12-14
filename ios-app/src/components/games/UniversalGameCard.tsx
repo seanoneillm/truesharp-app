@@ -15,6 +15,8 @@ import { performanceMonitor } from '../../lib/supabase-performance';
 import OddsModal from './OddsModal';
 import { OddsDetailModal } from './OddsDetailModal';
 import { useBetSlip } from '../../contexts/BetSlipContext';
+import { TeamLogo } from '../common/TeamLogo';
+import { getTeamInfo } from '../../utils/teamMappings';
 
 // Types
 interface Game {
@@ -890,7 +892,16 @@ export default function UniversalGameCard({ game, league, onOddsClick }: Univers
 
         {/* Away Team Row */}
         <View style={styles.teamRow}>
-          <Text style={styles.teamLabel} numberOfLines={2} ellipsizeMode="tail">{game.away_team}</Text>
+          <View style={styles.teamInfo}>
+            {(['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league', 'ncaaf', 'ncaam', 'ncaab'].includes(league?.toLowerCase() || '')) && (
+              <TeamLogo teamName={game.away_team} league={league} size={28} />
+            )}
+            <Text style={[styles.teamLabel, ['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league', 'ncaaf', 'ncaam', 'ncaab'].includes(league?.toLowerCase() || '') && styles.teamLabelWithLogo]} numberOfLines={2} ellipsizeMode="tail">
+              {['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league'].includes(league?.toLowerCase() || '') 
+                ? getTeamInfo(game.away_team, league)?.abbreviation || game.away_team 
+                : game.away_team}
+            </Text>
+          </View>
           {renderOddsButton(awayML)}
           {isSoccer ? renderOddsButton(uniqueOddsArray.find(odd => odd.oddid === 'points-all-reg-ml3way-draw')) : renderOddsButton(awaySpread, true)}
           {renderOddsButton(totalOver, true)}
@@ -898,7 +909,16 @@ export default function UniversalGameCard({ game, league, onOddsClick }: Univers
 
         {/* Home Team Row */}
         <View style={styles.teamRow}>
-          <Text style={styles.teamLabel} numberOfLines={2} ellipsizeMode="tail">{game.home_team}</Text>
+          <View style={styles.teamInfo}>
+            {(['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league', 'ncaaf', 'ncaam', 'ncaab'].includes(league?.toLowerCase() || '')) && (
+              <TeamLogo teamName={game.home_team} league={league} size={28} />
+            )}
+            <Text style={[styles.teamLabel, ['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league', 'ncaaf', 'ncaam', 'ncaab'].includes(league?.toLowerCase() || '') && styles.teamLabelWithLogo]} numberOfLines={2} ellipsizeMode="tail">
+              {['nba', 'nfl', 'mlb', 'wnba', 'nhl', 'mls', 'champions league'].includes(league?.toLowerCase() || '') 
+                ? getTeamInfo(game.home_team, league)?.abbreviation || game.home_team 
+                : game.home_team}
+            </Text>
+          </View>
           {renderOddsButton(homeML)}
           {isSoccer ? renderOddsButton(uniqueOddsArray.find(odd => odd.oddid === 'points-all-reg-ml3way-draw')) : renderOddsButton(homeSpread, true)}
           {renderOddsButton(totalUnder, true)}
@@ -1018,6 +1038,12 @@ const styles = StyleSheet.create({
   teamColumn: {
     flex: 2,
   },
+  teamInfo: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: theme.spacing.sm,
+  },
   oddsColumn: {
     flex: 1,
     alignItems: 'center',
@@ -1041,12 +1067,15 @@ const styles = StyleSheet.create({
     minHeight: 32,
   },
   teamLabel: {
-    flex: 2,
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.primary,
-    paddingRight: theme.spacing.sm,
     lineHeight: theme.typography.fontSize.xs * 1.2,
+  },
+  teamLabelWithLogo: {
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   
   // Odds Buttons

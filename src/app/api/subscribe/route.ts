@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get strategy with Stripe price IDs
+    // Get strategy with Stripe price IDs and seller username
     const { data: strategy, error: strategyError } = await supabase
       .from('strategies')
       .select(`
@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
         pricing_weekly,
         pricing_monthly,
         pricing_yearly,
-        user_id
+        user_id,
+        profiles!strategies_user_id_fkey(username)
       `)
       .eq('id', strategyId)
       .eq('user_id', sellerId)
@@ -243,8 +244,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the Connect account is ready to accept payments
+    let connectAccount
     try {
-      const connectAccount = await stripe.accounts.retrieve(sellerProfile.stripe_connect_account_id)
+      connectAccount = await stripe.accounts.retrieve(sellerProfile.stripe_connect_account_id)
       if (!connectAccount.charges_enabled) {
         return NextResponse.json(
           { 
@@ -346,6 +348,34 @@ export async function POST(request: NextRequest) {
 
     // Create Checkout Session with application fees
     console.log('🎯 Final customer ID for checkout session:', customerId)
+    
+    // Check if transfer_data is supported for this account's country
+    const isTransferRestricted = connectAccount.country === 'SI' || 
+                                connectAccount.country === 'LT' || 
+                                connectAccount.country === 'LV' || 
+                                connectAccount.country === 'EE'
+    
+    console.log('🌍 Connect account country:', connectAccount.country, 'Transfer restricted:', isTransferRestricted)
+    
+    // Create subscription data based on transfer restrictions
+    const subscriptionData: any = {
+      application_fee_percent: STRIPE_CONFIG.marketplaceFeePercentage, // 15% platform fee
+      metadata: {
+        strategy_id: strategyId,
+        subscriber_id: user.id,
+        seller_id: sellerId,
+        frequency: frequency,
+        seller_connect_account: sellerProfile.stripe_connect_account_id,
+      },
+    }
+    
+    // Only add transfer_data for supported countries
+    if (!isTransferRestricted) {
+      subscriptionData.transfer_data = {
+        destination: sellerProfile.stripe_connect_account_id,
+      }
+    }
+    
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
@@ -355,19 +385,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      subscription_data: {
-        application_fee_percent: STRIPE_CONFIG.marketplaceFeePercentage, // 15% platform fee
-        transfer_data: {
-          destination: sellerProfile.stripe_connect_account_id,
-        },
-        metadata: {
-          strategy_id: strategyId,
-          subscriber_id: user.id,
-          seller_id: sellerId,
-          frequency: frequency,
-        },
-      },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscriptions?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      subscription_data: subscriptionData,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/marketplace/${(strategy as any).profiles?.username || 'unknown'}?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/marketplace?canceled=true&strategy_id=${strategyId}`,
       metadata: {
         strategy_id: strategyId,
@@ -375,6 +394,7 @@ export async function POST(request: NextRequest) {
         seller_id: sellerId,
         frequency: frequency,
         seller_connect_account_id: sellerProfile.stripe_connect_account_id,
+        transfer_restricted: isTransferRestricted.toString(),
       },
     })
 

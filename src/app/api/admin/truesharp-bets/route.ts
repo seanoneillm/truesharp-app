@@ -36,7 +36,9 @@ export async function GET() {
         player_name,
         line_value,
         side,
-        profit
+        profit,
+        parlay_id,
+        is_parlay
       `)
       .eq('sportsbook', 'TrueSharp')
       .eq('status', 'pending')
@@ -91,7 +93,9 @@ export async function GET() {
           line_value,
           side,
           profit,
-          sportsbook
+          sportsbook,
+          parlay_id,
+          is_parlay
         )
       `)
       .eq('bets.sportsbook', 'TrueSharp')

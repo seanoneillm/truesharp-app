@@ -25,6 +25,7 @@ import { validateBetAgainstStrategy, validateParlayAgainstStrategy, StrategyData
 import { TicketService, TICKET_REASONS, CreateTicketData } from '../../services/ticketService';
 import { formatOddsWithFallback } from '../../utils/oddsCalculation';
 import { parseMultiStatOddid } from '../../lib/betFormatting';
+import { TeamLogo } from '../common/TeamLogo';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -295,14 +296,31 @@ export default function BetDetailsModal({
 
   // Check for existing ticket
   const checkForExistingTicket = useCallback(async () => {
-    if (!user?.id || !betId) return;
+    if (!user?.id || (!betId && !parlayGroup)) return;
     
     setCheckingTicket(true);
     try {
+      let betIdsToCheck: string[] = [];
+      
+      // For parlays, check all leg IDs
+      if (parlayGroup) {
+        betIdsToCheck = parlayGroup.legs.map(leg => leg.id);
+      } else if (betDetails?.bet.is_parlay && betDetails.parlayLegs) {
+        betIdsToCheck = betDetails.parlayLegs.map(leg => leg.bet.id);
+      } else if (betId) {
+        // For single bets
+        betIdsToCheck = [betId];
+      }
+      
+      if (betIdsToCheck.length === 0) {
+        setHasExistingTicket(false);
+        return;
+      }
+      
       const { data: tickets, error } = await supabase
         .from('bet_tickets')
         .select('id, status')
-        .eq('bet_id', betId)
+        .in('bet_id', betIdsToCheck)
         .eq('user_id', user.id)
         .in('status', ['open', 'in_review']); // Only check for non-resolved tickets
 
@@ -319,7 +337,7 @@ export default function BetDetailsModal({
     } finally {
       setCheckingTicket(false);
     }
-  }, [user?.id, betId]);
+  }, [user?.id, betId, parlayGroup, betDetails]);
 
   // Helper function to check if a game has started
   const hasGameStarted = (gameDate: string): boolean => {
@@ -532,10 +550,24 @@ export default function BetDetailsModal({
     setSubmittingTicket(true);
     
     try {
-      // Check if there's already an open ticket for this bet
-      const hasOpenTicket = await TicketService.hasOpenTicket(betDetails.bet.id, user.id);
+      let betIdsToSubmit: string[] = [];
       
-      if (hasOpenTicket) {
+      // For parlays, submit tickets for each leg
+      if (betDetails.bet.is_parlay && betDetails.parlayLegs) {
+        betIdsToSubmit = betDetails.parlayLegs.map(leg => leg.bet.id);
+      } else {
+        // For single bets, use the bet ID directly
+        betIdsToSubmit = [betDetails.bet.id];
+      }
+      
+      // Check if any of the bets already have open tickets
+      const openTicketChecks = await Promise.all(
+        betIdsToSubmit.map(betId => TicketService.hasOpenTicket(betId, user.id))
+      );
+      
+      const hasAnyOpenTicket = openTicketChecks.some(hasOpen => hasOpen);
+      
+      if (hasAnyOpenTicket) {
         Alert.alert(
           'Ticket Already Exists',
           'You already have an open ticket for this bet. Please wait for our team to review your existing ticket.'
@@ -544,19 +576,26 @@ export default function BetDetailsModal({
         return;
       }
       
-      const ticketData: CreateTicketData = {
-        bet_id: betDetails.bet.id,
-        user_id: user.id,
-        reason: selectedReason,
-        custom_reason: selectedReason === 'Other' ? customReason.trim() : undefined,
-        description: ticketDescription.trim() || undefined,
-      };
+      // Submit tickets for each bet ID
+      const ticketPromises = betIdsToSubmit.map(betId => {
+        const ticketData: CreateTicketData = {
+          bet_id: betId,
+          user_id: user.id,
+          reason: selectedReason,
+          custom_reason: selectedReason === 'Other' ? customReason.trim() : undefined,
+          description: ticketDescription.trim() || undefined,
+        };
+        return TicketService.submitTicket(ticketData);
+      });
       
-      await TicketService.submitTicket(ticketData);
+      await Promise.all(ticketPromises);
+      
+      const ticketCount = betIdsToSubmit.length;
+      const ticketWord = ticketCount === 1 ? 'ticket' : 'tickets';
       
       Alert.alert(
         'Ticket Submitted',
-        'Your ticket has been submitted successfully. Our team will review it and get back to you soon.'
+        `Your ${ticketWord} ha${ticketCount === 1 ? 's' : 've'} been submitted successfully. Our team will review ${ticketCount === 1 ? 'it' : 'them'} and get back to you soon.`
       );
       
       setShowTicketModal(false);
@@ -1001,6 +1040,7 @@ export default function BetDetailsModal({
           <View style={styles.gameMatchupContainer}>
             {/* Away Team */}
             <View style={styles.teamContainer}>
+              <TeamLogo teamName={game.away_team_name || game.away_team} league={game.league} size={50} />
               <Text style={styles.teamName}>{game.away_team_name || game.away_team}</Text>
               {game.away_score !== null && (
                 <Text style={styles.teamScore}>{game.away_score}</Text>
@@ -1015,6 +1055,7 @@ export default function BetDetailsModal({
             
             {/* Home Team */}
             <View style={styles.teamContainer}>
+              <TeamLogo teamName={game.home_team_name || game.home_team} league={game.league} size={50} />
               <Text style={styles.teamName}>{game.home_team_name || game.home_team}</Text>
               {game.home_score !== null && (
                 <Text style={styles.teamScore}>{game.home_score}</Text>
@@ -1338,7 +1379,7 @@ export default function BetDetailsModal({
           <View style={styles.ticketModalContainer}>
             <View style={styles.ticketModalHeader}>
               <TouchableOpacity
-                style={styles.modalCloseButton}
+                style={styles.closeButton}
                 onPress={() => setShowTicketModal(false)}
               >
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />

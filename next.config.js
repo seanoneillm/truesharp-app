@@ -102,6 +102,10 @@ const nextConfig = {
 
   // Output configuration for deployment
   output: 'standalone',
+  
+  // Skip middleware URL normalization and trailing slash redirect
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true,
 
   // Trailing slash handling
   trailingSlash: false,
