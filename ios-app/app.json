@@ -2,7 +2,7 @@
   "expo": {
     "name": "TrueSharp",
     "slug": "truesharp-mobile",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,7 +28,9 @@
         "NSHumanReadableCopyright": "© 2025 TrueSharp LLC. Privacy Policy: https://truesharp.io/privacy"
       },
       "entitlements": {
-        "com.apple.developer.associated-domains": ["applinks:truesharp.io"]
+        "com.apple.developer.associated-domains": [
+          "applinks:truesharp.io"
+        ]
       }
     },
     "android": {
@@ -55,7 +57,8 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

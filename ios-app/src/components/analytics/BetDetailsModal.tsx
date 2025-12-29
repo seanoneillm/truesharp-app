@@ -26,6 +26,7 @@ import { TicketService, TICKET_REASONS, CreateTicketData } from '../../services/
 import { formatOddsWithFallback } from '../../utils/oddsCalculation';
 import { parseMultiStatOddid } from '../../lib/betFormatting';
 import { TeamLogo } from '../common/TeamLogo';
+import { Environment } from '../../config/environment';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -410,38 +411,64 @@ export default function BetDetailsModal({
           user_id: strategy.user_id,
         };
         
+        
         if (betDetails.bet.is_parlay && betDetails.parlayLegs) {
           // For parlays, check all legs
-          const parlayLegs = betDetails.parlayLegs.map(leg => ({
-            id: leg.bet.id,
-            sport: leg.bet.sport,
-            bet_type: leg.bet.bet_type,
-            side: leg.bet.side,
-            is_parlay: leg.bet.is_parlay,
-            sportsbook: leg.bet.sportsbook,
-            odds: typeof leg.bet.odds === 'string' ? parseFloat(leg.bet.odds) : leg.bet.odds,
-            stake: typeof leg.bet.stake === 'string' ? parseFloat(leg.bet.stake) : leg.bet.stake,
-            line_value: leg.bet.line_value,
-            status: leg.bet.status,
-            created_at: leg.bet.placed_at || leg.bet.created_at,
-          }));
+          const parlayLegs = betDetails.parlayLegs.map(leg => {
+            // Auto-detect player props for parlay legs too
+            let legBetType = leg.bet.bet_type || 'Unknown';
+            if (leg.bet.player_name || leg.bet.prop_type) {
+              if (!legBetType || legBetType === 'Unknown' || 
+                  (legBetType !== 'player_prop' && legBetType !== 'prop')) {
+                legBetType = 'player_prop';
+              }
+            }
+            
+            return {
+              id: leg.bet.id,
+              sport: leg.bet.sport || 'Unknown',
+              bet_type: legBetType,
+              side: leg.bet.side,
+              is_parlay: leg.bet.is_parlay || false,
+              sportsbook: leg.bet.sportsbook || 'Unknown',
+              odds: typeof leg.bet.odds === 'string' ? parseFloat(leg.bet.odds) : leg.bet.odds,
+              stake: typeof leg.bet.stake === 'string' ? parseFloat(leg.bet.stake) : leg.bet.stake,
+              line_value: leg.bet.line_value,
+              status: leg.bet.status || 'pending',
+              created_at: leg.bet.placed_at || leg.bet.created_at || new Date().toISOString(),
+            };
+          });
           
           isCompatible = validateParlayAgainstStrategy(parlayLegs, strategyData);
         } else {
           // For single bets
+          // Auto-detect player props if bet has player_name but bet_type isn't set correctly
+          let determinedBetType = betDetails.bet.bet_type || 'Unknown';
+          
+          
+          // Only convert to player_prop if there's actually a player_name
+          // Having prop_type alone doesn't guarantee it's a player prop (could be team total)
+          if (betDetails.bet.player_name) {
+            if (!determinedBetType || determinedBetType === 'Unknown' || 
+                (determinedBetType !== 'player_prop' && determinedBetType !== 'prop')) {
+              determinedBetType = 'player_prop';
+            }
+          }
+          
           const betData = {
             id: betDetails.bet.id,
-            sport: betDetails.bet.sport,
-            bet_type: betDetails.bet.bet_type,
+            sport: betDetails.bet.sport || 'Unknown',
+            bet_type: determinedBetType,
             side: betDetails.bet.side,
-            is_parlay: betDetails.bet.is_parlay,
-            sportsbook: betDetails.bet.sportsbook,
+            is_parlay: betDetails.bet.is_parlay || false,
+            sportsbook: betDetails.bet.sportsbook || 'Unknown',
             odds: typeof betDetails.bet.odds === 'string' ? parseFloat(betDetails.bet.odds) : betDetails.bet.odds,
             stake: typeof betDetails.bet.stake === 'string' ? parseFloat(betDetails.bet.stake) : betDetails.bet.stake,
             line_value: betDetails.bet.line_value,
-            status: betDetails.bet.status,
-            created_at: betDetails.bet.placed_at || betDetails.bet.created_at,
+            status: betDetails.bet.status || 'pending',
+            created_at: betDetails.bet.placed_at || betDetails.bet.created_at || new Date().toISOString(),
           };
+          
           
           isCompatible = validateBetAgainstStrategy(betData, strategyData);
         }
@@ -487,25 +514,52 @@ export default function BetDetailsModal({
         betIds.push(betDetails.bet.id);
       }
       
-      // Create strategy_bets entries for each selected strategy
-      const insertPromises = selectedStrategyIds.flatMap(strategyId =>
-        betIds.map(betId => ({
-          strategy_id: strategyId,
-          bet_id: betId,
-          added_at: new Date().toISOString(),
-          parlay_id: betDetails.bet.is_parlay ? betDetails.bet.parlay_id : null,
-        }))
-      );
+      // Call the add-bets-to-strategies API endpoint to handle notifications
+
+      // Add timeout for network requests on iOS devices
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      // Use development URL when in development mode, production URL otherwise
+      const apiUrl = Environment.isDevelopment ? 'http://localhost:3000' : Environment.API_BASE_URL;
       
-      const { error } = await supabase
-        .from('strategy_bets')
-        .insert(insertPromises);
-      
-      if (error) {
-        console.error('Error adding bets to strategies:', error);
-        Alert.alert('Error', 'Failed to add bet to strategies');
+      const response = await fetch(`${apiUrl}/api/add-bets-to-strategies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          betIds,
+          strategyIds: selectedStrategyIds,
+          userId: user.id
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      let result;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
+        } else {
+          // Handle non-JSON responses (like HTML error pages)
+          const text = await response.text();
+          console.error('Non-JSON response received:', text);
+          throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      if (!response.ok || !result.success) {
+        console.error('Error adding bets to strategies:', result);
+        Alert.alert('Error', result.error || 'Failed to add bet to strategies');
         return;
       }
+
       
       Alert.alert(
         'Success',
@@ -519,7 +573,21 @@ export default function BetDetailsModal({
       await fetchBetDetails();
     } catch (error) {
       console.error('Error adding bets to strategies:', error);
-      Alert.alert('Error', 'Failed to add bet to strategies');
+      
+      // Provide more specific error messages for different types of network errors
+      let errorMessage = 'Failed to add bet to strategies';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Network request timed out. Please check your internet connection and try again.';
+        } else if (error.message.includes('Network request failed')) {
+          errorMessage = 'Network connection failed. Please check your internet connection and try again.';
+        } else if (error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        }
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setAddingToStrategies(false);
     }

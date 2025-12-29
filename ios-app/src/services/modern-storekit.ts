@@ -607,10 +607,9 @@ class ModernStoreKitService {
     transactionId: string,
     productId: string = 'pro_subscription_month'
   ): Promise<void> {
-    logger.info('🐛 DEBUG: Testing transaction validation', {
+    logger.info('Testing transaction validation', {
       transactionId,
       productId,
-      timestamp: new Date().toISOString(),
     })
 
     try {
@@ -620,17 +619,15 @@ class ModernStoreKitService {
         productId,
       })
 
-      logger.info('🐛 DEBUG: Validation result', {
+      logger.info('Validation result', {
         transactionId,
         success: validationResult.success,
         error: validationResult.error,
-        timestamp: new Date().toISOString(),
       })
     } catch (error) {
-      logger.error('🐛 DEBUG: Validation failed', {
+      logger.error('Validation failed', {
         transactionId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
       })
     }
   }

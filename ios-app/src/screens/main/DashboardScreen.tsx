@@ -1981,7 +1981,6 @@ export default function DashboardScreen() {
         data={selectedDayData}
         onBetPress={(betId, parlayGroup) => {
           // Handle bet press - could navigate to bet details
-          console.log('Bet pressed:', betId, parlayGroup)
         }}
       />
       

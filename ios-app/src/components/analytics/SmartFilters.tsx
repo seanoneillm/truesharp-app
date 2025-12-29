@@ -44,7 +44,7 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
   const { user } = useAuth();
   const [localFilters, setLocalFilters] = useState(filters);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [datePickerType, setDatePickerType] = useState<'start' | 'end' | 'basicStart'>('start');
+  const [datePickerType, setDatePickerType] = useState<'basicStart'>('basicStart');
   
   // Track display text for range inputs separately from filter values
   const [displayTexts, setDisplayTexts] = useState<{[key: string]: string}>({});
@@ -78,12 +78,7 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
   
   // Debug Pro status
   useEffect(() => {
-    console.log('🔍 SmartFilters Pro Status Debug:', {
-      isProUser,
-      isPro,
-      userId: user?.id,
-      timestamp: new Date().toISOString()
-    });
+    // Debug commented out for production
     setLocalFilters(filters);
     // Clear display texts when filters change externally
     setDisplayTexts({});
@@ -582,77 +577,9 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
                 </View>
               );
             
-            case 'startDate':
-              return (
-                <View key={config.id}>
-                  <View style={styles.filterSection}>
-                    <View style={styles.labelContainer}>
-                      <Text style={styles.filterTitle}>Pro Start Date</Text>
-                      {isProFilter && !isPro && (
-                        <View style={[styles.proBadge, { backgroundColor: `${theme.colors.filters.pro}20` }]}>
-                          <Ionicons name="lock-closed" size={12} color={theme.colors.filters.pro} />
-                          <Text style={[styles.proText, { color: theme.colors.filters.pro }]}>PRO</Text>
-                        </View>
-                      )}
-                    </View>
-                    <TouchableOpacity 
-                      style={[styles.dateButton, isProFilter && !isPro && styles.lockedInput]}
-                      onPress={() => {
-                        if (isProFilter && !isPro) {
-                          handleProFilterTap();
-                          return;
-                        }
-                        setDatePickerType('start');
-                        setShowDatePicker(true);
-                      }}
-                    >
-                      <Ionicons name="calendar-outline" size={16} color={theme.colors.text.secondary} />
-                      <Text style={styles.dateButtonText}>
-                        {localFilters.startDate ? 
-                          new Date(localFilters.startDate).toLocaleDateString() : 
-                          'Select Pro Start Date'
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
+            // Removed Pro start date - only use basicStartDate for strategy creation
             
-            case 'endDate':
-              return (
-                <View key={config.id}>
-                  <View style={styles.filterSection}>
-                    <View style={styles.labelContainer}>
-                      <Text style={styles.filterTitle}>End Date</Text>
-                      {isProFilter && !isPro && (
-                        <View style={[styles.proBadge, { backgroundColor: `${theme.colors.filters.pro}20` }]}>
-                          <Ionicons name="lock-closed" size={12} color={theme.colors.filters.pro} />
-                          <Text style={[styles.proText, { color: theme.colors.filters.pro }]}>PRO</Text>
-                        </View>
-                      )}
-                    </View>
-                    <TouchableOpacity 
-                      style={[styles.dateButton, isProFilter && !isPro && styles.lockedInput]}
-                      onPress={() => {
-                        if (isProFilter && !isPro) {
-                          handleProFilterTap();
-                          return;
-                        }
-                        setDatePickerType('end');
-                        setShowDatePicker(true);
-                      }}
-                    >
-                      <Ionicons name="calendar-outline" size={16} color={theme.colors.text.secondary} />
-                      <Text style={styles.dateButtonText}>
-                        {localFilters.endDate ? 
-                          new Date(localFilters.endDate).toLocaleDateString() : 
-                          'Select End Date'
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
+            // Removed end date - not needed for strategy creation
             
             default:
               return null;
@@ -669,35 +596,10 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
         String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
         String(selectedDate.getDate()).padStart(2, '0');
       
+      // Only handle basicStartDate - Pro dates removed for strategy creation
       if (datePickerType === 'basicStart') {
         setSelectedBasicStartDate(selectedDate);
         handleFilterUpdate('basicStartDate', dateString);
-      } else if (datePickerType === 'start') {
-        setSelectedStartDate(selectedDate);
-        // Check if we're setting a custom range date or individual Pro dates
-        if (localFilters.timeframe === 'custom') {
-          const newDateRange = {
-            start: dateString,
-            end: localFilters.dateRange?.end || null
-          };
-          handleFilterUpdate('dateRange', newDateRange);
-        } else {
-          // Individual Pro start date
-          handleFilterUpdate('startDate', dateString);
-        }
-      } else {
-        setSelectedEndDate(selectedDate);
-        // Check if we're setting a custom range date or individual Pro dates
-        if (localFilters.timeframe === 'custom') {
-          const newDateRange = {
-            start: localFilters.dateRange?.start || null,
-            end: dateString
-          };
-          handleFilterUpdate('dateRange', newDateRange);
-        } else {
-          // Individual Pro end date
-          handleFilterUpdate('endDate', dateString);
-        }
       }
     }
     setShowDatePicker(false);
@@ -759,7 +661,7 @@ const SmartFilters = forwardRef<SmartFiltersRef, SmartFiltersProps>(({ filters, 
                       style={styles.modalTitleIcon}
                     />
                     <Text style={styles.enhancedModalTitle}>
-                      Select {datePickerType === 'basicStart' ? 'Start' : datePickerType === 'start' ? 'Pro Start' : 'End'} Date
+                      Select Start Date
                     </Text>
                   </View>
                   <TouchableOpacity

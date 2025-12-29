@@ -20,6 +20,7 @@ import {
   Zap
 } from 'lucide-react'
 import { TrueSharpBetSettlement } from './TrueSharpBetSettlement'
+import { NotificationSender } from './NotificationSender'
 
 interface CleanControlsTabProps {
   className?: string
@@ -193,6 +194,9 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Notification Sender */}
+      <NotificationSender />
+
       {/* TrueSharp Bet Settlement */}
       <TrueSharpBetSettlement />
 

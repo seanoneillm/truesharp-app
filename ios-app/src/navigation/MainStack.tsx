@@ -8,6 +8,7 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 import HelpScreen from '../screens/main/HelpScreen';
 import FeedbackScreen from '../screens/main/FeedbackScreen';
 import AdminScreen from '../screens/main/AdminScreen';
+import NotificationsScreen from '../screens/main/NotificationsScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -24,6 +25,7 @@ export default function MainStack() {
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="Admin" component={AdminScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }

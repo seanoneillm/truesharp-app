@@ -112,12 +112,6 @@ export default function AnalyticsScreen({ route }: { route?: any }) {
 
   // Debug pro status
   useEffect(() => {
-    console.log('🔍 Analytics Pro Status Debug:', {
-      isProUser,
-      proLoading,
-      userId: user?.id,
-      timestamp: new Date().toISOString()
-    });
   }, [isProUser, proLoading, user?.id])
 
   // Initial load

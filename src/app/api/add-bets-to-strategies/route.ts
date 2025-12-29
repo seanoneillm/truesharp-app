@@ -180,9 +180,17 @@ function getSportsbookVariations(sportsbooks: string[]): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 ADD-BETS-TO-STRATEGIES API: Request received')
+    
     // Parse request body first to get clientUserId for fallback auth
     const body: AddBetsRequest = await request.json()
     const { betIds, strategyIds, userId: clientUserId } = body
+    
+    console.log('📝 Request body:', { 
+      betIds: betIds?.length || 0, 
+      strategyIds: strategyIds?.length || 0, 
+      clientUserId 
+    })
 
     const supabase = await createServerSupabaseClient(request)
     const {
@@ -299,6 +307,9 @@ export async function POST(request: NextRequest) {
 
     let insertedCount = 0
 
+    console.log(`📊 About to insert ${strategyBetsToInsert.length} strategy_bets records`)
+    console.log(`🎯 Strategy updates map size: ${strategyUpdates.size}`)
+
     // Insert valid strategy_bets
     if (strategyBetsToInsert.length > 0) {
       // Try to insert strategy_bets in smaller batches to avoid constraint issues
@@ -348,61 +359,213 @@ export async function POST(request: NextRequest) {
 
       insertedCount = totalInserted
 
+      console.log(`🔔 Notification system: Processing ${strategyUpdates.size} strategy updates:`, Array.from(strategyUpdates.entries()))
+      console.log(`💾 Inserted count: ${insertedCount}, proceeding with notifications...`)
+
       if (insertedCount === 0) {
-        return NextResponse.json(
-          {
-            error: 'Failed to add any bets to strategies due to constraint violations',
-          },
-          { status: 500 }
-        )
+        console.log('⚠️ No bets were inserted but checking if we should still send notifications...')
+        // Still continue with notifications if there were valid strategy updates
+        if (strategyUpdates.size === 0) {
+          return NextResponse.json(
+            {
+              error: 'Failed to add any bets to strategies due to constraint violations',
+            },
+            { status: 500 }
+          )
+        }
       }
 
-      // Send push notifications to subscribers
+    }
+
+    // Send notifications to strategy subscribers
+    if (insertedCount > 0) {
+      console.log(`🔔 Sending notifications for ${strategyUpdates.size} strategy updates`)
+      
       for (const [strategyId, betCount] of strategyUpdates) {
         try {
-          // Get strategy details for notification
-          const { data: strategyData } = await serviceSupabase
+          // Get strategy details
+          const { data: strategyData, error: strategyError } = await serviceSupabase
             .from('strategies')
             .select('name, user_id')
             .eq('id', strategyId)
             .single()
 
+          if (strategyError || !strategyData) {
+            console.error('❌ Error fetching strategy data:', strategyError)
+            continue
+          }
+
           // Get seller details
-          const { data: sellerData } = await serviceSupabase
+          const { data: sellerData, error: sellerError } = await serviceSupabase
             .from('profiles')
-            .select('username')
-            .eq('id', strategyData?.user_id)
+            .select('username, profile_picture_url')
+            .eq('id', strategyData.user_id)
             .single()
 
-          if (strategyData && sellerData) {
-            // Call push notification Edge Function
-            const pushNotificationUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-push-notifications`
-            
-            const pushResponse = await fetch(pushNotificationUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          if (sellerError || !sellerData) {
+            console.error('❌ Error fetching seller data:', sellerError)
+            continue
+          }
+
+          // Get subscribers
+          const { data: subscribers, error: subscribersError } = await serviceSupabase
+            .from('subscriptions')
+            .select('subscriber_id')
+            .eq('strategy_id', strategyId)
+            .eq('status', 'active')
+
+          if (subscribersError) {
+            console.error('❌ Error fetching subscribers:', subscribersError)
+            continue
+          }
+
+          if (subscribers && subscribers.length > 0) {
+            // Create notification records with backward compatibility for database schema
+            const createNotificationRecord = (sub: any, useOldSchema = false) => ({
+              user_id: sub.subscriber_id,
+              [useOldSchema ? 'type' : 'notification_type']: 'new_subscriber',
+              sender_type: 'user',
+              sender_id: strategyData.user_id,
+              title: `New Bets Added to ${strategyData.name}`,
+              message: `${sellerData.username} added ${betCount} new bet${betCount !== 1 ? 's' : ''} to the ${strategyData.name} strategy. Check it out!`,
+              metadata: {
+                strategy_id: strategyId,
+                strategy_name: strategyData.name,
+                seller_username: sellerData.username,
+                bet_count: betCount
               },
-              body: JSON.stringify({
-                type: 'strategy_bets',
-                strategyId: strategyId,
-                sellerName: sellerData.username || 'Seller',
-                strategyName: strategyData.name,
-                betCount: betCount,
-              }),
+              delivery_status: 'pending',
+              sent_at: null
             })
 
-            if (pushResponse.ok) {
-              const result = await pushResponse.json()
-              console.log(`✅ Push notifications sent for strategy ${strategyData.name}: ${result.subscribersNotified} recipients`)
+            // Try to insert with new schema first, fallback to old schema if it fails
+            let createdNotifications: any[] = []
+            let notificationError: any = null
+
+            // First try with notification_type column (new schema)
+            const newSchemaRecords = subscribers.map((sub: any) => createNotificationRecord(sub, false))
+            const { data: newSchemaResult, error: newSchemaError } = await serviceSupabase
+              .from('notifications')
+              .insert(newSchemaRecords)
+              .select('id, user_id')
+
+            if (newSchemaError && newSchemaError.message?.includes('type')) {
+              console.log('🔄 Trying old schema with type column...')
+              // If new schema fails due to type column issue, try old schema
+              const oldSchemaRecords = subscribers.map((sub: any) => createNotificationRecord(sub, true))
+              const { data: oldSchemaResult, error: oldSchemaError } = await serviceSupabase
+                .from('notifications')
+                .insert(oldSchemaRecords)
+                .select('id, user_id')
+
+              createdNotifications = oldSchemaResult || []
+              notificationError = oldSchemaError
             } else {
-              const error = await pushResponse.text()
-              console.error(`❌ Failed to send push notifications for strategy ${strategyData.name}:`, error)
+              createdNotifications = newSchemaResult || []
+              notificationError = newSchemaError
             }
+
+            if (notificationError) {
+              console.error('❌ Error creating notifications:', notificationError)
+              continue
+            }
+
+            console.log(`✅ Created ${createdNotifications?.length || 0} notifications for ${strategyData.name}`)
+
+            // Get push tokens for subscribers
+            const subscriberIds = subscribers.map(s => s.subscriber_id)
+            const { data: pushTokenData, error: pushTokenError } = await serviceSupabase
+              .from('profiles')
+              .select('id, expo_push_token')
+              .in('id', subscriberIds)
+              .eq('notifications_enabled', true)
+              .not('expo_push_token', 'is', null)
+
+            if (pushTokenError) {
+              console.error('❌ Error fetching push tokens:', pushTokenError)
+              continue
+            }
+
+            // Send push notifications
+            if (pushTokenData && pushTokenData.length > 0) {
+              const pushMessages = pushTokenData.map(profile => ({
+                to: profile.expo_push_token,
+                title: `New Bets Added to ${strategyData.name}`,
+                body: `${sellerData.username} added ${betCount} new bet${betCount !== 1 ? 's' : ''}`,
+                data: {
+                  notificationType: 'strategy_bets',
+                  strategyId: strategyId,
+                  senderType: 'user'
+                },
+                channelId: 'default',
+                priority: 'high' as const
+              }))
+
+              try {
+                const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                  method: 'POST',
+                  headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(pushMessages)
+                })
+
+                const pushResults = await response.json()
+
+                if (response.ok && pushResults.data) {
+                  // Update notification delivery status
+                  const updatePromises = pushResults.data.map(async (result: any, index: number) => {
+                    const notificationId = createdNotifications?.[index]?.id
+                    if (!notificationId) return
+
+                    if (result.status === 'ok') {
+                      await serviceSupabase
+                        .from('notifications')
+                        .update({
+                          delivery_status: 'sent',
+                          sent_at: new Date().toISOString(),
+                          expo_ticket_id: result.id
+                        })
+                        .eq('id', notificationId)
+                    } else {
+                      await serviceSupabase
+                        .from('notifications')
+                        .update({
+                          delivery_status: 'failed',
+                          metadata: { 
+                            ...notificationRecords[index].metadata,
+                            error: result.details?.error || 'Unknown error' 
+                          }
+                        })
+                        .eq('id', notificationId)
+                    }
+                  })
+
+                  await Promise.all(updatePromises)
+                  console.log(`📱 Sent ${pushMessages.length} push notifications for ${strategyData.name}`)
+                }
+              } catch (pushError) {
+                console.error('❌ Error sending push notifications:', pushError)
+                // Mark all notifications as failed
+                if (createdNotifications) {
+                  await serviceSupabase
+                    .from('notifications')
+                    .update({
+                      delivery_status: 'failed',
+                      metadata: { error: 'Push notification service error' }
+                    })
+                    .in('id', createdNotifications.map(n => n.id))
+                }
+              }
+            } else {
+              console.log(`⚠️ No push tokens found for ${strategyData.name} subscribers`)
+            }
+          } else {
+            console.log(`ℹ️ No active subscribers for strategy ${strategyData.name}`)
           }
         } catch (notificationError) {
-          console.error('Error sending push notifications:', notificationError)
+          console.error('❌ Error processing notifications for strategy:', notificationError)
           // Don't fail the main operation if notifications fail
         }
       }
@@ -413,9 +576,9 @@ export async function POST(request: NextRequest) {
       inserted: insertedCount,
       validationResults,
       message: `Successfully added ${insertedCount} bet${insertedCount !== 1 ? 's' : ''} to strategies`,
-    })
+    });
   } catch (error) {
-    console.error('API error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,19 +1,32 @@
 import { AnalyticsFilters } from '../services/supabaseAnalytics'
 
 // Helper function to normalize league names to handle NCAAB variations
+// CRITICAL: This must match exactly with backend normalization in route.ts
 function normalizeLeague(league: string): string {
   const normalized = league.toLowerCase().trim()
 
-  // Treat NCAAB, NCAAM, and NCAAMB as the same league
+  // Treat NCAAB, NCAAM, and NCAAMB as the same league - return NCAAB as canonical
   if (
+    normalized === 'ncaab' ||
     normalized === 'ncaam' ||
     normalized === 'ncaamb' ||
+    normalized === "ncaa men's basketball" ||
     normalized === "ncaa men's basketball" ||
     normalized === 'college basketball' ||
     normalized === 'ncaa basketball'
   ) {
-    return 'NCAAB'
+    return 'NCAAB' // Canonical form
   }
+
+  // Normalize other common league variations
+  if (normalized === 'nfl' || normalized === 'football') return 'NFL'
+  if (normalized === 'nba' || normalized === 'basketball') return 'NBA'
+  if (normalized === 'wnba' || normalized === 'women\'s basketball' || normalized === 'womens basketball') return 'WNBA'
+  if (normalized === 'mlb' || normalized === 'baseball') return 'MLB'
+  if (normalized === 'nhl' || normalized === 'hockey') return 'NHL'
+  if (normalized === 'ncaaf' || normalized === 'college football') return 'NCAAF'
+  if (normalized === 'mls' || normalized === 'soccer') return 'MLS'
+  if (normalized === 'ucl' || normalized === 'champions league') return 'UCL'
 
   // Return original league in uppercase for consistency
   return league.toUpperCase()
@@ -71,8 +84,8 @@ export function convertFiltersToWebFormat(filters: AnalyticsFilters): FilterOpti
                 : filters.timeframe === 'custom'
                   ? 'Custom Range'
                   : 'All time',
-    customStartDate: filters.startDate || undefined,
-    customEndDate: filters.endDate || undefined,
+    customStartDate: filters.basicStartDate || undefined,
+    customEndDate: undefined, // Remove endDate - not needed for strategies
     sportsbooks:
       filters.sportsbooks && filters.sportsbooks.length > 0 ? filters.sportsbooks : ['All'],
     sports: filters.sports && filters.sports.length > 0 ? filters.sports : ['All'],
@@ -104,39 +117,36 @@ export function validateStrategyFilters(filters: FilterOptions): StrategyValidat
     errors.push('Bet status must be set to "All" to ensure fair strategy representation')
   }
 
-  // Rule 2: Odds/spread/total/stake ranges must be cleared
-  if (
-    filters.oddsRange &&
-    (filters.oddsRange.min !== undefined || filters.oddsRange.max !== undefined)
-  ) {
-    if (filters.oddsRange.min !== 0 || filters.oddsRange.max !== 0) {
+  // Rule 2: Odds/spread/total/stake ranges must be cleared for strategy creation
+  // Check if any range has meaningful values (not null, undefined, or 0)
+  if (filters.oddsRange) {
+    const hasMinOdds = filters.oddsRange.min !== null && filters.oddsRange.min !== undefined && filters.oddsRange.min !== 0
+    const hasMaxOdds = filters.oddsRange.max !== null && filters.oddsRange.max !== undefined && filters.oddsRange.max !== 0
+    if (hasMinOdds || hasMaxOdds) {
       errors.push('Odds ranges must be cleared for strategy creation')
     }
   }
 
-  if (
-    filters.stakeRange &&
-    (filters.stakeRange.min !== undefined || filters.stakeRange.max !== undefined)
-  ) {
-    if (filters.stakeRange.min !== 0 || filters.stakeRange.max !== 0) {
+  if (filters.stakeRange) {
+    const hasMinStake = filters.stakeRange.min !== null && filters.stakeRange.min !== undefined && filters.stakeRange.min !== 0
+    const hasMaxStake = filters.stakeRange.max !== null && filters.stakeRange.max !== undefined && filters.stakeRange.max !== 0
+    if (hasMinStake || hasMaxStake) {
       errors.push('Stake ranges must be cleared for strategy creation')
     }
   }
 
-  if (
-    filters.spreadRange &&
-    (filters.spreadRange.min !== undefined || filters.spreadRange.max !== undefined)
-  ) {
-    if (filters.spreadRange.min !== 0 || filters.spreadRange.max !== 0) {
+  if (filters.spreadRange) {
+    const hasMinSpread = filters.spreadRange.min !== null && filters.spreadRange.min !== undefined && filters.spreadRange.min !== 0
+    const hasMaxSpread = filters.spreadRange.max !== null && filters.spreadRange.max !== undefined && filters.spreadRange.max !== 0
+    if (hasMinSpread || hasMaxSpread) {
       errors.push('Spread ranges must be cleared for strategy creation')
     }
   }
 
-  if (
-    filters.totalRange &&
-    (filters.totalRange.min !== undefined || filters.totalRange.max !== undefined)
-  ) {
-    if (filters.totalRange.min !== 0 || filters.totalRange.max !== 0) {
+  if (filters.totalRange) {
+    const hasMinTotal = filters.totalRange.min !== null && filters.totalRange.min !== undefined && filters.totalRange.min !== 0
+    const hasMaxTotal = filters.totalRange.max !== null && filters.totalRange.max !== undefined && filters.totalRange.max !== 0
+    if (hasMinTotal || hasMaxTotal) {
       errors.push('Total ranges must be cleared for strategy creation')
     }
   }
@@ -354,6 +364,36 @@ export function validateParlayAgainstStrategy(
 
 // Validate if a bet is compatible with a strategy's filters
 export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData): boolean {
+  // Auto-detect player props if bet_type doesn't match but it's clearly a player prop
+  const originalBetType = bet.bet_type;
+  let correctedBet = { ...bet };
+  
+  // Check if this might be a player prop that's misclassified
+  if (bet.bet_type === 'total' || bet.bet_type === 'over_under' || bet.bet_type === 'ou') {
+    // Look at the bet object for player prop indicators
+    const betObj = bet as any; // Cast to access additional properties
+    
+    
+    // Enhanced detection logic - be more precise
+    // Only convert to player_prop if there's clear evidence of a player
+    const hasPlayerIndicators = 
+      betObj.player_name || 
+      // Check if bet description contains a player name pattern (First Last)
+      (betObj.bet_description || betObj.description || '').match(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/) ||
+      // Check for common prop terms in description COMBINED with player evidence
+      ((betObj.bet_description || betObj.description || '').toLowerCase().includes('passing') ||
+       (betObj.bet_description || betObj.description || '').toLowerCase().includes('rushing') ||
+       (betObj.bet_description || betObj.description || '').toLowerCase().includes('receiving') ||
+       (betObj.bet_description || betObj.description || '').toLowerCase().includes('yards') ||
+       (betObj.bet_description || betObj.description || '').toLowerCase().includes('touchdowns')) &&
+      // Only if there's also evidence of a player (not just generic "points")
+      (betObj.player_name || (betObj.bet_description || betObj.description || '').match(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/));
+    
+    if (hasPlayerIndicators) {
+      correctedBet.bet_type = 'player_prop';
+    }
+  }
+  
   const filters = strategy.filter_config
 
   // If no filters are configured at all, accept all bets
@@ -452,10 +492,22 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
     // Check if the bet type matches ANY of the allowed bet types
     const matchesAnyBetType = filters.betTypes.some(allowedBetType => {
       const betTypeVariations = getBetTypeVariations(allowedBetType)
-      return betTypeVariations.includes(bet.bet_type)
+      // Handle case where bet.bet_type might be undefined or null
+      const betType = correctedBet.bet_type || ''
+      return betTypeVariations.includes(betType)
     })
 
     if (!matchesAnyBetType) {
+      return false
+    }
+  }
+
+  // Check sport/league filter using normalization
+  if (filters.leagues && !filters.leagues.includes('All') && filters.leagues.length > 0) {
+    const betLeague = normalizeLeague(correctedBet.sport || '')
+    const allowedLeagues = filters.leagues.map(normalizeLeague)
+    
+    if (!allowedLeagues.includes(betLeague)) {
       return false
     }
   }
@@ -467,20 +519,20 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
     const strategyAllowsStraights = filters.isParlays.includes('false')
 
     // If strategy only allows parlays and bet is not a parlay, reject
-    if (strategyAllowsParlays && !strategyAllowsStraights && !bet.is_parlay) {
+    if (strategyAllowsParlays && !strategyAllowsStraights && !correctedBet.is_parlay) {
       return false
     }
 
     // If strategy only allows straight bets and bet is a parlay, reject
-    if (strategyAllowsStraights && !strategyAllowsParlays && bet.is_parlay) {
+    if (strategyAllowsStraights && !strategyAllowsParlays && correctedBet.is_parlay) {
       return false
     }
   }
 
   // Check sides filter
-  if (filters.sides && !filters.sides.includes('All') && filters.sides.length > 0 && bet.side) {
+  if (filters.sides && !filters.sides.includes('All') && filters.sides.length > 0 && correctedBet.side) {
     const allowedSides = filters.sides.map(s => s.toLowerCase())
-    if (!allowedSides.includes(bet.side.toLowerCase())) {
+    if (!allowedSides.includes(correctedBet.side.toLowerCase())) {
       return false
     }
   }
@@ -492,7 +544,7 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
     !filters.sportsbooks.includes('All')
   ) {
     const sportsbookVariations = getSportsbookVariations(filters.sportsbooks)
-    if (!sportsbookVariations.includes(bet.sportsbook)) {
+    if (!sportsbookVariations.includes(correctedBet.sportsbook)) {
       return false
     }
   }
@@ -503,14 +555,14 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
       filters.oddsRange.min !== undefined &&
       filters.oddsRange.min !== null &&
       filters.oddsRange.min !== 0 &&
-      bet.odds < filters.oddsRange.min
+      correctedBet.odds < filters.oddsRange.min
     )
       return false
     if (
       filters.oddsRange.max !== undefined &&
       filters.oddsRange.max !== null &&
       filters.oddsRange.max !== 0 &&
-      bet.odds > filters.oddsRange.max
+      correctedBet.odds > filters.oddsRange.max
     )
       return false
   }
@@ -521,14 +573,14 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
       filters.stakeRange.min !== undefined &&
       filters.stakeRange.min !== null &&
       filters.stakeRange.min !== 0 &&
-      bet.stake < filters.stakeRange.min
+      correctedBet.stake < filters.stakeRange.min
     )
       return false
     if (
       filters.stakeRange.max !== undefined &&
       filters.stakeRange.max !== null &&
       filters.stakeRange.max !== 0 &&
-      bet.stake > filters.stakeRange.max
+      correctedBet.stake > filters.stakeRange.max
     )
       return false
   }
@@ -537,21 +589,21 @@ export function validateBetAgainstStrategy(bet: BetData, strategy: StrategyData)
   if (
     filters.lineValueRange &&
     typeof filters.lineValueRange === 'object' &&
-    bet.line_value !== undefined &&
-    bet.line_value !== null
+    correctedBet.line_value !== undefined &&
+    correctedBet.line_value !== null
   ) {
     if (
       filters.lineValueRange.min !== undefined &&
       filters.lineValueRange.min !== null &&
       filters.lineValueRange.min !== 0 &&
-      bet.line_value < filters.lineValueRange.min
+      correctedBet.line_value < filters.lineValueRange.min
     )
       return false
     if (
       filters.lineValueRange.max !== undefined &&
       filters.lineValueRange.max !== null &&
       filters.lineValueRange.max !== 0 &&
-      bet.line_value > filters.lineValueRange.max
+      correctedBet.line_value > filters.lineValueRange.max
     )
       return false
   }
@@ -629,6 +681,18 @@ function getBetTypeVariations(betType: string): string[] {
     variations.push('spread', 'point_spread', 'ps')
   } else if (lowerBetType === 'total') {
     variations.push('total', 'over_under', 'ou', 'totals')
+  } else if (lowerBetType === 'player_prop') {
+    // Player prop variations - handle different formats used in database
+    variations.push('player_prop', 'prop', 'player prop', 'playerprop', 'player_props', 'props')
+  } else if (lowerBetType === 'game_prop') {
+    // Game prop variations
+    variations.push('game_prop', 'game prop', 'gameprop', 'game_props', 'gameprops')
+  } else if (lowerBetType === 'team_prop') {
+    // Team prop variations
+    variations.push('team_prop', 'team prop', 'teamprop', 'team_props', 'teamprops')
+  } else if (lowerBetType === 'prop' || lowerBetType === 'props') {
+    // Generic prop variations that could be player props or other props
+    variations.push('prop', 'props', 'player_prop', 'player prop', 'playerprop', 'game_prop', 'team_prop')
   } else {
     variations.push(betType, betType.toLowerCase(), betType.toUpperCase())
   }

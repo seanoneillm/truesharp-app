@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (unreadOnly) {
-      query = query.eq('read', false)
+      query = query.is('read_at', null)
     }
 
     // Apply pagination
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       .from('notifications')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
-      .eq('read', false)
+      .is('read_at', null)
 
     return NextResponse.json({
       data: notifications,
@@ -81,11 +81,11 @@ export async function POST(request: NextRequest) {
       .from('notifications') as any)
       .insert({
         user_id: target_user_id || user.id,
-        type,
+        notification_type: type,
         title,
         message,
-        data: notificationData || {},
-        read: false,
+        metadata: notificationData || {},
+        sender_type: 'user',
         created_at: new Date().toISOString(),
       })
       .select()
@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest) {
     if (action === 'mark_read') {
       const { data, error } = await (supabase
         .from('notifications') as any)
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .in('id', notification_ids)
         .select()
@@ -134,9 +134,9 @@ export async function PUT(request: NextRequest) {
     if (action === 'mark_all_read') {
       const { data, error } = await (supabase
         .from('notifications') as any)
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ read_at: new Date().toISOString() })
         .eq('user_id', user.id)
-        .eq('read', false)
+        .is('read_at', null)
         .select()
 
       if (error) {

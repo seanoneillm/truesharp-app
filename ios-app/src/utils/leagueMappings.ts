@@ -40,6 +40,11 @@ const LEAGUE_MAPPINGS: Record<string, LeagueInfo> = {
     logoUrl: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-basketball.png&h=80&w=80',
     color: '#FF8C00'
   },
+  'NCAAM': {
+    name: 'NCAAM',
+    logoUrl: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-basketball.png&h=80&w=80',
+    color: '#FF8C00'
+  },
   'Champions League': {
     name: 'Champions League',
     logoUrl: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-soccer.png&h=80&w=80',

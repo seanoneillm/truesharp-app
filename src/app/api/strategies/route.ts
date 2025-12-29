@@ -173,11 +173,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate filters according to enhanced strategy creation rules
+    // COMPREHENSIVE FILTER VALIDATION for strategy creation
     const filters = filter_config as FilterConfig
+    
+    console.log('🔍 STRATEGY FILTER VALIDATION:')
+    console.log('   Received filter_config:', JSON.stringify(filters, null, 2))
+
+    // Edge Case 1: Validate filter_config is not empty
+    if (!filters || typeof filters !== 'object') {
+      console.error('❌ Invalid filter_config: must be a valid object')
+      return NextResponse.json(
+        { error: 'Invalid filter configuration provided' },
+        { status: 400 }
+      )
+    }
+
+    // Edge Case 2: Check for required filter properties
+    const requiredFilterProps = ['betTypes', 'leagues', 'statuses']
+    const missingProps = requiredFilterProps.filter(prop => !(prop in filters))
+    if (missingProps.length > 0) {
+      console.error('❌ Missing required filter properties:', missingProps)
+      return NextResponse.json(
+        { error: `Missing required filter properties: ${missingProps.join(', ')}` },
+        { status: 400 }
+      )
+    }
 
     // Rule 1: Status filter MUST be "All" - no other status filters allowed
+    console.log('   Validating status filter:', filters.statuses)
     if (!filters.statuses || !filters.statuses.includes('All') || filters.statuses.length !== 1) {
+      console.error('❌ Status filter validation failed:', filters.statuses)
       return NextResponse.json(
         {
           error:
@@ -186,13 +211,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    console.log('   ✅ Status filter valid: All bets included')
 
     // Rule 2: Either "All" leagues OR exactly ONE specific league must be selected
+    console.log('   Validating league filter:', filters.leagues)
     const leagues = filters.leagues || []
     const hasAllLeagues = leagues.includes('All')
     const specificLeagues = leagues.filter(l => l !== 'All')
 
     if (!hasAllLeagues && specificLeagues.length !== 1) {
+      console.error('❌ League filter validation failed: must be "All" or exactly one specific league')
+      console.error('   Received leagues:', leagues)
+      console.error('   Specific leagues count:', specificLeagues.length)
       return NextResponse.json(
         {
           error:
@@ -203,6 +233,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (hasAllLeagues && specificLeagues.length > 0) {
+      console.error('❌ League filter validation failed: cannot have both "All" and specific leagues')
+      console.error('   Received leagues:', leagues)
       return NextResponse.json(
         {
           error: 'Strategy creation cannot have both "All" and specific leagues selected',
@@ -210,8 +242,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    console.log(`   ✅ League filter valid: ${hasAllLeagues ? 'All leagues' : `Specific league: ${specificLeagues[0]}`}`)
 
     // Rule 3: Either "All" bet types OR exactly ONE specific bet type must be selected
+    console.log('   Validating bet type filter:', filters.betTypes)
     const allowedBetTypes = [
       'total',
       'moneyline',
@@ -223,8 +258,24 @@ export async function POST(request: NextRequest) {
     const betTypes = filters.betTypes || []
     const hasAllBetTypes = betTypes.includes('All')
     const specificBetTypes = betTypes.filter(bt => bt !== 'All' && allowedBetTypes.includes(bt))
+    const invalidBetTypes = betTypes.filter(bt => bt !== 'All' && !allowedBetTypes.includes(bt))
+
+    // Check for invalid bet types
+    if (invalidBetTypes.length > 0) {
+      console.error('❌ Invalid bet types detected:', invalidBetTypes)
+      console.error('   Allowed bet types:', allowedBetTypes)
+      return NextResponse.json(
+        {
+          error: `Invalid bet types: ${invalidBetTypes.join(', ')}. Allowed: ${allowedBetTypes.join(', ')}`,
+        },
+        { status: 400 }
+      )
+    }
 
     if (!hasAllBetTypes && specificBetTypes.length !== 1) {
+      console.error('❌ Bet type filter validation failed: must be "All" or exactly one specific bet type')
+      console.error('   Received bet types:', betTypes)
+      console.error('   Valid specific bet types count:', specificBetTypes.length)
       return NextResponse.json(
         {
           error:
@@ -235,6 +286,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (hasAllBetTypes && specificBetTypes.length > 0) {
+      console.error('❌ Bet type filter validation failed: cannot have both "All" and specific bet types')
+      console.error('   Received bet types:', betTypes)
       return NextResponse.json(
         {
           error: 'Strategy creation cannot have both "All" and specific bet types selected',
@@ -242,6 +295,39 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    console.log(`   ✅ Bet type filter valid: ${hasAllBetTypes ? 'All bet types' : `Specific bet type: ${specificBetTypes[0]}`}`)
+
+    // Edge Case 3: Validate start date format if provided
+    if (filters.customStartDate) {
+      console.log('   Validating start date filter:', filters.customStartDate)
+      const startDate = new Date(filters.customStartDate)
+      if (isNaN(startDate.getTime())) {
+        console.error('❌ Invalid start date format:', filters.customStartDate)
+        return NextResponse.json(
+          { error: 'Invalid start date format. Use YYYY-MM-DD format.' },
+          { status: 400 }
+        )
+      }
+      
+      // Check if start date is too far in the future (more than 1 day)
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      if (startDate > tomorrow) {
+        console.error('❌ Start date is in the future:', filters.customStartDate)
+        return NextResponse.json(
+          { error: 'Start date cannot be in the future' },
+          { status: 400 }
+        )
+      }
+      
+      console.log('   ✅ Start date valid:', filters.customStartDate)
+    } else {
+      console.log('   ✅ No start date filter (including all historical bets)')
+    }
+
+    console.log('✅ ALL FILTER VALIDATIONS PASSED')
+    console.log('   Strategy is ready for creation with valid filters')
 
     // Extract convenience fields for database indexing
     const sport = hasAllLeagues ? 'All' : specificLeagues[0] // Use "All" or the specific league
@@ -433,37 +519,62 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Initialize variation arrays outside of conditionals for debugging
-    let sportVariations: string[] = []
-    let betTypeVariations: string[] = []
+    // Standardized normalization function - must match iOS exactly
+    function normalizeLeague(league: string): string {
+      const normalized = league.toLowerCase().trim()
 
-    // Apply sport/league filter with case-insensitive matching and sport mapping
-    // IMPORTANT: Search both 'sport' AND 'league' columns since NCAAF might be in either
-    if (sport && sport !== 'All') {
-      console.log('🔍 Applying sport/league filter:', sport)
+      // Treat NCAAB, NCAAM, and NCAAMB as the same league - return NCAAB as canonical
+      if (
+        normalized === 'ncaab' ||
+        normalized === 'ncaam' ||
+        normalized === 'ncaamb' ||
+        normalized === "ncaa men's basketball" ||
+        normalized === 'college basketball' ||
+        normalized === 'ncaa basketball'
+      ) {
+        return 'NCAAB' // Canonical form
+      }
 
-      // Create a list of possible sport variations to match
+      // Normalize other common league variations
+      if (normalized === 'nfl' || normalized === 'football') return 'NFL'
+      if (normalized === 'nba' || normalized === 'basketball') return 'NBA'
+      if (normalized === 'wnba' || normalized === 'women\'s basketball' || normalized === 'womens basketball') return 'WNBA'
+      if (normalized === 'mlb' || normalized === 'baseball') return 'MLB'
+      if (normalized === 'nhl' || normalized === 'hockey') return 'NHL'
+      if (normalized === 'ncaaf' || normalized === 'college football') return 'NCAAF'
+      if (normalized === 'mls' || normalized === 'soccer') return 'MLS'
+      if (normalized === 'ucl' || normalized === 'champions league') return 'UCL'
+
+      // Return original league in uppercase for consistency
+      return league.toUpperCase()
+    }
+
+    // Get sport/league variations for matching
+    function getSportVariations(sport: string): string[] {
+      const variations = []
+
       if (sport === 'NFL') {
-        sportVariations = ['NFL', 'nfl', 'football', 'Football', 'American Football']
+        variations.push('NFL', 'nfl', 'football', 'Football', 'American Football')
       } else if (sport === 'NBA') {
-        sportVariations = ['NBA', 'nba', 'basketball', 'Basketball']
+        variations.push('NBA', 'nba', 'basketball', 'Basketball')
+      } else if (sport === 'WNBA') {
+        variations.push('WNBA', 'wnba', 'women\'s basketball', 'Women\'s Basketball', 'womens basketball', 'Womens Basketball')
       } else if (sport === 'MLB') {
-        sportVariations = ['MLB', 'mlb', 'baseball', 'Baseball']
+        variations.push('MLB', 'mlb', 'baseball', 'Baseball')
       } else if (sport === 'NHL') {
-        sportVariations = ['NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey']
+        variations.push('NHL', 'nhl', 'hockey', 'Hockey', 'Ice Hockey')
       } else if (sport === 'NCAAF') {
-        sportVariations = [
+        variations.push(
           'NCAAF',
           'ncaaf',
           'College Football',
           'college football',
           'NCAA Football',
-          'ncaa football',
-        ]
-      } else if (sport === 'NCAAB' || sport === 'NCAAM' || sport === 'NCAAMB') {
-        // NCAAB, NCAAM, and NCAAMB should all be treated as the same sport
-        // This must match exactly with iOS normalizeLeague function
-        sportVariations = [
+          'ncaa football'
+        )
+      } else if (sport === 'NCAAB') {
+        // CRITICAL: Must include all NCAA basketball variations
+        variations.push(
           'NCAAB',
           'NCAAM',
           'NCAAMB',
@@ -475,87 +586,34 @@ export async function POST(request: NextRequest) {
           'College Basketball',
           'college basketball',
           'NCAA Basketball',
-          'ncaa basketball',
-        ]
+          'ncaa basketball'
+        )
       } else if (sport === 'MLS') {
-        sportVariations = ['MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football']
+        variations.push('MLS', 'mls', 'Soccer', 'soccer', 'Football', 'football')
       } else if (sport === 'UCL') {
-        sportVariations = [
+        variations.push(
           'UCL',
           'ucl',
           'Champions League',
           'champions league',
           'UEFA Champions League',
-          'uefa champions league',
-        ]
+          'uefa champions league'
+        )
       } else {
-        // Default case - try both exact match and lowercase
-        sportVariations = [sport, sport.toLowerCase(), sport.toUpperCase()]
+        // Default case
+        variations.push(sport, sport.toLowerCase(), sport.toUpperCase())
       }
 
-      console.log('🔍 Sport variations to match:', sportVariations)
-
-      // Create OR condition to search both sport AND league columns
-      const sportConditions = sportVariations.map(variation => `sport.eq.${variation}`).join(',')
-      const leagueConditions = sportVariations.map(variation => `league.eq.${variation}`).join(',')
-      const combinedConditions = `${sportConditions},${leagueConditions}`
-
-      console.log('🔍 Applying OR filter to both sport and league columns:', combinedConditions)
-
-      // Test query after sport filter to see how many bets match
-      const testQuery = serviceSupabase
-        .from('bets')
-        .select('id, sport, league, bet_type, status, side, is_parlay, sportsbook')
-        .eq('user_id', finalUser.id)
-        .or(combinedConditions)
-        .limit(50)
-
-      const { data: afterSportFilter, error: testError } = await testQuery
-      if (!testError && afterSportFilter) {
-        console.log('🏀 Bets found after sport filter:', afterSportFilter.length)
-        if (afterSportFilter.length > 0) {
-          console.log('🏀 Sample matched bets after sport filter:')
-          afterSportFilter.slice(0, 10).forEach(bet => {
-            console.log(
-              `   Bet ${bet.id}: sport="${bet.sport}", league="${bet.league}", bet_type="${bet.bet_type}"`
-            )
-          })
-        } else {
-          console.log('🏀 ❌ No bets matched the sport filter!')
-          console.log('🏀 Strategy filter requested:', sport)
-          console.log('🏀 Sport variations searched for:', sportVariations)
-          console.log('🏀 Combined OR condition used:', combinedConditions)
-          console.log('🏀 Testing individual conditions...')
-
-          // Test each variation individually to see what matches
-          for (const variation of sportVariations.slice(0, 5)) {
-            const testIndividual = await serviceSupabase
-              .from('bets')
-              .select('id, sport, league')
-              .eq('user_id', finalUser.id)
-              .or(`sport.eq.${variation},league.eq.${variation}`)
-              .limit(3)
-
-            const { data: individualMatches } = testIndividual
-            if (individualMatches && individualMatches.length > 0) {
-              console.log(
-                `     "${variation}" matches ${individualMatches.length} bets:`,
-                individualMatches.map(b => `${b.sport}|${b.league}`)
-              )
-            } else {
-              console.log(`     "${variation}" matches 0 bets`)
-            }
-          }
-        }
-      } else if (testError) {
-        console.log('🏀 ❌ Error testing sport filter:', testError)
-      }
-
-      // Continue with the original query flow
-      betsQuery = betsQuery.or(combinedConditions)
-    } else {
-      console.log('🔍 No sport filter applied (sport is All)')
+      return variations
     }
+
+    // Initialize variation arrays outside of conditionals for debugging
+    let sportVariations: string[] = []
+    let betTypeVariations: string[] = []
+
+    // REMOVED: Pre-fetch sport/league filtering to match analytics post-fetch approach
+    // Analytics does post-fetch filtering with normalization, so we'll do the same
+    console.log('🔍 Skipping database sport/league filtering - will filter post-fetch like analytics')
 
     // Apply bet type filter with variations
     if (betType && betType !== 'All') {
@@ -710,14 +768,14 @@ export async function POST(request: NextRequest) {
       console.log('🔍 No status filter applied')
     }
 
-    // Add date range filter if specified - use placed_at instead of created_at for bet timing
+    // Add date range filter if specified - CRITICAL: use placed_at for bet timing
+    // Only use start date (basicStartDate from iOS) - end date not needed for strategies
     if (filters.customStartDate) {
-      console.log('🔍 Applying start date filter:', filters.customStartDate)
+      console.log('🔍 Applying start date filter (basicStartDate):', filters.customStartDate)
+      console.log('🔍 This will include all bets placed on or after this date')
       betsQuery = betsQuery.gte('placed_at', filters.customStartDate)
-    }
-    if (filters.customEndDate) {
-      console.log('🔍 Applying end date filter:', filters.customEndDate)
-      betsQuery = betsQuery.lte('placed_at', filters.customEndDate)
+    } else {
+      console.log('🔍 No start date filter applied - including all historical bets')
     }
 
     // Add a check to see what we would get without the sport filter
@@ -768,58 +826,195 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: matchingBets, error: betsError } = await betsQuery
+    const { data: rawBets, error: betsError } = await betsQuery
 
     if (betsError) {
       console.error('Error fetching matching bets:', betsError)
       return NextResponse.json({ error: 'Failed to find matching bets' }, { status: 500 })
     }
 
-    console.log('🔍 Found matching bets for strategy:', matchingBets?.length || 0)
-    if (matchingBets && matchingBets.length > 0) {
-      console.log('🔍 Sample matching bets:', matchingBets.slice(0, 2))
-      console.log('🔍 Bet statuses:', [...new Set(matchingBets.map(b => b.status))])
+    // POST-FETCH FILTERING: Match analytics screen logic exactly
+    console.log('🔍 APPLYING POST-FETCH FILTERING (matching analytics logic):')
+    console.log(`   Raw bets fetched: ${rawBets?.length || 0}`)
+    
+    if (!rawBets) {
+      console.log('❌ No raw bets returned from database')
+      const matchingBets: any[] = []
     } else {
-      console.log('❌ No matching bets found. Final query conditions were:')
-      console.log(
-        '   Sport filter:',
-        sport,
-        sport !== 'All' ? `(variations: ${JSON.stringify(sportVariations)})` : '(no filter)'
-      )
-      console.log(
-        '   BetType filter:',
-        betType,
-        betType !== 'All' ? `(variations: ${JSON.stringify(betTypeVariations)})` : '(no filter)'
-      )
-      console.log('   Date filters:', {
-        startDate: filters.customStartDate || 'none',
-        endDate: filters.customEndDate || 'none',
+      // Apply the exact same filtering logic as analytics screen
+      const filteredBets: any[] = []
+
+      rawBets.forEach(bet => {
+        let matches = true
+
+        // Check league filter with normalization - EXACT MATCH to analytics logic
+        if (sport && sport !== 'All') {
+          console.log(`   Checking bet ${bet.id}: sport="${bet.sport}", league="${bet.league}"`)
+          const betLeague = normalizeLeague(bet.league || bet.sport || '')
+          const normalizedFilterLeague = normalizeLeague(sport)
+          matches = matches && (betLeague === normalizedFilterLeague)
+          
+          if (!matches) {
+            console.log(`   ❌ Bet ${bet.id} rejected: ${betLeague} !== ${normalizedFilterLeague}`)
+          } else {
+            console.log(`   ✅ Bet ${bet.id} accepted: ${betLeague} === ${normalizedFilterLeague}`)
+          }
+        }
+
+        if (matches) {
+          filteredBets.push(bet)
+        }
       })
-      console.log('   Other filters:', {
-        sides: filters.sides,
-        isParlays: filters.isParlays,
-        sportsbooks: filters.sportsbooks,
-        statuses: filters.statuses,
-      })
+
+      var matchingBets = filteredBets
+      console.log(`   Post-filter result: ${matchingBets.length} bets match league filter`)
     }
 
-    // Insert strategy_bets relationships
+    console.log('🔍 STRATEGY BET MATCHING RESULTS:')
+    console.log(`   Total matching bets found: ${matchingBets?.length || 0}`)
+    
     if (matchingBets && matchingBets.length > 0) {
-      const strategyBets = matchingBets.map(bet => ({
-        strategy_id: strategy.id,
-        bet_id: bet.id,
-        parlay_id: bet.parlay_id || null,
-      }))
+      console.log('✅ SUCCESSFUL BET MATCHING:')
+      console.log(`   Found ${matchingBets.length} bets that match strategy filters`)
+      console.log('   Sample matching bets:')
+      matchingBets.slice(0, 3).forEach((bet, i) => {
+        console.log(`     ${i + 1}. Bet ${bet.id}: ${bet.sport}/${bet.league} ${bet.bet_type} - ${bet.status}`)
+      })
+      
+      // Comprehensive analysis of matched bets
+      const betAnalysis = {
+        statuses: [...new Set(matchingBets.map(b => b.status))],
+        sports: [...new Set(matchingBets.map(b => b.sport))],
+        leagues: [...new Set(matchingBets.map(b => b.league))],
+        betTypes: [...new Set(matchingBets.map(b => b.bet_type))],
+        parlays: matchingBets.filter(b => b.is_parlay).length,
+        straights: matchingBets.filter(b => !b.is_parlay).length,
+        sportsbooks: [...new Set(matchingBets.map(b => b.sportsbook))],
+      }
+      
+      console.log('   Bet composition analysis:')
+      console.log(`     Sports: ${betAnalysis.sports.join(', ')}`)
+      console.log(`     Leagues: ${betAnalysis.leagues.join(', ')}`)
+      console.log(`     Bet Types: ${betAnalysis.betTypes.join(', ')}`)
+      console.log(`     Statuses: ${betAnalysis.statuses.join(', ')}`)
+      console.log(`     Parlays: ${betAnalysis.parlays}, Straights: ${betAnalysis.straights}`)
+      console.log(`     Sportsbooks: ${betAnalysis.sportsbooks.join(', ')}`)
+      
+    } else {
+      console.log('❌ NO MATCHING BETS FOUND - STRATEGY FILTER ANALYSIS:')
+      console.log('   Applied filters summary:')
+      console.log(`     Sport filter: ${sport} ${sport !== 'All' ? `(${sportVariations.length} variations)` : '(ALL)'}`)
+      console.log(`     BetType filter: ${betType} ${betType !== 'All' ? `(${betTypeVariations.length} variations)` : '(ALL)'}`)
+      console.log(`     Start date filter: ${filters.customStartDate || 'NONE'}`)
+      console.log(`     Sides filter: ${filters.sides?.join(', ') || 'ALL'}`)
+      console.log(`     Parlay filter: ${filters.isParlays?.join(', ') || 'ALL'}`)
+      console.log(`     Sportsbooks filter: ${filters.sportsbooks?.join(', ') || 'ALL'}`)
+      console.log(`     Status filter: ${filters.statuses?.join(', ') || 'ALL'}`)
+      
+      console.log('   Possible causes:')
+      console.log('     1. User has no bets in the selected sport/league')
+      console.log('     2. Start date filter excludes all historical bets')
+      console.log('     3. Sport/league name mismatch (check normalization)')
+      console.log('     4. Bet type variations not matching database values')
+      console.log('     5. Other filter combinations too restrictive')
+      
+      console.log('   Recommendations:')
+      console.log('     - Check if user has any bets in database')
+      console.log('     - Verify sport/league normalization matches')
+      console.log('     - Consider relaxing start date filter')
+      console.log('     - Review bet type variations matching')
+    }
 
-      const { error: strategyBetsError } = await serviceSupabase
-        .from('strategy_bets')
-        .insert(strategyBets)
+    // Insert strategy_bets relationships WITH PARLAY INTEGRITY CHECK
+    if (matchingBets && matchingBets.length > 0) {
+      console.log('🔍 PARLAY INTEGRITY CHECK:')
+      console.log(`   Total matching bets: ${matchingBets.length}`)
+      
+      // Group bets by parlay_id to check parlay completeness
+      const parlayGroups = new Map<string, any[]>()
+      const straightBets: any[] = []
+      
+      matchingBets.forEach(bet => {
+        if (bet.parlay_id) {
+          if (!parlayGroups.has(bet.parlay_id)) {
+            parlayGroups.set(bet.parlay_id, [])
+          }
+          parlayGroups.get(bet.parlay_id)!.push(bet)
+        } else {
+          straightBets.push(bet)
+        }
+      })
+      
+      console.log(`   Straight bets: ${straightBets.length}`)
+      console.log(`   Parlay groups found: ${parlayGroups.size}`)
+      
+      // For each parlay group, check if ALL legs match the strategy filters
+      const validParlayBets: any[] = []
+      const invalidParlayBets: any[] = []
+      
+      for (const [parlayId, parlayBets] of parlayGroups) {
+        console.log(`   Checking parlay ${parlayId}: ${parlayBets.length} legs`)
+        
+        // Get ALL bets with this parlay_id (not just the ones that matched filters)
+        const { data: allParlayLegs, error: parlayError } = await serviceSupabase
+          .from('bets')
+          .select('id, sport, league, bet_type, status, side, is_parlay, sportsbook, parlay_id')
+          .eq('user_id', finalUser.id)
+          .eq('parlay_id', parlayId)
+        
+        if (parlayError || !allParlayLegs) {
+          console.error(`   ❌ Error fetching all legs for parlay ${parlayId}:`, parlayError)
+          invalidParlayBets.push(...parlayBets)
+          continue
+        }
+        
+        console.log(`   Parlay ${parlayId} has ${allParlayLegs.length} total legs, ${parlayBets.length} matched filters`)
+        
+        // If ALL legs of the parlay don't match the filters, exclude the entire parlay
+        if (allParlayLegs.length !== parlayBets.length) {
+          console.log(`   ❌ Parlay ${parlayId} incomplete - only ${parlayBets.length}/${allParlayLegs.length} legs match filters`)
+          console.log('   This parlay will be excluded to maintain parlay integrity')
+          invalidParlayBets.push(...parlayBets)
+          continue
+        }
+        
+        // All legs match - this parlay is valid for the strategy
+        console.log(`   ✅ Parlay ${parlayId} complete - all ${allParlayLegs.length} legs match strategy filters`)
+        validParlayBets.push(...parlayBets)
+      }
+      
+      // Combine valid straight bets and valid parlay bets
+      const finalValidBets = [...straightBets, ...validParlayBets]
+      
+      console.log('🔍 FINAL BET VALIDATION RESULTS:')
+      console.log(`   Valid straight bets: ${straightBets.length}`)
+      console.log(`   Valid parlay bets: ${validParlayBets.length} (from ${validParlayBets.length > 0 ? parlayGroups.size - invalidParlayBets.length / parlayGroups.size : 0} complete parlays)`)
+      console.log(`   Invalid parlay bets excluded: ${invalidParlayBets.length} (from incomplete parlays)`)
+      console.log(`   TOTAL BETS FOR STRATEGY: ${finalValidBets.length}`)
+      
+      if (finalValidBets.length > 0) {
+        const strategyBets = finalValidBets.map(bet => ({
+          strategy_id: strategy.id,
+          bet_id: bet.id,
+          parlay_id: bet.parlay_id || null,
+        }))
 
-      if (strategyBetsError) {
-        console.error('Error inserting strategy_bets:', strategyBetsError)
-        // Continue with strategy creation even if linking fails
+        const { error: strategyBetsError } = await serviceSupabase
+          .from('strategy_bets')
+          .insert(strategyBets)
+
+        if (strategyBetsError) {
+          console.error('Error inserting strategy_bets:', strategyBetsError)
+          // Continue with strategy creation even if linking fails
+        } else {
+          console.log('✅ Successfully inserted', strategyBets.length, 'strategy_bets relationships (with parlay integrity maintained)')
+        }
+        
+        // Update the matchingBets for subsequent processing
+        var matchingBets = finalValidBets
       } else {
-        console.log('✅ Successfully inserted', strategyBets.length, 'strategy_bets relationships')
+        console.log('⚠️ No valid bets after parlay integrity check')
+        var matchingBets = []
       }
 
       // Get user profile for username
@@ -853,10 +1048,23 @@ export async function POST(request: NextRequest) {
         })
 
       if (leaderboardError) {
-        console.error('Error inserting strategy_leaderboard:', leaderboardError)
+        console.error('❌ LEADERBOARD INSERTION ERROR:', leaderboardError)
+        console.error('   Error details:', {
+          message: leaderboardError.message,
+          details: leaderboardError.details,
+          hint: leaderboardError.hint,
+          code: leaderboardError.code,
+        })
+        console.log('   Strategy creation will continue, but leaderboard may need manual fix')
         // Continue with strategy creation even if leaderboard fails
       } else {
-        console.log('✅ Successfully inserted strategy_leaderboard entry')
+        console.log('✅ STRATEGY LEADERBOARD ENTRY CREATED:')
+        console.log(`   Strategy ID: ${strategy.id}`)
+        console.log(`   User ID: ${finalUser.id}`)
+        console.log(`   Strategy Name: ${name}`)
+        console.log(`   Primary Sport: ${sport}`)
+        console.log(`   Bet Type: ${betType}`)
+        console.log(`   Monetized: ${monetized}`)
 
         // Force trigger calculation by updating the strategy_leaderboard entry
         // This will cause the parlay-aware triggers to calculate the correct metrics
@@ -866,9 +1074,17 @@ export async function POST(request: NextRequest) {
           .eq('strategy_id', strategy.id)
 
         if (triggerError) {
-          console.error('Error triggering leaderboard calculation:', triggerError)
+          console.error('❌ LEADERBOARD TRIGGER ERROR:', triggerError)
+          console.error('   Trigger error details:', {
+            message: triggerError.message,
+            details: triggerError.details,
+            hint: triggerError.hint,
+          })
+          console.log('   Manual recalculation may be needed')
         } else {
-          console.log('✅ Triggered parlay-aware leaderboard calculation')
+          console.log('✅ LEADERBOARD CALCULATION TRIGGERED:')
+          console.log('   Parlay-aware triggers will calculate correct performance metrics')
+          console.log('   This includes ROI, win rate, bet counts, etc.')
         }
       }
 

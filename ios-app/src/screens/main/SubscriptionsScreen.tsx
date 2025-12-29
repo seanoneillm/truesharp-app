@@ -689,7 +689,7 @@ function BillingTab({ subscriptions, formatCurrency, onManageBilling }: BillingT
             {subscriptions.map(subscription => (
               <View key={subscription.id} style={styles.historyItem}>
                 <View style={styles.historyItemContent}>
-                  <TrueSharpShield size={20} />
+                  {renderProfilePicture(subscription.seller_avatar_url, subscription.seller_username, false)}
                   <View style={styles.historyItemText}>
                     <Text style={styles.historyItemTitle}>
                       {subscription.strategy_name || 'Strategy'}
@@ -1438,11 +1438,6 @@ function SubscriptionCard({
               <Text style={styles.enhancedSellerText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>
                 by @{subscription.seller_username || subscription.seller_display_name || 'Unknown'}
               </Text>
-              {subscription.strategy_description && (
-                <Text style={styles.enhancedDescription} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
-                  {subscription.strategy_description}
-                </Text>
-              )}
             </View>
           </View>
           <View style={styles.enhancedStatusBadge}>
@@ -2515,12 +2510,6 @@ const styles = StyleSheet.create({
   enhancedSellerText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-  },
-  enhancedDescription: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    lineHeight: 18,
   },
   enhancedStatusBadge: {
     flexDirection: 'row',

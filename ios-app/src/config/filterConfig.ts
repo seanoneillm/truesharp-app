@@ -34,6 +34,7 @@ export const BET_TYPE_OPTIONS = [
 export const LEAGUE_OPTIONS = [
   { label: 'NFL', value: 'NFL' },
   { label: 'NBA', value: 'NBA' },
+  { label: 'WNBA', value: 'WNBA' },
   { label: 'MLB', value: 'MLB' },
   { label: 'NHL', value: 'NHL' },
   { label: 'NCAAF', value: 'NCAAF' },

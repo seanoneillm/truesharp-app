@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import { Dimensions, Image, Text, View } from 'react-native'
-import { BarChart } from 'react-native-chart-kit'
 import { theme } from '../../styles/theme'
 
 interface GameScoreData {
@@ -90,34 +89,33 @@ export const GameScoreChart: React.FC<GameScoreChartProps> = ({
   const winningCount = isOver ? overCount : underCount
   const winRate = Math.round((winningCount / scores.length) * 100)
 
-  const data = {
-    labels: paddedLabels,
-    datasets: [
-      {
-        data: adjustedScores, // Use padded scores for display
-        colors: paddedScores.map((score, index) => () => getBarColor(score, index)), // Use index to determine if filler bar
-      },
-    ],
-  }
+  // Calculate chart scale - use 0 as baseline for accurate proportions
+  const maxDataScore = Math.max(...adjustedScores)
+  const maxScore = Math.max(maxDataScore, lineValue + 5) // Ensure line is always visible
+  const minScore = 0 // Always start from 0 for accurate proportions
 
-  const maxScore = Math.max(...adjustedScores)
-  const minScore = Math.min(...adjustedScores)
-
-  console.log(`📈 Chart data:
-    Scores: [${scores.join(', ')}]
-    Line: ${lineValue}
-    Colors: [${scores.map(s => (s > lineValue ? 'GREEN' : 'RED')).join(', ')}]`)
-
+  // Calculate optimal dimensions based on screen size and container
+  const containerPadding = theme.spacing.md * 2 // Left and right padding
+  const chartWidth = screenWidth - containerPadding - 16 // Account for outer margins
+  const chartHeight = 150 // Optimal height for readability
+  const barWidth = Math.max((chartWidth - 80) / paddedScores.length, 20) // Dynamic bar width
+  
+  // Available height for bars (excluding padding for labels)
+  const availableBarHeight = chartHeight - 60
+  
   return (
     <View style={styles.container}>
+      {/* Header Section */}
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Image
-            source={require('../../assets/truesharp-logo.png')}
-            style={styles.titleLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Recent Performance</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleContainer}>
+            <Image
+              source={require('../../assets/truesharp-logo.png')}
+              style={styles.titleLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Recent Performance</Text>
+          </View>
           <View style={styles.winRateBadge}>
             <Text style={styles.winRateText}>{winRate}%</Text>
           </View>
@@ -127,93 +125,87 @@ export const GameScoreChart: React.FC<GameScoreChartProps> = ({
         </Text>
       </View>
 
+      {/* Custom Bar Chart */}
       <View style={styles.chartContainer}>
-        <View style={styles.chartWrapper}>
-          <BarChart
-            data={data}
-            width={screenWidth - 32} // Reduce width to fit container properly
-            height={120} // Reduce height to minimize vertical whitespace
-            chartConfig={{
-              backgroundColor: 'transparent',
-              backgroundGradientFrom: theme.colors.card,
-              backgroundGradientTo: theme.colors.card,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(107, 114, 128, ${opacity * 0.6})`,
-              labelColor: (opacity = 0.8) => `rgba(107, 114, 128, ${opacity})`,
-              style: {
-                borderRadius: 8,
-                paddingLeft: 0, // Minimal left padding
-                paddingRight: 0, // Minimal right padding
-                paddingBottom: 0, // Remove bottom padding
-                marginLeft: 0,
-                marginRight: 0,
-              },
-              propsForLabels: {
-                fontSize: 10,
-                fontWeight: '600',
-                fill: theme.colors.text.secondary,
-              },
-              propsForBackgroundLines: {
-                stroke: theme.colors.border + '40',
-                strokeWidth: 1,
-              },
-              fillShadowGradient: 'transparent',
-              fillShadowGradientOpacity: 0,
-              barPercentage: 0.85, // Increase to make bars wider and reduce spacing
-            }}
-            style={styles.chart}
-            withCustomBarColorFromData={true}
-            showBarTops={false}
-            fromZero={true}
-            withInnerLines={true}
-            withVerticalLines={false}
-            withOuterLines={true}
-            yAxisSuffix=""
-            yAxisInterval={1}
-            segments={4}
-            withVerticalLabels={true}
-            withHorizontalLabels={true}
-            yLabelsOffset={-999} // Hide y-labels by moving them off-screen
-            xLabelsOffset={-999} // Hide x-labels by moving them off-screen
-            showValuesOnTopOfBars={false}
-            formatYLabel={value => ''} // Return empty string for y-labels
-            formatXLabel={value => ''} // Return empty string for x-labels
-          />
-
-          {/* Chart border and axis lines */}
-          <View style={styles.chartBorderOverlay}>
-            {/* Bottom axis line */}
-            <View style={styles.bottomAxisLine} />
-            {/* Left border line */}
-            <View style={styles.leftBorderLine} />
-            {/* Right border line */}
-            <View style={styles.rightBorderLine} />
-            {/* Top border line */}
-            <View style={styles.topBorderLine} />
+        <View style={styles.chartArea}>
+          {/* Y-axis scale indicators */}
+          <View style={styles.yAxisContainer}>
+            {[...Array(3)].map((_, index) => {
+              const value = Math.ceil(maxScore * (2 - index) / 2)
+              const showLabel = value > 0
+              return (
+                <View key={index} style={styles.yAxisTick}>
+                  <Text style={styles.yAxisLabel}>{showLabel ? value : ''}</Text>
+                  <View style={styles.gridLine} />
+                </View>
+              )
+            })}
           </View>
 
-          {/* Score labels positioned above each bar */}
-          <View style={styles.scoreLabelsContainer}>
-            {paddedScores.map((score, index) => (
-              <View key={index} style={styles.scoreLabelWrapper}>
-                <Text style={styles.scoreLabelText}>
-                  {index < scores.length ? score : ''} {/* Only show text for actual data */}
-                </Text>
-              </View>
-            ))}
+          {/* Bars Container */}
+          <View style={styles.barsContainer}>
+            {paddedScores.map((score, index) => {
+              const isVisible = index < scores.length
+              const barHeight = isVisible ? Math.max((score / maxScore) * availableBarHeight, 8) : 0
+              const barColor = getBarColor(scores[index] || 0, index)
+              
+              return (
+                <View key={index} style={styles.barColumn}>
+                  {/* Bar */}
+                  <View style={styles.barContainer}>
+                    <View
+                      style={[
+                        styles.bar,
+                        {
+                          height: barHeight,
+                          backgroundColor: barColor,
+                          width: barWidth,
+                        }
+                      ]}
+                    />
+                  </View>
+                  
+                  {/* Value label at base of bar */}
+                  <View style={styles.valueContainer}>
+                    {isVisible && (
+                      <Text style={styles.valueLabel}>
+                        {score}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  {/* Game label below value */}
+                  <View style={styles.labelContainer}>
+                    {isVisible && (
+                      <Text style={styles.gameLabel}>G{index + 1}</Text>
+                    )}
+                  </View>
+                </View>
+              )
+            })}
           </View>
+        </View>
+
+        {/* Line indicator for the betting line */}
+        <View style={[
+          styles.lineIndicator,
+          { bottom: 52 + ((lineValue / maxScore) * availableBarHeight) }
+        ]}>
+          <View style={styles.lineDash} />
+          <Text style={styles.lineLabel}>{line}</Text>
         </View>
       </View>
 
+      {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#22c55e' }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#22c55e' }]} />
           <Text style={styles.legendText}>
             {isOver ? 'Over' : 'Under'} {line} ({isOver ? overCount : underCount})
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#ef4444' }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
           <Text style={styles.legendText}>
             {isOver ? 'Under' : 'Over'} {line} ({isOver ? underCount : overCount})
           </Text>
@@ -232,161 +224,212 @@ const styles = {
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: theme.colors.border + '30',
+    borderColor: theme.colors.border + '20',
   },
+  
+  // Header Section
   header: {
-    marginBottom: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border + '20',
+    marginBottom: theme.spacing.md,
+  },
+  titleRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.xs,
   },
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.xs / 2,
-  },
-  titleLogo: {
-    width: 20, // Increase logo size
-    height: 20,
-  },
-  title: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: '#000000',
-    letterSpacing: 0.2,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
     flex: 1,
   },
+  titleLogo: {
+    width: 22,
+    height: 22,
+  },
+  title: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    letterSpacing: 0.3,
+  },
   winRateBadge: {
-    backgroundColor: theme.colors.text.secondary + '15',
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.primary + '15',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs / 2,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
   },
   winRateText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.secondary,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.primary,
   },
   subtitle: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.light,
-    fontWeight: theme.typography.fontWeight.normal,
-  },
-  chartContainer: {
-    marginVertical: theme.spacing.xs, // Reduce vertical margin
-    width: '100%',
-    overflow: 'hidden' as const,
-  },
-  chartWrapper: {
-    position: 'relative' as const,
-    width: '100%',
-    alignItems: 'flex-start' as const,
-    justifyContent: 'flex-start' as const,
-    marginLeft: -50, // Move chart further left to reduce left whitespace
-  },
-  chart: {
-    borderRadius: theme.borderRadius.md,
-  },
-  chartBorderOverlay: {
-    position: 'absolute' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none' as const,
-  },
-  bottomAxisLine: {
-    position: 'absolute' as const,
-    bottom: 35,
-    left: 79,
-    right: 0, // Extended to the very edge of the container
-    height: 1.5,
-    backgroundColor: theme.colors.text.secondary + '60',
-  },
-  leftBorderLine: {
-    position: 'absolute' as const,
-    top: 10,
-    bottom: 35,
-    left: 79,
-    width: 1,
-    backgroundColor: theme.colors.border + '40',
-  },
-  rightBorderLine: {
-    position: 'absolute' as const,
-    top: 10,
-    bottom: 35,
-    right: -15, // Moved further right to align with rightmost bar
-    width: 1,
-    backgroundColor: theme.colors.border + '40',
-  },
-  topBorderLine: {
-    position: 'absolute' as const,
-    top: 10,
-    left: 79,
-    right: 0, // Extended to the very edge
-    height: 1,
-    backgroundColor: theme.colors.border + '40',
-  },
-  scoreLabelsContainer: {
-    position: 'absolute',
-    bottom: 15, // Move labels closer to bars to reduce bottom whitespace
-    left: 79, // Move labels slightly to the right
-    right: 35,
-    height: 20,
-    flexDirection: 'row',
-    justifyContent: 'flex-start', // Start from the left and space evenly
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  scoreLabelWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 23.8, // Fixed width to align with bars
-    marginRight: 6.8, // Much smaller spacing between labels
-  },
-  scoreLabelText: {
-    color: '#000000',
-    fontSize: 10, // Slightly smaller than xs (which is 12)
+    color: theme.colors.text.secondary,
     fontWeight: theme.typography.fontWeight.medium,
-    textAlign: 'center' as const,
-    // Removed background styling for clean look
   },
+
+  // Chart Section
+  chartContainer: {
+    position: 'relative' as const,
+    marginVertical: theme.spacing.sm,
+    backgroundColor: '#fafafa',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border + '40',
+  },
+  chartArea: {
+    flexDirection: 'row' as const,
+    height: 150,
+  },
+  yAxisContainer: {
+    width: 30,
+    justifyContent: 'space-between' as const,
+    paddingVertical: theme.spacing.xs,
+    paddingBottom: 30, // Account for space at bottom
+  },
+  yAxisTick: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    height: 30, // Increased height for better spacing with 3 labels
+  },
+  yAxisLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+    width: 25,
+    textAlign: 'right' as const,
+  },
+  gridLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border + '20',
+    marginLeft: theme.spacing.xs,
+  },
+  barsContainer: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'space-evenly' as const,
+    paddingHorizontal: theme.spacing.xs,
+    paddingBottom: 20, // Reduced from 30 to minimize space under labels
+  },
+  barColumn: {
+    alignItems: 'center' as const,
+    flex: 1,
+    minHeight: 40, // Reduced from 50
+  },
+  barContainer: {
+    flex: 1,
+    justifyContent: 'flex-end' as const,
+    alignItems: 'center' as const,
+    minHeight: 8,
+  },
+  bar: {
+    borderRadius: theme.borderRadius.sm,
+    minHeight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  valueContainer: {
+    height: 16, // Reduced height
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: theme.spacing.xs / 2,
+  },
+  valueLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    textAlign: 'center' as const,
+    color: '#000000', // Black text as requested
+  },
+  labelContainer: {
+    height: 16, // Reduced height
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: 2, // Minimal margin
+  },
+  gameLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.secondary,
+    textAlign: 'center' as const,
+  },
+
+  // Line Indicator
+  lineIndicator: {
+    position: 'absolute' as const,
+    left: 30,
+    right: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    zIndex: 5,
+  },
+  lineDash: {
+    flex: 1,
+    height: 2,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 1,
+    opacity: 0.8,
+  },
+  lineLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.primary,
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    marginLeft: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+  },
+
+  // Legend Section
   legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.sm,
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    gap: theme.spacing.lg,
+    marginTop: theme.spacing.md,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border + '20',
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: theme.spacing.xs,
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     fontWeight: theme.typography.fontWeight.medium,
   },
+
+  // Loading and Error States
   loadingContainer: {
     padding: theme.spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexDirection: 'row' as const,
     gap: theme.spacing.sm,
   },
   loadingText: {
@@ -396,24 +439,24 @@ const styles = {
   },
   noDataContainer: {
     padding: theme.spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 2,
     borderColor: theme.colors.border,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
     borderRadius: theme.borderRadius.lg,
   },
   noDataText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     fontWeight: theme.typography.fontWeight.medium,
     marginTop: theme.spacing.sm,
   },
   noDataSubtext: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.light,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     marginTop: theme.spacing.xs,
   },
 }

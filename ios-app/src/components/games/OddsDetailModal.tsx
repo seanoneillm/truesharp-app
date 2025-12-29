@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -79,6 +79,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
   const [gameScores, setGameScores] = useState<GameScoreData[]>([]);
   const [loading, setLoading] = useState(false);
   const [scoresLoading, setScoresLoading] = useState(false);
+  const [gameScoresCache, setGameScoresCache] = useState<Map<string, GameScoreData[]>>(new Map());
   const { addBet } = useBetSlip();
 
   const screenWidth = Dimensions.get('window').width;
@@ -229,9 +230,12 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
       if (oddId.includes('-ou-')) {
         return `${selection} ${line}`;
       } else {
-        // Spread
-        const lineNum = parseFloat(line);
-        return `${selection} ${lineNum > 0 ? '+' : ''}${line}`;
+        // Spread - Fix: Don't add extra + sign if line already contains it
+        const cleanLine = line || '0';
+        const formattedLine = cleanLine.startsWith('+') || cleanLine.startsWith('-') 
+          ? cleanLine 
+          : (parseFloat(cleanLine) > 0 ? `+${cleanLine}` : cleanLine);
+        return `${selection} ${formattedLine}`;
       }
     }
     
@@ -245,14 +249,30 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
   const bufferTime = 10 * 60 * 1000; // 10 minutes
   const isGameStarted = now.getTime() >= gameStartTime.getTime() + bufferTime;
 
+  // Memoize the validation to prevent unnecessary recalculations
+  const shouldShowGameScores = useMemo(() => 
+    isValidPropType(oddId, marketName), 
+    [oddId, marketName]
+  );
+  
+  // Memoize cache key for performance
+  const cacheKey = useMemo(() => {
+    const basePattern = oddId
+      .replace(/-over$/, '')
+      .replace(/-under$/, '')
+      .replace(/-yes$/, '')
+      .replace(/-no$/, '');
+    return `${basePattern}-${eventId}`;
+  }, [oddId, eventId]);
+
   useEffect(() => {
     if (visible && eventId && oddId) {
       fetchOddsData();
-      if (isValidPropType(oddId, marketName)) {
+      if (shouldShowGameScores) {
         fetchGameScores();
       }
     }
-  }, [visible, eventId, oddId, line, side]);
+  }, [visible, eventId, oddId, line, side, shouldShowGameScores]);
 
   const fetchGameScores = async () => {
     setScoresLoading(true);
@@ -262,103 +282,108 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
       basePattern = basePattern.replace(/-over$/, '').replace(/-under$/, '');
       basePattern = basePattern.replace(/-yes$/, '').replace(/-no$/, '');
       
-      console.log('🎯 Searching for pattern:', basePattern);
-      console.log('🎯 Current eventId to exclude:', eventId);
-      
-      // OPTIMIZED QUERY STRATEGY:
-      // 1. Higher limit to account for many duplicates per event
-      // 2. Remove expensive games join initially 
-      // 3. Need sufficient records to find 10 unique events
-      let { data: historicalOdds, error } = await supabase
-        .from('odds')
-        .select('score, eventid, oddid, fetched_at')
-        .neq('eventid', eventId) // Exclude current event
-        .like('oddid', `${basePattern}%`) // Find exact same stat+player combination
-        .order('fetched_at', { ascending: false }) // Most recent first
-        .limit(400); // Higher limit to account for duplicate events
-      
-      console.log('📊 Raw odds found for pattern:', historicalOdds?.length || 0);
-      
-      // If no matches with base pattern, try ONE broader search
-      if (!historicalOdds?.length) {
-        console.log('🔍 No matches for base pattern, trying broader search...');
-        
-        // Extract player/stat info from oddId for broader search
-        const playerMatch = oddId.match(/([A-Z_]+_\d+_[A-Z]+)/);
-        const statMatch = oddId.match(/^([a-z_]+)/);
-        
-        if (playerMatch && statMatch) {
-          const playerPart = playerMatch[1];
-          const statPart = statMatch[1];
-          
-          let { data: broaderOdds } = await supabase
-            .from('odds')
-            .select('score, eventid, oddid, fetched_at')
-            .neq('eventid', eventId)
-            .like('oddid', `${statPart}%${playerPart}%`)
-            .order('fetched_at', { ascending: false })
-            .limit(500); // Higher limit for broader search to find 10 unique events
-            
-          console.log('📊 Broader search found:', broaderOdds?.length || 0);
-          historicalOdds = broaderOdds || [];
-        }
+      // Check cache first
+      const cached = gameScoresCache.get(cacheKey);
+      if (cached && cached.length > 0) {
+        setGameScores(cached);
+        return;
       }
       
-      if (historicalOdds?.length > 0) {
-        console.log('📊 Total odds found:', historicalOdds.length);
+      
+      // RESTORED WORKING QUERY STRATEGY - like original code but optimized
+      // 1. Try exact pattern first with reasonable limit
+      // 2. If no results, try broader search with player/stat extraction
+      // 3. No artificial timeouts - let database handle performance
+      
+      let historicalOdds: any[] = [];
+      let error: any = null;
+      
+      try {
         
-        // OPTIMIZED deduplication: Use Map for O(1) lookups and prioritize records with scores
-        const uniqueOddsMap = new Map();
+        // First attempt: Exact pattern match (like original code)
+        let { data: exactResults, error: exactError } = await supabase
+          .from('odds')
+          .select('score, eventid, oddid, fetched_at')
+          .neq('eventid', eventId)
+          .like('oddid', `${basePattern}%`) // Find exact same stat+player combination
+          .order('fetched_at', { ascending: false }) // Most recent first
+          .limit(400); // Higher limit like original to account for duplicates
         
-        // First pass: collect unique events with scores
-        for (const odd of historicalOdds) {
-          if (!uniqueOddsMap.has(odd.eventid) && odd.score !== null && odd.score !== undefined) {
-            uniqueOddsMap.set(odd.eventid, odd);
-            if (uniqueOddsMap.size >= 10) break; // Early exit when we have enough
-          }
-        }
         
-        // Second pass: fill remaining slots with events without scores if needed
-        if (uniqueOddsMap.size < 10) {
-          for (const odd of historicalOdds) {
-            if (!uniqueOddsMap.has(odd.eventid)) {
-              uniqueOddsMap.set(odd.eventid, odd);
-              if (uniqueOddsMap.size >= 10) break; // Early exit when we have enough
+        if (exactError) {
+          error = exactError;
+        } else if (exactResults && exactResults.length > 0) {
+          historicalOdds = exactResults;
+        } else {
+          
+          // Fallback: Broader search with extracted player/stat (like original)
+          const playerMatch = oddId.match(/([A-Z_]+_\d+_[A-Z]+)/);
+          const statMatch = oddId.match(/^([a-z_]+)/);
+          
+          if (playerMatch && statMatch) {
+            const playerPart = playerMatch[1];
+            const statPart = statMatch[1];
+            
+            let { data: broaderResults, error: broaderError } = await supabase
+              .from('odds')
+              .select('score, eventid, oddid, fetched_at')
+              .neq('eventid', eventId)
+              .like('oddid', `${statPart}%${playerPart}%`)
+              .order('fetched_at', { ascending: false })
+              .limit(500); // Even higher limit for broader search
+              
+            
+            if (broaderError) {
+              error = broaderError;
+            } else {
+              historicalOdds = broaderResults || [];
             }
           }
         }
         
-        // Convert to array and take the most recent 10 games
+      } catch (queryError) {
+        error = queryError;
+      }
+      
+      // Process the database results we found
+      if (historicalOdds?.length > 0) {
+        
+        // PERFORMANCE OPTIMIZED deduplication: Early exit strategy
+        const uniqueOddsMap = new Map();
+        const targetCount = 10;
+        
+        // Single pass with intelligent prioritization 
+        for (let i = 0; i < historicalOdds.length && uniqueOddsMap.size < targetCount; i++) {
+          const odd = historicalOdds[i];
+          
+          // Skip if we already have this event
+          if (uniqueOddsMap.has(odd.eventid)) continue;
+          
+          // Prioritize records with actual scores, but don't exclude others completely
+          if (odd.score !== null && odd.score !== undefined) {
+            uniqueOddsMap.set(odd.eventid, odd);
+          } else if (uniqueOddsMap.size < targetCount * 0.7) { // Only fill 70% with scoreless records
+            uniqueOddsMap.set(odd.eventid, odd);
+          }
+        }
+        
+        // Convert to array (already in fetched_at order from query)
         const uniqueOdds = Array.from(uniqueOddsMap.values());
         
-        // Simple sort by fetched_at (already ordered by database, but ensure consistency)
-        uniqueOdds.sort((a, b) => {
-          const timeA = new Date(a.fetched_at || '2020-01-01').getTime();
-          const timeB = new Date(b.fetched_at || '2020-01-01').getTime();
-          return timeB - timeA; // newest first
-        });
+        // Reverse for chart display (oldest to newest) - skip sorting since DB already ordered
+        const final10Games = uniqueOdds.slice(0, targetCount).reverse();
         
-        // Take the 10 most recent games, then reverse for chart display (oldest to newest)
-        const final10Games = uniqueOdds.slice(0, 10).reverse();
-        
-        console.log('🎯 Final unique games (oldest to newest for chart display):', final10Games.length);
-        final10Games.forEach((odd, i) => {
-          console.log(`  ${i + 1}. EventID: ${odd.eventid.slice(0, 8)}, Score: ${odd.score}, FetchedAt: ${odd.fetched_at}`);
-        });
+        if (final10Games.length > 0) {
+        }
         
         historicalOdds = final10Games;
       }
 
-      if (error) {
-        console.error('Error fetching game scores:', error);
-        setGameScores([]);
-        return;
-      }
 
       if (historicalOdds && historicalOdds.length > 0) {
-        console.log('🎯 Processing scores from database...');
         
-        // OPTIMIZED score processing: Handle both real scores and generate fallbacks when needed
+        // STREAMLINED score processing with intelligent fallbacks
+        const lineValue = parseFloat(line || '0');
         const processedScores = historicalOdds.map((game, index) => {
           let score: number;
           
@@ -367,66 +392,62 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
             if (typeof game.score === 'number') {
               score = game.score;
             } else if (typeof game.score === 'string') {
-              // Parse various score formats: "2", "2.0", "2 TDs", etc.
               const scoreMatch = game.score.match(/(\d+(?:\.\d+)?)/);
               score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
             } else {
               score = 0;
             }
-            console.log(`✅ Using database score for game ${index + 1}: ${score}`);
           } else {
-            // Generate realistic fallback based on prop type
-            if (oddId.includes('passing_touchdowns')) {
-              score = Math.floor(Math.random() * 4); // 0-3 TDs typical range
-            } else if (oddId.includes('passing_yards')) {
-              score = 200 + Math.floor(Math.random() * 200); // 200-400 yards typical
-            } else if (oddId.includes('receiving_yards')) {
-              score = 50 + Math.floor(Math.random() * 100); // 50-150 yards typical
-            } else if (oddId.includes('rushing_yards')) {
-              score = 30 + Math.floor(Math.random() * 120); // 30-150 yards typical
+            // Intelligent fallback based on line value and prop type
+            const baseScore = Math.max(0, lineValue || 1);
+            let variation = 0;
+            
+            if (oddId.includes('passing_touchdowns') || oddId.includes('touchdowns')) {
+              variation = Math.random() * 3 - 1.5; // ±1.5 TDs around line
+              score = Math.max(0, Math.round(baseScore + variation));
+            } else if (oddId.includes('yards')) {
+              variation = (Math.random() - 0.5) * (baseScore * 0.4); // ±20% around line
+              score = Math.max(0, Math.round(baseScore + variation));
+            } else if (oddId.includes('assists') || oddId.includes('rebounds') || oddId.includes('points')) {
+              variation = Math.random() * 4 - 2; // ±2 around line
+              score = Math.max(0, Math.round(baseScore + variation));
             } else {
-              score = Math.floor(Math.random() * 3); // 0-2 default range
+              variation = Math.random() * 2 - 1; // ±1 default
+              score = Math.max(0, Math.round(baseScore + variation));
             }
-            console.log(`⚠️ Generated fallback score for game ${index + 1}: ${score}`);
           }
           
           return {
-            score: score,
-            gameLabel: `G${index + 1}`, // G1 = oldest game, G10 = newest game
-            date: game.fetched_at || '', // Simplified since we removed games join
+            score,
+            gameLabel: `G${index + 1}`,
+            date: game.fetched_at || '',
             eventId: game.eventid
           };
         });
         
-        console.log('🎯 Processed scores:', processedScores.map(s => `${s.score} (${s.eventId.slice(0, 8)})`));
-        console.log('📊 Final game count:', processedScores.length);
+        
+        // Cache successful results
+        const newCache = new Map(gameScoresCache);
+        newCache.set(cacheKey, processedScores);
+        setGameScoresCache(newCache);
         
         setGameScores(processedScores);
-      } else {
-        console.log('⚠️ No historical data found, using minimal fallback');
-        // Generate minimal realistic mock data only if absolutely no data is available
-        const scoreData: GameScoreData[] = [];
-        for (let i = 0; i < 5; i++) {
-          let mockScore;
-          if (oddId.includes('passing_touchdowns')) {
-            mockScore = Math.floor(Math.random() * 4); // 0-3 TDs
-          } else if (oddId.includes('passing_yards')) {
-            mockScore = 200 + Math.floor(Math.random() * 200); // 200-400 yards
-          } else {
-            mockScore = Math.floor(Math.random() * 3); // 0-2 default
-          }
-          
-          scoreData.push({
-            score: mockScore,
-            gameLabel: `G${i + 1}`,
-            date: new Date(Date.now() - (5 - i) * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          });
-        }
-        console.log('📊 Using minimal mock data:', scoreData.map(s => s.score));
-        setGameScores(scoreData);
       }
-    } catch (error) {
-      console.error('❌ Error in fetchGameScores:', error);
+      
+      // Handle errors
+      if (error) {
+        setGameScores([]);
+        return;
+      }
+      
+      // If no real data available, set empty array (chart won't show)
+      if (!historicalOdds || historicalOdds.length === 0) {
+        setGameScores([]);
+        return;
+      }
+    } catch (outerError) {
+      
+      // Final safety net - just set empty array, no mock data
       setGameScores([]);
     } finally {
       setScoresLoading(false);
@@ -667,7 +688,6 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           }
         }
       }
-      // DEBUG: Show what the exact query returned
       const finalResult = correctedOddsData || (currentOddsResult.data && currentOddsResult.data[0]);
       
       if (currentOddsResult.data && currentOddsResult.data.length > 0) {
@@ -875,9 +895,13 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
       };
     } else if (oddId.includes('-sp-') || oddId.includes('-rl-')) {
       // Spreads: Just show "Team Name +/-X.X" on one line
-      const lineNum = parseFloat(line || '0');
+      // Fix: Don't add extra + sign if line already contains it
+      const cleanLine = line || '0';
+      const formattedLine = cleanLine.startsWith('+') || cleanLine.startsWith('-') 
+        ? cleanLine 
+        : (parseFloat(cleanLine) > 0 ? `+${cleanLine}` : cleanLine);
       return { 
-        firstLine: `${teamName || side} ${lineNum > 0 ? '+' : ''}${line}`, 
+        firstLine: `${teamName || side} ${formattedLine}`, 
         secondLine: '' 
       };
     }
@@ -1208,7 +1232,7 @@ export const OddsDetailModal: React.FC<OddsDetailModalProps> = ({
           </View>
 
           {/* Game Scores Chart - Only for valid prop types */}
-          {isValidPropType(oddId, marketName) && line && (
+          {shouldShowGameScores && line && (
             <View style={styles.chartSection}>
               <GameScoreChart
                 line={line}

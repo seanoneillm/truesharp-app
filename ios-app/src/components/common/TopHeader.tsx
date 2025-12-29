@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../contexts/AuthContext';
 import { globalStyles } from '../../styles/globalStyles';
@@ -20,11 +20,41 @@ export default function TopHeader() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchProfilePicture();
     checkAdminAccess();
+    fetchUnreadCount();
   }, [user]);
+
+  // Refresh unread count when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUnreadCount();
+    }, [user])
+  );
+
+  const fetchUnreadCount = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('read_at', null);
+
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        return;
+      }
+
+      setUnreadCount(data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
 
   const checkAdminAccess = async () => {
     try {
@@ -117,8 +147,27 @@ export default function TopHeader() {
           <TrueSharpLogo size="small" variant="horizontal" />
         </View>
 
-        {/* Right side - Profile Picture */}
+        {/* Right side - Notifications and Profile Picture */}
         <View style={styles.rightSection}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color={theme.colors.text.secondary}
+            />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.profileContainer}
             onPress={() => setShowDropdown(!showDropdown)}
@@ -229,8 +278,34 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     flex: 1,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     position: 'relative',
+  },
+  notificationButton: {
+    padding: theme.spacing.sm,
+    marginRight: theme.spacing.xs,
+    borderRadius: 20,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   profileContainer: {
     alignItems: 'center',

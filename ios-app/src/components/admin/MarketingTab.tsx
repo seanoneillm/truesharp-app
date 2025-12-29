@@ -19,6 +19,7 @@ import { fetchMarketplaceLeaderboard, MarketplaceStrategy } from '../../services
 import { captureRef } from 'react-native-view-shot';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
+import LeagueGamesCard from './LeagueGamesCard';
 
 export default function MarketingTab() {
   const { user } = useAuth();
@@ -275,6 +276,31 @@ export default function MarketingTab() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* League Games Cards */}
+      <LeagueGamesCard 
+        league="MLB" 
+        leagueColor={theme.colors.sports.mlb}
+        title="MLB"
+      />
+      
+      <LeagueGamesCard 
+        league="NBA" 
+        leagueColor={theme.colors.sports.nba}
+        title="NBA"
+      />
+      
+      <LeagueGamesCard 
+        league="NHL" 
+        leagueColor={theme.colors.sports.nhl}
+        title="NHL"
+      />
+      
+      <LeagueGamesCard 
+        league="NFL" 
+        leagueColor={theme.colors.sports.nfl}
+        title="NFL"
+      />
     </ScrollView>
   );
 }

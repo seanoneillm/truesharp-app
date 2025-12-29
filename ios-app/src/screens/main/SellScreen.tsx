@@ -23,6 +23,7 @@ import TrueSharpShield from '../../components/common/TrueSharpShield';
 import TrueSharpLogo from '../../components/common/TrueSharpLogo';
 import SellerProfileModal from '../../components/marketplace/SellerProfileModal';
 import EditSellerProfileModal from '../../components/marketplace/EditSellerProfileModal';
+import { Environment } from '../../config/environment';
 import MonetizeStrategyModal from '../../components/monetization/MonetizeStrategyModal';
 import SellerOnboardingModal from '../../components/monetization/SellerOnboardingModal';
 import StripeConnectBrowser from '../../components/webview/StripeConnectBrowser';
@@ -980,6 +981,7 @@ export default function SellScreen() {
 
   const handleBetSelection = (item: BetData | ParlayGroup) => {
     const betId = 'legs' in item ? item.parlay_id : item.id;
+    
     setSelectedBetIds(prev => {
       const newSelection = prev.includes(betId) 
         ? prev.filter(id => id !== betId)
@@ -1036,25 +1038,39 @@ export default function SellScreen() {
           user_id: strategy.user_id,
         };
         
+        
         // Check each selected bet/parlay for compatibility
         for (const selectedId of selectedBetIds) {
           // Check if it's a direct bet ID
           const directBet = bets.find(bet => bet.id === selectedId);
           
           if (directBet && !directBet.is_parlay) {
-            // Single bet validation
+            // Single bet validation with auto-detection
+            
+            // Auto-detect player props - same logic as BetDetailsModal
+            let determinedBetType = directBet.bet_type || 'Unknown';
+            
+            // Only convert to player_prop if there's actually a player_name
+            // Having prop_type alone doesn't guarantee it's a player prop (could be team total)
+            if (directBet.player_name) {
+              if (!determinedBetType || determinedBetType === 'Unknown' || 
+                  (determinedBetType !== 'player_prop' && determinedBetType !== 'prop')) {
+                determinedBetType = 'player_prop';
+              }
+            }
+            
             const betData = {
               id: directBet.id,
-              sport: directBet.sport,
-              bet_type: directBet.bet_type,
+              sport: directBet.sport || 'Unknown',
+              bet_type: determinedBetType,
               side: directBet.side,
-              is_parlay: directBet.is_parlay,
-              sportsbook: directBet.sportsbook,
+              is_parlay: directBet.is_parlay || false,
+              sportsbook: directBet.sportsbook || 'Unknown',
               odds: typeof directBet.odds === 'string' ? parseFloat(directBet.odds) : directBet.odds,
               stake: typeof directBet.stake === 'string' ? parseFloat(directBet.stake) : directBet.stake,
               line_value: directBet.line_value,
-              status: directBet.status,
-              created_at: directBet.placed_at || directBet.created_at,
+              status: directBet.status || 'pending',
+              created_at: directBet.placed_at || directBet.created_at || new Date().toISOString(),
             };
             
             if (!validateBetAgainstStrategy(betData, strategyData)) {
@@ -1066,20 +1082,31 @@ export default function SellScreen() {
             const parlayLegs = bets.filter(bet => bet.parlay_id === selectedId);
             
             if (parlayLegs.length > 0) {
-              // For parlays, check all legs
-              const parlayLegData = parlayLegs.map(leg => ({
-                id: leg.id,
-                sport: leg.sport,
-                bet_type: leg.bet_type,
-                side: leg.side,
-                is_parlay: leg.is_parlay,
-                sportsbook: leg.sportsbook,
-                odds: typeof leg.odds === 'string' ? parseFloat(leg.odds) : leg.odds,
-                stake: typeof leg.stake === 'string' ? parseFloat(leg.stake) : leg.stake,
-                line_value: leg.line_value,
-                status: leg.status,
-                created_at: leg.placed_at || leg.created_at,
-              }));
+              // For parlays, check all legs with auto-detection
+              const parlayLegData = parlayLegs.map(leg => {
+                // Auto-detect player props for parlay legs too
+                let legBetType = leg.bet_type || 'Unknown';
+                if (leg.player_name) {
+                  if (!legBetType || legBetType === 'Unknown' || 
+                      (legBetType !== 'player_prop' && legBetType !== 'prop')) {
+                    legBetType = 'player_prop';
+                  }
+                }
+                
+                return {
+                  id: leg.id,
+                  sport: leg.sport || 'Unknown',
+                  bet_type: legBetType,
+                  side: leg.side,
+                  is_parlay: leg.is_parlay || false,
+                  sportsbook: leg.sportsbook || 'Unknown',
+                  odds: typeof leg.odds === 'string' ? parseFloat(leg.odds) : leg.odds,
+                  stake: typeof leg.stake === 'string' ? parseFloat(leg.stake) : leg.stake,
+                  line_value: leg.line_value,
+                  status: leg.status || 'pending',
+                  created_at: leg.placed_at || leg.created_at || new Date().toISOString(),
+                };
+              });
               
               // All legs must be compatible for parlay to be valid
               if (!parlayLegData.every(leg => validateBetAgainstStrategy(leg, strategyData))) {
@@ -1125,29 +1152,52 @@ export default function SellScreen() {
         }
       }
       
-      // Create strategy_bets entries for each selected strategy
-      const insertPromises = selectedStrategyIds.flatMap(strategyId =>
-        betIds.map(betId => {
-          // Find the bet to get parlay_id if needed
-          const bet = bets.find(b => b.id === betId);
-          return {
-            strategy_id: strategyId,
-            bet_id: betId,
-            added_at: new Date().toISOString(),
-            parlay_id: bet?.parlay_id || null,
-          };
-        })
-      );
+      // Call the add-bets-to-strategies API endpoint to handle notifications
+
+      // Add timeout for network requests on iOS devices
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      // Use development URL when in development mode, production URL otherwise
+      const apiUrl = Environment.isDevelopment ? 'http://localhost:3000' : Environment.API_BASE_URL;
       
-      const { error } = await supabase
-        .from('strategy_bets')
-        .insert(insertPromises);
-      
-      if (error) {
-        console.error('Error adding bets to strategies:', error);
-        Alert.alert('Error', 'Failed to add bet to strategies');
+      const response = await fetch(`${apiUrl}/api/add-bets-to-strategies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          betIds,
+          strategyIds: selectedStrategyIds,
+          userId: user.id
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      let result;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
+        } else {
+          // Handle non-JSON responses (like HTML error pages)
+          const text = await response.text();
+          console.error('Non-JSON response received:', text);
+          throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      if (!response.ok || !result.success) {
+        console.error('Error adding bets to strategies:', result);
+        Alert.alert('Error', result.error || 'Failed to add bet to strategies');
         return;
       }
+
       
       Alert.alert(
         'Success',
@@ -1163,9 +1213,25 @@ export default function SellScreen() {
       
     } catch (error) {
       console.error('Error adding bets to strategies:', error);
+      
+      // Provide more specific error messages for different types of network errors
+      let errorMessage = 'Failed to add bets to strategies';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Network request timed out. Please check your internet connection and try again.';
+        } else if (error.message.includes('Network request failed')) {
+          errorMessage = 'Network connection failed. Please check your internet connection and try again.';
+        } else if (error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       Alert.alert(
         'Error',
-        error instanceof Error ? error.message : 'Failed to add bets to strategies',
+        errorMessage,
         [{ text: 'OK' }]
       );
     } finally {
@@ -2737,7 +2803,7 @@ export default function SellScreen() {
             Only compatible strategies are selectable. Incompatible strategies don't match your selected bets' sport, type, or other filters.
           </Text>
           
-          {userStrategies.length === 0 ? (
+          {filteredStrategies.length === 0 ? (
             <View style={styles.emptyStrategiesContainer}>
               <Ionicons name="bulb-outline" size={48} color={theme.colors.text.light} />
               <Text style={styles.emptyStrategiesTitle}>No Strategies Found</Text>
@@ -2747,7 +2813,7 @@ export default function SellScreen() {
             </View>
           ) : (
             <FlatList
-              data={userStrategies}
+              data={filteredStrategies}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => {
                 const isCompatible = strategyCompatibility[item.id] !== false;
@@ -5153,7 +5219,7 @@ export default function SellScreen() {
                     {selectedBetIds.length > 0 && (
                       <TouchableOpacity
                         style={styles.addToStrategiesHeaderButton}
-                        onPress={() => setShowStrategyModal(true)}
+                        onPress={handleAddToStrategies}
                       >
                         <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
                         <Text style={styles.addToStrategiesHeaderButtonText}>

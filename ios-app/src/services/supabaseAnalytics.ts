@@ -164,20 +164,32 @@ function normalizeString(str: string): string {
 }
 
 // Helper function to normalize league names to handle NCAAB variations
+// CRITICAL: This must match exactly with backend normalization in route.ts and strategyValidation.ts
 function normalizeLeague(league: string): string {
   const normalized = league.toLowerCase().trim()
 
-  // Treat NCAAB, NCAAM, and NCAAMB as the same league
+  // Treat NCAAB, NCAAM, and NCAAMB as the same league - return NCAAB as canonical
   if (
     normalized === 'ncaab' ||
     normalized === 'ncaam' ||
     normalized === 'ncaamb' ||
     normalized === "ncaa men's basketball" ||
+    normalized === "ncaa men's basketball" ||
     normalized === 'college basketball' ||
     normalized === 'ncaa basketball'
   ) {
-    return 'NCAAM'
+    return 'NCAAB' // Canonical form - changed from NCAAM to NCAAB for consistency
   }
+
+  // Normalize other common league variations
+  if (normalized === 'nfl' || normalized === 'football') return 'NFL'
+  if (normalized === 'nba' || normalized === 'basketball') return 'NBA'
+  if (normalized === 'wnba' || normalized === 'women\'s basketball' || normalized === 'womens basketball') return 'WNBA'
+  if (normalized === 'mlb' || normalized === 'baseball') return 'MLB'
+  if (normalized === 'nhl' || normalized === 'hockey') return 'NHL'
+  if (normalized === 'ncaaf' || normalized === 'college football') return 'NCAAF'
+  if (normalized === 'mls' || normalized === 'soccer') return 'MLS'
+  if (normalized === 'ucl' || normalized === 'champions league') return 'UCL'
 
   // Return original league in uppercase for consistency
   return league.toUpperCase()
@@ -330,12 +342,12 @@ export const fetchAnalyticsData = async (
     // Apply filters
     if (sanitizedFilters.timeframe !== 'all') {
       if (sanitizedFilters.timeframe === 'custom') {
-        // Use custom date range
+        // Use custom date range - FIXED: use placed_at to match strategy creation
         if (sanitizedFilters.dateRange.start) {
-          query = query.gte('game_date', sanitizedFilters.dateRange.start)
+          query = query.gte('placed_at', sanitizedFilters.dateRange.start)
         }
         if (sanitizedFilters.dateRange.end) {
-          query = query.lte('game_date', sanitizedFilters.dateRange.end)
+          query = query.lte('placed_at', sanitizedFilters.dateRange.end)
         }
       } else {
         const days = {
@@ -348,7 +360,7 @@ export const fetchAnalyticsData = async (
         if (days) {
           const startDate = new Date()
           startDate.setDate(startDate.getDate() - days)
-          query = query.gte('game_date', startDate.toISOString())
+          query = query.gte('placed_at', startDate.toISOString()) // FIXED: use placed_at to match strategy creation
         }
       }
     }
@@ -421,18 +433,18 @@ export const fetchAnalyticsData = async (
       query = query.lte('line_value', sanitizedFilters.maxTotal)
     }
 
-    // Basic start date filter (available to all users)
+    // Basic start date filter (available to all users) - FIXED: use placed_at to match strategy creation
     if (sanitizedFilters.basicStartDate) {
-      query = query.gte('game_date', sanitizedFilters.basicStartDate)
+      query = query.gte('placed_at', sanitizedFilters.basicStartDate)
     }
 
-    // Pro filter: Individual start/end dates
+    // Pro filter: Individual start/end dates - FIXED: use placed_at to match strategy creation  
     if (sanitizedFilters.startDate) {
-      query = query.gte('game_date', sanitizedFilters.startDate)
+      query = query.gte('placed_at', sanitizedFilters.startDate)
     }
 
     if (sanitizedFilters.endDate) {
-      query = query.lte('game_date', sanitizedFilters.endDate)
+      query = query.lte('placed_at', sanitizedFilters.endDate)
     }
 
     // Execute query
@@ -564,63 +576,70 @@ export interface SellerProfile {
 const calculateMarketplaceRankScore = (strategy: any): number => {
   // Weights for different components (totaling 100%)
   const weights = {
-    roi: 0.4, // 40% - Highest weight for profitability
-    winRate: 0.25, // 25% - Consistency in winning
-    consistency: 0.2, // 20% - Betting frequency consistency
-    longevity: 0.1, // 10% - Strategy age/track record
-    subscribers: 0.05, // 5% - Market validation (lowest weight)
+    roi: 0.4, // 40% - Highest weight for profitability (kept same)
+    winRate: 0.1, // 10% - Reduced from 25% (win rate not always indicative of good ROI)
+    betVolume: 0.25, // 25% - New component for amount of bets (increased strength)
+    longevity: 0.2, // 20% - Increased from 10% (long term record is crucial)
+    subscribers: 0.05, // 5% - Market validation (kept same)
   }
 
-  // 1. ROI Score (0-100, normalized)
-  // ROI above 20% gets max score, negative ROI gets 0
-  const roiScore = Math.max(0, Math.min(100, ((strategy.roi_percentage || 0) + 20) * 2.5))
+  const roi = strategy.roi_percentage || 0
+  
+  // 1. ROI Score (0-100, normalized) - KEPT SAME
+  // ROI above 20% gets max score, negative ROI gets severely penalized
+  let roiScore = 0
+  if (roi < 0) {
+    roiScore = 0 // Negative ROI is very bad - no score
+  } else {
+    roiScore = Math.min(100, ((roi + 20) * 2.5))
+  }
 
-  // 2. Win Rate Score (0-100)
-  // Direct conversion: 0.6 win rate = 60 points
+  // 2. Win Rate Score (0-100) - REDUCED IMPORTANCE
+  // Direct conversion but with reduced weight
   const winRateScore = (strategy.win_rate || 0) * 100
 
-  // 3. Betting Consistency Score (0-100)
-  // Reward moderate, consistent betting. Penalize over-betting (>70 bets/week)
-  let consistencyScore = 100
-  if (strategy.total_bets > 0 && strategy.start_date) {
-    const startDate = new Date(strategy.start_date)
-    const now = new Date()
-    const weeksActive = Math.max(
-      1,
-      (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7)
-    )
-    const betsPerWeek = strategy.total_bets / weeksActive
-
-    if (betsPerWeek > 70) {
-      // Penalize over-betting: reduce score based on how much over 70 bets/week
-      const penalty = Math.min(80, (betsPerWeek - 70) * 2) // Max 80% penalty
-      consistencyScore = Math.max(20, 100 - penalty)
-    } else if (betsPerWeek < 1) {
-      // Penalize under-betting: reduce score for very low activity
-      consistencyScore = Math.max(10, betsPerWeek * 50)
-    }
+  // 3. Bet Volume Score (0-100) - NEW ENHANCED COMPONENT
+  // Reward high volume of bets, especially when ROI is positive
+  let betVolumeScore = 0
+  const totalBets = strategy.total_bets || 0
+  
+  // Base volume score
+  if (totalBets >= 1000) betVolumeScore = 100 // 1000+ bets = excellent
+  else if (totalBets >= 500) betVolumeScore = 85 // 500+ bets = very good
+  else if (totalBets >= 250) betVolumeScore = 70 // 250+ bets = good
+  else if (totalBets >= 100) betVolumeScore = 55 // 100+ bets = decent
+  else if (totalBets >= 50) betVolumeScore = 40 // 50+ bets = some track record
+  else if (totalBets >= 20) betVolumeScore = 25 // 20+ bets = minimal
+  else betVolumeScore = totalBets * 1.25 // Linear scaling for < 20 bets
+  
+  // BOOST bet volume score if ROI is positive
+  if (roi > 0) {
+    const roiMultiplier = Math.min(1.5, 1 + (roi / 100)) // Up to 50% boost for high ROI
+    betVolumeScore = Math.min(100, betVolumeScore * roiMultiplier)
   }
 
-  // 4. Longevity Score (0-100)
-  // Reward strategies with longer track records
+  // 4. Longevity Score (0-100) - INCREASED IMPORTANCE
+  // Reward strategies with longer track records more heavily
   let longevityScore = 0
   if (strategy.start_date) {
     const startDate = new Date(strategy.start_date)
     const now = new Date()
     const daysActive = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
 
-    if (daysActive >= 365)
-      longevityScore = 100 // 1+ year = max score
+    if (daysActive >= 730)
+      longevityScore = 100 // 2+ years = max score
+    else if (daysActive >= 365)
+      longevityScore = 90 // 1+ year = excellent
     else if (daysActive >= 180)
-      longevityScore = 80 // 6+ months = good
+      longevityScore = 70 // 6+ months = good
     else if (daysActive >= 90)
-      longevityScore = 60 // 3+ months = decent
+      longevityScore = 50 // 3+ months = decent
     else if (daysActive >= 30)
-      longevityScore = 40 // 1+ month = some credit
-    else longevityScore = Math.max(10, daysActive * 1.33) // Linear for < 30 days
+      longevityScore = 30 // 1+ month = some credit
+    else longevityScore = Math.max(5, daysActive * 1) // Reduced linear scaling for < 30 days
   }
 
-  // 5. Subscriber Score (0-100)
+  // 5. Subscriber Score (0-100) - KEPT SAME
   // Reward market validation through subscriber count
   const subscriberCount = strategy.subscriber_count || 0
   let subscriberScore = 0
@@ -636,22 +655,29 @@ const calculateMarketplaceRankScore = (strategy: any): number => {
     subscriberScore = 30 // 5+ = some validation
   else subscriberScore = subscriberCount * 6 // Linear scaling for < 5
 
-  // Calculate weighted final score
-  const finalScore =
+  // SEVERE PENALTY for negative ROI - multiply final score by 0.1
+  let finalScore =
     roiScore * weights.roi +
     winRateScore * weights.winRate +
-    consistencyScore * weights.consistency +
+    betVolumeScore * weights.betVolume +
     longevityScore * weights.longevity +
     subscriberScore * weights.subscribers
 
-  // Minimum requirements bonus/penalty
-  let bonus = 0
-  if (strategy.total_bets >= 20) bonus += 5 // 20+ bets bonus
-  if (strategy.total_bets >= 50) bonus += 5 // 50+ bets bonus
-  if (strategy.is_verified_seller) bonus += 3 // Verified seller bonus
-  if (strategy.verification_status === 'premium') bonus += 2 // Premium bonus
+  // Apply severe penalty for negative ROI
+  if (roi < 0) {
+    finalScore = finalScore * 0.1 // 90% penalty for negative ROI
+  }
 
-  return Math.round((finalScore + bonus) * 100) / 100 // Round to 2 decimal places
+  // Subtle penalty for low win rate + high ROI (likely from few lucky parlays/high odds bets)
+  const winRate = strategy.win_rate || 0
+  if (winRate < 0.3 && roi > 15) {
+    // This pattern suggests unsustainable luck rather than skill
+    // Apply graduated penalty based on how low the win rate is
+    const winRatePenalty = Math.max(0.6, 1 - ((0.3 - winRate) * 2)) // 40% max penalty
+    finalScore = finalScore * winRatePenalty
+  }
+
+  return Math.round(finalScore * 100) / 100 // Round to 2 decimal places
 }
 
 export const fetchMarketplaceLeaderboard = async (
@@ -1067,8 +1093,8 @@ export const createStrategy = async (
                   : strategy.filters.timeframe === 'custom'
                     ? 'Custom Range'
                     : 'All time',
-      customStartDate: strategy.filters.startDate,
-      customEndDate: strategy.filters.endDate,
+      customStartDate: strategy.filters.basicStartDate, // Use basicStartDate instead of startDate
+      customEndDate: null, // Remove endDate - not needed for strategies
       sportsbooks: strategy.filters.sportsbooks,
       sports: strategy.filters.sports
         ? strategy.filters.sports.map(normalizeLeague)
