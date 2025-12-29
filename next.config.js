@@ -81,6 +81,11 @@ const nextConfig = {
         destination: '/marketplace',
         permanent: true,
       },
+      {
+        source: '/wagerwave',
+        destination: '/?utm_source=wagerwave&utm_medium=partner&utm_campaign=linktree',
+        permanent: false,
+      },
     ]
   },
 
