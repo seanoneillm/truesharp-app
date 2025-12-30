@@ -77,7 +77,7 @@ const SocialMediaSection = () => {
   return (
     <section 
       id="social-media-section"
-      className="bg-gray-50 py-12 sm:py-16"
+      className="bg-gray-50 py-16 sm:py-20"
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className={`mx-auto max-w-3xl text-center transition-all duration-1000 ${
@@ -86,7 +86,7 @@ const SocialMediaSection = () => {
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             Connect with Us
           </h2>
-          <p className="mb-12 text-lg leading-8 text-gray-600">
+          <p className="mb-8 text-base leading-7 text-gray-600">
             Join the TrueSharp community and stay updated with the latest features, tips, and betting insights
           </p>
           
