@@ -55,16 +55,16 @@ export default function TrueSharpLandingPage() {
     <div className="min-h-screen bg-white">
       {/* Header Navigation */}
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="group flex items-center space-x-3">
+            <Link href="/" className="group flex items-center space-x-2 sm:space-x-3">
               <img 
                 src="/images/truesharp-logo.png" 
                 alt="TrueSharp Logo" 
-                className="h-10 w-10 rounded-lg transition-transform duration-200 group-hover:scale-105" 
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg transition-transform duration-200 group-hover:scale-105" 
               />
-              <span className="text-2xl font-bold tracking-tight text-gray-900">TrueSharp</span>
+              <span className="text-lg sm:text-2xl font-bold tracking-tight text-gray-900">TrueSharp</span>
             </Link>
           </div>
 
@@ -74,16 +74,16 @@ export default function TrueSharpLandingPage() {
           </div>
 
           {/* Auth Buttons */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <Link
               href="/login"
-              className="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+              className="px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
             >
               Log In
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
             >
               Sign Up
             </Link>

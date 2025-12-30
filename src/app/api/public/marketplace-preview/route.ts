@@ -1,14 +1,15 @@
-import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase'
+import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
     const supabase = await createServiceRoleClient()
-    
+
     // Fetch top 3 strategies for marketplace preview
     const { data: strategies, error } = await supabase
       .from('strategy_leaderboard')
-      .select(`
+      .select(
+        `
         id,
         strategy_id,
         username,
@@ -28,7 +29,8 @@ export async function GET() {
         subscription_price_monthly,
         subscription_price_yearly,
         marketplace_rank_score
-      `)
+      `
+      )
       .order('marketplace_rank_score', { ascending: false })
       .limit(3)
 
@@ -37,11 +39,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch strategies' }, { status: 500 })
     }
 
-    return NextResponse.json({ strategies }, { 
-      headers: {
-        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200' // Cache for 10 minutes
+    return NextResponse.json(
+      { strategies },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200', // Cache for 10 minutes
+        },
       }
-    })
+    )
   } catch (error) {
     console.error('Error in marketplace-preview API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
