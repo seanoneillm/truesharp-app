@@ -171,6 +171,8 @@ export const authService = {
               const grantResult = await grantResponse.json();
               if (grantResult.success) {
                 console.log('✅ Free Pro month granted via creator code');
+                // Store flag to show referral welcome popup on dashboard
+                await AsyncStorage.setItem('pendingReferralWelcome', validatedCreatorCode);
               } else {
                 console.error('❌ Failed to grant Pro:', grantResult.error);
               }

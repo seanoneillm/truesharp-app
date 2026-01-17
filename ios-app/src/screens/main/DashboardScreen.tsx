@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -1007,36 +1008,40 @@ export default function DashboardScreen() {
     fetchUserUnitSize()
   }, [user?.id])
 
-  // Check for referral welcome popup
+  // Check for referral welcome popup - triggered by AsyncStorage flag from signup
   useEffect(() => {
-    const checkReferralWelcome = async (retryCount = 0) => {
+    const checkReferralWelcome = async () => {
       if (!user?.id) return
 
       try {
-        const { Environment } = await import('../../config/environment')
-        const response = await fetch(
-          `${Environment.API_BASE_URL}/api/creator-codes/welcome-info?user_id=${user.id}`
-        )
-        const data = await response.json()
+        // Check if there's a pending referral welcome from signup
+        const pendingCode = await AsyncStorage.getItem('pendingReferralWelcome')
 
-        if (data.success && data.show_welcome && data.creator) {
-          setReferralCreatorInfo({
-            username: data.creator.username,
-            profile_picture_url: data.creator.profile_picture_url,
-          })
-          setShowReferralWelcome(true)
-        } else if (retryCount < 2) {
-          // Retry after delay in case grant-pro hasn't completed yet
-          setTimeout(() => checkReferralWelcome(retryCount + 1), 2000)
+        if (pendingCode) {
+          // Fetch creator info for the popup
+          const { Environment } = await import('../../config/environment')
+          const response = await fetch(
+            `${Environment.API_BASE_URL}/api/creator-codes/welcome-info?user_id=${user.id}`
+          )
+          const data = await response.json()
+
+          if (data.success && data.show_welcome && data.creator) {
+            setReferralCreatorInfo({
+              username: data.creator.username,
+              profile_picture_url: data.creator.profile_picture_url,
+            })
+            setShowReferralWelcome(true)
+          }
+
+          // Clear the flag regardless - we only show once
+          await AsyncStorage.removeItem('pendingReferralWelcome')
         }
       } catch (error) {
         console.error('Error checking referral welcome:', error)
       }
     }
 
-    // Initial delay to allow grant-pro API to complete after signup
-    const timer = setTimeout(() => checkReferralWelcome(), 1500)
-    return () => clearTimeout(timer)
+    checkReferralWelcome()
   }, [user?.id])
 
   const handleReferralWelcomeClose = async () => {
