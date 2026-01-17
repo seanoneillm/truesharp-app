@@ -1011,38 +1011,32 @@ export default function DashboardScreen() {
   // Check for referral welcome popup - triggered by AsyncStorage flag from signup
   useEffect(() => {
     const checkReferralWelcome = async () => {
-      if (!user?.id) return
-
       try {
         // Check if there's a pending referral welcome from signup
-        const pendingCode = await AsyncStorage.getItem('pendingReferralWelcome')
+        const pendingData = await AsyncStorage.getItem('pendingReferralWelcome')
 
-        if (pendingCode) {
-          // Fetch creator info for the popup
-          const { Environment } = await import('../../config/environment')
-          const response = await fetch(
-            `${Environment.API_BASE_URL}/api/creator-codes/welcome-info?user_id=${user.id}`
-          )
-          const data = await response.json()
+        if (pendingData) {
+          const { creatorUsername, creatorProfilePicture } = JSON.parse(pendingData)
 
-          if (data.success && data.show_welcome && data.creator) {
-            setReferralCreatorInfo({
-              username: data.creator.username,
-              profile_picture_url: data.creator.profile_picture_url,
-            })
-            setShowReferralWelcome(true)
-          }
+          // Show popup immediately with stored creator info
+          setReferralCreatorInfo({
+            username: creatorUsername,
+            profile_picture_url: creatorProfilePicture,
+          })
+          setShowReferralWelcome(true)
 
-          // Clear the flag regardless - we only show once
+          // Clear the flag - we only show once
           await AsyncStorage.removeItem('pendingReferralWelcome')
         }
       } catch (error) {
         console.error('Error checking referral welcome:', error)
+        // Clear potentially corrupted data
+        await AsyncStorage.removeItem('pendingReferralWelcome')
       }
     }
 
     checkReferralWelcome()
-  }, [user?.id])
+  }, [])
 
   const handleReferralWelcomeClose = async () => {
     setShowReferralWelcome(false)

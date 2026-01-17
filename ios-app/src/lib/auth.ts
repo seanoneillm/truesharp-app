@@ -106,6 +106,15 @@ export const authService = {
             throw new Error(codeResult.error || 'Invalid creator code');
           }
           validatedCreatorCode = codeResult.code; // Use canonical uppercase version
+
+          // Store creator info for welcome popup - available immediately on dashboard load
+          if (codeResult.creator) {
+            await AsyncStorage.setItem('pendingReferralWelcome', JSON.stringify({
+              code: codeResult.code,
+              creatorUsername: codeResult.creator.username,
+              creatorProfilePicture: codeResult.creator.profile_picture_url
+            }));
+          }
         } catch (error) {
           console.error('Creator code validation error:', error);
           throw new Error('Invalid creator code');
@@ -171,8 +180,6 @@ export const authService = {
               const grantResult = await grantResponse.json();
               if (grantResult.success) {
                 console.log('✅ Free Pro month granted via creator code');
-                // Store flag to show referral welcome popup on dashboard
-                await AsyncStorage.setItem('pendingReferralWelcome', validatedCreatorCode);
               } else {
                 console.error('❌ Failed to grant Pro:', grantResult.error);
               }

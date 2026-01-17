@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Check if code exists and is active (case-insensitive)
     const { data: creatorCode, error } = await supabase
       .from('creator_codes')
-      .select('id, code, is_active')
+      .select('id, code, is_active, creator_user_id')
       .ilike('code', code)
       .single()
 
@@ -41,11 +41,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Fetch creator's profile info for the welcome popup
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('username, display_name, profile_picture_url')
+      .eq('id', creatorCode.creator_user_id)
+      .single()
+
     console.log(`✅ Creator code valid: ${creatorCode.code}`)
 
     return NextResponse.json({
       valid: true,
-      code: creatorCode.code // Return the canonical (uppercase) version
+      code: creatorCode.code, // Return the canonical (uppercase) version
+      creator: {
+        username: creatorProfile?.display_name || creatorProfile?.username || 'Creator',
+        profile_picture_url: creatorProfile?.profile_picture_url || null
+      }
     })
 
   } catch (error) {
