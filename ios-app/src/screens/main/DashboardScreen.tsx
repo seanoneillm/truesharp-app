@@ -1009,7 +1009,7 @@ export default function DashboardScreen() {
 
   // Check for referral welcome popup
   useEffect(() => {
-    const checkReferralWelcome = async () => {
+    const checkReferralWelcome = async (retryCount = 0) => {
       if (!user?.id) return
 
       try {
@@ -1025,13 +1025,18 @@ export default function DashboardScreen() {
             profile_picture_url: data.creator.profile_picture_url,
           })
           setShowReferralWelcome(true)
+        } else if (retryCount < 2) {
+          // Retry after delay in case grant-pro hasn't completed yet
+          setTimeout(() => checkReferralWelcome(retryCount + 1), 2000)
         }
       } catch (error) {
         console.error('Error checking referral welcome:', error)
       }
     }
 
-    checkReferralWelcome()
+    // Initial delay to allow grant-pro API to complete after signup
+    const timer = setTimeout(() => checkReferralWelcome(), 1500)
+    return () => clearTimeout(timer)
   }, [user?.id])
 
   const handleReferralWelcomeClose = async () => {
