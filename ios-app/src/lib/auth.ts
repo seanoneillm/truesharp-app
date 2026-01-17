@@ -24,6 +24,7 @@ export interface SignupCredentials {
   agreeToTerms: boolean;
   agreeToPrivacy: boolean;
   verifyAge: boolean;
+  creatorCode?: string;
 }
 
 // Authentication functions
@@ -63,7 +64,7 @@ export const authService = {
   },
 
   // Sign up user
-  async signUp({ email, username, password, confirmPassword, agreeToTerms, agreeToPrivacy, verifyAge }: SignupCredentials) {
+  async signUp({ email, username, password, confirmPassword, agreeToTerms, agreeToPrivacy, verifyAge, creatorCode }: SignupCredentials) {
     try {
       // Validation
       if (password !== confirmPassword) {
@@ -77,6 +78,38 @@ export const authService = {
       }
       if (password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
+      }
+
+      // Validate creator code if provided
+      let validatedCreatorCode: string | null = null;
+      if (creatorCode && creatorCode.trim()) {
+        try {
+          const { Environment } = await import('../config/environment');
+          const codeValidation = await fetch(`${Environment.API_BASE_URL}/api/creator-codes/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: creatorCode.trim() }),
+          });
+
+          if (!codeValidation.ok) {
+            console.error('Creator code validation failed with status:', codeValidation.status);
+            throw new Error('Invalid creator code');
+          }
+
+          const responseText = await codeValidation.text();
+          if (!responseText) {
+            throw new Error('Invalid creator code');
+          }
+
+          const codeResult = JSON.parse(responseText);
+          if (!codeResult.valid) {
+            throw new Error(codeResult.error || 'Invalid creator code');
+          }
+          validatedCreatorCode = codeResult.code; // Use canonical uppercase version
+        } catch (error) {
+          console.error('Creator code validation error:', error);
+          throw new Error('Invalid creator code');
+        }
       }
 
       // Check if username is available (using lowercase like web app)
@@ -117,12 +150,30 @@ export const authService = {
       // But let's verify it exists for immediate signups and handle edge cases
       if (data.session) {
         // User is immediately logged in, profile should be created by trigger
-        // Give the trigger a moment to execute, then verify profile exists
+        // Give the trigger a moment to execute, then verify profile exists and grant pro if creator code
         setTimeout(async () => {
           try {
             const profile = await this.getProfile(data.user.id);
             if (!profile) {
               await this.createProfile(data.user.id);
+            }
+            // Grant free Pro month if creator code was provided
+            if (validatedCreatorCode) {
+              const { Environment } = await import('../config/environment');
+              const grantResponse = await fetch(`${Environment.API_BASE_URL}/api/creator-codes/grant-pro`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: data.user.id,
+                  creator_code: validatedCreatorCode
+                }),
+              });
+              const grantResult = await grantResponse.json();
+              if (grantResult.success) {
+                console.log('✅ Free Pro month granted via creator code');
+              } else {
+                console.error('❌ Failed to grant Pro:', grantResult.error);
+              }
             }
           } catch (error) {
             console.error('Profile verification failed:', error);

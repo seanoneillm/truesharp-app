@@ -31,6 +31,7 @@ interface SignupForm {
   username: string;
   password: string;
   confirmPassword: string;
+  creatorCode: string;
   agreeToTerms: boolean;
   agreeToPrivacy: boolean;
   verifyAge: boolean;
@@ -43,6 +44,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
     username: '',
     password: '',
     confirmPassword: '',
+    creatorCode: '',
     agreeToTerms: false,
     agreeToPrivacy: false,
     verifyAge: false,
@@ -120,6 +122,7 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
         agreeToTerms: form.agreeToTerms,
         agreeToPrivacy: form.agreeToPrivacy,
         verifyAge: form.verifyAge,
+        creatorCode: form.creatorCode.trim() || undefined,
       });
     } catch (error: any) {
       setLoading(false);
@@ -214,6 +217,15 @@ export default function SignupScreen({ navigation }: SignupScreenProps) {
                 secureTextEntry
                 error={getFieldError('confirmPassword')}
                 required
+              />
+
+              <InputField
+                label="Creator Code"
+                value={form.creatorCode}
+                onChangeText={(text) => updateForm('creatorCode', text.toUpperCase())}
+                placeholder="Enter code (optional)"
+                autoCapitalize="characters"
+                error={getFieldError('creatorCode')}
               />
 
               {/* Agreement Checkboxes */}

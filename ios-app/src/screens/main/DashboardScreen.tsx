@@ -21,9 +21,11 @@ import Svg, { Circle, Path, Line as SvgLine, Text as SvgText } from 'react-nativ
 import UnifiedBetCard from '../../components/analytics/UnifiedBetCard'
 import PerformanceCalendar, { DailyPnL } from '../../components/analytics/PerformanceCalendar'
 import DailyBetsModal from '../../components/analytics/DailyBetsModal'
+import { groupBetsByParlay } from '../../services/parlayGrouping'
 import TrueSharpShield from '../../components/common/TrueSharpShield'
 import SellerProfileModal from '../../components/marketplace/SellerProfileModal'
 import UpgradeToProModal from '../../components/upgrade/UpgradeToProModal'
+import ReferralWelcomeModal from '../../components/common/ReferralWelcomeModal'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   DashboardStats,
@@ -106,6 +108,14 @@ export default function DashboardScreen() {
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics | null>(null)
   const [monetizedStrategiesCount, setMonetizedStrategiesCount] = useState(0)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const [userUnitSize, setUserUnitSize] = useState<number>(1000) // Default to $10 (1000 cents)
+
+  // Referral welcome modal state
+  const [showReferralWelcome, setShowReferralWelcome] = useState(false)
+  const [referralCreatorInfo, setReferralCreatorInfo] = useState<{
+    username: string
+    profile_picture_url: string | null
+  } | null>(null)
 
   // Refs for performance cards
   const performanceCardRef = useRef<View>(null)
@@ -443,12 +453,14 @@ export default function DashboardScreen() {
     try {
       if (!user?.id) return;
 
-      // Fetch bets for the specific date
+      // Fetch bets for a wider date range to ensure we get all parlay legs
+      // Then filter to exact date after grouping
       const startDate = new Date(dateString);
+      startDate.setDate(startDate.getDate() - 1); // Start from day before
       const endDate = new Date(dateString);
-      endDate.setDate(endDate.getDate() + 1);
+      endDate.setDate(endDate.getDate() + 2); // End day after
 
-      const { data: bets, error } = await supabase
+      const { data: allBets, error } = await supabase
         .from('bets')
         .select('*')
         .eq('user_id', user.id)
@@ -457,12 +469,11 @@ export default function DashboardScreen() {
         .order('placed_at', { ascending: true });
 
       if (error) {
-        console.error('Error fetching daily bets:', error);
+        console.error('Error fetching bets for daily modal:', error);
         return;
       }
 
-      if (!bets || bets.length === 0) {
-        // Show empty state for days with no bets
+      if (!allBets || allBets.length === 0) {
         setSelectedDayData({
           date: dateString,
           bets: [],
@@ -475,22 +486,57 @@ export default function DashboardScreen() {
         return;
       }
 
-      // Process bets using the same logic as the dashboard
-      const { parlays, singles } = processAnalyticsBets(bets);
+      // Group bets into parlays and singles FIRST (like analytics screen)
+      const { parlays, singles } = groupBetsByParlay(allBets);
+      
+      // Filter by the selected date AFTER grouping
+      const selectedDateKey = dateString; // YYYY-MM-DD format
+      
+      const filteredSingles = singles.filter(bet => {
+        if (!bet.placed_at) return false;
+        const betDate = new Date(bet.placed_at);
+        const betDateKey = betDate.getFullYear() + '-' + 
+          String(betDate.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(betDate.getDate()).padStart(2, '0');
+        return betDateKey === selectedDateKey;
+      });
+      
+      const filteredParlays = parlays.filter(parlay => {
+        if (!parlay.placed_at) return false;
+        const parlayDate = new Date(parlay.placed_at);
+        const parlayDateKey = parlayDate.getFullYear() + '-' + 
+          String(parlayDate.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(parlayDate.getDate()).padStart(2, '0');
+        return parlayDateKey === selectedDateKey;
+      });
+
+      const dayBets = [...filteredSingles, ...filteredParlays];
+      
+      if (dayBets.length === 0) {
+        setSelectedDayData({
+          date: dateString,
+          bets: [],
+          profit: 0,
+          totalBets: 0,
+          winRate: 0,
+          totalStake: 0,
+        });
+        setShowDailyBetsModal(true);
+        return;
+      }
       
       // Calculate metrics
-      const allBets = [...singles, ...parlays];
-      const settledBets = allBets.filter(bet => bet.status === 'won' || bet.status === 'lost');
+      const settledBets = dayBets.filter(bet => bet.status === 'won' || bet.status === 'lost');
       const wonBets = settledBets.filter(bet => bet.status === 'won');
       const totalProfit = settledBets.reduce((sum, bet) => sum + (bet.profit || 0), 0);
-      const totalStake = allBets.reduce((sum, bet) => sum + (bet.stake || 0), 0);
+      const totalStake = dayBets.reduce((sum, bet) => sum + (bet.stake || 0), 0);
       const winRate = settledBets.length > 0 ? (wonBets.length / settledBets.length) * 100 : 0;
 
       setSelectedDayData({
         date: dateString,
-        bets: allBets,
+        bets: dayBets,
         profit: totalProfit,
-        totalBets: allBets.length,
+        totalBets: dayBets.length,
         winRate: winRate,
         totalStake: totalStake,
       });
@@ -929,6 +975,83 @@ export default function DashboardScreen() {
     }
   }, [selectedMonth, selectedYear, user?.id])
 
+  // Fetch user's unit size from analytics_settings
+  useEffect(() => {
+    const fetchUserUnitSize = async () => {
+      if (!user?.id) {
+        setUserUnitSize(1000) // Default to $10
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('analytics_settings')
+          .select('unit_size')
+          .eq('user_id', user.id)
+          .single()
+
+        if (error) {
+          // Default unit size is $10 (1000 cents)
+          setUserUnitSize(1000)
+          return
+        }
+
+        // Unit size is already in cents in the database
+        setUserUnitSize(data?.unit_size || 1000)
+      } catch {
+        // Default unit size is $10 (1000 cents)
+        setUserUnitSize(1000)
+      }
+    }
+
+    fetchUserUnitSize()
+  }, [user?.id])
+
+  // Check for referral welcome popup
+  useEffect(() => {
+    const checkReferralWelcome = async () => {
+      if (!user?.id) return
+
+      try {
+        const { Environment } = await import('../../config/environment')
+        const response = await fetch(
+          `${Environment.API_BASE_URL}/api/creator-codes/welcome-info?user_id=${user.id}`
+        )
+        const data = await response.json()
+
+        if (data.success && data.show_welcome && data.creator) {
+          setReferralCreatorInfo({
+            username: data.creator.username,
+            profile_picture_url: data.creator.profile_picture_url,
+          })
+          setShowReferralWelcome(true)
+        }
+      } catch (error) {
+        console.error('Error checking referral welcome:', error)
+      }
+    }
+
+    checkReferralWelcome()
+  }, [user?.id])
+
+  const handleReferralWelcomeClose = async () => {
+    setShowReferralWelcome(false)
+
+    // Mark as seen on the server
+    if (user?.id) {
+      try {
+        const { Environment } = await import('../../config/environment')
+        await fetch(`${Environment.API_BASE_URL}/api/creator-codes/welcome-info`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id }),
+        })
+      } catch (error) {
+        console.error('Error marking welcome as seen:', error)
+      }
+    }
+  }
+
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good morning'
@@ -974,15 +1097,7 @@ export default function DashboardScreen() {
         width: Math.min(400, Dimensions.get('window').width - 32),
       })
 
-      const shareMessage = `Check out my performance on TrueSharp! 🎯\n\nTotal P/L: ${
-        timeframeStats.totalProfit >= 0 
-          ? `+$${Math.abs(timeframeStats.totalProfit) >= 1000
-              ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
-              : timeframeStats.totalProfit.toFixed(2)}`
-          : `-$${Math.abs(timeframeStats.totalProfit) >= 1000
-              ? (Math.abs(timeframeStats.totalProfit) / 1000).toFixed(1) + 'k'
-              : Math.abs(timeframeStats.totalProfit).toFixed(2)}`
-      }\nWin Rate: ${timeframeStats.winRate.toFixed(1)}%\nTotal Bets: ${timeframeStats.totalBets}\n\nDownload TrueSharp: truesharp.io`
+      const shareMessage = `Check out my performance on TrueSharp! 🎯\n\nTotal P/L: ${formatProfitLossInUnits(timeframeStats.totalProfit, userUnitSize)}\nWin Rate: ${timeframeStats.winRate.toFixed(1)}%\nTotal Bets: ${timeframeStats.totalBets}\n\nDownload TrueSharp: truesharp.io`
 
       await Share.share({
         url: uri,
@@ -1090,6 +1205,27 @@ export default function DashboardScreen() {
     )
   }
 
+  // Utility functions for unit formatting in shared images
+  const formatUnits = (valueInDollars: number, unitSizeInCents: number): string => {
+    // Convert unit size from cents to dollars
+    const unitSizeInDollars = unitSizeInCents / 100
+    // Calculate units
+    const units = valueInDollars / unitSizeInDollars
+    
+    if (Math.abs(units) >= 1000) {
+      // Format as 1.0ku for values over 1000
+      return `${(units / 1000).toFixed(1)}ku`
+    } else {
+      // Format as XXX.X for values under 1000
+      return `${units.toFixed(1)}U`
+    }
+  }
+
+  const formatProfitLossInUnits = (profitLoss: number, unitSizeInCents: number): string => {
+    const unitsString = formatUnits(Math.abs(profitLoss), unitSizeInCents)
+    return profitLoss >= 0 ? `+${unitsString}` : `-${unitsString}`
+  }
+
   // Shareable Performance Card component for image generation
   const ShareablePerformanceCard = () => (
     <View ref={shareTemplateRef} style={styles.shareableCard}>
@@ -1142,14 +1278,7 @@ export default function DashboardScreen() {
                 },
               ]}
             >
-              {timeframeStats.totalProfit >= 0 
-                ? `+$${Math.abs(timeframeStats.totalProfit) >= 1000
-                    ? (timeframeStats.totalProfit / 1000).toFixed(1) + 'k'
-                    : timeframeStats.totalProfit.toFixed(2)}`
-                : `-$${Math.abs(timeframeStats.totalProfit) >= 1000
-                    ? (Math.abs(timeframeStats.totalProfit) / 1000).toFixed(1) + 'k'
-                    : Math.abs(timeframeStats.totalProfit).toFixed(2)}`
-              }
+              {formatProfitLossInUnits(timeframeStats.totalProfit, userUnitSize)}
             </Text>
             <Text style={styles.primaryMetricLabel}>
               Total P/L
@@ -1180,6 +1309,8 @@ export default function DashboardScreen() {
           onYearChange={setSelectedYear}
           dailyPnL={dailyPnLData}
           onDayPress={() => {}} // Disable interaction in share template
+          unitSize={userUnitSize}
+          showUnits={true} // Always show units in shared image
         />
       </View>
     </View>
@@ -1983,7 +2114,17 @@ export default function DashboardScreen() {
           // Handle bet press - could navigate to bet details
         }}
       />
-      
+
+      {/* Referral Welcome Modal */}
+      {referralCreatorInfo && (
+        <ReferralWelcomeModal
+          visible={showReferralWelcome}
+          onClose={handleReferralWelcomeClose}
+          creatorUsername={referralCreatorInfo.username}
+          creatorProfilePicture={referralCreatorInfo.profile_picture_url}
+        />
+      )}
+
       {/* Off-screen shareable performance card for image generation */}
       <View style={styles.offscreenContainer}>
         <ShareablePerformanceCard />

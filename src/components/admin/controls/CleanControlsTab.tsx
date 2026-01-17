@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { TrueSharpBetSettlement } from './TrueSharpBetSettlement'
 import { NotificationSender } from './NotificationSender'
+import { CreatorCodesManager } from './CreatorCodesManager'
 
 interface CleanControlsTabProps {
   className?: string
@@ -31,6 +32,10 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
   const [isFetching, setIsFetching] = useState(false)
   const [fetchResult, setFetchResult] = useState<string | null>(null)
   const [selectedSport, setSelectedSport] = useState<string>('ALL')
+  
+  // NCAAB Odds Management State
+  const [isFetchingNcaab, setIsFetchingNcaab] = useState(false)
+  const [fetchNcaabResult, setFetchNcaabResult] = useState<string | null>(null)
 
   // Score Fetching State
   const [isFetchingScores, setIsFetchingScores] = useState(false)
@@ -70,6 +75,33 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
       setFetchResult(`❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsFetching(false)
+    }
+  }
+
+  const handleFetchNcaabOdds = async () => {
+    setIsFetchingNcaab(true)
+    setFetchNcaabResult(null)
+    
+    try {
+      console.log('🎯 Starting NCAAB odds fetch...')
+      
+      const response = await fetch('/api/fetch-ncaab-odds-only', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setFetchNcaabResult(`✅ Successfully fetched NCAAB odds. ${data.message || ''}`)
+      } else {
+        setFetchNcaabResult(`❌ Error: ${data.error || 'Failed to fetch NCAAB odds'}`)
+      }
+    } catch (error) {
+      console.error('❌ NCAAB odds fetch error:', error)
+      setFetchNcaabResult(`❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsFetchingNcaab(false)
     }
   }
 
@@ -197,6 +229,9 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
       {/* Notification Sender */}
       <NotificationSender />
 
+      {/* Creator Codes Manager */}
+      <CreatorCodesManager />
+
       {/* TrueSharp Bet Settlement */}
       <TrueSharpBetSettlement />
 
@@ -246,6 +281,24 @@ export function CleanControlsTab({ className }: CleanControlsTabProps) {
           </div>
 
           <ResultDisplay result={fetchResult} />
+
+          {/* NCAAB Only Button */}
+          <div className="pt-4 border-t">
+            <p className="text-sm text-gray-600 mb-3">
+              Fetch odds for NCAAB games only.
+            </p>
+            
+            <Button
+              onClick={handleFetchNcaabOdds}
+              disabled={isFetchingNcaab}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetchingNcaab ? 'animate-spin' : ''}`} />
+              {isFetchingNcaab ? 'Fetching NCAAB Odds...' : 'Fetch NCAAB Odds Only'}
+            </Button>
+
+            <ResultDisplay result={fetchNcaabResult} />
+          </div>
         </CardContent>
       </Card>
 
